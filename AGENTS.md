@@ -38,6 +38,7 @@ This project is intentionally vibe-coded. Future agents must preserve product in
 - Prefer explicit module boundaries under `src/`.
 - Treat database schema changes as product decisions, not incidental implementation details.
 - Keep Docker Compose suitable for local development, not as the only deployment path.
+- Keep dependencies reasonably current; avoid leaving generated scaffolds pinned to old major versions without a documented compatibility reason.
 
 ## Testing Direction
 

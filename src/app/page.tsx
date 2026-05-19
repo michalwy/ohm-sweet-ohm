@@ -25,16 +25,17 @@ const copy = {
 };
 
 type HomePageProps = {
-  searchParams?: {
+  searchParams?: Promise<{
     partCreated?: string;
     partFormError?: string;
-  };
+  }>;
 };
 
 export default async function HomePage({ searchParams }: HomePageProps) {
   const { parts, isDatabaseAvailable } = await getPartsList();
-  const partCreated = searchParams?.partCreated === "1";
-  const partFormError = searchParams?.partFormError;
+  const resolvedSearchParams = await searchParams;
+  const partCreated = resolvedSearchParams?.partCreated === "1";
+  const partFormError = resolvedSearchParams?.partFormError;
 
   return (
     <main className="min-h-screen bg-zinc-950 px-6 py-8 text-zinc-100">
