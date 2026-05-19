@@ -40,6 +40,11 @@ This project is intentionally vibe-coded. Future agents must preserve product in
 - Keep Docker Compose suitable for local development, not as the only deployment path.
 - Keep dependencies reasonably current; avoid leaving generated scaffolds pinned to old major versions without a documented compatibility reason.
 
+## UI Direction
+
+- Use modal dialogs for list actions such as adding, editing, and similar focused workflows.
+- Prefer in-place editing on lists for fields where inline edits are practical and clear.
+
 ## Testing Direction
 
 - Use `pnpm typecheck` for TypeScript verification.
