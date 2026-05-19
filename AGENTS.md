@@ -22,6 +22,7 @@ This project is intentionally vibe-coded. Future agents must preserve product in
 - Keep the project runnable locally and deployable to cloud infrastructure.
 - Favor boring, well-supported tools over novelty.
 - Preserve existing user changes. Do not rewrite unrelated files.
+- Do not create git commits unless the user explicitly asks for a commit.
 
 ## Technical Direction
 
