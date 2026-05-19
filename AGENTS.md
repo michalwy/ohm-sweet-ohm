@@ -23,6 +23,7 @@ This project is intentionally vibe-coded. Future agents must preserve product in
 - Favor boring, well-supported tools over novelty.
 - Preserve existing user changes. Do not rewrite unrelated files.
 - Do not create git commits unless the user explicitly asks for a commit.
+- When creating commits, use Conventional Commits, for example `feat: add inventory overview` or `docs: update agent guidance`.
 
 ## Technical Direction
 
