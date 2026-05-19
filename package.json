@@ -9,6 +9,10 @@
     "start": "next start",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
+    "e2e:db:up": "docker compose -f docker-compose.e2e.yml up -d --wait db-e2e",
+    "e2e:db:reset": "pnpm e2e:db:up && DATABASE_URL=\"postgresql://oso:oso_e2e_password@localhost:5433/ohm_sweet_ohm_e2e?schema=public\" prisma migrate reset --force --skip-seed && DATABASE_URL=\"postgresql://oso:oso_e2e_password@localhost:5433/ohm_sweet_ohm_e2e?schema=public\" tsx prisma/seed.e2e.ts",
+    "test:e2e": "pnpm e2e:db:reset && playwright test",
+    "test:e2e:ui": "pnpm e2e:db:reset && playwright test --ui",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:migrate:deploy": "prisma migrate deploy"
@@ -23,12 +27,14 @@
     "@types/node": "^20.17.6",
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
+    "@playwright/test": "^1.49.0",
     "autoprefixer": "^10.4.20",
     "eslint": "^8.57.1",
     "eslint-config-next": "^14.2.18",
     "postcss": "^8.4.49",
     "prisma": "^5.22.0",
     "tailwindcss": "^3.4.15",
+    "tsx": "^4.19.2",
     "typescript": "^5.6.3"
   },
   "engines": {

@@ -31,10 +31,20 @@ This project is intentionally vibe-coded. Future agents must preserve product in
 
 - Use TypeScript throughout application code.
 - Use Next.js App Router conventions.
+- Keep Next.js, React, and TypeScript as the frontend direction unless a future ADR documents a specific reason to migrate.
+- Add browser interactivity with focused client components; do not make the whole app client-rendered by default.
+- Prefer established React ecosystem libraries for complex tables, dialogs, forms, validation, and accessible UI primitives when those needs become concrete.
 - Keep domain logic out of UI components as the app grows.
 - Prefer explicit module boundaries under `src/`.
 - Treat database schema changes as product decisions, not incidental implementation details.
 - Keep Docker Compose suitable for local development, not as the only deployment path.
+
+## Testing Direction
+
+- Use `pnpm typecheck` for TypeScript verification.
+- Use `pnpm test:e2e` for browser-level verification of interactive UI changes.
+- Keep e2e tests pointed at the isolated PostgreSQL service in `docker-compose.e2e.yml`, not the normal development database.
+- Add or update e2e coverage when changing dynamic tables, dialogs, forms, or user flows.
 
 ## Before Implementing Features
 
