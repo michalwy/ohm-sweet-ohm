@@ -1,0 +1,39 @@
+services:
+  app:
+    image: node:20-bookworm-slim
+    working_dir: /workspace
+    command: sh -c "corepack enable && pnpm install && pnpm dev"
+    ports:
+      - "3000:3000"
+    environment:
+      DATABASE_URL: postgresql://oso:oso_dev_password@db:5432/ohm_sweet_ohm?schema=public
+      NEXT_TELEMETRY_DISABLED: "1"
+    volumes:
+      - .:/workspace
+      - pnpm-store:/root/.local/share/pnpm/store
+      - node-modules:/workspace/node_modules
+    depends_on:
+      db:
+        condition: service_healthy
+
+  db:
+    image: postgres:16-alpine
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: ohm_sweet_ohm
+      POSTGRES_USER: oso
+      POSTGRES_PASSWORD: oso_dev_password
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U oso -d ohm_sweet_ohm"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  node-modules:
+  pnpm-store:
+  postgres-data:
+
