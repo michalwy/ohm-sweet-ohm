@@ -18,6 +18,7 @@ This project is intentionally vibe-coded. Future agents must preserve product in
 - Structure new user-facing strings so future localization is possible.
 - Prefer small, reversible changes with clear documentation.
 - When introducing a framework, library, or major pattern, add or update an ADR in `docs/decisions`.
+- Update this `AGENTS.md` file when new project knowledge, workflow rules, or collaboration preferences would help future agents work better.
 - Keep the project runnable locally and deployable to cloud infrastructure.
 - Favor boring, well-supported tools over novelty.
 - Preserve existing user changes. Do not rewrite unrelated files.
