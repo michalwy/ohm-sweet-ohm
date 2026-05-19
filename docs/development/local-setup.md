@@ -28,6 +28,8 @@ Start the local app and database:
 docker compose up
 ```
 
+The app container installs dependencies, generates the Prisma client, applies committed database migrations, and starts the Next.js development server.
+
 The app should be available at `http://localhost:3000`.
 
 ## Native Development
@@ -43,6 +45,13 @@ Start only the database:
 
 ```bash
 docker compose up db
+```
+
+Apply migrations and generate the Prisma client:
+
+```bash
+pnpm prisma:migrate
+pnpm prisma:generate
 ```
 
 Start the app:

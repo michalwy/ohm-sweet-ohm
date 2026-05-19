@@ -7,5 +7,13 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// Domain models will be added after product workflows are defined.
+model Part {
+  id               String   @id @default(cuid())
+  catalogNumber    String
+  manufacturerName String
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 
+  @@index([catalogNumber])
+  @@index([manufacturerName])
+}

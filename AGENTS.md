@@ -9,6 +9,8 @@ This project is intentionally vibe-coded. Future agents must preserve product in
 - Repository/package name: ohm-sweet-ohm
 - Purpose: a web app for managing a home electronics workshop
 - Application language: English first, additional languages later
+- First feature: a parts list
+- Current part definition: real purchasable electronic parts identified by manufacturer name and catalog number
 
 ## Working Rules
 

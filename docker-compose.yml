@@ -1,8 +1,10 @@
 services:
   app:
-    image: node:20-bookworm-slim
+    build:
+      context: .
+      target: dev
     working_dir: /workspace
-    command: sh -c "corepack enable && pnpm install && pnpm dev"
+    command: sh -c "pnpm install && pnpm prisma:generate && pnpm prisma:migrate:deploy && pnpm dev"
     ports:
       - "3000:3000"
     environment:
@@ -36,4 +38,3 @@ volumes:
   node-modules:
   pnpm-store:
   postgres-data:
-

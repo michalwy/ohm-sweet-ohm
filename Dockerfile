@@ -1,15 +1,21 @@
 FROM node:20-bookworm-slim AS base
 WORKDIR /app
 ENV NEXT_TELEMETRY_DISABLED=1
+RUN apt-get update -y \
+  && apt-get install -y --no-install-recommends openssl \
+  && rm -rf /var/lib/apt/lists/*
 RUN corepack enable
 
 FROM base AS deps
 COPY package.json pnpm-lock.yaml* ./
 RUN pnpm install
 
+FROM base AS dev
+WORKDIR /workspace
+
 FROM deps AS build
 COPY . .
-RUN pnpm build
+RUN pnpm prisma:generate && pnpm build
 
 FROM base AS runner
 ENV NODE_ENV=production
