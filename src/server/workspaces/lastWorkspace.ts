@@ -3,20 +3,9 @@ import "server-only";
 import { cookies } from "next/headers";
 
 import {
-  getLastWorkspaceCookieOptions,
   LAST_WORKSPACE_COOKIE_NAME
 } from "@/lib/lastWorkspaceCookie";
 import { prisma } from "@/server/db/prisma";
-
-export async function rememberLastWorkspaceSlug(workspaceSlug: string) {
-  const cookieStore = await cookies();
-
-  cookieStore.set(
-    LAST_WORKSPACE_COOKIE_NAME,
-    workspaceSlug,
-    getLastWorkspaceCookieOptions()
-  );
-}
 
 export async function clearLastWorkspaceSlug() {
   const cookieStore = await cookies();
