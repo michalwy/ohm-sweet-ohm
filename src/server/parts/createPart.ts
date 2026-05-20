@@ -30,26 +30,27 @@ export async function createPart(formData: FormData) {
 
 export async function updatePart(formData: FormData) {
   const id = getRequiredFormValue(formData, "id");
-  const field = getRequiredFormValue(formData, "field");
-  const value = getRequiredFormValue(formData, "value");
+  const catalogNumber = getRequiredFormValue(formData, "catalogNumber");
+  const manufacturerName = getRequiredFormValue(formData, "manufacturerName");
 
-  if (!id || !value) {
-    redirect("/?partUpdateError=missing-required-fields");
-  }
-
-  if (field !== "catalogNumber" && field !== "manufacturerName") {
-    redirect("/?partUpdateError=unsupported-field");
+  if (!id || !catalogNumber || !manufacturerName) {
+    redirect(
+      `/?partUpdateError=missing-required-fields&partEditDialog=${encodeURIComponent(id)}`
+    );
   }
 
   try {
     await prisma.part.update({
       where: { id },
       data: {
-        [field]: value
+        catalogNumber,
+        manufacturerName
       }
     });
   } catch {
-    redirect("/?partUpdateError=database-unavailable");
+    redirect(
+      `/?partUpdateError=database-unavailable&partEditDialog=${encodeURIComponent(id)}`
+    );
   }
 
   revalidatePath("/");

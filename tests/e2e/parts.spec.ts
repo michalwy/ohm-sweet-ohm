@@ -1,11 +1,12 @@
 import { expect, test } from "@playwright/test";
 
 test.describe("parts list", () => {
-  test("shows seeded parts, creates a new part in a modal, and edits inline", async ({
+  test("shows seeded parts, creates a new part in a modal, and edits through a modal", async ({
     page
   }, testInfo) => {
     const catalogNumber = `ATMEGA328P-PU-${testInfo.project.name}`;
     const updatedCatalogNumber = `${catalogNumber}-A`;
+    const updatedManufacturer = "Microchip";
 
     await page.goto("/");
 
@@ -16,15 +17,11 @@ test.describe("parts list", () => {
       name: /NE555P.*Texas Instruments/
     });
     await expect(seededPartRow).toBeVisible();
-    await expect(
-      seededPartRow.getByRole("textbox", { name: "Catalog number" })
-    ).toHaveValue("NE555P");
-    await expect(
-      seededPartRow.getByRole("textbox", { name: "Manufacturer" })
-    ).toHaveValue("Texas Instruments");
+    await expect(seededPartRow).toContainText("NE555P");
+    await expect(seededPartRow).toContainText("Texas Instruments");
 
     await page.getByRole("button", { name: "Add part" }).click();
-    const addPartDialog = page.getByRole("dialog");
+    const addPartDialog = page.getByRole("dialog", { name: "Add part" });
     await expect(addPartDialog).toBeVisible();
     await addPartDialog.getByLabel("Catalog number").fill(catalogNumber);
     await addPartDialog.getByLabel("Manufacturer").fill("Microchip Technology");
@@ -36,21 +33,25 @@ test.describe("parts list", () => {
     });
 
     await expect(createdPartRow).toBeVisible();
-    await expect(
-      createdPartRow.getByRole("textbox", { name: "Manufacturer" })
-    ).toHaveValue("Microchip Technology");
+    await expect(createdPartRow).toContainText("Microchip Technology");
 
-    await createdPartRow
-      .getByRole("textbox", { name: "Catalog number" })
-      .fill(updatedCatalogNumber);
-    await createdPartRow
-      .getByRole("textbox", { name: "Catalog number" })
-      .press("Enter");
+    await createdPartRow.getByRole("button", { name: "Edit" }).click();
+    const editPartDialog = page.getByRole("dialog", { name: "Edit part" });
+    await expect(editPartDialog).toBeVisible();
+    await expect(editPartDialog.getByLabel("Catalog number")).toHaveValue(
+      catalogNumber
+    );
+    await expect(editPartDialog.getByLabel("Manufacturer")).toHaveValue(
+      "Microchip Technology"
+    );
+    await editPartDialog.getByLabel("Catalog number").fill(updatedCatalogNumber);
+    await editPartDialog.getByLabel("Manufacturer").fill(updatedManufacturer);
+    await editPartDialog.getByRole("button", { name: "Save changes" }).click();
 
     await expect(page.getByText("Part updated.")).toBeVisible();
     await expect(
       page.getByRole("row", {
-        name: new RegExp(`${updatedCatalogNumber}.*Microchip Technology`)
+        name: new RegExp(`${updatedCatalogNumber}.*${updatedManufacturer}`)
       })
     ).toBeVisible();
   });

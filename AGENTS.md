@@ -63,6 +63,7 @@ Do not use multiple roles to invent product behavior. Product decisions still re
 - Use `pnpm test:e2e` for browser-level verification of interactive UI changes.
 - Keep e2e tests pointed at the isolated PostgreSQL service in `docker-compose.e2e.yml`, not the normal development database.
 - Add or update e2e coverage when changing dynamic tables, dialogs, forms, or user flows.
+- When starting a local Next.js dev server manually for browser verification, use webpack mode, for example `pnpm exec next dev --webpack -p 3002`. Avoid Turbopack for local verification in this project because it has repeatedly produced unstable dev-server failures.
 
 ## Before Implementing Features
 

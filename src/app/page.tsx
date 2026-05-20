@@ -14,17 +14,21 @@ const copy = {
     "Real purchasable electronic parts tracked by manufacturer and catalog number.",
   catalogNumber: "Catalog number",
   manufacturer: "Manufacturer",
+  actions: "Actions",
   newPartTitle: "Add part",
   newPartBody: "Create a real purchasable electronic part.",
+  editPartTitle: "Edit part",
+  editPartBody: "Update this part's manufacturer and catalog number.",
   catalogNumberPlaceholder: "NE555P",
   manufacturerPlaceholder: "Texas Instruments",
   addPart: "Add part",
   createPart: "Create part",
+  editPart: "Edit",
+  saveChanges: "Save changes",
   close: "Close",
   created: "Part created.",
   updated: "Part updated.",
   missingRequiredFields: "Enter both catalog number and manufacturer.",
-  unsupportedField: "This field cannot be updated inline.",
   emptyTitle: "No parts yet",
   emptyBody: "Parts will appear here once they exist.",
   databaseUnavailable:
@@ -35,6 +39,7 @@ type HomePageProps = {
   searchParams?: Promise<{
     partCreated?: string;
     partDialog?: string;
+    partEditDialog?: string;
     partFormError?: string;
     partUpdated?: string;
     partUpdateError?: string;
@@ -46,6 +51,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
   const resolvedSearchParams = await searchParams;
   const partCreated = resolvedSearchParams?.partCreated === "1";
   const partDialogOpen = resolvedSearchParams?.partDialog === "open";
+  const partEditDialog = resolvedSearchParams?.partEditDialog;
   const partFormError = resolvedSearchParams?.partFormError;
   const partUpdated = resolvedSearchParams?.partUpdated === "1";
   const partUpdateError = resolvedSearchParams?.partUpdateError;
@@ -120,6 +126,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
               isDatabaseAvailable={isDatabaseAvailable}
               partCreated={partCreated}
               partDialogOpen={partDialogOpen}
+              partEditDialog={partEditDialog}
               partFormError={partFormError}
               partUpdated={partUpdated}
               partUpdateError={partUpdateError}
