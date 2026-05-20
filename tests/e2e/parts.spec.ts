@@ -100,4 +100,36 @@ test.describe("parts list", () => {
       })
     ).toBeVisible();
   });
+
+  test("returns signed-in users to their last workspace", async ({
+    isMobile,
+    page
+  }) => {
+    test.skip(isMobile, "The parts page does not expose sign out on mobile yet.");
+
+    await page.goto("/");
+    await page.getByLabel("Email").fill("owner@ohmsweetohm.local");
+    await page.getByLabel("Password").fill("ohm-sweet-ohm-owner");
+    await page.getByRole("button", { name: "Sign in" }).click();
+
+    await expect(
+      page.getByRole("heading", { level: 1, name: "Workspaces" })
+    ).toBeVisible();
+    await page.getByRole("link", { name: "Open" }).click();
+
+    await expect(page).toHaveURL(/\/w\/default\/parts$/);
+    await page.getByRole("button", { name: "Sign out" }).click();
+
+    await expect(
+      page.getByRole("heading", { level: 1, name: "Sign in" })
+    ).toBeVisible();
+    await page.getByLabel("Email").fill("owner@ohmsweetohm.local");
+    await page.getByLabel("Password").fill("ohm-sweet-ohm-owner");
+    await page.getByRole("button", { name: "Sign in" }).click();
+
+    await expect(page).toHaveURL(/\/w\/default\/parts$/);
+    await expect(
+      page.getByRole("heading", { level: 1, name: "Parts" })
+    ).toBeVisible();
+  });
 });

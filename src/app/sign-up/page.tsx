@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 
 import { signUpWithPassword } from "@/server/auth/actions";
 import { getCurrentSession } from "@/server/auth/currentContext";
+import { getLastWorkspaceRedirectPath } from "@/server/workspaces/lastWorkspace";
 
 export const dynamic = "force-dynamic";
 
@@ -34,7 +35,7 @@ export default async function SignUpPage({ searchParams }: SignUpPageProps) {
   const session = await getCurrentSession();
 
   if (session) {
-    redirect("/workspaces");
+    redirect(await getLastWorkspaceRedirectPath(session.user.id));
   }
 
   const resolvedSearchParams = await searchParams;
