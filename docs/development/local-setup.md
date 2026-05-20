@@ -32,6 +32,7 @@ The app container installs dependencies, generates the Prisma client, applies co
 Docker Compose starts Next.js with webpack for local development because the default Turbopack dev server can hang while compiling inside the bind-mounted container workspace.
 
 The app should be available at `http://localhost:3000`.
+The development seed creates an owner account. Sign in with `owner@ohmsweetohm.local` and the password from `OSO_DEV_USER_PASSWORD`; the example value is `ohm-sweet-ohm-owner`.
 
 ## Native Development
 

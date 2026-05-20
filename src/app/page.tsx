@@ -1,7 +1,10 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 
 import { getPartsList } from "@/server/parts/getParts";
 import { PartsListClient } from "@/app/parts-list-client";
+import { signOut } from "@/server/auth/actions";
+import { getCurrentWorkspaceContext } from "@/server/auth/currentContext";
 
 export const dynamic = "force-dynamic";
 
@@ -9,6 +12,7 @@ const copy = {
   appShortName: "OSO",
   appName: "OhmSweetOhm",
   appSubtitle: "Home electronics workshop",
+  signOut: "Sign out",
   title: "Parts",
   intro:
     "Real purchasable electronic parts tracked by manufacturer and catalog number.",
@@ -47,6 +51,12 @@ type HomePageProps = {
 };
 
 export default async function HomePage({ searchParams }: HomePageProps) {
+  const context = await getCurrentWorkspaceContext();
+
+  if (!context) {
+    redirect("/sign-in");
+  }
+
   const { parts, isDatabaseAvailable } = await getPartsList();
   const resolvedSearchParams = await searchParams;
   const partCreated = resolvedSearchParams?.partCreated === "1";
@@ -82,6 +92,19 @@ export default async function HomePage({ searchParams }: HomePageProps) {
               {copy.title}
             </Link>
           </nav>
+          <div className="border-t border-slate-200 p-3">
+            <p className="mb-2 truncate text-xs leading-5 text-slate-500">
+              {context.user.email}
+            </p>
+            <form action={signOut}>
+              <button
+                className="min-h-10 w-full rounded-md border border-slate-300 bg-white px-3 text-left text-sm font-medium text-slate-700 transition hover:border-slate-400 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2"
+                type="submit"
+              >
+                {copy.signOut}
+              </button>
+            </form>
+          </div>
         </aside>
 
         <div className="flex min-w-0 flex-1 flex-col">
@@ -100,6 +123,14 @@ export default async function HomePage({ searchParams }: HomePageProps) {
                   </p>
                 </div>
               </div>
+              <form action={signOut}>
+                <button
+                  className="min-h-9 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:border-slate-400 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2"
+                  type="submit"
+                >
+                  {copy.signOut}
+                </button>
+              </form>
             </div>
           </header>
 

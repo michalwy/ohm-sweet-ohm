@@ -1,5 +1,6 @@
 import { PrismaClient } from "../src/generated/prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
+import { hashPassword } from "better-auth/crypto";
 import {
   defaultWorkspaceRoles,
   permissionDescriptions,
@@ -7,7 +8,8 @@ import {
 } from "../src/server/access-control/permissions";
 import {
   defaultWorkspaceSlug,
-  developmentUserEmail
+  developmentUserEmail,
+  developmentUserPassword
 } from "../src/server/auth/developmentDefaults";
 
 const connectionString = process.env.DATABASE_URL;
@@ -20,6 +22,9 @@ const adapter = new PrismaPg({ connectionString });
 const prisma = new PrismaClient({ adapter });
 
 async function main() {
+  await prisma.verification.deleteMany();
+  await prisma.session.deleteMany();
+  await prisma.account.deleteMany();
   await prisma.workspaceMemberRole.deleteMany();
   await prisma.rolePermission.deleteMany();
   await prisma.role.deleteMany();
@@ -44,7 +49,17 @@ async function main() {
   const user = await prisma.user.create({
     data: {
       email: developmentUserEmail,
+      emailVerified: true,
       name: "OSO Owner"
+    }
+  });
+
+  await prisma.account.create({
+    data: {
+      userId: user.id,
+      accountId: user.id,
+      providerId: "credential",
+      password: await hashPassword(developmentUserPassword)
     }
   });
 

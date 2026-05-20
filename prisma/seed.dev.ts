@@ -1,10 +1,12 @@
 import { PrismaClient } from "../src/generated/prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
+import { hashPassword } from "better-auth/crypto";
 
 import { ADMIN_PERMISSION } from "../src/server/access-control/permissions";
 import {
   defaultWorkspaceSlug,
-  developmentUserEmail
+  developmentUserEmail,
+  developmentUserPassword
 } from "../src/server/auth/developmentDefaults";
 
 const connectionString = process.env.DATABASE_URL;
@@ -48,11 +50,20 @@ async function main() {
 
   const user = await prisma.user.upsert({
     where: { email: developmentUserEmail },
-    update: {},
+    update: {
+      emailVerified: true
+    },
     create: {
       email: developmentUserEmail,
+      emailVerified: true,
       name: "OSO Owner"
     }
+  });
+
+  await upsertCredentialAccount({
+    userId: user.id,
+    password:
+      process.env.OSO_DEV_USER_PASSWORD?.trim() || developmentUserPassword
   });
 
   const member = await prisma.workspaceMember.upsert({
@@ -80,6 +91,47 @@ async function main() {
     create: {
       workspaceMemberId: member.id,
       roleId: adminRole.id
+    }
+  });
+}
+
+async function upsertCredentialAccount({
+  userId,
+  password
+}: {
+  userId: string;
+  password: string;
+}) {
+  const passwordHash = await hashPassword(password);
+  const existingAccount = await prisma.account.findFirst({
+    where: {
+      userId,
+      providerId: "credential"
+    },
+    select: {
+      id: true
+    }
+  });
+
+  if (existingAccount) {
+    await prisma.account.update({
+      where: {
+        id: existingAccount.id
+      },
+      data: {
+        accountId: userId,
+        password: passwordHash
+      }
+    });
+    return;
+  }
+
+  await prisma.account.create({
+    data: {
+      userId,
+      accountId: userId,
+      providerId: "credential",
+      password: passwordHash
     }
   });
 }

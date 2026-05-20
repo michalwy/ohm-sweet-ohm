@@ -9,6 +9,9 @@ services:
       - "3000:3000"
     environment:
       DATABASE_URL: postgresql://oso:oso_dev_password@db:5432/ohm_sweet_ohm?schema=public
+      BETTER_AUTH_URL: http://localhost:3000
+      BETTER_AUTH_SECRET: ohm-sweet-ohm-local-development-auth-secret
+      OSO_DEV_USER_PASSWORD: ohm-sweet-ohm-owner
       NEXT_TELEMETRY_DISABLED: "1"
     volumes:
       - .:/workspace

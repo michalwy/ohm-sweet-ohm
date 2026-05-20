@@ -17,7 +17,7 @@ export default defineConfig({
     trace: "on-first-retry"
   },
   webServer: {
-    command: `DATABASE_URL="${databaseUrl}" NEXT_TELEMETRY_DISABLED=1 pnpm dev --hostname 127.0.0.1 --port 3100 --webpack`,
+    command: `DATABASE_URL="${databaseUrl}" BETTER_AUTH_URL="${baseURL}" BETTER_AUTH_SECRET="ohm-sweet-ohm-e2e-auth-secret-value" NEXT_TELEMETRY_DISABLED=1 pnpm dev --hostname 127.0.0.1 --port 3100 --webpack`,
     url: baseURL,
     reuseExistingServer: false,
     timeout: 120_000

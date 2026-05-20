@@ -10,6 +10,9 @@
  */
 export type * from './models/Part'
 export type * from './models/User'
+export type * from './models/Session'
+export type * from './models/Account'
+export type * from './models/Verification'
 export type * from './models/Workspace'
 export type * from './models/WorkspaceMember'
 export type * from './models/Role'

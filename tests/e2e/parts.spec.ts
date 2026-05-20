@@ -1,6 +1,15 @@
 import { expect, test } from "@playwright/test";
 
 test.describe("parts list", () => {
+  test("redirects anonymous users to sign in", async ({ page }) => {
+    await page.goto("/");
+
+    await expect(
+      page.getByRole("heading", { level: 1, name: "Sign in" })
+    ).toBeVisible();
+    await expect(page).toHaveURL(/\/sign-in$/);
+  });
+
   test("shows seeded parts, creates a new part in a modal, and edits through a modal", async ({
     page
   }, testInfo) => {
@@ -9,6 +18,9 @@ test.describe("parts list", () => {
     const updatedManufacturer = "Microchip";
 
     await page.goto("/");
+    await page.getByLabel("Email").fill("owner@ohmsweetohm.local");
+    await page.getByLabel("Password").fill("ohm-sweet-ohm-owner");
+    await page.getByRole("button", { name: "Sign in" }).click();
 
     await expect(
       page.getByRole("heading", { level: 1, name: "Parts" })
