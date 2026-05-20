@@ -13,8 +13,9 @@ test.describe("parts list", () => {
   test("registers a user, shows an empty workspace list, and creates a workspace", async ({
     page
   }, testInfo) => {
-    const email = `new-user-${testInfo.project.name}@ohmsweetohm.local`;
-    const workspaceName = `Lab ${testInfo.project.name}`;
+    const testRunSlug = `${testInfo.project.name}-${testInfo.retry}`;
+    const email = `new-user-${testRunSlug}@ohmsweetohm.local`;
+    const workspaceName = `Lab ${testRunSlug}`;
 
     await page.goto("/sign-up");
     await page.getByLabel("Name").fill("New OSO User");
@@ -28,7 +29,10 @@ test.describe("parts list", () => {
     await expect(page.getByText("No workspaces yet")).toBeVisible();
 
     await page.getByLabel("Workspace name").fill(workspaceName);
-    await page.getByRole("button", { name: "Create workspace" }).click();
+    await Promise.all([
+      page.waitForURL(/\/w\/lab-[^/]+\/parts$/),
+      page.getByRole("button", { name: "Create workspace" }).click()
+    ]);
 
     await expect(page).toHaveURL(/\/w\/lab-[^/]+\/parts$/);
     await expect(
