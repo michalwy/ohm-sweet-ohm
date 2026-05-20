@@ -28,10 +28,18 @@ corepack enable
 pnpm install
 ```
 
-Start the application and database:
+Start the local-use application and database:
 
 ```bash
 docker compose up
+```
+
+This runs the built Next.js app with `next start`, applies committed migrations, and seeds the local owner account.
+
+Start the development app with hot reload:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.dev.yml up
 ```
 
 Run the app without Docker:

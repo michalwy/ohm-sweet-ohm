@@ -20,19 +20,29 @@ Copy the example environment file:
 cp .env.example .env
 ```
 
-## Docker Compose
+## Local-use Docker Compose
 
-Start the local app and database:
+Start the local-use app and database:
 
 ```bash
 docker compose up
 ```
 
-The app container installs dependencies, generates the Prisma client, applies committed database migrations, seeds the development user/workspace membership, and starts the Next.js development server.
-Docker Compose starts Next.js with webpack for local development because the default Turbopack dev server can hang while compiling inside the bind-mounted container workspace.
+The app container uses the `runner` Docker image target, applies committed database migrations, seeds the local owner account, and starts the built Next.js app with `next start`.
 
 The app should be available at `http://localhost:3000`.
 The development seed creates an owner account. Sign in with `owner@ohmsweetohm.local` and the password from `OSO_DEV_USER_PASSWORD`; the example value is `ohm-sweet-ohm-owner`.
+
+## Docker Compose Development
+
+Start the development app and database with hot reload:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.dev.yml up
+```
+
+The development override mounts the repository into the app container, installs dependencies in a named volume, generates the Prisma client, applies committed database migrations, seeds the local owner account, and starts the Next.js development server with webpack.
+Use webpack mode for containerized development because the default Turbopack dev server can hang while compiling inside the bind-mounted container workspace.
 
 ## Native Development
 

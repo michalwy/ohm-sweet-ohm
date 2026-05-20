@@ -1,0 +1,15 @@
+services:
+  app:
+    build:
+      context: .
+      target: dev
+    working_dir: /workspace
+    command: sh -c "pnpm install && pnpm prisma:generate && pnpm prisma:migrate:deploy && pnpm db:seed:dev && pnpm dev --hostname 0.0.0.0 --webpack"
+    volumes:
+      - .:/workspace
+      - pnpm-store:/root/.local/share/pnpm/store
+      - node-modules:/workspace/node_modules
+
+volumes:
+  node-modules:
+  pnpm-store:

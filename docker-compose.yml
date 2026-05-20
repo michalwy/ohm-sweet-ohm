@@ -2,9 +2,8 @@ services:
   app:
     build:
       context: .
-      target: dev
-    working_dir: /workspace
-    command: sh -c "pnpm install && pnpm prisma:generate && pnpm prisma:migrate:deploy && pnpm db:seed:dev && pnpm dev --hostname 0.0.0.0 --webpack"
+      target: runner
+    command: sh -c "pnpm prisma:migrate:deploy && pnpm db:seed:dev && pnpm start"
     ports:
       - "3000:3000"
     environment:
@@ -13,10 +12,6 @@ services:
       BETTER_AUTH_SECRET: ohm-sweet-ohm-local-development-auth-secret
       OSO_DEV_USER_PASSWORD: ohm-sweet-ohm-owner
       NEXT_TELEMETRY_DISABLED: "1"
-    volumes:
-      - .:/workspace
-      - pnpm-store:/root/.local/share/pnpm/store
-      - node-modules:/workspace/node_modules
     depends_on:
       db:
         condition: service_healthy
@@ -38,6 +33,4 @@ services:
       retries: 10
 
 volumes:
-  node-modules:
-  pnpm-store:
   postgres-data:
