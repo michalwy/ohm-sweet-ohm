@@ -29,6 +29,7 @@ docker compose up
 ```
 
 The app container installs dependencies, generates the Prisma client, applies committed database migrations, and starts the Next.js development server.
+Docker Compose starts Next.js with webpack for local development because the default Turbopack dev server can hang while compiling inside the bind-mounted container workspace.
 
 The app should be available at `http://localhost:3000`.
 
