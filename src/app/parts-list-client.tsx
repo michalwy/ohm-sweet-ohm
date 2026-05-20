@@ -39,6 +39,7 @@ type PartsListClientProps = {
   partUpdated: boolean;
   partUpdateError?: string;
   parts: PartsListItem[];
+  workspaceSlug: string;
 };
 
 export function PartsListClient({
@@ -50,7 +51,8 @@ export function PartsListClient({
   partFormError,
   partUpdated,
   partUpdateError,
-  parts
+  parts,
+  workspaceSlug
 }: PartsListClientProps) {
   const createDialogRef = useRef<HTMLDialogElement>(null);
   const editDialogRef = useRef<HTMLDialogElement>(null);
@@ -230,6 +232,7 @@ export function PartsListClient({
           ) : null}
 
           <form action={createPart} className="grid gap-4">
+            <input name="workspaceSlug" type="hidden" value={workspaceSlug} />
             <label className="grid gap-2 text-sm font-medium text-slate-700">
               {copy.catalogNumber}
               <input
@@ -303,6 +306,7 @@ export function PartsListClient({
 
           {editingPart ? (
             <form action={updatePart} className="grid gap-4">
+              <input name="workspaceSlug" type="hidden" value={workspaceSlug} />
               <input name="id" type="hidden" value={editingPart.id} />
               <label className="grid gap-2 text-sm font-medium text-slate-700">
                 {copy.catalogNumber}

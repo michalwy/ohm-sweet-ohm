@@ -45,6 +45,7 @@ Do not use multiple roles to invent product behavior. Product decisions still re
 - Use Next.js App Router conventions.
 - Use the workspace-scoped access control model documented in `docs/decisions/0005-workspace-access-control.md`: users are global, workspace data carries `workspaceId`, roles belong to workspaces, and the `admin` permission is a wildcard in authorization logic.
 - Use Better Auth for application authentication as documented in `docs/decisions/0006-authentication-provider.md`; do not reintroduce development current-user shortcuts.
+- Use the registration and workspace routing flow documented in `docs/decisions/0007-workspace-registration-and-routing.md`: sign-up creates only a global user, users choose or create workspaces at `/workspaces`, workspace URLs use `/w/[workspaceSlug]/...`, and slug resolution must still authorize by internal `workspaceId`.
 - Treat new domain resources as workspace-scoped by default. Add `workspaceId` and scope server-side queries/mutations to the current workspace unless an explicit product decision says the resource is global.
 - Keep authorization checks in server-side application/domain code, not UI components.
 - When adding workspace-scoped functionality, protect every server-side read or mutation with the appropriate permission. If no suitable permission exists yet, introduce an explicit permission key for that resource/action before exposing the behavior.
@@ -68,6 +69,8 @@ Do not use multiple roles to invent product behavior. Product decisions still re
 - Use `pnpm test:e2e` for browser-level verification of interactive UI changes.
 - Keep e2e tests pointed at the isolated PostgreSQL service in `docker-compose.e2e.yml`, not the normal development database.
 - Add or update e2e coverage when changing dynamic tables, dialogs, forms, or user flows.
+- The user tests the app through Docker Compose. Do not leave manually started dev servers running for handoff.
+- If an agent starts a manual local dev server for verification, it must stop that server before finishing the turn.
 - When starting a local Next.js dev server manually for browser verification, use webpack mode, for example `pnpm exec next dev --webpack -p 3002`. Avoid Turbopack for local verification in this project because it has repeatedly produced unstable dev-server failures.
 
 ## Before Implementing Features

@@ -1,4 +1,5 @@
 export const ADMIN_PERMISSION = "admin";
+export const OWNER_ROLE_NAME = "owner";
 
 export const PERMISSIONS = [
   ADMIN_PERMISSION,
@@ -28,7 +29,7 @@ export const permissionDescriptions: Record<PermissionKey, string> = {
 
 export const defaultWorkspaceRoles = [
   {
-    name: "admin",
+    name: OWNER_ROLE_NAME,
     permissions: [ADMIN_PERMISSION]
   },
   {

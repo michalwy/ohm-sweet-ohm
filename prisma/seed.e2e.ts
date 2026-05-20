@@ -3,6 +3,7 @@ import { PrismaPg } from "@prisma/adapter-pg";
 import { hashPassword } from "better-auth/crypto";
 import {
   defaultWorkspaceRoles,
+  OWNER_ROLE_NAME,
   permissionDescriptions,
   PERMISSIONS
 } from "../src/server/access-control/permissions";
@@ -89,10 +90,10 @@ async function main() {
     roleIdsByName.set(role.name, createdRole.id);
   }
 
-  const adminRoleId = roleIdsByName.get("admin");
+  const ownerRoleId = roleIdsByName.get(OWNER_ROLE_NAME);
 
-  if (!adminRoleId) {
-    throw new Error("Admin role was not created.");
+  if (!ownerRoleId) {
+    throw new Error("Owner role was not created.");
   }
 
   const member = await prisma.workspaceMember.create({
@@ -105,7 +106,7 @@ async function main() {
   await prisma.workspaceMemberRole.create({
     data: {
       workspaceMemberId: member.id,
-      roleId: adminRoleId
+      roleId: ownerRoleId
     }
   });
 

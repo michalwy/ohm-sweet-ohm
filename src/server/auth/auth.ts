@@ -26,7 +26,7 @@ export const auth = betterAuth({
   },
   emailAndPassword: {
     enabled: true,
-    disableSignUp: process.env.OSO_AUTH_ALLOW_SIGN_UP !== "1"
+    disableSignUp: process.env.OSO_AUTH_DISABLE_SIGN_UP === "1"
   },
   plugins: [nextCookies()]
 });

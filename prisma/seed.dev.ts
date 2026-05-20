@@ -42,10 +42,10 @@ async function main() {
     );
   }
 
-  const adminRole = workspace.roles[0];
+  const ownerRole = workspace.roles[0];
 
-  if (!adminRole) {
-    throw new Error("Default workspace admin role is missing.");
+  if (!ownerRole) {
+    throw new Error("Default workspace owner role is missing.");
   }
 
   const user = await prisma.user.upsert({
@@ -84,13 +84,13 @@ async function main() {
     where: {
       workspaceMemberId_roleId: {
         workspaceMemberId: member.id,
-        roleId: adminRole.id
+        roleId: ownerRole.id
       }
     },
     update: {},
     create: {
       workspaceMemberId: member.id,
-      roleId: adminRole.id
+      roleId: ownerRole.id
     }
   });
 }

@@ -4,22 +4,24 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 import { authorizeWorkspacePermission } from "@/server/access-control/authorize";
-import { getCurrentWorkspaceContext } from "@/server/auth/currentContext";
+import { getCurrentWorkspaceContextBySlug } from "@/server/auth/currentContext";
 import { prisma } from "@/server/db/prisma";
 
 export async function createPart(formData: FormData) {
+  const workspaceSlug = getRequiredFormValue(formData, "workspaceSlug");
   const catalogNumber = getRequiredFormValue(formData, "catalogNumber");
   const manufacturerName = getRequiredFormValue(formData, "manufacturerName");
+  const partsPath = getPartsPath(workspaceSlug);
 
-  if (!catalogNumber || !manufacturerName) {
-    redirect("/?partFormError=missing-required-fields&partDialog=open");
+  if (!workspaceSlug || !catalogNumber || !manufacturerName) {
+    redirect(`${partsPath}?partFormError=missing-required-fields&partDialog=open`);
   }
 
   try {
-    const context = await getCurrentWorkspaceContext();
+    const context = await getCurrentWorkspaceContextBySlug(workspaceSlug);
 
     if (!context) {
-      redirect("/?partFormError=database-unavailable&partDialog=open");
+      redirect(`${partsPath}?partFormError=database-unavailable&partDialog=open`);
     }
 
     await authorizeWorkspacePermission({
@@ -36,30 +38,32 @@ export async function createPart(formData: FormData) {
       }
     });
   } catch {
-    redirect("/?partFormError=database-unavailable&partDialog=open");
+    redirect(`${partsPath}?partFormError=database-unavailable&partDialog=open`);
   }
 
-  revalidatePath("/");
-  redirect("/?partCreated=1");
+  revalidatePath(partsPath);
+  redirect(`${partsPath}?partCreated=1`);
 }
 
 export async function updatePart(formData: FormData) {
+  const workspaceSlug = getRequiredFormValue(formData, "workspaceSlug");
   const id = getRequiredFormValue(formData, "id");
   const catalogNumber = getRequiredFormValue(formData, "catalogNumber");
   const manufacturerName = getRequiredFormValue(formData, "manufacturerName");
+  const partsPath = getPartsPath(workspaceSlug);
 
-  if (!id || !catalogNumber || !manufacturerName) {
+  if (!workspaceSlug || !id || !catalogNumber || !manufacturerName) {
     redirect(
-      `/?partUpdateError=missing-required-fields&partEditDialog=${encodeURIComponent(id)}`
+      `${partsPath}?partUpdateError=missing-required-fields&partEditDialog=${encodeURIComponent(id)}`
     );
   }
 
   try {
-    const context = await getCurrentWorkspaceContext();
+    const context = await getCurrentWorkspaceContextBySlug(workspaceSlug);
 
     if (!context) {
       redirect(
-        `/?partUpdateError=database-unavailable&partEditDialog=${encodeURIComponent(id)}`
+        `${partsPath}?partUpdateError=database-unavailable&partEditDialog=${encodeURIComponent(id)}`
       );
     }
 
@@ -81,12 +85,12 @@ export async function updatePart(formData: FormData) {
     });
   } catch {
     redirect(
-      `/?partUpdateError=database-unavailable&partEditDialog=${encodeURIComponent(id)}`
+      `${partsPath}?partUpdateError=database-unavailable&partEditDialog=${encodeURIComponent(id)}`
     );
   }
 
-  revalidatePath("/");
-  redirect("/?partUpdated=1");
+  revalidatePath(partsPath);
+  redirect(`${partsPath}?partUpdated=1`);
 }
 
 function getRequiredFormValue(formData: FormData, name: string) {
@@ -97,4 +101,12 @@ function getRequiredFormValue(formData: FormData, name: string) {
   }
 
   return value.trim();
+}
+
+function getPartsPath(workspaceSlug: string) {
+  if (!workspaceSlug) {
+    return "/workspaces";
+  }
+
+  return `/w/${encodeURIComponent(workspaceSlug)}/parts`;
 }

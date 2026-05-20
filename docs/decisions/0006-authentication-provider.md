@@ -23,21 +23,17 @@ Configure Better Auth with:
 
 - email and password authentication;
 - Prisma-backed `User`, `Session`, `Account`, and `Verification` models;
-- closed public registration by default;
 - a seeded local/e2e owner account for development and browser tests.
 
 The existing `User` model remains the global application identity. Workspace
 authorization continues to be enforced through `WorkspaceMember`, roles, and
-permissions. The current workspace is resolved from the signed-in user's first
-workspace membership until a workspace switcher or onboarding flow is explicitly
-designed.
+permissions. Public registration and workspace selection are documented in
+`0007-workspace-registration-and-routing.md`.
 
 ## Consequences
 
 - Server-side code must resolve the current user from the Better Auth session,
   not from development constants.
-- Public sign-up UI is not added. Account creation remains a seed or future
-  invitation/onboarding decision.
 - Production deployments must set `BETTER_AUTH_SECRET` and `BETTER_AUTH_URL`.
-- Future open registration, invitations, password reset email, OAuth, or
-  workspace switching should be handled as explicit product decisions.
+- Future invitations, password reset email, OAuth, or member management should
+  be handled as explicit product decisions.

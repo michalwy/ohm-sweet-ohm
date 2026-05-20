@@ -47,6 +47,33 @@ export async function getCurrentWorkspace() {
   return membership?.workspace ?? null;
 }
 
+export async function getCurrentUserWorkspaces() {
+  const session = await getCurrentSession();
+
+  if (!session) {
+    return null;
+  }
+
+  return prisma.workspaceMember.findMany({
+    where: {
+      userId: session.user.id
+    },
+    orderBy: {
+      createdAt: "asc"
+    },
+    select: {
+      workspace: {
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+          createdAt: true
+        }
+      }
+    }
+  });
+}
+
 export async function getCurrentWorkspaceContext() {
   const session = await getCurrentSession();
 
@@ -60,6 +87,36 @@ export async function getCurrentWorkspaceContext() {
     },
     orderBy: {
       createdAt: "asc"
+    },
+    select: {
+      user: true,
+      workspace: true
+    }
+  });
+
+  if (!membership) {
+    return null;
+  }
+
+  return {
+    user: membership.user,
+    workspace: membership.workspace
+  };
+}
+
+export async function getCurrentWorkspaceContextBySlug(workspaceSlug: string) {
+  const session = await getCurrentSession();
+
+  if (!session) {
+    return null;
+  }
+
+  const membership = await prisma.workspaceMember.findFirst({
+    where: {
+      userId: session.user.id,
+      workspace: {
+        slug: workspaceSlug
+      }
     },
     select: {
       user: true,

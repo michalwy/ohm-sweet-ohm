@@ -1,7 +1,6 @@
 import "server-only";
 
 import { authorizeWorkspacePermission } from "@/server/access-control/authorize";
-import { getCurrentWorkspaceContext } from "@/server/auth/currentContext";
 import { prisma } from "@/server/db/prisma";
 
 export type PartsListItem = {
@@ -15,17 +14,19 @@ export type PartsListResult = {
   isDatabaseAvailable: boolean;
 };
 
-export async function getPartsList(): Promise<PartsListResult> {
+type WorkspaceContext = {
+  user: {
+    id: string;
+  };
+  workspace: {
+    id: string;
+  };
+};
+
+export async function getPartsList(
+  context: WorkspaceContext
+): Promise<PartsListResult> {
   try {
-    const context = await getCurrentWorkspaceContext();
-
-    if (!context) {
-      return {
-        parts: [],
-        isDatabaseAvailable: false
-      };
-    }
-
     await authorizeWorkspacePermission({
       userId: context.user.id,
       workspaceId: context.workspace.id,

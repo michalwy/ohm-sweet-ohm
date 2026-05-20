@@ -31,7 +31,7 @@ not expanded into every concrete permission in storage.
 
 New workspaces receive three system roles:
 
-- `admin` with `admin`.
+- `owner` with `admin`.
 - `reader` with read permissions for all current resources.
 - `editor` with both read and write permissions for all current resources.
 
@@ -39,12 +39,10 @@ New workspaces receive three system roles:
 both behaviors are intended.
 
 System roles cannot be deleted. Role and member-role changes must preserve at
-least one admin-capable member in every workspace.
+least one owner/admin-capable member in every workspace.
 
-Until a real authentication provider is introduced, server code resolves a
-seeded development user and the default workspace explicitly. This keeps the
-authorization boundary in place while leaving authentication as a separate
-future decision.
+Workspace routing and registration are documented separately in
+`0007-workspace-registration-and-routing.md`.
 
 ## Consequences
 
