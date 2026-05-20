@@ -4,7 +4,7 @@ services:
       context: .
       target: dev
     working_dir: /workspace
-    command: sh -c "pnpm install && pnpm prisma:generate && pnpm prisma:migrate:deploy && pnpm dev --hostname 0.0.0.0 --webpack"
+    command: sh -c "pnpm install && pnpm prisma:generate && pnpm prisma:migrate:deploy && pnpm db:seed:dev && pnpm dev --hostname 0.0.0.0 --webpack"
     ports:
       - "3000:3000"
     environment:

@@ -43,6 +43,10 @@ Do not use multiple roles to invent product behavior. Product decisions still re
 
 - Use TypeScript throughout application code.
 - Use Next.js App Router conventions.
+- Use the workspace-scoped access control model documented in `docs/decisions/0005-workspace-access-control.md`: users are global, workspace data carries `workspaceId`, roles belong to workspaces, and the `admin` permission is a wildcard in authorization logic.
+- Treat new domain resources as workspace-scoped by default. Add `workspaceId` and scope server-side queries/mutations to the current workspace unless an explicit product decision says the resource is global.
+- Keep authorization checks in server-side application/domain code, not UI components.
+- When adding workspace-scoped functionality, protect every server-side read or mutation with the appropriate permission. If no suitable permission exists yet, introduce an explicit permission key for that resource/action before exposing the behavior.
 - Keep Next.js, React, and TypeScript as the frontend direction unless a future ADR documents a specific reason to migrate.
 - Add browser interactivity with focused client components; do not make the whole app client-rendered by default.
 - Prefer established React ecosystem libraries for complex tables, dialogs, forms, validation, and accessible UI primitives when those needs become concrete.

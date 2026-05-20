@@ -9,4 +9,11 @@
  * 🟢 You can import this file directly.
  */
 export type * from './models/Part'
+export type * from './models/User'
+export type * from './models/Workspace'
+export type * from './models/WorkspaceMember'
+export type * from './models/Role'
+export type * from './models/Permission'
+export type * from './models/RolePermission'
+export type * from './models/WorkspaceMemberRole'
 export type * from './commonInputTypes'

@@ -13,6 +13,7 @@
     "e2e:db:reset": "pnpm e2e:db:up && DATABASE_URL=\"postgresql://oso:oso_e2e_password@localhost:5433/ohm_sweet_ohm_e2e?schema=public\" prisma migrate reset --force && DATABASE_URL=\"postgresql://oso:oso_e2e_password@localhost:5433/ohm_sweet_ohm_e2e?schema=public\" prisma generate && DATABASE_URL=\"postgresql://oso:oso_e2e_password@localhost:5433/ohm_sweet_ohm_e2e?schema=public\" tsx prisma/seed.e2e.ts",
     "test:e2e": "pnpm e2e:db:reset && playwright test",
     "test:e2e:ui": "pnpm e2e:db:reset && playwright test --ui",
+    "db:seed:dev": "tsx prisma/seed.dev.ts",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:migrate:deploy": "prisma migrate deploy"

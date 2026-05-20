@@ -26,6 +26,7 @@ export type AggregatePart = {
 
 export type PartMinAggregateOutputType = {
   id: string | null
+  workspaceId: string | null
   catalogNumber: string | null
   manufacturerName: string | null
   createdAt: Date | null
@@ -34,6 +35,7 @@ export type PartMinAggregateOutputType = {
 
 export type PartMaxAggregateOutputType = {
   id: string | null
+  workspaceId: string | null
   catalogNumber: string | null
   manufacturerName: string | null
   createdAt: Date | null
@@ -42,6 +44,7 @@ export type PartMaxAggregateOutputType = {
 
 export type PartCountAggregateOutputType = {
   id: number
+  workspaceId: number
   catalogNumber: number
   manufacturerName: number
   createdAt: number
@@ -52,6 +55,7 @@ export type PartCountAggregateOutputType = {
 
 export type PartMinAggregateInputType = {
   id?: true
+  workspaceId?: true
   catalogNumber?: true
   manufacturerName?: true
   createdAt?: true
@@ -60,6 +64,7 @@ export type PartMinAggregateInputType = {
 
 export type PartMaxAggregateInputType = {
   id?: true
+  workspaceId?: true
   catalogNumber?: true
   manufacturerName?: true
   createdAt?: true
@@ -68,6 +73,7 @@ export type PartMaxAggregateInputType = {
 
 export type PartCountAggregateInputType = {
   id?: true
+  workspaceId?: true
   catalogNumber?: true
   manufacturerName?: true
   createdAt?: true
@@ -149,6 +155,7 @@ export type PartGroupByArgs<ExtArgs extends runtime.Types.Extensions.InternalArg
 
 export type PartGroupByOutputType = {
   id: string
+  workspaceId: string
   catalogNumber: string
   manufacturerName: string
   createdAt: Date
@@ -178,18 +185,22 @@ export type PartWhereInput = {
   OR?: Prisma.PartWhereInput[]
   NOT?: Prisma.PartWhereInput | Prisma.PartWhereInput[]
   id?: Prisma.StringFilter<"Part"> | string
+  workspaceId?: Prisma.StringFilter<"Part"> | string
   catalogNumber?: Prisma.StringFilter<"Part"> | string
   manufacturerName?: Prisma.StringFilter<"Part"> | string
   createdAt?: Prisma.DateTimeFilter<"Part"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Part"> | Date | string
+  workspace?: Prisma.XOR<Prisma.WorkspaceScalarRelationFilter, Prisma.WorkspaceWhereInput>
 }
 
 export type PartOrderByWithRelationInput = {
   id?: Prisma.SortOrder
+  workspaceId?: Prisma.SortOrder
   catalogNumber?: Prisma.SortOrder
   manufacturerName?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
+  workspace?: Prisma.WorkspaceOrderByWithRelationInput
 }
 
 export type PartWhereUniqueInput = Prisma.AtLeast<{
@@ -197,14 +208,17 @@ export type PartWhereUniqueInput = Prisma.AtLeast<{
   AND?: Prisma.PartWhereInput | Prisma.PartWhereInput[]
   OR?: Prisma.PartWhereInput[]
   NOT?: Prisma.PartWhereInput | Prisma.PartWhereInput[]
+  workspaceId?: Prisma.StringFilter<"Part"> | string
   catalogNumber?: Prisma.StringFilter<"Part"> | string
   manufacturerName?: Prisma.StringFilter<"Part"> | string
   createdAt?: Prisma.DateTimeFilter<"Part"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Part"> | Date | string
+  workspace?: Prisma.XOR<Prisma.WorkspaceScalarRelationFilter, Prisma.WorkspaceWhereInput>
 }, "id">
 
 export type PartOrderByWithAggregationInput = {
   id?: Prisma.SortOrder
+  workspaceId?: Prisma.SortOrder
   catalogNumber?: Prisma.SortOrder
   manufacturerName?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
@@ -219,6 +233,7 @@ export type PartScalarWhereWithAggregatesInput = {
   OR?: Prisma.PartScalarWhereWithAggregatesInput[]
   NOT?: Prisma.PartScalarWhereWithAggregatesInput | Prisma.PartScalarWhereWithAggregatesInput[]
   id?: Prisma.StringWithAggregatesFilter<"Part"> | string
+  workspaceId?: Prisma.StringWithAggregatesFilter<"Part"> | string
   catalogNumber?: Prisma.StringWithAggregatesFilter<"Part"> | string
   manufacturerName?: Prisma.StringWithAggregatesFilter<"Part"> | string
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"Part"> | Date | string
@@ -231,10 +246,12 @@ export type PartCreateInput = {
   manufacturerName: string
   createdAt?: Date | string
   updatedAt?: Date | string
+  workspace: Prisma.WorkspaceCreateNestedOneWithoutPartsInput
 }
 
 export type PartUncheckedCreateInput = {
   id?: string
+  workspaceId: string
   catalogNumber: string
   manufacturerName: string
   createdAt?: Date | string
@@ -247,10 +264,12 @@ export type PartUpdateInput = {
   manufacturerName?: Prisma.StringFieldUpdateOperationsInput | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  workspace?: Prisma.WorkspaceUpdateOneRequiredWithoutPartsNestedInput
 }
 
 export type PartUncheckedUpdateInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
+  workspaceId?: Prisma.StringFieldUpdateOperationsInput | string
   catalogNumber?: Prisma.StringFieldUpdateOperationsInput | string
   manufacturerName?: Prisma.StringFieldUpdateOperationsInput | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -259,6 +278,7 @@ export type PartUncheckedUpdateInput = {
 
 export type PartCreateManyInput = {
   id?: string
+  workspaceId: string
   catalogNumber: string
   manufacturerName: string
   createdAt?: Date | string
@@ -275,6 +295,7 @@ export type PartUpdateManyMutationInput = {
 
 export type PartUncheckedUpdateManyInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
+  workspaceId?: Prisma.StringFieldUpdateOperationsInput | string
   catalogNumber?: Prisma.StringFieldUpdateOperationsInput | string
   manufacturerName?: Prisma.StringFieldUpdateOperationsInput | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -283,6 +304,7 @@ export type PartUncheckedUpdateManyInput = {
 
 export type PartCountOrderByAggregateInput = {
   id?: Prisma.SortOrder
+  workspaceId?: Prisma.SortOrder
   catalogNumber?: Prisma.SortOrder
   manufacturerName?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
@@ -291,6 +313,7 @@ export type PartCountOrderByAggregateInput = {
 
 export type PartMaxOrderByAggregateInput = {
   id?: Prisma.SortOrder
+  workspaceId?: Prisma.SortOrder
   catalogNumber?: Prisma.SortOrder
   manufacturerName?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
@@ -299,10 +322,21 @@ export type PartMaxOrderByAggregateInput = {
 
 export type PartMinOrderByAggregateInput = {
   id?: Prisma.SortOrder
+  workspaceId?: Prisma.SortOrder
   catalogNumber?: Prisma.SortOrder
   manufacturerName?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
+}
+
+export type PartListRelationFilter = {
+  every?: Prisma.PartWhereInput
+  some?: Prisma.PartWhereInput
+  none?: Prisma.PartWhereInput
+}
+
+export type PartOrderByRelationAggregateInput = {
+  _count?: Prisma.SortOrder
 }
 
 export type StringFieldUpdateOperationsInput = {
@@ -313,47 +347,194 @@ export type DateTimeFieldUpdateOperationsInput = {
   set?: Date | string
 }
 
+export type PartCreateNestedManyWithoutWorkspaceInput = {
+  create?: Prisma.XOR<Prisma.PartCreateWithoutWorkspaceInput, Prisma.PartUncheckedCreateWithoutWorkspaceInput> | Prisma.PartCreateWithoutWorkspaceInput[] | Prisma.PartUncheckedCreateWithoutWorkspaceInput[]
+  connectOrCreate?: Prisma.PartCreateOrConnectWithoutWorkspaceInput | Prisma.PartCreateOrConnectWithoutWorkspaceInput[]
+  createMany?: Prisma.PartCreateManyWorkspaceInputEnvelope
+  connect?: Prisma.PartWhereUniqueInput | Prisma.PartWhereUniqueInput[]
+}
+
+export type PartUncheckedCreateNestedManyWithoutWorkspaceInput = {
+  create?: Prisma.XOR<Prisma.PartCreateWithoutWorkspaceInput, Prisma.PartUncheckedCreateWithoutWorkspaceInput> | Prisma.PartCreateWithoutWorkspaceInput[] | Prisma.PartUncheckedCreateWithoutWorkspaceInput[]
+  connectOrCreate?: Prisma.PartCreateOrConnectWithoutWorkspaceInput | Prisma.PartCreateOrConnectWithoutWorkspaceInput[]
+  createMany?: Prisma.PartCreateManyWorkspaceInputEnvelope
+  connect?: Prisma.PartWhereUniqueInput | Prisma.PartWhereUniqueInput[]
+}
+
+export type PartUpdateManyWithoutWorkspaceNestedInput = {
+  create?: Prisma.XOR<Prisma.PartCreateWithoutWorkspaceInput, Prisma.PartUncheckedCreateWithoutWorkspaceInput> | Prisma.PartCreateWithoutWorkspaceInput[] | Prisma.PartUncheckedCreateWithoutWorkspaceInput[]
+  connectOrCreate?: Prisma.PartCreateOrConnectWithoutWorkspaceInput | Prisma.PartCreateOrConnectWithoutWorkspaceInput[]
+  upsert?: Prisma.PartUpsertWithWhereUniqueWithoutWorkspaceInput | Prisma.PartUpsertWithWhereUniqueWithoutWorkspaceInput[]
+  createMany?: Prisma.PartCreateManyWorkspaceInputEnvelope
+  set?: Prisma.PartWhereUniqueInput | Prisma.PartWhereUniqueInput[]
+  disconnect?: Prisma.PartWhereUniqueInput | Prisma.PartWhereUniqueInput[]
+  delete?: Prisma.PartWhereUniqueInput | Prisma.PartWhereUniqueInput[]
+  connect?: Prisma.PartWhereUniqueInput | Prisma.PartWhereUniqueInput[]
+  update?: Prisma.PartUpdateWithWhereUniqueWithoutWorkspaceInput | Prisma.PartUpdateWithWhereUniqueWithoutWorkspaceInput[]
+  updateMany?: Prisma.PartUpdateManyWithWhereWithoutWorkspaceInput | Prisma.PartUpdateManyWithWhereWithoutWorkspaceInput[]
+  deleteMany?: Prisma.PartScalarWhereInput | Prisma.PartScalarWhereInput[]
+}
+
+export type PartUncheckedUpdateManyWithoutWorkspaceNestedInput = {
+  create?: Prisma.XOR<Prisma.PartCreateWithoutWorkspaceInput, Prisma.PartUncheckedCreateWithoutWorkspaceInput> | Prisma.PartCreateWithoutWorkspaceInput[] | Prisma.PartUncheckedCreateWithoutWorkspaceInput[]
+  connectOrCreate?: Prisma.PartCreateOrConnectWithoutWorkspaceInput | Prisma.PartCreateOrConnectWithoutWorkspaceInput[]
+  upsert?: Prisma.PartUpsertWithWhereUniqueWithoutWorkspaceInput | Prisma.PartUpsertWithWhereUniqueWithoutWorkspaceInput[]
+  createMany?: Prisma.PartCreateManyWorkspaceInputEnvelope
+  set?: Prisma.PartWhereUniqueInput | Prisma.PartWhereUniqueInput[]
+  disconnect?: Prisma.PartWhereUniqueInput | Prisma.PartWhereUniqueInput[]
+  delete?: Prisma.PartWhereUniqueInput | Prisma.PartWhereUniqueInput[]
+  connect?: Prisma.PartWhereUniqueInput | Prisma.PartWhereUniqueInput[]
+  update?: Prisma.PartUpdateWithWhereUniqueWithoutWorkspaceInput | Prisma.PartUpdateWithWhereUniqueWithoutWorkspaceInput[]
+  updateMany?: Prisma.PartUpdateManyWithWhereWithoutWorkspaceInput | Prisma.PartUpdateManyWithWhereWithoutWorkspaceInput[]
+  deleteMany?: Prisma.PartScalarWhereInput | Prisma.PartScalarWhereInput[]
+}
+
+export type PartCreateWithoutWorkspaceInput = {
+  id?: string
+  catalogNumber: string
+  manufacturerName: string
+  createdAt?: Date | string
+  updatedAt?: Date | string
+}
+
+export type PartUncheckedCreateWithoutWorkspaceInput = {
+  id?: string
+  catalogNumber: string
+  manufacturerName: string
+  createdAt?: Date | string
+  updatedAt?: Date | string
+}
+
+export type PartCreateOrConnectWithoutWorkspaceInput = {
+  where: Prisma.PartWhereUniqueInput
+  create: Prisma.XOR<Prisma.PartCreateWithoutWorkspaceInput, Prisma.PartUncheckedCreateWithoutWorkspaceInput>
+}
+
+export type PartCreateManyWorkspaceInputEnvelope = {
+  data: Prisma.PartCreateManyWorkspaceInput | Prisma.PartCreateManyWorkspaceInput[]
+  skipDuplicates?: boolean
+}
+
+export type PartUpsertWithWhereUniqueWithoutWorkspaceInput = {
+  where: Prisma.PartWhereUniqueInput
+  update: Prisma.XOR<Prisma.PartUpdateWithoutWorkspaceInput, Prisma.PartUncheckedUpdateWithoutWorkspaceInput>
+  create: Prisma.XOR<Prisma.PartCreateWithoutWorkspaceInput, Prisma.PartUncheckedCreateWithoutWorkspaceInput>
+}
+
+export type PartUpdateWithWhereUniqueWithoutWorkspaceInput = {
+  where: Prisma.PartWhereUniqueInput
+  data: Prisma.XOR<Prisma.PartUpdateWithoutWorkspaceInput, Prisma.PartUncheckedUpdateWithoutWorkspaceInput>
+}
+
+export type PartUpdateManyWithWhereWithoutWorkspaceInput = {
+  where: Prisma.PartScalarWhereInput
+  data: Prisma.XOR<Prisma.PartUpdateManyMutationInput, Prisma.PartUncheckedUpdateManyWithoutWorkspaceInput>
+}
+
+export type PartScalarWhereInput = {
+  AND?: Prisma.PartScalarWhereInput | Prisma.PartScalarWhereInput[]
+  OR?: Prisma.PartScalarWhereInput[]
+  NOT?: Prisma.PartScalarWhereInput | Prisma.PartScalarWhereInput[]
+  id?: Prisma.StringFilter<"Part"> | string
+  workspaceId?: Prisma.StringFilter<"Part"> | string
+  catalogNumber?: Prisma.StringFilter<"Part"> | string
+  manufacturerName?: Prisma.StringFilter<"Part"> | string
+  createdAt?: Prisma.DateTimeFilter<"Part"> | Date | string
+  updatedAt?: Prisma.DateTimeFilter<"Part"> | Date | string
+}
+
+export type PartCreateManyWorkspaceInput = {
+  id?: string
+  catalogNumber: string
+  manufacturerName: string
+  createdAt?: Date | string
+  updatedAt?: Date | string
+}
+
+export type PartUpdateWithoutWorkspaceInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  catalogNumber?: Prisma.StringFieldUpdateOperationsInput | string
+  manufacturerName?: Prisma.StringFieldUpdateOperationsInput | string
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+}
+
+export type PartUncheckedUpdateWithoutWorkspaceInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  catalogNumber?: Prisma.StringFieldUpdateOperationsInput | string
+  manufacturerName?: Prisma.StringFieldUpdateOperationsInput | string
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+}
+
+export type PartUncheckedUpdateManyWithoutWorkspaceInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  catalogNumber?: Prisma.StringFieldUpdateOperationsInput | string
+  manufacturerName?: Prisma.StringFieldUpdateOperationsInput | string
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+}
+
 
 
 export type PartSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   id?: boolean
+  workspaceId?: boolean
   catalogNumber?: boolean
   manufacturerName?: boolean
   createdAt?: boolean
   updatedAt?: boolean
+  workspace?: boolean | Prisma.WorkspaceDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["part"]>
 
 export type PartSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   id?: boolean
+  workspaceId?: boolean
   catalogNumber?: boolean
   manufacturerName?: boolean
   createdAt?: boolean
   updatedAt?: boolean
+  workspace?: boolean | Prisma.WorkspaceDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["part"]>
 
 export type PartSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   id?: boolean
+  workspaceId?: boolean
   catalogNumber?: boolean
   manufacturerName?: boolean
   createdAt?: boolean
   updatedAt?: boolean
+  workspace?: boolean | Prisma.WorkspaceDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["part"]>
 
 export type PartSelectScalar = {
   id?: boolean
+  workspaceId?: boolean
   catalogNumber?: boolean
   manufacturerName?: boolean
   createdAt?: boolean
   updatedAt?: boolean
 }
 
-export type PartOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "catalogNumber" | "manufacturerName" | "createdAt" | "updatedAt", ExtArgs["result"]["part"]>
+export type PartOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "workspaceId" | "catalogNumber" | "manufacturerName" | "createdAt" | "updatedAt", ExtArgs["result"]["part"]>
+export type PartInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  workspace?: boolean | Prisma.WorkspaceDefaultArgs<ExtArgs>
+}
+export type PartIncludeCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  workspace?: boolean | Prisma.WorkspaceDefaultArgs<ExtArgs>
+}
+export type PartIncludeUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  workspace?: boolean | Prisma.WorkspaceDefaultArgs<ExtArgs>
+}
 
 export type $PartPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   name: "Part"
-  objects: {}
+  objects: {
+    workspace: Prisma.$WorkspacePayload<ExtArgs>
+  }
   scalars: runtime.Types.Extensions.GetPayloadResult<{
     id: string
+    workspaceId: string
     catalogNumber: string
     manufacturerName: string
     createdAt: Date
@@ -752,6 +933,7 @@ readonly fields: PartFieldRefs;
  */
 export interface Prisma__PartClient<T, Null = never, ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
   readonly [Symbol.toStringTag]: "PrismaPromise"
+  workspace<T extends Prisma.WorkspaceDefaultArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.WorkspaceDefaultArgs<ExtArgs>>): Prisma.Prisma__WorkspaceClient<runtime.Types.Result.GetResult<Prisma.$WorkspacePayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
   /**
    * Attaches callbacks for the resolution and/or rejection of the Promise.
    * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -782,6 +964,7 @@ export interface Prisma__PartClient<T, Null = never, ExtArgs extends runtime.Typ
  */
 export interface PartFieldRefs {
   readonly id: Prisma.FieldRef<"Part", 'String'>
+  readonly workspaceId: Prisma.FieldRef<"Part", 'String'>
   readonly catalogNumber: Prisma.FieldRef<"Part", 'String'>
   readonly manufacturerName: Prisma.FieldRef<"Part", 'String'>
   readonly createdAt: Prisma.FieldRef<"Part", 'DateTime'>
@@ -803,6 +986,10 @@ export type PartFindUniqueArgs<ExtArgs extends runtime.Types.Extensions.Internal
    */
   omit?: Prisma.PartOmit<ExtArgs> | null
   /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.PartInclude<ExtArgs> | null
+  /**
    * Filter, which Part to fetch.
    */
   where: Prisma.PartWhereUniqueInput
@@ -821,6 +1008,10 @@ export type PartFindUniqueOrThrowArgs<ExtArgs extends runtime.Types.Extensions.I
    */
   omit?: Prisma.PartOmit<ExtArgs> | null
   /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.PartInclude<ExtArgs> | null
+  /**
    * Filter, which Part to fetch.
    */
   where: Prisma.PartWhereUniqueInput
@@ -838,6 +1029,10 @@ export type PartFindFirstArgs<ExtArgs extends runtime.Types.Extensions.InternalA
    * Omit specific fields from the Part
    */
   omit?: Prisma.PartOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.PartInclude<ExtArgs> | null
   /**
    * Filter, which Part to fetch.
    */
@@ -887,6 +1082,10 @@ export type PartFindFirstOrThrowArgs<ExtArgs extends runtime.Types.Extensions.In
    */
   omit?: Prisma.PartOmit<ExtArgs> | null
   /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.PartInclude<ExtArgs> | null
+  /**
    * Filter, which Part to fetch.
    */
   where?: Prisma.PartWhereInput
@@ -934,6 +1133,10 @@ export type PartFindManyArgs<ExtArgs extends runtime.Types.Extensions.InternalAr
    * Omit specific fields from the Part
    */
   omit?: Prisma.PartOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.PartInclude<ExtArgs> | null
   /**
    * Filter, which Parts to fetch.
    */
@@ -983,6 +1186,10 @@ export type PartCreateArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs
    */
   omit?: Prisma.PartOmit<ExtArgs> | null
   /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.PartInclude<ExtArgs> | null
+  /**
    * The data needed to create a Part.
    */
   data: Prisma.XOR<Prisma.PartCreateInput, Prisma.PartUncheckedCreateInput>
@@ -1016,6 +1223,10 @@ export type PartCreateManyAndReturnArgs<ExtArgs extends runtime.Types.Extensions
    */
   data: Prisma.PartCreateManyInput | Prisma.PartCreateManyInput[]
   skipDuplicates?: boolean
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.PartIncludeCreateManyAndReturn<ExtArgs> | null
 }
 
 /**
@@ -1030,6 +1241,10 @@ export type PartUpdateArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs
    * Omit specific fields from the Part
    */
   omit?: Prisma.PartOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.PartInclude<ExtArgs> | null
   /**
    * The data needed to update a Part.
    */
@@ -1082,6 +1297,10 @@ export type PartUpdateManyAndReturnArgs<ExtArgs extends runtime.Types.Extensions
    * Limit how many Parts to update.
    */
   limit?: number
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.PartIncludeUpdateManyAndReturn<ExtArgs> | null
 }
 
 /**
@@ -1096,6 +1315,10 @@ export type PartUpsertArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs
    * Omit specific fields from the Part
    */
   omit?: Prisma.PartOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.PartInclude<ExtArgs> | null
   /**
    * The filter to search for the Part to update in case it exists.
    */
@@ -1122,6 +1345,10 @@ export type PartDeleteArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs
    * Omit specific fields from the Part
    */
   omit?: Prisma.PartOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.PartInclude<ExtArgs> | null
   /**
    * Filter which Part to delete.
    */
@@ -1154,4 +1381,8 @@ export type PartDefaultArgs<ExtArgs extends runtime.Types.Extensions.InternalArg
    * Omit specific fields from the Part
    */
   omit?: Prisma.PartOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.PartInclude<ExtArgs> | null
 }

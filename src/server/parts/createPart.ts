@@ -3,6 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
+import { authorizeWorkspacePermission } from "@/server/access-control/authorize";
+import { getCurrentWorkspaceContext } from "@/server/auth/currentContext";
 import { prisma } from "@/server/db/prisma";
 
 export async function createPart(formData: FormData) {
@@ -14,8 +16,21 @@ export async function createPart(formData: FormData) {
   }
 
   try {
+    const context = await getCurrentWorkspaceContext();
+
+    if (!context) {
+      redirect("/?partFormError=database-unavailable&partDialog=open");
+    }
+
+    await authorizeWorkspacePermission({
+      userId: context.user.id,
+      workspaceId: context.workspace.id,
+      permission: "parts:write"
+    });
+
     await prisma.part.create({
       data: {
+        workspaceId: context.workspace.id,
         catalogNumber,
         manufacturerName
       }
@@ -40,8 +55,25 @@ export async function updatePart(formData: FormData) {
   }
 
   try {
-    await prisma.part.update({
-      where: { id },
+    const context = await getCurrentWorkspaceContext();
+
+    if (!context) {
+      redirect(
+        `/?partUpdateError=database-unavailable&partEditDialog=${encodeURIComponent(id)}`
+      );
+    }
+
+    await authorizeWorkspacePermission({
+      userId: context.user.id,
+      workspaceId: context.workspace.id,
+      permission: "parts:write"
+    });
+
+    await prisma.part.updateMany({
+      where: {
+        id,
+        workspaceId: context.workspace.id
+      },
       data: {
         catalogNumber,
         manufacturerName

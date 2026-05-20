@@ -76,8 +76,10 @@ export function PartsListClient({
       return;
     }
 
-    setEditingPart(part);
-    openDialog(editDialogRef.current);
+    window.requestAnimationFrame(() => {
+      setEditingPart(part);
+      openDialog(editDialogRef.current);
+    });
   }, [partEditDialog, parts]);
 
   function openEditDialog(part: PartsListItem) {
