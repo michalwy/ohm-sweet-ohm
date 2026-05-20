@@ -28,6 +28,17 @@ This project is intentionally vibe-coded. Future agents must preserve product in
 - When creating commits, use Conventional Commits, for example `feat: add inventory overview` or `docs: update agent guidance`.
 - When a commit title alone would omit useful context, include an extended commit message body with concise details about motivation, scope, or notable tradeoffs.
 
+## Agent Collaboration
+
+Use specialized roles only when the task benefits from them:
+
+- Architect for architectural decisions, ADRs, schema boundaries, and major patterns.
+- Designer for meaningful UI flows, dialogs, tables, and interaction design.
+- Developer for scoped implementation once behavior is clear.
+- Tester/Reviewer for browser flows, regressions, and verification.
+
+Do not use multiple roles to invent product behavior. Product decisions still require clarification.
+
 ## Technical Direction
 
 - Use TypeScript throughout application code.
