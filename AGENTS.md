@@ -25,6 +25,8 @@ This project is intentionally vibe-coded. Future agents must preserve product in
 - Favor boring, well-supported tools over novelty.
 - Preserve existing user changes. Do not rewrite unrelated files.
 - Do not create git commits unless the user explicitly asks for a commit.
+- Do not push changes directly to `main`. Create a branch whose name matches the change, push that branch, and open a GitHub pull request instead.
+- Before pushing changes to GitHub and opening a pull request, confirm that the branch name is still appropriate for the actual change.
 - When creating commits, use Conventional Commits, for example `feat: add inventory overview` or `docs: update agent guidance`.
 - When a commit title alone would omit useful context, include an extended commit message body with concise details about motivation, scope, or notable tradeoffs.
 
