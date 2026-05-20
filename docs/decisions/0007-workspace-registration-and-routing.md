@@ -18,9 +18,10 @@ Workspace links should be shareable without exposing internal database IDs.
 Registration creates only the global `User`. Email verification is not required
 for the initial flow.
 
-After sign-up or sign-in, users land on `/workspaces`. The page lists
-workspaces where the signed-in user has a membership and also lets the user
-create a new workspace.
+After sign-up, users land on `/workspaces`. After sign-in, users return to the
+last workspace they opened when that workspace is still accessible; otherwise
+they land on `/workspaces`. The page lists workspaces where the signed-in user
+has a membership and also lets the user create a new workspace.
 
 Creating a workspace requires a name. The system creates:
 
@@ -44,7 +45,10 @@ user, then performs authorization and data access with the internal
 
 ## Consequences
 
-- The root route redirects signed-in users to `/workspaces`.
+- The root route redirects signed-in users to the remembered accessible
+  workspace when one exists, otherwise to `/workspaces`.
+- The last workspace is remembered by workspace slug in an HTTP-only cookie and
+  is validated against the signed-in user's memberships before redirecting.
 - Workspace-scoped pages should live under `/w/[workspaceSlug]/...`.
 - Workspace slugs are public routing identifiers, not authorization proof.
 - Requests for inaccessible workspace slugs return not found rather than

@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 
 import { getCurrentSession } from "@/server/auth/currentContext";
 import { createWorkspaceForOwner } from "@/server/workspaces/createWorkspace";
+import { rememberLastWorkspaceSlug } from "@/server/workspaces/lastWorkspace";
 
 const workspaceCopy = {
   missingName: "missing-name",
@@ -41,6 +42,8 @@ export async function createWorkspace(formData: FormData) {
   if (!workspaceSlug) {
     redirect(`/workspaces?error=${workspaceCopy.unavailable}`);
   }
+
+  await rememberLastWorkspaceSlug(workspaceSlug);
 
   redirect(`/w/${encodeURIComponent(workspaceSlug)}/parts`);
 }

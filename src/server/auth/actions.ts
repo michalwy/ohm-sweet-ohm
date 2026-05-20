@@ -4,6 +4,10 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 
 import { auth } from "@/server/auth/auth";
+import {
+  clearLastWorkspaceSlug,
+  getLastWorkspaceRedirectPath
+} from "@/server/workspaces/lastWorkspace";
 
 const signInCopy = {
   emailTaken: "email-taken",
@@ -20,19 +24,33 @@ export async function signInWithPassword(formData: FormData) {
     redirect(`/sign-in?error=${signInCopy.missingFields}`);
   }
 
+  let userId = "";
+
   try {
-    await auth.api.signInEmail({
+    const signInResult = await auth.api.signInEmail({
       body: {
         email,
         password
       },
       headers: await headers()
     });
+
+    userId = signInResult.user.id;
   } catch {
     redirect(`/sign-in?error=${signInCopy.invalid}`);
   }
 
-  redirect("/workspaces");
+  if (!userId) {
+    redirect("/workspaces");
+  }
+
+  const redirectPath = await getLastWorkspaceRedirectPath(userId);
+
+  if (redirectPath === "/workspaces") {
+    await clearLastWorkspaceSlug();
+  }
+
+  redirect(redirectPath);
 }
 
 export async function signUpWithPassword(formData: FormData) {
