@@ -33,12 +33,18 @@ This project is intentionally vibe-coded. Future agents must preserve product in
 
 ## Agent Collaboration
 
-Use specialized roles only when the task benefits from them:
+Use specialized roles only when the task benefits from them. Small, localized documentation, copy, styling, or bug-fix tasks can be handled by one careful agent.
+
+Use specialized roles for larger or riskier changes that cross domain, data, authorization, or user-flow boundaries:
 
 - Architect for architectural decisions, ADRs, schema boundaries, and major patterns.
 - Designer for meaningful UI flows, dialogs, tables, and interaction design.
 - Developer for scoped implementation once behavior is clear.
 - Tester/Reviewer for browser flows, regressions, and verification.
+
+Prefer involving Architect before changing Prisma schema, permissions, workspace scoping, authentication, routing conventions, or ADR-documented patterns.
+
+Prefer involving Tester/Reviewer after changing forms, dynamic tables, dialogs, workspace routing, authentication, permissions, migrations, or e2e-covered flows.
 
 Do not use multiple roles to invent product behavior. Product decisions still require clarification.
 
