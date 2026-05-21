@@ -1,6 +1,12 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore
+} from "react";
 
 import {
   createPartCategoryFromForm,
@@ -13,6 +19,8 @@ type Copy = {
   addRootCategory: string;
   addChild: string;
   edit: string;
+  expandCategory: string;
+  collapseCategory: string;
   actions: string;
   newCategoryTitle: string;
   newCategoryBody: string;
@@ -79,6 +87,15 @@ export function PartCategoriesClient({
       categories.find((category) => category.id === categoryEditDialog) ?? null
     );
   const categoryTree = useMemo(() => buildCategoryTree(categories), [categories]);
+  const categoryExpansionStorageKey = `oso:${workspaceSlug}:part-category-expansion`;
+  const defaultExpandedCategoryIds = useMemo(
+    () => getExpandableCategoryIds(categoryTree),
+    [categoryTree]
+  );
+  const expandedCategoryIds = useStoredExpandedCategoryIds(
+    categoryExpansionStorageKey,
+    defaultExpandedCategoryIds
+  );
   const hasFeedback = categoryCreated || categoryUpdated || categoryUpdateError;
 
   useEffect(() => {
@@ -180,6 +197,21 @@ export function PartCategoriesClient({
                   level={0}
                   onAddChild={openCreateDialog}
                   onEdit={openEditDialog}
+                  expandedCategoryIds={expandedCategoryIds}
+                  onToggleExpanded={(categoryId) => {
+                    const nextIds = new Set(expandedCategoryIds);
+
+                    if (nextIds.has(categoryId)) {
+                      nextIds.delete(categoryId);
+                    } else {
+                      nextIds.add(categoryId);
+                    }
+
+                    saveExpandedCategoryIds(
+                      categoryExpansionStorageKey,
+                      nextIds
+                    );
+                  }}
                 />
               ))}
             </ol>
@@ -299,7 +331,9 @@ function CategoryNode({
   isDatabaseAvailable,
   level,
   onAddChild,
-  onEdit
+  onEdit,
+  expandedCategoryIds,
+  onToggleExpanded
 }: {
   canWriteCategories: boolean;
   category: CategoryTreeItem;
@@ -308,18 +342,46 @@ function CategoryNode({
   level: number;
   onAddChild: (parentId: string) => void;
   onEdit: (category: PartCategoryListItem) => void;
+  expandedCategoryIds: Set<string>;
+  onToggleExpanded: (categoryId: string) => void;
 }) {
+  const hasChildren = category.children.length > 0;
+  const isExpanded = expandedCategoryIds.has(category.id);
+  const toggleLabel = isExpanded
+    ? `${copy.collapseCategory} ${category.name}`
+    : `${copy.expandCategory} ${category.name}`;
+
   return (
     <li>
       <div
         data-testid="part-category-node"
-        className={`grid min-h-12 grid-cols-[1fr_auto] items-center gap-3 rounded-md border-l-4 px-3 py-2 ${
+        className={`grid min-h-12 grid-cols-[auto_1fr_auto] items-center gap-3 rounded-md border-l-4 px-3 py-2 ${
           category.isAssignable
             ? "border-cyan-300 bg-cyan-50/60 text-slate-950"
             : "border-slate-300 bg-slate-50 text-slate-600"
         }`}
         style={{ marginLeft: `${level * 1.25}rem` }}
       >
+        {hasChildren ? (
+          <button
+            aria-expanded={isExpanded}
+            aria-label={toggleLabel}
+            className="grid h-7 w-7 shrink-0 place-items-center rounded text-slate-500 transition hover:bg-white/70 hover:text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2"
+            type="button"
+            onClick={() => onToggleExpanded(category.id)}
+          >
+            <span
+              aria-hidden="true"
+              className={`text-sm leading-none transition-transform ${
+                isExpanded ? "rotate-90" : ""
+              }`}
+            >
+              ▶
+            </span>
+          </button>
+        ) : (
+          <span className="h-7 w-7" aria-hidden="true" />
+        )}
         <div className="min-w-0">
           <p className="truncate text-sm font-medium">{category.name}</p>
           <p className="truncate text-xs text-slate-500">{category.path}</p>
@@ -343,7 +405,7 @@ function CategoryNode({
           </button>
         </div>
       </div>
-      {category.children.length > 0 ? (
+      {hasChildren && isExpanded ? (
         <ol className="mt-1 grid gap-1">
           {category.children.map((child) => (
             <CategoryNode
@@ -355,6 +417,8 @@ function CategoryNode({
               level={level + 1}
               onAddChild={onAddChild}
               onEdit={onEdit}
+              expandedCategoryIds={expandedCategoryIds}
+              onToggleExpanded={onToggleExpanded}
             />
           ))}
         </ol>
@@ -532,6 +596,96 @@ function sortCategoryTree(categories: CategoryTreeItem[]) {
 
   for (const category of categories) {
     sortCategoryTree(category.children);
+  }
+}
+
+function getExpandableCategoryIds(categories: CategoryTreeItem[]) {
+  const expandableIds = new Set<string>();
+
+  for (const category of categories) {
+    if (category.children.length > 0) {
+      expandableIds.add(category.id);
+    }
+
+    for (const childId of getExpandableCategoryIds(category.children)) {
+      expandableIds.add(childId);
+    }
+  }
+
+  return expandableIds;
+}
+
+function useStoredExpandedCategoryIds(
+  storageKey: string,
+  defaultExpandedCategoryIds: Set<string>
+) {
+  const storedValue = useSyncExternalStore(
+    subscribeToCategoryExpansionStorage,
+    () => readStoredExpandedCategoryIds(storageKey),
+    () => null
+  );
+
+  return useMemo(() => {
+    if (!storedValue) {
+      return defaultExpandedCategoryIds;
+    }
+
+    try {
+      const parsedValue: unknown = JSON.parse(storedValue);
+
+      if (!Array.isArray(parsedValue)) {
+        return defaultExpandedCategoryIds;
+      }
+
+      return new Set(
+        parsedValue.filter(
+          (categoryId): categoryId is string => typeof categoryId === "string"
+        )
+      );
+    } catch {
+      return defaultExpandedCategoryIds;
+    }
+  }, [defaultExpandedCategoryIds, storedValue]);
+}
+
+function subscribeToCategoryExpansionStorage(onStoreChange: () => void) {
+  if (typeof window === "undefined") {
+    return () => {};
+  }
+
+  window.addEventListener("storage", onStoreChange);
+  window.addEventListener("oso:part-category-expansion", onStoreChange);
+
+  return () => {
+    window.removeEventListener("storage", onStoreChange);
+    window.removeEventListener("oso:part-category-expansion", onStoreChange);
+  };
+}
+
+function readStoredExpandedCategoryIds(storageKey: string) {
+  if (typeof window === "undefined") {
+    return null;
+  }
+
+  return window.localStorage.getItem(storageKey);
+}
+
+function saveExpandedCategoryIds(
+  storageKey: string,
+  expandedCategoryIds: Set<string>
+) {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  try {
+    window.localStorage.setItem(
+      storageKey,
+      JSON.stringify(Array.from(expandedCategoryIds))
+    );
+    window.dispatchEvent(new Event("oso:part-category-expansion"));
+  } catch {
+    // Ignore unavailable local storage; the tree still works for this page load.
   }
 }
 
