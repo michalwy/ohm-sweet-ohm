@@ -23,6 +23,16 @@ export * from './enums';
  */
 export type Part = Prisma.PartModel
 /**
+ * Model PartCategory
+ * 
+ */
+export type PartCategory = Prisma.PartCategoryModel
+/**
+ * Model PartCategoryClosure
+ * 
+ */
+export type PartCategoryClosure = Prisma.PartCategoryClosureModel
+/**
  * Model User
  * 
  */

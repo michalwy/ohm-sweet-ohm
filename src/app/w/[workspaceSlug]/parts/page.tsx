@@ -7,6 +7,7 @@ import {
   getCurrentSession,
   getCurrentWorkspaceContextBySlug
 } from "@/server/auth/currentContext";
+import { getPartCategoriesForPartForm } from "@/server/parts/categories";
 import { getPartsList } from "@/server/parts/getParts";
 
 export const dynamic = "force-dynamic";
@@ -21,6 +22,11 @@ const copy = {
   intro:
     "Real purchasable electronic parts tracked by manufacturer and catalog number.",
   catalogNumber: "Catalog number",
+  categories: "Categories",
+  primaryCategory: "Primary category",
+  secondaryCategory: "Secondary category",
+  noCategory: "No category",
+  noSecondaryCategory: "No secondary category",
   manufacturer: "Manufacturer",
   actions: "Actions",
   newPartTitle: "Add part",
@@ -29,6 +35,7 @@ const copy = {
   editPartBody: "Update this part's manufacturer and catalog number.",
   catalogNumberPlaceholder: "NE555P",
   manufacturerPlaceholder: "Texas Instruments",
+  categoryPlaceholder: "Choose a category",
   addPart: "Add part",
   createPart: "Create part",
   editPart: "Edit",
@@ -37,6 +44,10 @@ const copy = {
   created: "Part created.",
   updated: "Part updated.",
   missingRequiredFields: "Enter both catalog number and manufacturer.",
+  invalidCategory: "Choose valid assignable categories.",
+  secondaryWithoutPrimary:
+    "Choose a primary category before choosing a secondary category.",
+  duplicateCategories: "Primary and secondary categories must be different.",
   emptyTitle: "No parts yet",
   emptyBody: "Parts will appear here once they exist.",
   databaseUnavailable:
@@ -75,6 +86,9 @@ export default async function PartsPage({
   }
 
   const { parts, isDatabaseAvailable } = await getPartsList(context);
+  const partCategories = isDatabaseAvailable
+    ? await getPartCategoriesForPartForm(context).catch(() => [])
+    : [];
   const resolvedSearchParams = await searchParams;
   const partCreated = resolvedSearchParams?.partCreated === "1";
   const partDialogOpen = resolvedSearchParams?.partDialog === "open";
@@ -182,6 +196,7 @@ export default async function PartsPage({
               partFormError={partFormError}
               partUpdated={partUpdated}
               partUpdateError={partUpdateError}
+              partCategories={partCategories}
               parts={parts}
               workspaceSlug={workspaceSlug}
             />

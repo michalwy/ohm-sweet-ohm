@@ -3,11 +3,17 @@
 import { useEffect, useRef, useState } from "react";
 
 import { createPart, updatePart } from "@/server/parts/createPart";
+import type { PartCategoryListItem } from "@/server/parts/categories";
 import type { PartsListItem } from "@/server/parts/getParts";
 
 type Copy = {
   title: string;
   catalogNumber: string;
+  categories: string;
+  primaryCategory: string;
+  secondaryCategory: string;
+  noCategory: string;
+  noSecondaryCategory: string;
   manufacturer: string;
   actions: string;
   newPartTitle: string;
@@ -16,6 +22,7 @@ type Copy = {
   editPartBody: string;
   catalogNumberPlaceholder: string;
   manufacturerPlaceholder: string;
+  categoryPlaceholder: string;
   createPart: string;
   editPart: string;
   saveChanges: string;
@@ -24,6 +31,9 @@ type Copy = {
   created: string;
   updated: string;
   missingRequiredFields: string;
+  invalidCategory: string;
+  secondaryWithoutPrimary: string;
+  duplicateCategories: string;
   emptyTitle: string;
   emptyBody: string;
   databaseUnavailable: string;
@@ -38,6 +48,7 @@ type PartsListClientProps = {
   partFormError?: string;
   partUpdated: boolean;
   partUpdateError?: string;
+  partCategories: PartCategoryListItem[];
   parts: PartsListItem[];
   workspaceSlug: string;
 };
@@ -51,11 +62,17 @@ export function PartsListClient({
   partFormError,
   partUpdated,
   partUpdateError,
+  partCategories,
   parts,
   workspaceSlug
 }: PartsListClientProps) {
   const createDialogRef = useRef<HTMLDialogElement>(null);
   const editDialogRef = useRef<HTMLDialogElement>(null);
+  const assignableCategories = partCategories.filter(
+    (category) => category.isAssignable
+  );
+  const [createPrimaryCategoryId, setCreatePrimaryCategoryId] = useState("");
+  const [editPrimaryCategoryId, setEditPrimaryCategoryId] = useState("");
   const [editingPart, setEditingPart] = useState<PartsListItem | null>(() =>
     parts.find((part) => part.id === partEditDialog) ?? null
   );
@@ -80,12 +97,14 @@ export function PartsListClient({
 
     window.requestAnimationFrame(() => {
       setEditingPart(part);
+      setEditPrimaryCategoryId(part.primaryCategoryId ?? "");
       openDialog(editDialogRef.current);
     });
   }, [partEditDialog, parts]);
 
   function openEditDialog(part: PartsListItem) {
     setEditingPart(part);
+    setEditPrimaryCategoryId(part.primaryCategoryId ?? "");
     window.requestAnimationFrame(() => openDialog(editDialogRef.current));
   }
 
@@ -137,6 +156,12 @@ export function PartsListClient({
                   scope="col"
                   className="border-b border-slate-200 px-4 py-3 font-semibold text-slate-600"
                 >
+                  {copy.categories}
+                </th>
+                <th
+                  scope="col"
+                  className="border-b border-slate-200 px-4 py-3 font-semibold text-slate-600"
+                >
                   {copy.catalogNumber}
                 </th>
                 <th
@@ -160,6 +185,9 @@ export function PartsListClient({
                     key={part.id}
                     className="border-b border-slate-100 transition hover:bg-slate-50"
                   >
+                    <td className="border-b border-slate-100 px-4 py-3 text-slate-700">
+                      <PartCategoriesSummary copy={copy} part={part} />
+                    </td>
                     <td className="border-b border-slate-100 px-4 py-3 font-mono text-slate-950">
                       {part.catalogNumber}
                     </td>
@@ -180,7 +208,7 @@ export function PartsListClient({
                 ))
               ) : (
                 <tr>
-                  <td className="px-4 py-10" colSpan={3}>
+                  <td className="px-4 py-10" colSpan={4}>
                     <p className="text-base font-medium text-slate-950">
                       {copy.emptyTitle}
                     </p>
@@ -227,7 +255,7 @@ export function PartsListClient({
             <p className="mb-4 rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-800">
               {partFormError === "missing-required-fields"
                 ? copy.missingRequiredFields
-                : copy.databaseUnavailable}
+                : getCategoryErrorMessage(copy, partFormError)}
             </p>
           ) : null}
 
@@ -254,6 +282,44 @@ export function PartsListClient({
                 type="text"
                 disabled={!isDatabaseAvailable}
               />
+            </label>
+            <label className="grid gap-2 text-sm font-medium text-slate-700">
+              {copy.primaryCategory}
+              <select
+                className="min-h-11 rounded-md border border-slate-300 bg-white px-3 py-2 text-base text-slate-950 outline-none transition hover:border-slate-400 focus:border-slate-500 focus:ring-2 focus:ring-slate-200 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400"
+                name="primaryCategoryId"
+                disabled={!isDatabaseAvailable}
+                value={createPrimaryCategoryId}
+                onChange={(event) =>
+                  setCreatePrimaryCategoryId(event.currentTarget.value)
+                }
+              >
+                <option value="">{copy.noCategory}</option>
+                {assignableCategories.map((category) => (
+                  <option key={category.id} value={category.id}>
+                    {category.path}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="grid gap-2 text-sm font-medium text-slate-700">
+              {copy.secondaryCategory}
+              <select
+                key={createPrimaryCategoryId || "no-primary-category"}
+                className="min-h-11 rounded-md border border-slate-300 bg-white px-3 py-2 text-base text-slate-950 outline-none transition hover:border-slate-400 focus:border-slate-500 focus:ring-2 focus:ring-slate-200 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400"
+                name="secondaryCategoryId"
+                disabled={!isDatabaseAvailable || !createPrimaryCategoryId}
+                defaultValue=""
+              >
+                <option value="">{copy.noSecondaryCategory}</option>
+                {assignableCategories
+                  .filter((category) => category.id !== createPrimaryCategoryId)
+                  .map((category) => (
+                    <option key={category.id} value={category.id}>
+                      {category.path}
+                    </option>
+                  ))}
+              </select>
             </label>
             <div className="flex justify-end">
               <button
@@ -300,7 +366,7 @@ export function PartsListClient({
             <p className="mb-4 rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-800">
               {partUpdateError === "missing-required-fields"
                 ? copy.missingRequiredFields
-                : copy.databaseUnavailable}
+                : getCategoryErrorMessage(copy, partUpdateError)}
             </p>
           ) : null}
 
@@ -331,6 +397,48 @@ export function PartsListClient({
                   type="text"
                   disabled={!isDatabaseAvailable}
                 />
+              </label>
+              <label className="grid gap-2 text-sm font-medium text-slate-700">
+                {copy.primaryCategory}
+                <select
+                  className="min-h-11 rounded-md border border-slate-300 bg-white px-3 py-2 text-base text-slate-950 outline-none transition hover:border-slate-400 focus:border-slate-500 focus:ring-2 focus:ring-slate-200 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400"
+                  name="primaryCategoryId"
+                  disabled={!isDatabaseAvailable}
+                  value={editPrimaryCategoryId}
+                  onChange={(event) =>
+                    setEditPrimaryCategoryId(event.currentTarget.value)
+                  }
+                >
+                  <option value="">{copy.noCategory}</option>
+                  {assignableCategories.map((category) => (
+                    <option key={category.id} value={category.id}>
+                      {category.path}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="grid gap-2 text-sm font-medium text-slate-700">
+                {copy.secondaryCategory}
+                <select
+                  key={`${editingPart.id}-${editPrimaryCategoryId}`}
+                  className="min-h-11 rounded-md border border-slate-300 bg-white px-3 py-2 text-base text-slate-950 outline-none transition hover:border-slate-400 focus:border-slate-500 focus:ring-2 focus:ring-slate-200 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400"
+                  name="secondaryCategoryId"
+                  disabled={!isDatabaseAvailable || !editPrimaryCategoryId}
+                  defaultValue={
+                    editingPart.secondaryCategoryId === editPrimaryCategoryId
+                      ? ""
+                      : editingPart.secondaryCategoryId ?? ""
+                  }
+                >
+                  <option value="">{copy.noSecondaryCategory}</option>
+                  {assignableCategories
+                    .filter((category) => category.id !== editPrimaryCategoryId)
+                    .map((category) => (
+                      <option key={category.id} value={category.id}>
+                        {category.path}
+                      </option>
+                    ))}
+                </select>
               </label>
               <div className="flex justify-end">
                 <button
@@ -366,5 +474,54 @@ function getUpdateErrorMessage(copy: Copy, error: string) {
     return copy.missingRequiredFields;
   }
 
+  return getCategoryErrorMessage(copy, error);
+}
+
+function getCategoryErrorMessage(copy: Copy, error: string) {
+  if (error === "invalid-category") {
+    return copy.invalidCategory;
+  }
+
+  if (error === "secondary-without-primary") {
+    return copy.secondaryWithoutPrimary;
+  }
+
+  if (error === "duplicate-categories") {
+    return copy.duplicateCategories;
+  }
+
   return copy.databaseUnavailable;
+}
+
+function PartCategoriesSummary({
+  copy,
+  part
+}: {
+  copy: Copy;
+  part: PartsListItem;
+}) {
+  if (!part.primaryCategoryPath && !part.secondaryCategoryPath) {
+    return <span className="text-slate-400">{copy.noCategory}</span>;
+  }
+
+  return (
+    <div className="grid gap-1">
+      {part.primaryCategoryPath ? (
+        <span>
+          <span className="font-medium text-slate-500">
+            {copy.primaryCategory}:{" "}
+          </span>
+          {part.primaryCategoryPath}
+        </span>
+      ) : null}
+      {part.secondaryCategoryPath ? (
+        <span>
+          <span className="font-medium text-slate-500">
+            {copy.secondaryCategory}:{" "}
+          </span>
+          {part.secondaryCategoryPath}
+        </span>
+      ) : null}
+    </div>
+  );
 }

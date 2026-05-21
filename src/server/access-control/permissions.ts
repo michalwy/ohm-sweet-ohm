@@ -3,6 +3,8 @@ export const OWNER_ROLE_NAME = "owner";
 
 export const PERMISSIONS = [
   ADMIN_PERMISSION,
+  "part-categories:read",
+  "part-categories:write",
   "parts:read",
   "parts:write",
   "roles:read",
@@ -17,6 +19,8 @@ export type PermissionKey = (typeof PERMISSIONS)[number];
 
 export const permissionDescriptions: Record<PermissionKey, string> = {
   admin: "Administrative access to every workspace permission.",
+  "part-categories:read": "Read part categories in a workspace.",
+  "part-categories:write": "Create, update, and delete part categories in a workspace.",
   "parts:read": "Read parts in a workspace.",
   "parts:write": "Create and update parts in a workspace.",
   "roles:read": "Read roles and permissions in a workspace.",
@@ -35,6 +39,7 @@ export const defaultWorkspaceRoles = [
   {
     name: "reader",
     permissions: [
+      "part-categories:read",
       "parts:read",
       "roles:read",
       "members:read",
@@ -44,6 +49,8 @@ export const defaultWorkspaceRoles = [
   {
     name: "editor",
     permissions: [
+      "part-categories:read",
+      "part-categories:write",
       "parts:read",
       "parts:write",
       "roles:read",

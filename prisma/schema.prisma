@@ -8,17 +8,60 @@ datasource db {
 }
 
 model Part {
-  id               String   @id @default(cuid())
-  workspaceId      String
-  catalogNumber    String
-  manufacturerName String
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+  id                  String   @id @default(cuid())
+  workspaceId         String
+  catalogNumber       String
+  manufacturerName    String
+  primaryCategoryId   String?
+  secondaryCategoryId String?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
 
-  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  workspace         Workspace     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  primaryCategory   PartCategory? @relation("PartPrimaryCategory", fields: [primaryCategoryId], references: [id], onDelete: SetNull)
+  secondaryCategory PartCategory? @relation("PartSecondaryCategory", fields: [secondaryCategoryId], references: [id], onDelete: SetNull)
 
   @@index([workspaceId, catalogNumber])
   @@index([workspaceId, manufacturerName])
+  @@index([workspaceId, primaryCategoryId])
+  @@index([workspaceId, secondaryCategoryId])
+}
+
+model PartCategory {
+  id           String   @id @default(cuid())
+  workspaceId  String
+  parentId     String?
+  name         String
+  isAssignable Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  workspace             Workspace             @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  parent                PartCategory?         @relation("PartCategoryTree", fields: [parentId], references: [id], onDelete: Restrict)
+  children              PartCategory[]        @relation("PartCategoryTree")
+  primaryParts          Part[]                @relation("PartPrimaryCategory")
+  secondaryParts        Part[]                @relation("PartSecondaryCategory")
+  ancestorClosures      PartCategoryClosure[] @relation("PartCategoryClosureAncestor")
+  descendantClosures    PartCategoryClosure[] @relation("PartCategoryClosureDescendant")
+
+  @@index([workspaceId])
+  @@index([workspaceId, parentId])
+  @@index([workspaceId, name])
+}
+
+model PartCategoryClosure {
+  workspaceId  String
+  ancestorId   String
+  descendantId String
+  depth        Int
+
+  workspace   Workspace    @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  ancestor    PartCategory @relation("PartCategoryClosureAncestor", fields: [ancestorId], references: [id], onDelete: Cascade)
+  descendant  PartCategory @relation("PartCategoryClosureDescendant", fields: [descendantId], references: [id], onDelete: Cascade)
+
+  @@id([ancestorId, descendantId])
+  @@index([workspaceId, ancestorId])
+  @@index([workspaceId, descendantId])
 }
 
 model User {
@@ -90,6 +133,8 @@ model Workspace {
 
   members WorkspaceMember[]
   parts   Part[]
+  partCategories PartCategory[]
+  partCategoryClosures PartCategoryClosure[]
   roles   Role[]
 }
 

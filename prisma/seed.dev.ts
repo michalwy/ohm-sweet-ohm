@@ -93,6 +93,165 @@ async function main() {
       roleId: ownerRole.id
     }
   });
+
+  await seedPartCategories(workspace.id);
+}
+
+async function seedPartCategories(workspaceId: string) {
+  const passives = await ensurePartCategory({
+    workspaceId,
+    name: "Passives",
+    isAssignable: false
+  });
+
+  await ensurePartCategory({
+    workspaceId,
+    parentId: passives.id,
+    name: "Capacitors",
+    isAssignable: true
+  });
+
+  await ensurePartCategory({
+    workspaceId,
+    parentId: passives.id,
+    name: "Resistors",
+    isAssignable: true
+  });
+
+  const semiconductors = await ensurePartCategory({
+    workspaceId,
+    name: "Semiconductors",
+    isAssignable: false
+  });
+
+  await ensurePartCategory({
+    workspaceId,
+    parentId: semiconductors.id,
+    name: "Diodes",
+    isAssignable: true
+  });
+
+  await ensurePartCategory({
+    workspaceId,
+    parentId: semiconductors.id,
+    name: "Integrated circuits",
+    isAssignable: true
+  });
+}
+
+async function ensurePartCategory({
+  workspaceId,
+  parentId = null,
+  name,
+  isAssignable
+}: {
+  workspaceId: string;
+  parentId?: string | null;
+  name: string;
+  isAssignable: boolean;
+}) {
+  const existingCategory = await prisma.partCategory.findFirst({
+    where: {
+      workspaceId,
+      parentId,
+      name
+    }
+  });
+
+  const category =
+    existingCategory ??
+    (await prisma.partCategory.create({
+      data: {
+        workspaceId,
+        parentId,
+        name,
+        isAssignable
+      }
+    }));
+
+  if (existingCategory && existingCategory.isAssignable !== isAssignable) {
+    await prisma.partCategory.update({
+      where: {
+        id: existingCategory.id
+      },
+      data: {
+        isAssignable
+      }
+    });
+  }
+
+  await ensurePartCategoryClosureRows({
+    workspaceId,
+    categoryId: category.id,
+    parentId
+  });
+
+  return category;
+}
+
+async function ensurePartCategoryClosureRows({
+  workspaceId,
+  categoryId,
+  parentId
+}: {
+  workspaceId: string;
+  categoryId: string;
+  parentId: string | null;
+}) {
+  await prisma.partCategoryClosure.upsert({
+    where: {
+      ancestorId_descendantId: {
+        ancestorId: categoryId,
+        descendantId: categoryId
+      }
+    },
+    update: {
+      workspaceId,
+      depth: 0
+    },
+    create: {
+      workspaceId,
+      ancestorId: categoryId,
+      descendantId: categoryId,
+      depth: 0
+    }
+  });
+
+  if (!parentId) {
+    return;
+  }
+
+  const parentClosures = await prisma.partCategoryClosure.findMany({
+    where: {
+      workspaceId,
+      descendantId: parentId
+    },
+    select: {
+      ancestorId: true,
+      depth: true
+    }
+  });
+
+  for (const closure of parentClosures) {
+    await prisma.partCategoryClosure.upsert({
+      where: {
+        ancestorId_descendantId: {
+          ancestorId: closure.ancestorId,
+          descendantId: categoryId
+        }
+      },
+      update: {
+        workspaceId,
+        depth: closure.depth + 1
+      },
+      create: {
+        workspaceId,
+        ancestorId: closure.ancestorId,
+        descendantId: categoryId,
+        depth: closure.depth + 1
+      }
+    });
+  }
 }
 
 async function upsertCredentialAccount({

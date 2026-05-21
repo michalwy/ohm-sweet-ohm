@@ -184,6 +184,8 @@ export type WorkspaceWhereInput = {
   updatedAt?: Prisma.DateTimeFilter<"Workspace"> | Date | string
   members?: Prisma.WorkspaceMemberListRelationFilter
   parts?: Prisma.PartListRelationFilter
+  partCategories?: Prisma.PartCategoryListRelationFilter
+  partCategoryClosures?: Prisma.PartCategoryClosureListRelationFilter
   roles?: Prisma.RoleListRelationFilter
 }
 
@@ -195,6 +197,8 @@ export type WorkspaceOrderByWithRelationInput = {
   updatedAt?: Prisma.SortOrder
   members?: Prisma.WorkspaceMemberOrderByRelationAggregateInput
   parts?: Prisma.PartOrderByRelationAggregateInput
+  partCategories?: Prisma.PartCategoryOrderByRelationAggregateInput
+  partCategoryClosures?: Prisma.PartCategoryClosureOrderByRelationAggregateInput
   roles?: Prisma.RoleOrderByRelationAggregateInput
 }
 
@@ -209,6 +213,8 @@ export type WorkspaceWhereUniqueInput = Prisma.AtLeast<{
   updatedAt?: Prisma.DateTimeFilter<"Workspace"> | Date | string
   members?: Prisma.WorkspaceMemberListRelationFilter
   parts?: Prisma.PartListRelationFilter
+  partCategories?: Prisma.PartCategoryListRelationFilter
+  partCategoryClosures?: Prisma.PartCategoryClosureListRelationFilter
   roles?: Prisma.RoleListRelationFilter
 }, "id" | "slug">
 
@@ -242,6 +248,8 @@ export type WorkspaceCreateInput = {
   updatedAt?: Date | string
   members?: Prisma.WorkspaceMemberCreateNestedManyWithoutWorkspaceInput
   parts?: Prisma.PartCreateNestedManyWithoutWorkspaceInput
+  partCategories?: Prisma.PartCategoryCreateNestedManyWithoutWorkspaceInput
+  partCategoryClosures?: Prisma.PartCategoryClosureCreateNestedManyWithoutWorkspaceInput
   roles?: Prisma.RoleCreateNestedManyWithoutWorkspaceInput
 }
 
@@ -253,6 +261,8 @@ export type WorkspaceUncheckedCreateInput = {
   updatedAt?: Date | string
   members?: Prisma.WorkspaceMemberUncheckedCreateNestedManyWithoutWorkspaceInput
   parts?: Prisma.PartUncheckedCreateNestedManyWithoutWorkspaceInput
+  partCategories?: Prisma.PartCategoryUncheckedCreateNestedManyWithoutWorkspaceInput
+  partCategoryClosures?: Prisma.PartCategoryClosureUncheckedCreateNestedManyWithoutWorkspaceInput
   roles?: Prisma.RoleUncheckedCreateNestedManyWithoutWorkspaceInput
 }
 
@@ -264,6 +274,8 @@ export type WorkspaceUpdateInput = {
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   members?: Prisma.WorkspaceMemberUpdateManyWithoutWorkspaceNestedInput
   parts?: Prisma.PartUpdateManyWithoutWorkspaceNestedInput
+  partCategories?: Prisma.PartCategoryUpdateManyWithoutWorkspaceNestedInput
+  partCategoryClosures?: Prisma.PartCategoryClosureUpdateManyWithoutWorkspaceNestedInput
   roles?: Prisma.RoleUpdateManyWithoutWorkspaceNestedInput
 }
 
@@ -275,6 +287,8 @@ export type WorkspaceUncheckedUpdateInput = {
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   members?: Prisma.WorkspaceMemberUncheckedUpdateManyWithoutWorkspaceNestedInput
   parts?: Prisma.PartUncheckedUpdateManyWithoutWorkspaceNestedInput
+  partCategories?: Prisma.PartCategoryUncheckedUpdateManyWithoutWorkspaceNestedInput
+  partCategoryClosures?: Prisma.PartCategoryClosureUncheckedUpdateManyWithoutWorkspaceNestedInput
   roles?: Prisma.RoleUncheckedUpdateManyWithoutWorkspaceNestedInput
 }
 
@@ -345,6 +359,34 @@ export type WorkspaceUpdateOneRequiredWithoutPartsNestedInput = {
   update?: Prisma.XOR<Prisma.XOR<Prisma.WorkspaceUpdateToOneWithWhereWithoutPartsInput, Prisma.WorkspaceUpdateWithoutPartsInput>, Prisma.WorkspaceUncheckedUpdateWithoutPartsInput>
 }
 
+export type WorkspaceCreateNestedOneWithoutPartCategoriesInput = {
+  create?: Prisma.XOR<Prisma.WorkspaceCreateWithoutPartCategoriesInput, Prisma.WorkspaceUncheckedCreateWithoutPartCategoriesInput>
+  connectOrCreate?: Prisma.WorkspaceCreateOrConnectWithoutPartCategoriesInput
+  connect?: Prisma.WorkspaceWhereUniqueInput
+}
+
+export type WorkspaceUpdateOneRequiredWithoutPartCategoriesNestedInput = {
+  create?: Prisma.XOR<Prisma.WorkspaceCreateWithoutPartCategoriesInput, Prisma.WorkspaceUncheckedCreateWithoutPartCategoriesInput>
+  connectOrCreate?: Prisma.WorkspaceCreateOrConnectWithoutPartCategoriesInput
+  upsert?: Prisma.WorkspaceUpsertWithoutPartCategoriesInput
+  connect?: Prisma.WorkspaceWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.WorkspaceUpdateToOneWithWhereWithoutPartCategoriesInput, Prisma.WorkspaceUpdateWithoutPartCategoriesInput>, Prisma.WorkspaceUncheckedUpdateWithoutPartCategoriesInput>
+}
+
+export type WorkspaceCreateNestedOneWithoutPartCategoryClosuresInput = {
+  create?: Prisma.XOR<Prisma.WorkspaceCreateWithoutPartCategoryClosuresInput, Prisma.WorkspaceUncheckedCreateWithoutPartCategoryClosuresInput>
+  connectOrCreate?: Prisma.WorkspaceCreateOrConnectWithoutPartCategoryClosuresInput
+  connect?: Prisma.WorkspaceWhereUniqueInput
+}
+
+export type WorkspaceUpdateOneRequiredWithoutPartCategoryClosuresNestedInput = {
+  create?: Prisma.XOR<Prisma.WorkspaceCreateWithoutPartCategoryClosuresInput, Prisma.WorkspaceUncheckedCreateWithoutPartCategoryClosuresInput>
+  connectOrCreate?: Prisma.WorkspaceCreateOrConnectWithoutPartCategoryClosuresInput
+  upsert?: Prisma.WorkspaceUpsertWithoutPartCategoryClosuresInput
+  connect?: Prisma.WorkspaceWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.WorkspaceUpdateToOneWithWhereWithoutPartCategoryClosuresInput, Prisma.WorkspaceUpdateWithoutPartCategoryClosuresInput>, Prisma.WorkspaceUncheckedUpdateWithoutPartCategoryClosuresInput>
+}
+
 export type WorkspaceCreateNestedOneWithoutMembersInput = {
   create?: Prisma.XOR<Prisma.WorkspaceCreateWithoutMembersInput, Prisma.WorkspaceUncheckedCreateWithoutMembersInput>
   connectOrCreate?: Prisma.WorkspaceCreateOrConnectWithoutMembersInput
@@ -380,6 +422,8 @@ export type WorkspaceCreateWithoutPartsInput = {
   createdAt?: Date | string
   updatedAt?: Date | string
   members?: Prisma.WorkspaceMemberCreateNestedManyWithoutWorkspaceInput
+  partCategories?: Prisma.PartCategoryCreateNestedManyWithoutWorkspaceInput
+  partCategoryClosures?: Prisma.PartCategoryClosureCreateNestedManyWithoutWorkspaceInput
   roles?: Prisma.RoleCreateNestedManyWithoutWorkspaceInput
 }
 
@@ -390,6 +434,8 @@ export type WorkspaceUncheckedCreateWithoutPartsInput = {
   createdAt?: Date | string
   updatedAt?: Date | string
   members?: Prisma.WorkspaceMemberUncheckedCreateNestedManyWithoutWorkspaceInput
+  partCategories?: Prisma.PartCategoryUncheckedCreateNestedManyWithoutWorkspaceInput
+  partCategoryClosures?: Prisma.PartCategoryClosureUncheckedCreateNestedManyWithoutWorkspaceInput
   roles?: Prisma.RoleUncheckedCreateNestedManyWithoutWorkspaceInput
 }
 
@@ -416,6 +462,8 @@ export type WorkspaceUpdateWithoutPartsInput = {
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   members?: Prisma.WorkspaceMemberUpdateManyWithoutWorkspaceNestedInput
+  partCategories?: Prisma.PartCategoryUpdateManyWithoutWorkspaceNestedInput
+  partCategoryClosures?: Prisma.PartCategoryClosureUpdateManyWithoutWorkspaceNestedInput
   roles?: Prisma.RoleUpdateManyWithoutWorkspaceNestedInput
 }
 
@@ -426,6 +474,136 @@ export type WorkspaceUncheckedUpdateWithoutPartsInput = {
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   members?: Prisma.WorkspaceMemberUncheckedUpdateManyWithoutWorkspaceNestedInput
+  partCategories?: Prisma.PartCategoryUncheckedUpdateManyWithoutWorkspaceNestedInput
+  partCategoryClosures?: Prisma.PartCategoryClosureUncheckedUpdateManyWithoutWorkspaceNestedInput
+  roles?: Prisma.RoleUncheckedUpdateManyWithoutWorkspaceNestedInput
+}
+
+export type WorkspaceCreateWithoutPartCategoriesInput = {
+  id?: string
+  name: string
+  slug: string
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  members?: Prisma.WorkspaceMemberCreateNestedManyWithoutWorkspaceInput
+  parts?: Prisma.PartCreateNestedManyWithoutWorkspaceInput
+  partCategoryClosures?: Prisma.PartCategoryClosureCreateNestedManyWithoutWorkspaceInput
+  roles?: Prisma.RoleCreateNestedManyWithoutWorkspaceInput
+}
+
+export type WorkspaceUncheckedCreateWithoutPartCategoriesInput = {
+  id?: string
+  name: string
+  slug: string
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  members?: Prisma.WorkspaceMemberUncheckedCreateNestedManyWithoutWorkspaceInput
+  parts?: Prisma.PartUncheckedCreateNestedManyWithoutWorkspaceInput
+  partCategoryClosures?: Prisma.PartCategoryClosureUncheckedCreateNestedManyWithoutWorkspaceInput
+  roles?: Prisma.RoleUncheckedCreateNestedManyWithoutWorkspaceInput
+}
+
+export type WorkspaceCreateOrConnectWithoutPartCategoriesInput = {
+  where: Prisma.WorkspaceWhereUniqueInput
+  create: Prisma.XOR<Prisma.WorkspaceCreateWithoutPartCategoriesInput, Prisma.WorkspaceUncheckedCreateWithoutPartCategoriesInput>
+}
+
+export type WorkspaceUpsertWithoutPartCategoriesInput = {
+  update: Prisma.XOR<Prisma.WorkspaceUpdateWithoutPartCategoriesInput, Prisma.WorkspaceUncheckedUpdateWithoutPartCategoriesInput>
+  create: Prisma.XOR<Prisma.WorkspaceCreateWithoutPartCategoriesInput, Prisma.WorkspaceUncheckedCreateWithoutPartCategoriesInput>
+  where?: Prisma.WorkspaceWhereInput
+}
+
+export type WorkspaceUpdateToOneWithWhereWithoutPartCategoriesInput = {
+  where?: Prisma.WorkspaceWhereInput
+  data: Prisma.XOR<Prisma.WorkspaceUpdateWithoutPartCategoriesInput, Prisma.WorkspaceUncheckedUpdateWithoutPartCategoriesInput>
+}
+
+export type WorkspaceUpdateWithoutPartCategoriesInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  slug?: Prisma.StringFieldUpdateOperationsInput | string
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  members?: Prisma.WorkspaceMemberUpdateManyWithoutWorkspaceNestedInput
+  parts?: Prisma.PartUpdateManyWithoutWorkspaceNestedInput
+  partCategoryClosures?: Prisma.PartCategoryClosureUpdateManyWithoutWorkspaceNestedInput
+  roles?: Prisma.RoleUpdateManyWithoutWorkspaceNestedInput
+}
+
+export type WorkspaceUncheckedUpdateWithoutPartCategoriesInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  slug?: Prisma.StringFieldUpdateOperationsInput | string
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  members?: Prisma.WorkspaceMemberUncheckedUpdateManyWithoutWorkspaceNestedInput
+  parts?: Prisma.PartUncheckedUpdateManyWithoutWorkspaceNestedInput
+  partCategoryClosures?: Prisma.PartCategoryClosureUncheckedUpdateManyWithoutWorkspaceNestedInput
+  roles?: Prisma.RoleUncheckedUpdateManyWithoutWorkspaceNestedInput
+}
+
+export type WorkspaceCreateWithoutPartCategoryClosuresInput = {
+  id?: string
+  name: string
+  slug: string
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  members?: Prisma.WorkspaceMemberCreateNestedManyWithoutWorkspaceInput
+  parts?: Prisma.PartCreateNestedManyWithoutWorkspaceInput
+  partCategories?: Prisma.PartCategoryCreateNestedManyWithoutWorkspaceInput
+  roles?: Prisma.RoleCreateNestedManyWithoutWorkspaceInput
+}
+
+export type WorkspaceUncheckedCreateWithoutPartCategoryClosuresInput = {
+  id?: string
+  name: string
+  slug: string
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  members?: Prisma.WorkspaceMemberUncheckedCreateNestedManyWithoutWorkspaceInput
+  parts?: Prisma.PartUncheckedCreateNestedManyWithoutWorkspaceInput
+  partCategories?: Prisma.PartCategoryUncheckedCreateNestedManyWithoutWorkspaceInput
+  roles?: Prisma.RoleUncheckedCreateNestedManyWithoutWorkspaceInput
+}
+
+export type WorkspaceCreateOrConnectWithoutPartCategoryClosuresInput = {
+  where: Prisma.WorkspaceWhereUniqueInput
+  create: Prisma.XOR<Prisma.WorkspaceCreateWithoutPartCategoryClosuresInput, Prisma.WorkspaceUncheckedCreateWithoutPartCategoryClosuresInput>
+}
+
+export type WorkspaceUpsertWithoutPartCategoryClosuresInput = {
+  update: Prisma.XOR<Prisma.WorkspaceUpdateWithoutPartCategoryClosuresInput, Prisma.WorkspaceUncheckedUpdateWithoutPartCategoryClosuresInput>
+  create: Prisma.XOR<Prisma.WorkspaceCreateWithoutPartCategoryClosuresInput, Prisma.WorkspaceUncheckedCreateWithoutPartCategoryClosuresInput>
+  where?: Prisma.WorkspaceWhereInput
+}
+
+export type WorkspaceUpdateToOneWithWhereWithoutPartCategoryClosuresInput = {
+  where?: Prisma.WorkspaceWhereInput
+  data: Prisma.XOR<Prisma.WorkspaceUpdateWithoutPartCategoryClosuresInput, Prisma.WorkspaceUncheckedUpdateWithoutPartCategoryClosuresInput>
+}
+
+export type WorkspaceUpdateWithoutPartCategoryClosuresInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  slug?: Prisma.StringFieldUpdateOperationsInput | string
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  members?: Prisma.WorkspaceMemberUpdateManyWithoutWorkspaceNestedInput
+  parts?: Prisma.PartUpdateManyWithoutWorkspaceNestedInput
+  partCategories?: Prisma.PartCategoryUpdateManyWithoutWorkspaceNestedInput
+  roles?: Prisma.RoleUpdateManyWithoutWorkspaceNestedInput
+}
+
+export type WorkspaceUncheckedUpdateWithoutPartCategoryClosuresInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  slug?: Prisma.StringFieldUpdateOperationsInput | string
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  members?: Prisma.WorkspaceMemberUncheckedUpdateManyWithoutWorkspaceNestedInput
+  parts?: Prisma.PartUncheckedUpdateManyWithoutWorkspaceNestedInput
+  partCategories?: Prisma.PartCategoryUncheckedUpdateManyWithoutWorkspaceNestedInput
   roles?: Prisma.RoleUncheckedUpdateManyWithoutWorkspaceNestedInput
 }
 
@@ -436,6 +614,8 @@ export type WorkspaceCreateWithoutMembersInput = {
   createdAt?: Date | string
   updatedAt?: Date | string
   parts?: Prisma.PartCreateNestedManyWithoutWorkspaceInput
+  partCategories?: Prisma.PartCategoryCreateNestedManyWithoutWorkspaceInput
+  partCategoryClosures?: Prisma.PartCategoryClosureCreateNestedManyWithoutWorkspaceInput
   roles?: Prisma.RoleCreateNestedManyWithoutWorkspaceInput
 }
 
@@ -446,6 +626,8 @@ export type WorkspaceUncheckedCreateWithoutMembersInput = {
   createdAt?: Date | string
   updatedAt?: Date | string
   parts?: Prisma.PartUncheckedCreateNestedManyWithoutWorkspaceInput
+  partCategories?: Prisma.PartCategoryUncheckedCreateNestedManyWithoutWorkspaceInput
+  partCategoryClosures?: Prisma.PartCategoryClosureUncheckedCreateNestedManyWithoutWorkspaceInput
   roles?: Prisma.RoleUncheckedCreateNestedManyWithoutWorkspaceInput
 }
 
@@ -472,6 +654,8 @@ export type WorkspaceUpdateWithoutMembersInput = {
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   parts?: Prisma.PartUpdateManyWithoutWorkspaceNestedInput
+  partCategories?: Prisma.PartCategoryUpdateManyWithoutWorkspaceNestedInput
+  partCategoryClosures?: Prisma.PartCategoryClosureUpdateManyWithoutWorkspaceNestedInput
   roles?: Prisma.RoleUpdateManyWithoutWorkspaceNestedInput
 }
 
@@ -482,6 +666,8 @@ export type WorkspaceUncheckedUpdateWithoutMembersInput = {
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   parts?: Prisma.PartUncheckedUpdateManyWithoutWorkspaceNestedInput
+  partCategories?: Prisma.PartCategoryUncheckedUpdateManyWithoutWorkspaceNestedInput
+  partCategoryClosures?: Prisma.PartCategoryClosureUncheckedUpdateManyWithoutWorkspaceNestedInput
   roles?: Prisma.RoleUncheckedUpdateManyWithoutWorkspaceNestedInput
 }
 
@@ -493,6 +679,8 @@ export type WorkspaceCreateWithoutRolesInput = {
   updatedAt?: Date | string
   members?: Prisma.WorkspaceMemberCreateNestedManyWithoutWorkspaceInput
   parts?: Prisma.PartCreateNestedManyWithoutWorkspaceInput
+  partCategories?: Prisma.PartCategoryCreateNestedManyWithoutWorkspaceInput
+  partCategoryClosures?: Prisma.PartCategoryClosureCreateNestedManyWithoutWorkspaceInput
 }
 
 export type WorkspaceUncheckedCreateWithoutRolesInput = {
@@ -503,6 +691,8 @@ export type WorkspaceUncheckedCreateWithoutRolesInput = {
   updatedAt?: Date | string
   members?: Prisma.WorkspaceMemberUncheckedCreateNestedManyWithoutWorkspaceInput
   parts?: Prisma.PartUncheckedCreateNestedManyWithoutWorkspaceInput
+  partCategories?: Prisma.PartCategoryUncheckedCreateNestedManyWithoutWorkspaceInput
+  partCategoryClosures?: Prisma.PartCategoryClosureUncheckedCreateNestedManyWithoutWorkspaceInput
 }
 
 export type WorkspaceCreateOrConnectWithoutRolesInput = {
@@ -529,6 +719,8 @@ export type WorkspaceUpdateWithoutRolesInput = {
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   members?: Prisma.WorkspaceMemberUpdateManyWithoutWorkspaceNestedInput
   parts?: Prisma.PartUpdateManyWithoutWorkspaceNestedInput
+  partCategories?: Prisma.PartCategoryUpdateManyWithoutWorkspaceNestedInput
+  partCategoryClosures?: Prisma.PartCategoryClosureUpdateManyWithoutWorkspaceNestedInput
 }
 
 export type WorkspaceUncheckedUpdateWithoutRolesInput = {
@@ -539,6 +731,8 @@ export type WorkspaceUncheckedUpdateWithoutRolesInput = {
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   members?: Prisma.WorkspaceMemberUncheckedUpdateManyWithoutWorkspaceNestedInput
   parts?: Prisma.PartUncheckedUpdateManyWithoutWorkspaceNestedInput
+  partCategories?: Prisma.PartCategoryUncheckedUpdateManyWithoutWorkspaceNestedInput
+  partCategoryClosures?: Prisma.PartCategoryClosureUncheckedUpdateManyWithoutWorkspaceNestedInput
 }
 
 
@@ -549,12 +743,16 @@ export type WorkspaceUncheckedUpdateWithoutRolesInput = {
 export type WorkspaceCountOutputType = {
   members: number
   parts: number
+  partCategories: number
+  partCategoryClosures: number
   roles: number
 }
 
 export type WorkspaceCountOutputTypeSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   members?: boolean | WorkspaceCountOutputTypeCountMembersArgs
   parts?: boolean | WorkspaceCountOutputTypeCountPartsArgs
+  partCategories?: boolean | WorkspaceCountOutputTypeCountPartCategoriesArgs
+  partCategoryClosures?: boolean | WorkspaceCountOutputTypeCountPartCategoryClosuresArgs
   roles?: boolean | WorkspaceCountOutputTypeCountRolesArgs
 }
 
@@ -585,6 +783,20 @@ export type WorkspaceCountOutputTypeCountPartsArgs<ExtArgs extends runtime.Types
 /**
  * WorkspaceCountOutputType without action
  */
+export type WorkspaceCountOutputTypeCountPartCategoriesArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.PartCategoryWhereInput
+}
+
+/**
+ * WorkspaceCountOutputType without action
+ */
+export type WorkspaceCountOutputTypeCountPartCategoryClosuresArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.PartCategoryClosureWhereInput
+}
+
+/**
+ * WorkspaceCountOutputType without action
+ */
 export type WorkspaceCountOutputTypeCountRolesArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   where?: Prisma.RoleWhereInput
 }
@@ -598,6 +810,8 @@ export type WorkspaceSelect<ExtArgs extends runtime.Types.Extensions.InternalArg
   updatedAt?: boolean
   members?: boolean | Prisma.Workspace$membersArgs<ExtArgs>
   parts?: boolean | Prisma.Workspace$partsArgs<ExtArgs>
+  partCategories?: boolean | Prisma.Workspace$partCategoriesArgs<ExtArgs>
+  partCategoryClosures?: boolean | Prisma.Workspace$partCategoryClosuresArgs<ExtArgs>
   roles?: boolean | Prisma.Workspace$rolesArgs<ExtArgs>
   _count?: boolean | Prisma.WorkspaceCountOutputTypeDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["workspace"]>
@@ -630,6 +844,8 @@ export type WorkspaceOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs 
 export type WorkspaceInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   members?: boolean | Prisma.Workspace$membersArgs<ExtArgs>
   parts?: boolean | Prisma.Workspace$partsArgs<ExtArgs>
+  partCategories?: boolean | Prisma.Workspace$partCategoriesArgs<ExtArgs>
+  partCategoryClosures?: boolean | Prisma.Workspace$partCategoryClosuresArgs<ExtArgs>
   roles?: boolean | Prisma.Workspace$rolesArgs<ExtArgs>
   _count?: boolean | Prisma.WorkspaceCountOutputTypeDefaultArgs<ExtArgs>
 }
@@ -641,6 +857,8 @@ export type $WorkspacePayload<ExtArgs extends runtime.Types.Extensions.InternalA
   objects: {
     members: Prisma.$WorkspaceMemberPayload<ExtArgs>[]
     parts: Prisma.$PartPayload<ExtArgs>[]
+    partCategories: Prisma.$PartCategoryPayload<ExtArgs>[]
+    partCategoryClosures: Prisma.$PartCategoryClosurePayload<ExtArgs>[]
     roles: Prisma.$RolePayload<ExtArgs>[]
   }
   scalars: runtime.Types.Extensions.GetPayloadResult<{
@@ -1045,6 +1263,8 @@ export interface Prisma__WorkspaceClient<T, Null = never, ExtArgs extends runtim
   readonly [Symbol.toStringTag]: "PrismaPromise"
   members<T extends Prisma.Workspace$membersArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Workspace$membersArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$WorkspaceMemberPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   parts<T extends Prisma.Workspace$partsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Workspace$partsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$PartPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  partCategories<T extends Prisma.Workspace$partCategoriesArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Workspace$partCategoriesArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$PartCategoryPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  partCategoryClosures<T extends Prisma.Workspace$partCategoryClosuresArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Workspace$partCategoryClosuresArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$PartCategoryClosurePayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   roles<T extends Prisma.Workspace$rolesArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Workspace$rolesArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$RolePayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   /**
    * Attaches callbacks for the resolution and/or rejection of the Promise.
@@ -1518,6 +1738,54 @@ export type Workspace$partsArgs<ExtArgs extends runtime.Types.Extensions.Interna
   take?: number
   skip?: number
   distinct?: Prisma.PartScalarFieldEnum | Prisma.PartScalarFieldEnum[]
+}
+
+/**
+ * Workspace.partCategories
+ */
+export type Workspace$partCategoriesArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the PartCategory
+   */
+  select?: Prisma.PartCategorySelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the PartCategory
+   */
+  omit?: Prisma.PartCategoryOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.PartCategoryInclude<ExtArgs> | null
+  where?: Prisma.PartCategoryWhereInput
+  orderBy?: Prisma.PartCategoryOrderByWithRelationInput | Prisma.PartCategoryOrderByWithRelationInput[]
+  cursor?: Prisma.PartCategoryWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.PartCategoryScalarFieldEnum | Prisma.PartCategoryScalarFieldEnum[]
+}
+
+/**
+ * Workspace.partCategoryClosures
+ */
+export type Workspace$partCategoryClosuresArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the PartCategoryClosure
+   */
+  select?: Prisma.PartCategoryClosureSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the PartCategoryClosure
+   */
+  omit?: Prisma.PartCategoryClosureOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.PartCategoryClosureInclude<ExtArgs> | null
+  where?: Prisma.PartCategoryClosureWhereInput
+  orderBy?: Prisma.PartCategoryClosureOrderByWithRelationInput | Prisma.PartCategoryClosureOrderByWithRelationInput[]
+  cursor?: Prisma.PartCategoryClosureWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.PartCategoryClosureScalarFieldEnum | Prisma.PartCategoryClosureScalarFieldEnum[]
 }
 
 /**
