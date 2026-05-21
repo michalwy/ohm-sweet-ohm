@@ -155,6 +155,21 @@ test.describe("parts list", () => {
     await expect(
       page.locator("p").filter({ hasText: /^Passives$/ }).first()
     ).toBeVisible();
+    await expect(
+      page.locator("p").filter({ hasText: /^Capacitors$/ }).first()
+    ).toBeVisible();
+    await page.getByRole("button", { name: "Collapse Passives" }).click();
+    await expect(
+      page.locator("p").filter({ hasText: /^Capacitors$/ })
+    ).toHaveCount(0);
+    await page.reload();
+    await expect(
+      page.locator("p").filter({ hasText: /^Capacitors$/ })
+    ).toHaveCount(0);
+    await page.getByRole("button", { name: "Expand Passives" }).click();
+    await expect(
+      page.locator("p").filter({ hasText: /^Capacitors$/ }).first()
+    ).toBeVisible();
     await expect(page.getByText("Delete")).toHaveCount(0);
 
     await page.getByRole("button", { name: "Add root category" }).click();

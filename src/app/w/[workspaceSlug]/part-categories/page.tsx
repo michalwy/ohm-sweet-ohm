@@ -27,6 +27,8 @@ const copy = {
   addRootCategory: "Add root category",
   addChild: "Add child",
   edit: "Edit",
+  expandCategory: "Expand",
+  collapseCategory: "Collapse",
   actions: "Actions",
   newCategoryTitle: "Add category",
   newCategoryBody: "Create a category in the parts category tree.",
