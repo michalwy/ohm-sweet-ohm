@@ -75,19 +75,28 @@ test.describe("parts list", () => {
     await page.getByRole("button", { name: "Add part" }).click();
     const addPartDialog = page.getByRole("dialog", { name: "Add part" });
     await expect(addPartDialog).toBeVisible();
-    await expect(
-      addPartDialog.locator('select[name="primaryCategoryId"] option', {
-        hasText: /^Passives$/
-      })
-    ).toHaveCount(0);
     await addPartDialog.getByLabel("Catalog number").fill(catalogNumber);
     await addPartDialog.getByLabel("Manufacturer").fill("Microchip Technology");
-    await addPartDialog
-      .getByLabel("Primary category")
-      .selectOption({ label: "Semiconductors / Integrated circuits" });
-    await addPartDialog
-      .getByLabel("Secondary category")
-      .selectOption({ label: "Passives / Resistors" });
+    await addPartDialog.getByLabel("Primary category").click();
+    await expect(page.getByRole("option", { name: /^Passives$/ })).toBeVisible();
+    await expect(page.getByRole("option", { name: /Capacitors/ })).toHaveCount(
+      0
+    );
+    await page.getByPlaceholder("Search categories").fill("integrated");
+    await expect(
+      addPartDialog.getByRole("button", {
+        name: /Primary category.*Semiconductors \/ Integrated circuits/
+      })
+    ).toBeVisible();
+    await page.keyboard.press("Escape");
+    await addPartDialog.getByLabel("Secondary category").click();
+    await page.getByPlaceholder("Search categories").fill("resistors");
+    await expect(
+      addPartDialog.getByRole("button", {
+        name: /Secondary category.*Passives \/ Resistors/
+      })
+    ).toBeVisible();
+    await page.keyboard.press("Enter");
     await page.getByRole("button", { name: "Create part" }).click();
 
     await expect(page.getByText("Part created.")).toBeVisible();
@@ -113,12 +122,41 @@ test.describe("parts list", () => {
     );
     await editPartDialog.getByLabel("Catalog number").fill(updatedCatalogNumber);
     await editPartDialog.getByLabel("Manufacturer").fill(updatedManufacturer);
-    await editPartDialog
-      .getByLabel("Primary category")
-      .selectOption({ label: "Passives / Capacitors" });
-    await editPartDialog
-      .getByLabel("Secondary category")
-      .selectOption({ label: "Passives / Resistors" });
+    await editPartDialog.getByLabel("Primary category").click();
+    await expect(
+      page.getByRole("option", { name: /Integrated circuits/ })
+    ).toBeVisible();
+    await expect(page.getByRole("option", { name: /Capacitors/ })).toHaveCount(
+      0
+    );
+    await page.keyboard.press("ArrowUp");
+    await page.keyboard.press("ArrowUp");
+    await page.keyboard.press("Enter");
+    await expect(
+      page.getByRole("option", { name: /Integrated circuits/ })
+    ).toHaveCount(0);
+    await page.keyboard.press("ArrowRight");
+    await expect(
+      page.getByRole("option", { name: /Integrated circuits/ })
+    ).toBeVisible();
+    await page.keyboard.press("ArrowUp");
+    await page.keyboard.press("ArrowRight");
+    await expect(page.getByRole("option", { name: /Capacitors/ })).toBeVisible();
+    await page.keyboard.press("ArrowDown");
+    await page.keyboard.press("Enter");
+    await expect(
+      editPartDialog.getByRole("button", {
+        name: /Primary category.*Passives \/ Capacitors/
+      })
+    ).toBeVisible();
+    await editPartDialog.getByLabel("Secondary category").click();
+    await page.getByPlaceholder("Search categories").fill("resistors");
+    await expect(
+      editPartDialog.getByRole("button", {
+        name: /Secondary category.*Passives \/ Resistors/
+      })
+    ).toBeVisible();
+    await page.keyboard.press("Escape");
     await editPartDialog.getByRole("button", { name: "Save changes" }).click();
 
     await expect(page.getByText("Part updated.")).toBeVisible();
