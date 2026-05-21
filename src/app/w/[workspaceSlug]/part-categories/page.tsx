@@ -1,78 +1,78 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 
-import { PartsListClient } from "@/app/parts-list-client";
+import { PartCategoriesClient } from "@/app/part-categories-client";
+import { hasWorkspacePermission } from "@/server/access-control/authorize";
 import { signOut } from "@/server/auth/actions";
 import {
   getCurrentSession,
   getCurrentWorkspaceContextBySlug
 } from "@/server/auth/currentContext";
-import { getPartCategoriesForPartForm } from "@/server/parts/categories";
-import { getPartsList } from "@/server/parts/getParts";
+import {
+  getPartCategoriesForManagement,
+  type PartCategoryListItem
+} from "@/server/parts/categories";
 
 export const dynamic = "force-dynamic";
 
 const copy = {
   appShortName: "OSO",
   appName: "OhmSweetOhm",
-  appSubtitle: "Home electronics workshop",
   signOut: "Sign out",
   switchWorkspace: "Switch workspace",
-  title: "Parts",
-  partCategories: "Part categories",
+  parts: "Parts",
+  title: "Part categories",
   intro:
-    "Real purchasable electronic parts tracked by manufacturer and catalog number.",
-  catalogNumber: "Catalog number",
-  categories: "Categories",
-  primaryCategory: "Primary category",
-  secondaryCategory: "Secondary category",
-  noCategory: "No category",
-  noSecondaryCategory: "No secondary category",
-  manufacturer: "Manufacturer",
+    "Manage the category tree used to organize real purchasable electronic parts.",
+  addRootCategory: "Add root category",
+  addChild: "Add child",
+  edit: "Edit",
   actions: "Actions",
-  newPartTitle: "Add part",
-  newPartBody: "Create a real purchasable electronic part.",
-  editPartTitle: "Edit part",
-  editPartBody: "Update this part's manufacturer and catalog number.",
-  catalogNumberPlaceholder: "NE555P",
-  manufacturerPlaceholder: "Texas Instruments",
-  categoryPlaceholder: "Choose a category",
-  addPart: "Add part",
-  createPart: "Create part",
-  editPart: "Edit",
+  newCategoryTitle: "Add category",
+  newCategoryBody: "Create a category in the parts category tree.",
+  editCategoryTitle: "Edit category",
+  editCategoryBody: "Update this category's name, parent, and assignment type.",
+  name: "Name",
+  namePlaceholder: "Resistors",
+  parentCategory: "Parent category",
+  rootCategory: "No parent",
+  type: "Type",
+  organizational: "Organizational",
+  assignable: "Assignable",
+  createCategory: "Create category",
   saveChanges: "Save changes",
   close: "Close",
-  created: "Part created.",
-  updated: "Part updated.",
-  missingRequiredFields: "Enter both catalog number and manufacturer.",
-  invalidCategory: "Choose valid assignable categories.",
-  secondaryWithoutPrimary:
-    "Choose a primary category before choosing a secondary category.",
-  duplicateCategories: "Primary and secondary categories must be different.",
-  emptyTitle: "No parts yet",
-  emptyBody: "Parts will appear here once they exist.",
+  created: "Category created.",
+  updated: "Category updated.",
+  missingRequiredFields: "Enter a category name.",
+  invalidParentCategory: "Choose a valid parent category.",
+  categoryNotFound: "This category is no longer available.",
+  categoryTreeCycle: "Choose a parent outside this category branch.",
+  permissionDenied: "You do not have permission to manage categories.",
+  emptyTitle: "No categories yet",
+  emptyBody: "Create a root category to start organizing the parts tree.",
   databaseUnavailable:
-    "Database is not available, so the list is shown empty for now."
+    "Database is not available, so the category tree is shown empty for now."
 };
 
-type PartsPageProps = {
+type PartCategoriesPageProps = {
   params: Promise<{
     workspaceSlug: string;
   }>;
   searchParams?: Promise<{
-    partCreated?: string;
-    partDialog?: string;
-    partEditDialog?: string;
-    partFormError?: string;
-    partUpdated?: string;
-    partUpdateError?: string;
+    categoryCreated?: string;
+    categoryDialog?: string;
+    categoryEditDialog?: string;
+    categoryError?: string;
+    categoryUpdated?: string;
+    categoryUpdateError?: string;
   }>;
 };
 
-export default async function PartsPage({
+export default async function PartCategoriesPage({
   params,
   searchParams
-}: PartsPageProps) {
+}: PartCategoriesPageProps) {
   const { workspaceSlug } = await params;
   const session = await getCurrentSession();
 
@@ -86,17 +86,29 @@ export default async function PartsPage({
     notFound();
   }
 
-  const { parts, isDatabaseAvailable } = await getPartsList(context);
-  const partCategories = isDatabaseAvailable
-    ? await getPartCategoriesForPartForm(context).catch(() => [])
-    : [];
+  let isDatabaseAvailable = true;
+  let categories: PartCategoryListItem[] = [];
+
+  try {
+    categories = await getPartCategoriesForManagement(context);
+  } catch {
+    isDatabaseAvailable = false;
+  }
+
+  const canWriteCategories = isDatabaseAvailable
+    ? await hasWorkspacePermission({
+        userId: context.user.id,
+        workspaceId: context.workspace.id,
+        permission: "part-categories:write"
+      }).catch(() => false)
+    : false;
   const resolvedSearchParams = await searchParams;
-  const partCreated = resolvedSearchParams?.partCreated === "1";
-  const partDialogOpen = resolvedSearchParams?.partDialog === "open";
-  const partEditDialog = resolvedSearchParams?.partEditDialog;
-  const partFormError = resolvedSearchParams?.partFormError;
-  const partUpdated = resolvedSearchParams?.partUpdated === "1";
-  const partUpdateError = resolvedSearchParams?.partUpdateError;
+  const categoryCreated = resolvedSearchParams?.categoryCreated === "1";
+  const categoryDialogOpen = resolvedSearchParams?.categoryDialog === "create";
+  const categoryEditDialog = resolvedSearchParams?.categoryEditDialog;
+  const categoryError = resolvedSearchParams?.categoryError;
+  const categoryUpdated = resolvedSearchParams?.categoryUpdated === "1";
+  const categoryUpdateError = resolvedSearchParams?.categoryUpdateError;
 
   return (
     <main className="min-h-screen bg-slate-100 text-slate-950">
@@ -120,17 +132,17 @@ export default async function PartsPage({
             aria-label="Main navigation"
           >
             <Link
-              className="flex min-h-10 items-center rounded-md bg-slate-100 px-3 text-sm font-semibold text-slate-950"
+              className="flex min-h-10 items-center rounded-md px-3 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
               href={`/w/${workspaceSlug}/parts`}
+            >
+              {copy.parts}
+            </Link>
+            <Link
+              className="flex min-h-10 items-center rounded-md bg-slate-100 px-3 text-sm font-semibold text-slate-950"
+              href={`/w/${workspaceSlug}/part-categories`}
               aria-current="page"
             >
               {copy.title}
-            </Link>
-            <Link
-              className="flex min-h-10 items-center rounded-md px-3 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
-              href={`/w/${workspaceSlug}/part-categories`}
-            >
-              {copy.partCategories}
             </Link>
           </nav>
           <div className="border-t border-slate-200 p-3">
@@ -182,17 +194,17 @@ export default async function PartsPage({
               aria-label="Main navigation"
             >
               <Link
-                className="flex min-h-9 items-center rounded-md bg-slate-100 px-3 text-sm font-semibold text-slate-950"
+                className="flex min-h-9 items-center rounded-md px-3 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
                 href={`/w/${workspaceSlug}/parts`}
+              >
+                {copy.parts}
+              </Link>
+              <Link
+                className="flex min-h-9 items-center rounded-md bg-slate-100 px-3 text-sm font-semibold text-slate-950"
+                href={`/w/${workspaceSlug}/part-categories`}
                 aria-current="page"
               >
                 {copy.title}
-              </Link>
-              <Link
-                className="flex min-h-9 items-center rounded-md px-3 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
-                href={`/w/${workspaceSlug}/part-categories`}
-              >
-                {copy.partCategories}
               </Link>
             </nav>
           </header>
@@ -215,17 +227,17 @@ export default async function PartsPage({
               </p>
             ) : null}
 
-            <PartsListClient
+            <PartCategoriesClient
+              categories={categories}
+              categoryCreated={categoryCreated}
+              categoryDialogOpen={categoryDialogOpen}
+              categoryEditDialog={categoryEditDialog}
+              categoryError={categoryError}
+              categoryUpdated={categoryUpdated}
+              categoryUpdateError={categoryUpdateError}
+              canWriteCategories={canWriteCategories}
               copy={copy}
               isDatabaseAvailable={isDatabaseAvailable}
-              partCreated={partCreated}
-              partDialogOpen={partDialogOpen}
-              partEditDialog={partEditDialog}
-              partFormError={partFormError}
-              partUpdated={partUpdated}
-              partUpdateError={partUpdateError}
-              partCategories={partCategories}
-              parts={parts}
               workspaceSlug={workspaceSlug}
             />
           </div>
