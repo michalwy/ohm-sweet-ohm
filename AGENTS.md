@@ -25,9 +25,11 @@ This project is intentionally vibe-coded. Future agents must preserve product in
 - Favor boring, well-supported tools over novelty.
 - Preserve existing user changes. Do not rewrite unrelated files.
 - Do not create git commits unless the user explicitly asks for a commit.
-- Do not push changes directly to `main`. Create a branch whose name matches the change, push that branch, and open a GitHub pull request instead.
-- Before creating a feature branch or pull request, make sure local `main` is up to date with `origin/main`; pull, rebase, or gather needed context first when it is not.
-- Before pushing changes to GitHub and opening a pull request, confirm that the branch name is still appropriate for the actual change.
+- This is currently a solo project. When the user asks for a commit, commit directly to `main` by default after appropriate local verification.
+- Before pushing to `main`, make sure local `main` is current with `origin/main` when network access is available.
+- Create a feature branch and pull request only when the user explicitly asks for a PR, when keeping work separate is useful, or when the change is intentionally experimental or incomplete.
+- Use a separate git worktree only when the user explicitly asks for one. Do not create worktrees based on an agent's own risk assessment.
+- Do not push broken or unverified work unless the user explicitly asks to checkpoint it.
 - When creating commits, use Conventional Commits, for example `feat: add inventory overview` or `docs: update agent guidance`.
 - When a commit title alone would omit useful context, include an extended commit message body with concise details about motivation, scope, or notable tradeoffs.
 
