@@ -130,6 +130,110 @@ test.describe("parts list", () => {
     await expect(updatedPartRow).toContainText("Passives / Resistors");
   });
 
+  test("manages the part category tree without delete actions", async ({
+    page
+  }, testInfo) => {
+    const categoryName = `Sensors ${testInfo.project.name}`;
+    const childName = `Temperature sensors ${testInfo.project.name}`;
+    const updatedChildName = `Thermistors ${testInfo.project.name}`;
+
+    await page.goto("/");
+    await page.getByLabel("Email").fill("owner@ohmsweetohm.local");
+    await page.getByLabel("Password").fill("ohm-sweet-ohm-owner");
+    await page.getByRole("button", { name: "Sign in" }).click();
+
+    await expect(
+      page.getByRole("heading", { level: 1, name: "Workspaces" })
+    ).toBeVisible();
+    await page.getByRole("link", { name: "Open" }).click();
+    await page.goto("/w/default/part-categories");
+
+    await expect(page).toHaveURL(/\/w\/default\/part-categories$/);
+    await expect(
+      page.getByRole("heading", { level: 1, name: "Part categories" })
+    ).toBeVisible();
+    await expect(
+      page.locator("p").filter({ hasText: /^Passives$/ }).first()
+    ).toBeVisible();
+    await expect(page.getByText("Delete")).toHaveCount(0);
+
+    await page.getByRole("button", { name: "Add root category" }).click();
+    const addCategoryDialog = page.getByRole("dialog", {
+      name: "Add category"
+    });
+    await expect(addCategoryDialog).toBeVisible();
+    await addCategoryDialog.getByLabel("Name").fill(categoryName);
+    await addCategoryDialog.getByText("Organizational", { exact: true }).click();
+    await addCategoryDialog
+      .getByRole("button", { name: "Create category" })
+      .click();
+
+    await expect(page.getByText("Category created.")).toBeVisible();
+    await expect(
+      page.locator("p").filter({ hasText: new RegExp(`^${categoryName}$`) })
+        .first()
+    ).toBeVisible();
+
+    const categoryNode = page
+      .getByTestId("part-category-node")
+      .filter({
+        has: page.locator("p").filter({
+          hasText: new RegExp(`^${categoryName}$`)
+        })
+      })
+      .first();
+    await categoryNode.getByRole("button", { name: "Add child" }).click();
+    await expect(addCategoryDialog).toBeVisible();
+    await addCategoryDialog.getByLabel("Name").fill(childName);
+    await addCategoryDialog
+      .getByRole("button", { name: "Create category" })
+      .click();
+
+    await expect(page.getByText("Category created.")).toBeVisible();
+    await expect(
+      page.locator("p").filter({ hasText: new RegExp(`^${childName}$`) })
+        .first()
+    ).toBeVisible();
+    await expect(
+      page
+        .locator("p")
+        .filter({ hasText: new RegExp(`^${categoryName} / ${childName}$`) })
+        .first()
+    ).toBeVisible();
+
+    const childNode = page
+      .getByTestId("part-category-node")
+      .filter({
+        has: page.locator("p").filter({
+          hasText: new RegExp(`^${childName}$`)
+        })
+      })
+      .first();
+    await childNode.getByRole("button", { name: "Edit" }).click();
+    const editCategoryDialog = page.getByRole("dialog", {
+      name: "Edit category"
+    });
+    await expect(editCategoryDialog).toBeVisible();
+    await editCategoryDialog.getByLabel("Name").fill(updatedChildName);
+    await editCategoryDialog
+      .getByRole("button", { name: "Save changes" })
+      .click();
+
+    await expect(page.getByText("Category updated.")).toBeVisible();
+    await expect(
+      page.locator("p").filter({ hasText: new RegExp(`^${updatedChildName}$`) })
+        .first()
+    ).toBeVisible();
+    await expect(
+      page
+        .locator("p")
+        .filter({
+          hasText: new RegExp(`^${categoryName} / ${updatedChildName}$`)
+        })
+        .first()
+    ).toBeVisible();
+  });
+
   test("returns signed-in users to their last workspace", async ({
     isMobile,
     page
