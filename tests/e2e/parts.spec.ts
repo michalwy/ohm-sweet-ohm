@@ -68,12 +68,26 @@ test.describe("parts list", () => {
     await expect(seededPartRow).toBeVisible();
     await expect(seededPartRow).toContainText("NE555P");
     await expect(seededPartRow).toContainText("Texas Instruments");
+    await expect(seededPartRow).toContainText(
+      "Semiconductors / Integrated circuits"
+    );
 
     await page.getByRole("button", { name: "Add part" }).click();
     const addPartDialog = page.getByRole("dialog", { name: "Add part" });
     await expect(addPartDialog).toBeVisible();
+    await expect(
+      addPartDialog.locator('select[name="primaryCategoryId"] option', {
+        hasText: /^Passives$/
+      })
+    ).toHaveCount(0);
     await addPartDialog.getByLabel("Catalog number").fill(catalogNumber);
     await addPartDialog.getByLabel("Manufacturer").fill("Microchip Technology");
+    await addPartDialog
+      .getByLabel("Primary category")
+      .selectOption({ label: "Semiconductors / Integrated circuits" });
+    await addPartDialog
+      .getByLabel("Secondary category")
+      .selectOption({ label: "Passives / Resistors" });
     await page.getByRole("button", { name: "Create part" }).click();
 
     await expect(page.getByText("Part created.")).toBeVisible();
@@ -83,6 +97,10 @@ test.describe("parts list", () => {
 
     await expect(createdPartRow).toBeVisible();
     await expect(createdPartRow).toContainText("Microchip Technology");
+    await expect(createdPartRow).toContainText(
+      "Semiconductors / Integrated circuits"
+    );
+    await expect(createdPartRow).toContainText("Passives / Resistors");
 
     await createdPartRow.getByRole("button", { name: "Edit" }).click();
     const editPartDialog = page.getByRole("dialog", { name: "Edit part" });
@@ -95,14 +113,21 @@ test.describe("parts list", () => {
     );
     await editPartDialog.getByLabel("Catalog number").fill(updatedCatalogNumber);
     await editPartDialog.getByLabel("Manufacturer").fill(updatedManufacturer);
+    await editPartDialog
+      .getByLabel("Primary category")
+      .selectOption({ label: "Passives / Capacitors" });
+    await editPartDialog
+      .getByLabel("Secondary category")
+      .selectOption({ label: "Passives / Resistors" });
     await editPartDialog.getByRole("button", { name: "Save changes" }).click();
 
     await expect(page.getByText("Part updated.")).toBeVisible();
-    await expect(
-      page.getByRole("row", {
-        name: new RegExp(`${updatedCatalogNumber}.*${updatedManufacturer}`)
-      })
-    ).toBeVisible();
+    const updatedPartRow = page.getByRole("row", {
+      name: new RegExp(`${updatedCatalogNumber}.*${updatedManufacturer}`)
+    });
+    await expect(updatedPartRow).toBeVisible();
+    await expect(updatedPartRow).toContainText("Passives / Capacitors");
+    await expect(updatedPartRow).toContainText("Passives / Resistors");
   });
 
   test("returns signed-in users to their last workspace", async ({

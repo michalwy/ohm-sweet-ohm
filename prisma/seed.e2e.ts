@@ -31,6 +31,8 @@ async function main() {
   await prisma.role.deleteMany();
   await prisma.workspaceMember.deleteMany();
   await prisma.part.deleteMany();
+  await prisma.partCategoryClosure.deleteMany();
+  await prisma.partCategory.deleteMany();
   await prisma.workspace.deleteMany();
   await prisma.user.deleteMany();
 
@@ -110,20 +112,125 @@ async function main() {
     }
   });
 
-  await prisma.part.createMany({
-    data: [
-      {
-        workspaceId: workspace.id,
-        catalogNumber: "NE555P",
-        manufacturerName: "Texas Instruments"
-      },
-      {
-        workspaceId: workspace.id,
-        catalogNumber: "1N4148W",
-        manufacturerName: "Diodes Incorporated"
-      }
-    ]
+  const categories = await seedPartCategories(workspace.id);
+
+  await prisma.part.create({
+    data: {
+      workspaceId: workspace.id,
+      catalogNumber: "NE555P",
+      manufacturerName: "Texas Instruments",
+      primaryCategoryId: categories.integratedCircuits.id
+    }
   });
+
+  await prisma.part.create({
+    data: {
+      workspaceId: workspace.id,
+      catalogNumber: "1N4148W",
+      manufacturerName: "Diodes Incorporated",
+      primaryCategoryId: categories.diodes.id
+    }
+  });
+}
+
+async function seedPartCategories(workspaceId: string) {
+  const passives = await createPartCategory({
+    workspaceId,
+    name: "Passives",
+    isAssignable: false
+  });
+  const capacitors = await createPartCategory({
+    workspaceId,
+    parentId: passives.id,
+    name: "Capacitors",
+    isAssignable: true
+  });
+  const resistors = await createPartCategory({
+    workspaceId,
+    parentId: passives.id,
+    name: "Resistors",
+    isAssignable: true
+  });
+  const semiconductors = await createPartCategory({
+    workspaceId,
+    name: "Semiconductors",
+    isAssignable: false
+  });
+  const diodes = await createPartCategory({
+    workspaceId,
+    parentId: semiconductors.id,
+    name: "Diodes",
+    isAssignable: true
+  });
+  const integratedCircuits = await createPartCategory({
+    workspaceId,
+    parentId: semiconductors.id,
+    name: "Integrated circuits",
+    isAssignable: true
+  });
+
+  return {
+    capacitors,
+    diodes,
+    integratedCircuits,
+    passives,
+    resistors,
+    semiconductors
+  };
+}
+
+async function createPartCategory({
+  workspaceId,
+  parentId = null,
+  name,
+  isAssignable
+}: {
+  workspaceId: string;
+  parentId?: string | null;
+  name: string;
+  isAssignable: boolean;
+}) {
+  const category = await prisma.partCategory.create({
+    data: {
+      workspaceId,
+      parentId,
+      name,
+      isAssignable
+    }
+  });
+
+  await prisma.partCategoryClosure.create({
+    data: {
+      workspaceId,
+      ancestorId: category.id,
+      descendantId: category.id,
+      depth: 0
+    }
+  });
+
+  if (parentId) {
+    const parentClosures = await prisma.partCategoryClosure.findMany({
+      where: {
+        workspaceId,
+        descendantId: parentId
+      },
+      select: {
+        ancestorId: true,
+        depth: true
+      }
+    });
+
+    await prisma.partCategoryClosure.createMany({
+      data: parentClosures.map((closure) => ({
+        workspaceId,
+        ancestorId: closure.ancestorId,
+        descendantId: category.id,
+        depth: closure.depth + 1
+      }))
+    });
+  }
+
+  return category;
 }
 
 main()

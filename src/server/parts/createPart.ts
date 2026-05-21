@@ -11,34 +11,55 @@ export async function createPart(formData: FormData) {
   const workspaceSlug = getRequiredFormValue(formData, "workspaceSlug");
   const catalogNumber = getRequiredFormValue(formData, "catalogNumber");
   const manufacturerName = getRequiredFormValue(formData, "manufacturerName");
+  const primaryCategoryId = getOptionalFormValue(formData, "primaryCategoryId");
+  const secondaryCategoryId = getOptionalFormValue(
+    formData,
+    "secondaryCategoryId"
+  );
   const partsPath = getPartsPath(workspaceSlug);
 
   if (!workspaceSlug || !catalogNumber || !manufacturerName) {
     redirect(`${partsPath}?partFormError=missing-required-fields&partDialog=open`);
   }
 
+  let formError: string | null = null;
+
   try {
     const context = await getCurrentWorkspaceContextBySlug(workspaceSlug);
 
     if (!context) {
-      redirect(`${partsPath}?partFormError=database-unavailable&partDialog=open`);
-    }
-
-    await authorizeWorkspacePermission({
-      userId: context.user.id,
-      workspaceId: context.workspace.id,
-      permission: "parts:write"
-    });
-
-    await prisma.part.create({
-      data: {
+      formError = "database-unavailable";
+    } else {
+      await authorizeWorkspacePermission({
+        userId: context.user.id,
         workspaceId: context.workspace.id,
-        catalogNumber,
-        manufacturerName
+        permission: "parts:write"
+      });
+
+      formError = await validatePartCategoryAssignment({
+        workspaceId: context.workspace.id,
+        primaryCategoryId,
+        secondaryCategoryId
+      });
+
+      if (!formError) {
+        await prisma.part.create({
+          data: {
+            workspaceId: context.workspace.id,
+            catalogNumber,
+            manufacturerName,
+            primaryCategoryId,
+            secondaryCategoryId
+          }
+        });
       }
-    });
+    }
   } catch {
-    redirect(`${partsPath}?partFormError=database-unavailable&partDialog=open`);
+    formError = "database-unavailable";
+  }
+
+  if (formError) {
+    redirect(`${partsPath}?partFormError=${formError}&partDialog=open`);
   }
 
   revalidatePath(partsPath);
@@ -50,6 +71,11 @@ export async function updatePart(formData: FormData) {
   const id = getRequiredFormValue(formData, "id");
   const catalogNumber = getRequiredFormValue(formData, "catalogNumber");
   const manufacturerName = getRequiredFormValue(formData, "manufacturerName");
+  const primaryCategoryId = getOptionalFormValue(formData, "primaryCategoryId");
+  const secondaryCategoryId = getOptionalFormValue(
+    formData,
+    "secondaryCategoryId"
+  );
   const partsPath = getPartsPath(workspaceSlug);
 
   if (!workspaceSlug || !id || !catalogNumber || !manufacturerName) {
@@ -58,34 +84,48 @@ export async function updatePart(formData: FormData) {
     );
   }
 
+  let formError: string | null = null;
+
   try {
     const context = await getCurrentWorkspaceContextBySlug(workspaceSlug);
 
     if (!context) {
-      redirect(
-        `${partsPath}?partUpdateError=database-unavailable&partEditDialog=${encodeURIComponent(id)}`
-      );
-    }
+      formError = "database-unavailable";
+    } else {
+      await authorizeWorkspacePermission({
+        userId: context.user.id,
+        workspaceId: context.workspace.id,
+        permission: "parts:write"
+      });
 
-    await authorizeWorkspacePermission({
-      userId: context.user.id,
-      workspaceId: context.workspace.id,
-      permission: "parts:write"
-    });
+      formError = await validatePartCategoryAssignment({
+        workspaceId: context.workspace.id,
+        primaryCategoryId,
+        secondaryCategoryId
+      });
 
-    await prisma.part.updateMany({
-      where: {
-        id,
-        workspaceId: context.workspace.id
-      },
-      data: {
-        catalogNumber,
-        manufacturerName
+      if (!formError) {
+        await prisma.part.updateMany({
+          where: {
+            id,
+            workspaceId: context.workspace.id
+          },
+          data: {
+            catalogNumber,
+            manufacturerName,
+            primaryCategoryId,
+            secondaryCategoryId
+          }
+        });
       }
-    });
+    }
   } catch {
+    formError = "database-unavailable";
+  }
+
+  if (formError) {
     redirect(
-      `${partsPath}?partUpdateError=database-unavailable&partEditDialog=${encodeURIComponent(id)}`
+      `${partsPath}?partUpdateError=${formError}&partEditDialog=${encodeURIComponent(id)}`
     );
   }
 
@@ -103,10 +143,65 @@ function getRequiredFormValue(formData: FormData, name: string) {
   return value.trim();
 }
 
+function getOptionalFormValue(formData: FormData, name: string) {
+  const value = getRequiredFormValue(formData, name);
+
+  return value || null;
+}
+
 function getPartsPath(workspaceSlug: string) {
   if (!workspaceSlug) {
     return "/workspaces";
   }
 
   return `/w/${encodeURIComponent(workspaceSlug)}/parts`;
+}
+
+async function validatePartCategoryAssignment({
+  workspaceId,
+  primaryCategoryId,
+  secondaryCategoryId
+}: {
+  workspaceId: string;
+  primaryCategoryId: string | null;
+  secondaryCategoryId: string | null;
+}) {
+  if (secondaryCategoryId && !primaryCategoryId) {
+    return "secondary-without-primary";
+  }
+
+  if (
+    primaryCategoryId &&
+    secondaryCategoryId &&
+    primaryCategoryId === secondaryCategoryId
+  ) {
+    return "duplicate-categories";
+  }
+
+  const categoryIds = [primaryCategoryId, secondaryCategoryId].filter(
+    (categoryId): categoryId is string => Boolean(categoryId)
+  );
+
+  if (categoryIds.length === 0) {
+    return null;
+  }
+
+  const assignableCategories = await prisma.partCategory.findMany({
+    where: {
+      id: {
+        in: categoryIds
+      },
+      workspaceId,
+      isAssignable: true
+    },
+    select: {
+      id: true
+    }
+  });
+
+  if (assignableCategories.length !== categoryIds.length) {
+    return "invalid-category";
+  }
+
+  return null;
 }

@@ -385,6 +385,8 @@ type FieldRefInputType<Model, FieldType> = Model extends never ? never : FieldRe
 
 export const ModelName = {
   Part: 'Part',
+  PartCategory: 'PartCategory',
+  PartCategoryClosure: 'PartCategoryClosure',
   User: 'User',
   Session: 'Session',
   Account: 'Account',
@@ -410,7 +412,7 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
     omit: GlobalOmitOptions
   }
   meta: {
-    modelProps: "part" | "user" | "session" | "account" | "verification" | "workspace" | "workspaceMember" | "role" | "permission" | "rolePermission" | "workspaceMemberRole"
+    modelProps: "part" | "partCategory" | "partCategoryClosure" | "user" | "session" | "account" | "verification" | "workspace" | "workspaceMember" | "role" | "permission" | "rolePermission" | "workspaceMemberRole"
     txIsolationLevel: TransactionIsolationLevel
   }
   model: {
@@ -485,6 +487,154 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         count: {
           args: Prisma.PartCountArgs<ExtArgs>
           result: runtime.Types.Utils.Optional<Prisma.PartCountAggregateOutputType> | number
+        }
+      }
+    }
+    PartCategory: {
+      payload: Prisma.$PartCategoryPayload<ExtArgs>
+      fields: Prisma.PartCategoryFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.PartCategoryFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PartCategoryPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.PartCategoryFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PartCategoryPayload>
+        }
+        findFirst: {
+          args: Prisma.PartCategoryFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PartCategoryPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.PartCategoryFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PartCategoryPayload>
+        }
+        findMany: {
+          args: Prisma.PartCategoryFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PartCategoryPayload>[]
+        }
+        create: {
+          args: Prisma.PartCategoryCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PartCategoryPayload>
+        }
+        createMany: {
+          args: Prisma.PartCategoryCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.PartCategoryCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PartCategoryPayload>[]
+        }
+        delete: {
+          args: Prisma.PartCategoryDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PartCategoryPayload>
+        }
+        update: {
+          args: Prisma.PartCategoryUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PartCategoryPayload>
+        }
+        deleteMany: {
+          args: Prisma.PartCategoryDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.PartCategoryUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.PartCategoryUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PartCategoryPayload>[]
+        }
+        upsert: {
+          args: Prisma.PartCategoryUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PartCategoryPayload>
+        }
+        aggregate: {
+          args: Prisma.PartCategoryAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregatePartCategory>
+        }
+        groupBy: {
+          args: Prisma.PartCategoryGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.PartCategoryGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.PartCategoryCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.PartCategoryCountAggregateOutputType> | number
+        }
+      }
+    }
+    PartCategoryClosure: {
+      payload: Prisma.$PartCategoryClosurePayload<ExtArgs>
+      fields: Prisma.PartCategoryClosureFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.PartCategoryClosureFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PartCategoryClosurePayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.PartCategoryClosureFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PartCategoryClosurePayload>
+        }
+        findFirst: {
+          args: Prisma.PartCategoryClosureFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PartCategoryClosurePayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.PartCategoryClosureFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PartCategoryClosurePayload>
+        }
+        findMany: {
+          args: Prisma.PartCategoryClosureFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PartCategoryClosurePayload>[]
+        }
+        create: {
+          args: Prisma.PartCategoryClosureCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PartCategoryClosurePayload>
+        }
+        createMany: {
+          args: Prisma.PartCategoryClosureCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.PartCategoryClosureCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PartCategoryClosurePayload>[]
+        }
+        delete: {
+          args: Prisma.PartCategoryClosureDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PartCategoryClosurePayload>
+        }
+        update: {
+          args: Prisma.PartCategoryClosureUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PartCategoryClosurePayload>
+        }
+        deleteMany: {
+          args: Prisma.PartCategoryClosureDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.PartCategoryClosureUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.PartCategoryClosureUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PartCategoryClosurePayload>[]
+        }
+        upsert: {
+          args: Prisma.PartCategoryClosureUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PartCategoryClosurePayload>
+        }
+        aggregate: {
+          args: Prisma.PartCategoryClosureAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregatePartCategoryClosure>
+        }
+        groupBy: {
+          args: Prisma.PartCategoryClosureGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.PartCategoryClosureGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.PartCategoryClosureCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.PartCategoryClosureCountAggregateOutputType> | number
         }
       }
     }
@@ -1272,11 +1422,36 @@ export const PartScalarFieldEnum = {
   workspaceId: 'workspaceId',
   catalogNumber: 'catalogNumber',
   manufacturerName: 'manufacturerName',
+  primaryCategoryId: 'primaryCategoryId',
+  secondaryCategoryId: 'secondaryCategoryId',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
 } as const
 
 export type PartScalarFieldEnum = (typeof PartScalarFieldEnum)[keyof typeof PartScalarFieldEnum]
+
+
+export const PartCategoryScalarFieldEnum = {
+  id: 'id',
+  workspaceId: 'workspaceId',
+  parentId: 'parentId',
+  name: 'name',
+  isAssignable: 'isAssignable',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type PartCategoryScalarFieldEnum = (typeof PartCategoryScalarFieldEnum)[keyof typeof PartCategoryScalarFieldEnum]
+
+
+export const PartCategoryClosureScalarFieldEnum = {
+  workspaceId: 'workspaceId',
+  ancestorId: 'ancestorId',
+  descendantId: 'descendantId',
+  depth: 'depth'
+} as const
+
+export type PartCategoryClosureScalarFieldEnum = (typeof PartCategoryClosureScalarFieldEnum)[keyof typeof PartCategoryClosureScalarFieldEnum]
 
 
 export const UserScalarFieldEnum = {
@@ -1476,6 +1651,20 @@ export type IntFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'In
 export type ListIntFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Int[]'>
     
 
+
+/**
+ * Reference to a field of type 'Float'
+ */
+export type FloatFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Float'>
+    
+
+
+/**
+ * Reference to a field of type 'Float[]'
+ */
+export type ListFloatFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Float[]'>
+    
+
 /**
  * Batch Payload for updateMany & deleteMany & createMany
  */
@@ -1587,6 +1776,8 @@ export type PrismaClientOptions = ({
 }
 export type GlobalOmitConfig = {
   part?: Prisma.PartOmit
+  partCategory?: Prisma.PartCategoryOmit
+  partCategoryClosure?: Prisma.PartCategoryClosureOmit
   user?: Prisma.UserOmit
   session?: Prisma.SessionOmit
   account?: Prisma.AccountOmit

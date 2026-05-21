@@ -2,11 +2,16 @@ import "server-only";
 
 import { authorizeWorkspacePermission } from "@/server/access-control/authorize";
 import { prisma } from "@/server/db/prisma";
+import { getPartCategories } from "@/server/parts/categories";
 
 export type PartsListItem = {
   id: string;
   catalogNumber: string;
   manufacturerName: string;
+  primaryCategoryId: string | null;
+  primaryCategoryPath: string | null;
+  secondaryCategoryId: string | null;
+  secondaryCategoryPath: string | null;
 };
 
 export type PartsListResult = {
@@ -33,7 +38,8 @@ export async function getPartsList(
       permission: "parts:read"
     });
 
-    const parts = await prisma.part.findMany({
+    const [parts, categories] = await Promise.all([
+      prisma.part.findMany({
       where: {
         workspaceId: context.workspace.id
       },
@@ -41,12 +47,27 @@ export async function getPartsList(
       select: {
         id: true,
         catalogNumber: true,
-        manufacturerName: true
+        manufacturerName: true,
+        primaryCategoryId: true,
+        secondaryCategoryId: true
       }
-    });
+      }),
+      getPartCategories(context.workspace.id)
+    ]);
+    const categoryPathsById = new Map(
+      categories.map((category) => [category.id, category.path])
+    );
 
     return {
-      parts,
+      parts: parts.map((part) => ({
+        ...part,
+        primaryCategoryPath: part.primaryCategoryId
+          ? categoryPathsById.get(part.primaryCategoryId) ?? null
+          : null,
+        secondaryCategoryPath: part.secondaryCategoryId
+          ? categoryPathsById.get(part.secondaryCategoryId) ?? null
+          : null
+      })),
       isDatabaseAvailable: true
     };
   } catch {

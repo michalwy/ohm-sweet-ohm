@@ -52,6 +52,8 @@ export const AnyNull = runtime.AnyNull
 
 export const ModelName = {
   Part: 'Part',
+  PartCategory: 'PartCategory',
+  PartCategoryClosure: 'PartCategoryClosure',
   User: 'User',
   Session: 'Session',
   Account: 'Account',
@@ -85,11 +87,36 @@ export const PartScalarFieldEnum = {
   workspaceId: 'workspaceId',
   catalogNumber: 'catalogNumber',
   manufacturerName: 'manufacturerName',
+  primaryCategoryId: 'primaryCategoryId',
+  secondaryCategoryId: 'secondaryCategoryId',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
 } as const
 
 export type PartScalarFieldEnum = (typeof PartScalarFieldEnum)[keyof typeof PartScalarFieldEnum]
+
+
+export const PartCategoryScalarFieldEnum = {
+  id: 'id',
+  workspaceId: 'workspaceId',
+  parentId: 'parentId',
+  name: 'name',
+  isAssignable: 'isAssignable',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type PartCategoryScalarFieldEnum = (typeof PartCategoryScalarFieldEnum)[keyof typeof PartCategoryScalarFieldEnum]
+
+
+export const PartCategoryClosureScalarFieldEnum = {
+  workspaceId: 'workspaceId',
+  ancestorId: 'ancestorId',
+  descendantId: 'descendantId',
+  depth: 'depth'
+} as const
+
+export type PartCategoryClosureScalarFieldEnum = (typeof PartCategoryClosureScalarFieldEnum)[keyof typeof PartCategoryClosureScalarFieldEnum]
 
 
 export const UserScalarFieldEnum = {
