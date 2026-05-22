@@ -6,6 +6,10 @@ import { redirect } from "next/navigation";
 import { authorizeWorkspacePermission } from "@/server/access-control/authorize";
 import { getCurrentWorkspaceContextBySlug } from "@/server/auth/currentContext";
 import { prisma } from "@/server/db/prisma";
+import {
+  ensureOrganizationWithRole,
+  ORGANIZATION_ROLE_MANUFACTURER
+} from "@/server/organizations/organizations";
 
 export async function createPart(formData: FormData) {
   const workspaceSlug = getRequiredFormValue(formData, "workspaceSlug");
@@ -43,11 +47,17 @@ export async function createPart(formData: FormData) {
       });
 
       if (!formError) {
+        const manufacturer = await ensureOrganizationWithRole({
+          workspaceId: context.workspace.id,
+          name: manufacturerName,
+          role: ORGANIZATION_ROLE_MANUFACTURER
+        });
+
         await prisma.part.create({
           data: {
             workspaceId: context.workspace.id,
             catalogNumber,
-            manufacturerName,
+            manufacturerId: manufacturer.id,
             primaryCategoryId,
             secondaryCategoryId
           }
@@ -105,6 +115,12 @@ export async function updatePart(formData: FormData) {
       });
 
       if (!formError) {
+        const manufacturer = await ensureOrganizationWithRole({
+          workspaceId: context.workspace.id,
+          name: manufacturerName,
+          role: ORGANIZATION_ROLE_MANUFACTURER
+        });
+
         await prisma.part.updateMany({
           where: {
             id,
@@ -112,7 +128,7 @@ export async function updatePart(formData: FormData) {
           },
           data: {
             catalogNumber,
-            manufacturerName,
+            manufacturerId: manufacturer.id,
             primaryCategoryId,
             secondaryCategoryId
           }

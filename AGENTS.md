@@ -10,7 +10,7 @@ This project is intentionally vibe-coded. Future agents must preserve product in
 - Purpose: a web app for managing a home electronics workshop
 - Application language: English first, additional languages later
 - First feature: a parts list
-- Current part definition: real purchasable electronic parts identified by manufacturer name and catalog number
+- Current part definition: real purchasable electronic parts identified by manufacturer organization and catalog number
 
 ## Working Rules
 
@@ -57,6 +57,7 @@ Do not use multiple roles to invent product behavior. Product decisions still re
 - Use the workspace-scoped access control model documented in `docs/decisions/0005-workspace-access-control.md`: users are global, workspace data carries `workspaceId`, roles belong to workspaces, and the `admin` permission is a wildcard in authorization logic.
 - Use Better Auth for application authentication as documented in `docs/decisions/0006-authentication-provider.md`; do not reintroduce development current-user shortcuts.
 - Use the registration and workspace routing flow documented in `docs/decisions/0007-workspace-registration-and-routing.md`: sign-up creates only a global user, sign-in returns users to their last accessible workspace when remembered, users choose or create workspaces at `/workspaces`, workspace URLs use `/w/[workspaceSlug]/...`, and slug resolution must still authorize by internal `workspaceId`.
+- Use the organization model documented in `docs/decisions/0009-organizations-for-part-manufacturers.md`: manufacturers are workspace-scoped organizations with a `manufacturer` role, not a manufacturer-only table. Do not infer supplier, buyer, purchase, or pricing behavior from this model.
 - Treat new domain resources as workspace-scoped by default. Add `workspaceId` and scope server-side queries/mutations to the current workspace unless an explicit product decision says the resource is global.
 - Keep authorization checks in server-side application/domain code, not UI components.
 - When adding workspace-scoped functionality, protect every server-side read or mutation with the appropriate permission. If no suitable permission exists yet, introduce an explicit permission key for that resource/action before exposing the behavior.

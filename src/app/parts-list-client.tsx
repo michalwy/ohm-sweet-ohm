@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
 import { createPart, updatePart } from "@/server/parts/createPart";
+import type { ManufacturerSuggestion } from "@/server/organizations/organizations";
 import type { PartCategoryListItem } from "@/server/parts/categories";
 import type { PartsListItem } from "@/server/parts/getParts";
 
@@ -17,6 +18,7 @@ type Copy = {
   noCategory: string;
   noSecondaryCategory: string;
   manufacturer: string;
+  noMatchingManufacturers: string;
   actions: string;
   newPartTitle: string;
   newPartBody: string;
@@ -59,6 +61,7 @@ type PartsListClientProps = {
   partUpdated: boolean;
   partUpdateError?: string;
   partCategories: PartCategoryListItem[];
+  manufacturerSuggestions: ManufacturerSuggestion[];
   parts: PartsListItem[];
   workspaceSlug: string;
 };
@@ -73,6 +76,7 @@ export function PartsListClient({
   partUpdated,
   partUpdateError,
   partCategories,
+  manufacturerSuggestions,
   parts,
   workspaceSlug
 }: PartsListClientProps) {
@@ -285,17 +289,14 @@ export function PartsListClient({
                 disabled={!isDatabaseAvailable}
               />
             </label>
-            <label className="grid gap-2 text-sm font-medium text-slate-700">
-              {copy.manufacturer}
-              <input
-                className="min-h-11 rounded-md border border-slate-300 bg-white px-3 py-2 text-base text-slate-950 outline-none transition placeholder:text-slate-400 hover:border-slate-400 focus:border-slate-500 focus:ring-2 focus:ring-slate-200 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400"
-                name="manufacturerName"
-                placeholder={copy.manufacturerPlaceholder}
-                required
-                type="text"
-                disabled={!isDatabaseAvailable}
-              />
-            </label>
+            <ManufacturerAutocomplete
+              copy={copy}
+              disabled={!isDatabaseAvailable}
+              inputId="create-manufacturer-name"
+              name="manufacturerName"
+              placeholder={copy.manufacturerPlaceholder}
+              suggestions={manufacturerSuggestions}
+            />
             <CategoryTreeSelect
               categories={partCategories}
               categoryTree={categoryTree}
@@ -387,18 +388,16 @@ export function PartsListClient({
                   disabled={!isDatabaseAvailable}
                 />
               </label>
-              <label className="grid gap-2 text-sm font-medium text-slate-700">
-                {copy.manufacturer}
-                <input
-                  className="min-h-11 rounded-md border border-slate-300 bg-white px-3 py-2 text-base text-slate-950 outline-none transition placeholder:text-slate-400 hover:border-slate-400 focus:border-slate-500 focus:ring-2 focus:ring-slate-200 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400"
-                  defaultValue={editingPart.manufacturerName}
-                  name="manufacturerName"
-                  placeholder={copy.manufacturerPlaceholder}
-                  required
-                  type="text"
-                  disabled={!isDatabaseAvailable}
-                />
-              </label>
+              <ManufacturerAutocomplete
+                key={`${editingPart.id}-${editingPart.manufacturerName}`}
+                copy={copy}
+                defaultValue={editingPart.manufacturerName}
+                disabled={!isDatabaseAvailable}
+                inputId="edit-manufacturer-name"
+                name="manufacturerName"
+                placeholder={copy.manufacturerPlaceholder}
+                suggestions={manufacturerSuggestions}
+              />
               <CategoryTreeSelect
                 categories={partCategories}
                 categoryTree={categoryTree}
@@ -480,6 +479,236 @@ function getCategoryErrorMessage(copy: Copy, error: string) {
   }
 
   return copy.databaseUnavailable;
+}
+
+function ManufacturerAutocomplete({
+  copy,
+  defaultValue = "",
+  disabled,
+  inputId,
+  name,
+  placeholder,
+  suggestions
+}: {
+  copy: Copy;
+  defaultValue?: string;
+  disabled: boolean;
+  inputId: string;
+  name: string;
+  placeholder: string;
+  suggestions: ManufacturerSuggestion[];
+}) {
+  const listboxId = `${inputId}-suggestions`;
+  const [value, setValue] = useState(defaultValue);
+  const [isOpen, setIsOpen] = useState(false);
+  const [activeIndex, setActiveIndex] = useState(0);
+  const matchingSuggestions = getManufacturerMatches(value, suggestions);
+  const hasSuggestions = matchingSuggestions.length > 0;
+  const activeSuggestion = matchingSuggestions[activeIndex];
+  const hasSearchQuery = normalizeManufacturerSearchText(value).length > 0;
+
+  function updateSuggestionsOpen(nextValue: string) {
+    if (!disabled && normalizeManufacturerSearchText(nextValue)) {
+      setIsOpen(true);
+      return;
+    }
+
+    setIsOpen(false);
+  }
+
+  function selectSuggestion(suggestion: ManufacturerSuggestion) {
+    setValue(suggestion.name);
+    setIsOpen(false);
+    setActiveIndex(0);
+  }
+
+  function moveActiveSuggestion(direction: 1 | -1) {
+    if (!hasSuggestions) {
+      return;
+    }
+
+    setActiveIndex(
+      (activeIndex + direction + matchingSuggestions.length) %
+        matchingSuggestions.length
+    );
+  }
+
+  function handleKeyDown(event: ReactKeyboardEvent<HTMLInputElement>) {
+    if (event.key === "ArrowDown") {
+      event.preventDefault();
+
+      if (!isOpen) {
+        updateSuggestionsOpen(value);
+        return;
+      }
+
+      moveActiveSuggestion(1);
+    }
+
+    if (event.key === "ArrowUp") {
+      event.preventDefault();
+
+      if (!isOpen) {
+        updateSuggestionsOpen(value);
+        return;
+      }
+
+      moveActiveSuggestion(-1);
+    }
+
+    if (event.key === "Enter" && isOpen && activeSuggestion) {
+      event.preventDefault();
+      selectSuggestion(activeSuggestion);
+    }
+
+    if (event.key === "Escape" && isOpen) {
+      event.preventDefault();
+      setIsOpen(false);
+    }
+  }
+
+  return (
+    <div className="relative grid gap-2 text-sm font-medium text-slate-700">
+      <label htmlFor={inputId}>{copy.manufacturer}</label>
+      <input
+        id={inputId}
+        aria-activedescendant={
+          isOpen && activeSuggestion
+            ? getManufacturerOptionId(inputId, activeSuggestion.id)
+            : undefined
+        }
+        aria-autocomplete="list"
+        aria-controls={listboxId}
+        aria-expanded={isOpen}
+        autoComplete="off"
+        className="min-h-11 rounded-md border border-slate-300 bg-white px-3 py-2 text-base text-slate-950 outline-none transition placeholder:text-slate-400 hover:border-slate-400 focus:border-slate-500 focus:ring-2 focus:ring-slate-200 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400"
+        disabled={disabled}
+        name={name}
+        placeholder={placeholder}
+        required
+        role="combobox"
+        type="text"
+        value={value}
+        onBlur={() => {
+          setIsOpen(false);
+        }}
+        onChange={(event) => {
+          const nextValue = event.currentTarget.value;
+
+          setValue(nextValue);
+          setActiveIndex(0);
+          updateSuggestionsOpen(nextValue);
+        }}
+        onKeyDown={handleKeyDown}
+      />
+      {isOpen && hasSearchQuery ? (
+        <div
+          id={listboxId}
+          className="absolute left-0 right-0 top-full z-40 mt-1 overflow-hidden rounded-md border border-slate-200 bg-white shadow-lg"
+          role="listbox"
+        >
+          {hasSuggestions ? (
+            <ol className="max-h-56 overflow-auto p-1">
+              {matchingSuggestions.map((suggestion, index) => (
+                <li key={suggestion.id}>
+                  <button
+                    id={getManufacturerOptionId(inputId, suggestion.id)}
+                    aria-selected={index === activeIndex}
+                    className={`min-h-9 w-full rounded-md px-3 py-1.5 text-left text-sm transition focus:outline-none focus:ring-2 focus:ring-slate-300 ${
+                      index === activeIndex
+                        ? "bg-cyan-100 font-semibold text-slate-950"
+                        : "text-slate-700 hover:bg-slate-50"
+                    }`}
+                    role="option"
+                    type="button"
+                    onMouseDown={(event) => event.preventDefault()}
+                    onClick={() => selectSuggestion(suggestion)}
+                  >
+                    {suggestion.name}
+                  </button>
+                </li>
+              ))}
+            </ol>
+          ) : (
+            <p className="px-3 py-3 text-sm font-normal text-slate-500">
+              {copy.noMatchingManufacturers}
+            </p>
+          )}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function getManufacturerOptionId(inputId: string, suggestionId: string) {
+  return `${inputId}-suggestion-${suggestionId}`;
+}
+
+function getManufacturerMatches(
+  query: string,
+  suggestions: ManufacturerSuggestion[]
+) {
+  const normalizedQuery = normalizeManufacturerSearchText(query);
+
+  return suggestions
+    .map((suggestion) => ({
+      suggestion,
+      score: scoreManufacturerMatch(normalizedQuery, suggestion.name)
+    }))
+    .filter((match) => match.score >= 0)
+    .sort((left, right) => {
+      if (left.score !== right.score) {
+        return right.score - left.score;
+      }
+
+      return left.suggestion.name.localeCompare(right.suggestion.name, "en", {
+        sensitivity: "base"
+      });
+    })
+    .slice(0, 6)
+    .map((match) => match.suggestion);
+}
+
+function scoreManufacturerMatch(query: string, manufacturerName: string) {
+  const normalizedName = normalizeManufacturerSearchText(manufacturerName);
+
+  if (!query) {
+    return 1;
+  }
+
+  if (normalizedName === query) {
+    return 100;
+  }
+
+  if (normalizedName.startsWith(query)) {
+    return 80 - normalizedName.length / 100;
+  }
+
+  if (normalizedName.includes(query)) {
+    return 60 - normalizedName.indexOf(query);
+  }
+
+  let queryIndex = 0;
+  let score = 30;
+
+  for (let nameIndex = 0; nameIndex < normalizedName.length; nameIndex += 1) {
+    if (normalizedName[nameIndex] !== query[queryIndex]) {
+      continue;
+    }
+
+    queryIndex += 1;
+    score -= nameIndex / 100;
+
+    if (queryIndex === query.length) {
+      return score;
+    }
+  }
+
+  return -1;
+}
+
+function normalizeManufacturerSearchText(value: string) {
+  return value.trim().replace(/\s+/g, " ").toLocaleLowerCase("en");
 }
 
 function CategoryTreeSelect({

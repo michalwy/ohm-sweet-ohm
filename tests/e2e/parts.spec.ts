@@ -76,7 +76,13 @@ test.describe("parts list", () => {
     const addPartDialog = page.getByRole("dialog", { name: "Add part" });
     await expect(addPartDialog).toBeVisible();
     await addPartDialog.getByLabel("Catalog number").fill(catalogNumber);
-    await addPartDialog.getByLabel("Manufacturer").fill("Microchip Technology");
+    const createManufacturerInput = addPartDialog.getByLabel("Manufacturer");
+    await createManufacturerInput.fill("tex");
+    await expect(page.getByRole("option", { name: "Texas Instruments" }))
+      .toBeVisible();
+    await page.keyboard.press("Enter");
+    await expect(createManufacturerInput).toHaveValue("Texas Instruments");
+    await createManufacturerInput.fill("Microchip Technology");
     await addPartDialog.getByLabel("Primary category").click();
     await expect(page.getByRole("option", { name: /^Passives$/ })).toBeVisible();
     await expect(page.getByRole("option", { name: /Capacitors/ })).toHaveCount(
@@ -121,7 +127,11 @@ test.describe("parts list", () => {
       "Microchip Technology"
     );
     await editPartDialog.getByLabel("Catalog number").fill(updatedCatalogNumber);
-    await editPartDialog.getByLabel("Manufacturer").fill(updatedManufacturer);
+    const editManufacturerInput = editPartDialog.getByLabel("Manufacturer");
+    await editManufacturerInput.fill("dio");
+    await page.keyboard.press("Enter");
+    await expect(editManufacturerInput).toHaveValue("Diodes Incorporated");
+    await editManufacturerInput.fill(updatedManufacturer);
     await editPartDialog.getByLabel("Primary category").click();
     await expect(
       page.getByRole("option", { name: /Integrated circuits/ })

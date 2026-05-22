@@ -9,6 +9,8 @@
  * 🟢 You can import this file directly.
  */
 export type * from './models/Part'
+export type * from './models/Organization'
+export type * from './models/OrganizationRole'
 export type * from './models/PartCategory'
 export type * from './models/PartCategoryClosure'
 export type * from './models/User'

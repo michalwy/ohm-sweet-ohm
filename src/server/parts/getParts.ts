@@ -40,17 +40,21 @@ export async function getPartsList(
 
     const [parts, categories] = await Promise.all([
       prisma.part.findMany({
-      where: {
-        workspaceId: context.workspace.id
-      },
-      orderBy: [{ manufacturerName: "asc" }, { catalogNumber: "asc" }],
-      select: {
-        id: true,
-        catalogNumber: true,
-        manufacturerName: true,
-        primaryCategoryId: true,
-        secondaryCategoryId: true
-      }
+        where: {
+          workspaceId: context.workspace.id
+        },
+        orderBy: [{ manufacturer: { name: "asc" } }, { catalogNumber: "asc" }],
+        select: {
+          id: true,
+          catalogNumber: true,
+          manufacturer: {
+            select: {
+              name: true
+            }
+          },
+          primaryCategoryId: true,
+          secondaryCategoryId: true
+        }
       }),
       getPartCategories(context.workspace.id)
     ]);
@@ -60,10 +64,14 @@ export async function getPartsList(
 
     return {
       parts: parts.map((part) => ({
-        ...part,
+        id: part.id,
+        catalogNumber: part.catalogNumber,
+        manufacturerName: part.manufacturer.name,
+        primaryCategoryId: part.primaryCategoryId,
         primaryCategoryPath: part.primaryCategoryId
           ? categoryPathsById.get(part.primaryCategoryId) ?? null
           : null,
+        secondaryCategoryId: part.secondaryCategoryId,
         secondaryCategoryPath: part.secondaryCategoryId
           ? categoryPathsById.get(part.secondaryCategoryId) ?? null
           : null

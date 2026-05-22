@@ -11,20 +11,48 @@ model Part {
   id                  String   @id @default(cuid())
   workspaceId         String
   catalogNumber       String
-  manufacturerName    String
+  manufacturerId      String
   primaryCategoryId   String?
   secondaryCategoryId String?
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
 
   workspace         Workspace     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  manufacturer      Organization  @relation("PartManufacturer", fields: [manufacturerId], references: [id], onDelete: Restrict)
   primaryCategory   PartCategory? @relation("PartPrimaryCategory", fields: [primaryCategoryId], references: [id], onDelete: SetNull)
   secondaryCategory PartCategory? @relation("PartSecondaryCategory", fields: [secondaryCategoryId], references: [id], onDelete: SetNull)
 
   @@index([workspaceId, catalogNumber])
-  @@index([workspaceId, manufacturerName])
+  @@index([workspaceId, manufacturerId])
   @@index([workspaceId, primaryCategoryId])
   @@index([workspaceId, secondaryCategoryId])
+}
+
+model Organization {
+  id             String   @id @default(cuid())
+  workspaceId    String
+  name           String
+  normalizedName String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  workspace          Workspace          @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  roles              OrganizationRole[]
+  manufacturedParts  Part[]             @relation("PartManufacturer")
+
+  @@unique([workspaceId, normalizedName])
+  @@index([workspaceId, name])
+}
+
+model OrganizationRole {
+  organizationId String
+  role           String
+  createdAt      DateTime @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@id([organizationId, role])
+  @@index([role])
 }
 
 model PartCategory {
@@ -133,6 +161,7 @@ model Workspace {
 
   members WorkspaceMember[]
   parts   Part[]
+  organizations Organization[]
   partCategories PartCategory[]
   partCategoryClosures PartCategoryClosure[]
   roles   Role[]

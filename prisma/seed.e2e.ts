@@ -31,6 +31,8 @@ async function main() {
   await prisma.role.deleteMany();
   await prisma.workspaceMember.deleteMany();
   await prisma.part.deleteMany();
+  await prisma.organizationRole.deleteMany();
+  await prisma.organization.deleteMany();
   await prisma.partCategoryClosure.deleteMany();
   await prisma.partCategory.deleteMany();
   await prisma.workspace.deleteMany();
@@ -113,12 +115,22 @@ async function main() {
   });
 
   const categories = await seedPartCategories(workspace.id);
+  const texasInstruments = await ensureOrganizationWithRole({
+    workspaceId: workspace.id,
+    name: "Texas Instruments",
+    role: "manufacturer"
+  });
+  const diodesIncorporated = await ensureOrganizationWithRole({
+    workspaceId: workspace.id,
+    name: "Diodes Incorporated",
+    role: "manufacturer"
+  });
 
   await prisma.part.create({
     data: {
       workspaceId: workspace.id,
       catalogNumber: "NE555P",
-      manufacturerName: "Texas Instruments",
+      manufacturerId: texasInstruments.id,
       primaryCategoryId: categories.integratedCircuits.id
     }
   });
@@ -127,10 +139,52 @@ async function main() {
     data: {
       workspaceId: workspace.id,
       catalogNumber: "1N4148W",
-      manufacturerName: "Diodes Incorporated",
+      manufacturerId: diodesIncorporated.id,
       primaryCategoryId: categories.diodes.id
     }
   });
+}
+
+async function ensureOrganizationWithRole({
+  workspaceId,
+  name,
+  role
+}: {
+  workspaceId: string;
+  name: string;
+  role: string;
+}) {
+  const displayName = name.trim().replace(/\s+/g, " ");
+  const organization = await prisma.organization.upsert({
+    where: {
+      workspaceId_normalizedName: {
+        workspaceId,
+        normalizedName: displayName.toLowerCase()
+      }
+    },
+    update: {},
+    create: {
+      workspaceId,
+      name: displayName,
+      normalizedName: displayName.toLowerCase()
+    }
+  });
+
+  await prisma.organizationRole.upsert({
+    where: {
+      organizationId_role: {
+        organizationId: organization.id,
+        role
+      }
+    },
+    update: {},
+    create: {
+      organizationId: organization.id,
+      role
+    }
+  });
+
+  return organization;
 }
 
 async function seedPartCategories(workspaceId: string) {

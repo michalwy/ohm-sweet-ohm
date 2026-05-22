@@ -7,6 +7,7 @@ import {
   getCurrentSession,
   getCurrentWorkspaceContextBySlug
 } from "@/server/auth/currentContext";
+import { getManufacturerSuggestionsForPartForm } from "@/server/organizations/organizations";
 import { getPartCategoriesForPartForm } from "@/server/parts/categories";
 import { getPartsList } from "@/server/parts/getParts";
 
@@ -29,6 +30,7 @@ const copy = {
   noCategory: "No category",
   noSecondaryCategory: "No secondary category",
   manufacturer: "Manufacturer",
+  noMatchingManufacturers: "No matching manufacturers",
   actions: "Actions",
   newPartTitle: "Add part",
   newPartBody: "Create a real purchasable electronic part.",
@@ -91,9 +93,15 @@ export default async function PartsPage({
   }
 
   const { parts, isDatabaseAvailable } = await getPartsList(context);
-  const partCategories = isDatabaseAvailable
-    ? await getPartCategoriesForPartForm(context).catch(() => [])
-    : [];
+  const [partCategories, manufacturerSuggestions] = isDatabaseAvailable
+    ? await Promise.all([
+        getPartCategoriesForPartForm(context).catch(() => []),
+        getManufacturerSuggestionsForPartForm({
+          userId: context.user.id,
+          workspaceId: context.workspace.id
+        }).catch(() => [])
+      ])
+    : [[], []];
   const resolvedSearchParams = await searchParams;
   const partCreated = resolvedSearchParams?.partCreated === "1";
   const partDialogOpen = resolvedSearchParams?.partDialog === "open";
@@ -229,6 +237,7 @@ export default async function PartsPage({
               partUpdated={partUpdated}
               partUpdateError={partUpdateError}
               partCategories={partCategories}
+              manufacturerSuggestions={manufacturerSuggestions}
               parts={parts}
               workspaceSlug={workspaceSlug}
             />
