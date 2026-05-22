@@ -64,6 +64,7 @@ Do not use multiple roles to invent product behavior. Product decisions still re
 - Keep authorization checks in server-side application/domain code, not UI components.
 - When adding workspace-scoped functionality, protect every server-side read or mutation with the appropriate permission. If no suitable permission exists yet, introduce an explicit permission key for that resource/action before exposing the behavior.
 - Keep Next.js, React, and TypeScript as the frontend direction unless a future ADR documents a specific reason to migrate.
+- Use the SPA-like workspace interaction model documented in `docs/decisions/0010-spa-like-workspace-interactions.md`: keep Next.js App Router as the route/auth shell, but prefer client-side queries and mutations for rich workspace lists, dialogs, inline editing, and repeated list actions once those screens need responsive behavior.
 - Add browser interactivity with focused client components; do not make the whole app client-rendered by default.
 - Prefer established React ecosystem libraries for complex tables, dialogs, forms, validation, and accessible UI primitives when those needs become concrete.
 - Keep domain logic out of UI components as the app grows.
@@ -79,6 +80,7 @@ Do not use multiple roles to invent product behavior. Product decisions still re
 - Treat OSO as a desktop-only application. Do not add mobile layouts, responsive mobile breakpoints, mobile navigation patterns, or mobile-specific fallbacks unless a future product decision explicitly reverses this.
 - Use modal dialogs for list actions such as adding, editing, and similar focused workflows.
 - Prefer in-place editing on lists for fields where inline edits are practical and clear.
+- For rich workspace screens, reserve URL state for navigation, filters, sorting, pagination, selected records, and deep-linkable UI. Do not put ephemeral success feedback in URL parameters; use local toast feedback instead.
 
 ## Testing Direction
 
