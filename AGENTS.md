@@ -27,7 +27,7 @@ This project is intentionally vibe-coded. Future agents must preserve product in
 - Preserve existing user changes. Do not rewrite unrelated files.
 - Do not create git commits unless the user explicitly asks for a commit.
 - This is currently a solo project. When the user asks for a commit, commit directly to `main` by default after appropriate local verification.
-- Before pushing to `main`, make sure local `main` is current with `origin/main` when network access is available.
+- When pushing to `main`, try `git push origin main` first. If the push is rejected because the remote has new work, then fetch the remote, rebase local commits onto `origin/main`, rerun appropriate verification if the rebase changes the tested code, and push again.
 - Create a feature branch and pull request only when the user explicitly asks for a PR, when keeping work separate is useful, or when the change is intentionally experimental or incomplete.
 - Use a separate git worktree only when the user explicitly asks for one. Do not create worktrees based on an agent's own risk assessment.
 - Do not push broken or unverified work unless the user explicitly asks to checkpoint it.
