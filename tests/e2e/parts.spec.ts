@@ -105,7 +105,10 @@ test.describe("parts list", () => {
     await page.keyboard.press("Enter");
     await page.getByRole("button", { name: "Create part" }).click();
 
-    await expect(page.getByText("Part created.")).toBeVisible();
+    await expect(page.getByRole("status")).toHaveText(
+      `Part created: Microchip Technology ${catalogNumber}.`
+    );
+    await expect(page).toHaveURL(/\/w\/default\/parts$/);
     const createdPartRow = page.getByRole("row", {
       name: new RegExp(`${catalogNumber}.*Microchip Technology`)
     });
@@ -203,7 +206,10 @@ test.describe("parts list", () => {
     await page.keyboard.press("Escape");
     await editPartDialog.getByRole("button", { name: "Save changes" }).click();
 
-    await expect(page.getByText("Part updated.")).toBeVisible();
+    await expect(page.getByRole("status")).toHaveText(
+      `Part updated: ${updatedManufacturer} ${updatedCatalogNumber}.`
+    );
+    await expect(page).toHaveURL(/\/w\/default\/parts$/);
     const updatedPartRow = page.getByRole("row", {
       name: new RegExp(`${updatedCatalogNumber}.*${updatedManufacturer}`)
     });
@@ -265,7 +271,10 @@ test.describe("parts list", () => {
       .getByRole("button", { name: "Create category" })
       .click();
 
-    await expect(page.getByText("Category created.")).toBeVisible();
+    await expect(page.getByRole("status")).toHaveText(
+      `Category created: ${categoryName}.`
+    );
+    await expect(page).toHaveURL(/\/w\/default\/part-categories$/);
     await expect(
       page.locator("p").filter({ hasText: new RegExp(`^${categoryName}$`) })
         .first()
@@ -286,7 +295,10 @@ test.describe("parts list", () => {
       .getByRole("button", { name: "Create category" })
       .click();
 
-    await expect(page.getByText("Category created.")).toBeVisible();
+    await expect(page.getByRole("status")).toHaveText(
+      `Category created: ${childName}.`
+    );
+    await expect(page).toHaveURL(/\/w\/default\/part-categories$/);
     await expect(
       page.locator("p").filter({ hasText: new RegExp(`^${childName}$`) })
         .first()
@@ -316,7 +328,10 @@ test.describe("parts list", () => {
       .getByRole("button", { name: "Save changes" })
       .click();
 
-    await expect(page.getByText("Category updated.")).toBeVisible();
+    await expect(page.getByRole("status")).toHaveText(
+      `Category updated: ${updatedChildName}.`
+    );
+    await expect(page).toHaveURL(/\/w\/default\/part-categories$/);
     await expect(
       page.locator("p").filter({ hasText: new RegExp(`^${updatedChildName}$`) })
         .first()

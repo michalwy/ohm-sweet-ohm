@@ -18,3 +18,18 @@ body {
   margin: 0;
   background: #f5f7fb;
 }
+
+@keyframes toast-notice {
+  0%,
+  75% {
+    opacity: 1;
+    transform: translateY(0);
+    visibility: visible;
+  }
+
+  100% {
+    opacity: 0;
+    transform: translateY(-0.5rem);
+    visibility: hidden;
+  }
+}

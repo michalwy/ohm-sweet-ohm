@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 
 import { Prisma } from "@/generated/prisma/client";
 import { authorizeWorkspacePermission } from "@/server/access-control/authorize";
+import { setActionToast } from "@/server/actionToast";
 import { getCurrentWorkspaceContextBySlug } from "@/server/auth/currentContext";
 import { prisma } from "@/server/db/prisma";
 import {
@@ -86,7 +87,12 @@ export async function createPart(
   }
 
   revalidatePath(partsPath);
-  redirect(`${partsPath}?partCreated=1`);
+  await setActionToast({
+    type: "part-created",
+    catalogNumber,
+    manufacturerName
+  });
+  redirect(partsPath);
 }
 
 export async function updatePart(
@@ -162,7 +168,12 @@ export async function updatePart(
   }
 
   revalidatePath(partsPath);
-  redirect(`${partsPath}?partUpdated=1`);
+  await setActionToast({
+    type: "part-updated",
+    catalogNumber,
+    manufacturerName
+  });
+  redirect(partsPath);
 }
 
 function getRequiredFormValue(formData: FormData, name: string) {

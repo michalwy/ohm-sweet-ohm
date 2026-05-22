@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 import { authorizeWorkspacePermission } from "@/server/access-control/authorize";
+import { setActionToast } from "@/server/actionToast";
 import { getCurrentWorkspaceContextBySlug } from "@/server/auth/currentContext";
 import {
   createPartCategory,
@@ -55,7 +56,11 @@ export async function createPartCategoryFromForm(formData: FormData) {
   }
 
   revalidatePath(categoriesPath);
-  redirect(`${categoriesPath}?categoryCreated=1`);
+  await setActionToast({
+    type: "category-created",
+    name
+  });
+  redirect(categoriesPath);
 }
 
 export async function updatePartCategoryFromForm(formData: FormData) {
@@ -105,7 +110,11 @@ export async function updatePartCategoryFromForm(formData: FormData) {
   }
 
   revalidatePath(categoriesPath);
-  redirect(`${categoriesPath}?categoryUpdated=1`);
+  await setActionToast({
+    type: "category-updated",
+    name
+  });
+  redirect(categoriesPath);
 }
 
 function getRequiredFormValue(formData: FormData, name: string) {

@@ -9,6 +9,7 @@ import type { PartFormState } from "@/server/parts/createPart";
 import type { ManufacturerSuggestion } from "@/server/organizations/organizations";
 import type { PartCategoryListItem } from "@/server/parts/categories";
 import type { PartsListItem } from "@/server/parts/getParts";
+import { ToastNotice } from "@/app/toast-notice";
 
 type Copy = {
   title: string;
@@ -58,30 +59,28 @@ const initialPartFormState: PartFormState = {};
 type PartsListClientProps = {
   copy: Copy;
   isDatabaseAvailable: boolean;
-  partCreated: boolean;
   partDialogOpen: boolean;
   partEditDialog?: string;
   partFormError?: string;
-  partUpdated: boolean;
   partUpdateError?: string;
   partCategories: PartCategoryListItem[];
   manufacturerSuggestions: ManufacturerSuggestion[];
   parts: PartsListItem[];
+  successMessage?: string;
   workspaceSlug: string;
 };
 
 export function PartsListClient({
   copy,
   isDatabaseAvailable,
-  partCreated,
   partDialogOpen,
   partEditDialog,
   partFormError,
-  partUpdated,
   partUpdateError,
   partCategories,
   manufacturerSuggestions,
   parts,
+  successMessage,
   workspaceSlug
 }: PartsListClientProps) {
   const createDialogRef = useRef<HTMLDialogElement>(null);
@@ -106,23 +105,18 @@ export function PartsListClient({
     updatePart,
     initialPartFormState
   );
-  const [createFormError, setCreateFormError] = useState(partFormError ?? null);
-  const [updateFormError, setUpdateFormError] = useState(
-    partUpdateError ?? null
-  );
-  const hasFeedback = partCreated || partUpdated;
-
-  useEffect(() => {
-    if (createActionState.submittedAt) {
-      setCreateFormError(createActionState.error ?? null);
-    }
-  }, [createActionState]);
-
-  useEffect(() => {
-    if (updateActionState.submittedAt) {
-      setUpdateFormError(updateActionState.error ?? null);
-    }
-  }, [updateActionState]);
+  const [clearedCreateFormErrorAt, setClearedCreateFormErrorAt] = useState(0);
+  const [clearedUpdateFormErrorAt, setClearedUpdateFormErrorAt] = useState(0);
+  const createFormError =
+    createActionState.submittedAt &&
+    createActionState.submittedAt > clearedCreateFormErrorAt
+      ? (createActionState.error ?? null)
+      : (partFormError ?? null);
+  const updateFormError =
+    updateActionState.submittedAt &&
+    updateActionState.submittedAt > clearedUpdateFormErrorAt
+      ? (updateActionState.error ?? null)
+      : (partUpdateError ?? null);
 
   useEffect(() => {
     if (partDialogOpen) {
@@ -155,7 +149,7 @@ export function PartsListClient({
     setEditCatalogNumber(part.catalogNumber);
     setEditPrimaryCategoryId(part.primaryCategoryId ?? "");
     setEditSecondaryCategoryId(part.secondaryCategoryId ?? "");
-    setUpdateFormError(null);
+    setClearedUpdateFormErrorAt(updateActionState.submittedAt ?? 0);
     window.requestAnimationFrame(() => openDialog(editDialogRef.current));
   }
 
@@ -164,7 +158,7 @@ export function PartsListClient({
     setCreatePrimaryCategoryId("");
     setCreateSecondaryCategoryId("");
     setCreateFormResetKey((currentKey) => currentKey + 1);
-    setCreateFormError(null);
+    setClearedCreateFormErrorAt(createActionState.submittedAt ?? 0);
     openDialog(createDialogRef.current);
   }
 
@@ -177,23 +171,7 @@ export function PartsListClient({
         <h2 id="parts-heading" className="sr-only">
           {copy.title}
         </h2>
-        <div className="flex items-center justify-between gap-3 border-b border-slate-200 bg-white px-4 py-3">
-          <div className="min-h-10">
-            {hasFeedback ? (
-              <>
-                {partCreated ? (
-                  <p className="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-800">
-                    {copy.created}
-                  </p>
-                ) : null}
-                {partUpdated ? (
-                  <p className="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-800">
-                    {copy.updated}
-                  </p>
-                ) : null}
-              </>
-            ) : null}
-          </div>
+        <div className="flex items-center justify-end gap-3 border-b border-slate-200 bg-white px-4 py-3">
           <button
             className="min-h-10 rounded-md border border-slate-950 bg-slate-950 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2 disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-100 disabled:text-slate-400"
             disabled={!isDatabaseAvailable}
@@ -278,6 +256,8 @@ export function PartsListClient({
         </div>
       </section>
 
+      <ToastNotice message={successMessage} />
+
       <dialog
         ref={createDialogRef}
         aria-labelledby="add-part-dialog-title"
@@ -300,7 +280,11 @@ export function PartsListClient({
               <button
                 className="min-h-9 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:border-slate-400 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2"
                 type="submit"
-                onClick={() => setCreateFormError(null)}
+                onClick={() =>
+                  setClearedCreateFormErrorAt(
+                    createActionState.submittedAt ?? 0
+                  )
+                }
               >
                 {copy.close}
               </button>
@@ -400,7 +384,11 @@ export function PartsListClient({
               <button
                 className="min-h-9 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:border-slate-400 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2"
                 type="submit"
-                onClick={() => setUpdateFormError(null)}
+                onClick={() =>
+                  setClearedUpdateFormErrorAt(
+                    updateActionState.submittedAt ?? 0
+                  )
+                }
               >
                 {copy.close}
               </button>
