@@ -142,7 +142,7 @@ export function PartCategoriesClient({
         <h2 id="part-categories-heading" className="sr-only">
           {copy.title}
         </h2>
-        <div className="flex flex-col gap-3 border-b border-slate-200 bg-white px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-center justify-between gap-3 border-b border-slate-200 bg-white px-4 py-3">
           <div className="min-h-10">
             {hasFeedback ? (
               <>
@@ -233,7 +233,7 @@ export function PartCategoriesClient({
         aria-labelledby="add-category-dialog-title"
         className="fixed inset-0 m-auto max-h-[calc(100vh-2rem)] w-[calc(100%-2rem)] max-w-2xl rounded-lg border border-slate-200 bg-white p-0 text-slate-950 shadow-2xl backdrop:bg-slate-950/40"
       >
-        <div className="p-4 sm:p-6">
+        <div className="p-6">
           <DialogHeader
             body={copy.newCategoryBody}
             closeLabel={copy.close}
@@ -276,7 +276,7 @@ export function PartCategoriesClient({
         aria-labelledby="edit-category-dialog-title"
         className="fixed inset-0 m-auto max-h-[calc(100vh-2rem)] w-[calc(100%-2rem)] max-w-2xl rounded-lg border border-slate-200 bg-white p-0 text-slate-950 shadow-2xl backdrop:bg-slate-950/40"
       >
-        <div className="p-4 sm:p-6">
+        <div className="p-6">
           <DialogHeader
             body={copy.editCategoryBody}
             closeLabel={copy.close}

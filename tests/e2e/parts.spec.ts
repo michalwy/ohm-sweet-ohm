@@ -331,12 +331,7 @@ test.describe("parts list", () => {
     ).toBeVisible();
   });
 
-  test("returns signed-in users to their last workspace", async ({
-    isMobile,
-    page
-  }) => {
-    test.skip(isMobile, "The parts page does not expose sign out on mobile yet.");
-
+  test("returns signed-in users to their last workspace", async ({ page }) => {
     await page.goto("/");
     await page.getByLabel("Email").fill("owner@ohmsweetohm.local");
     await page.getByLabel("Password").fill("ohm-sweet-ohm-owner");

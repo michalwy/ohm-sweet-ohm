@@ -50,7 +50,7 @@ export default async function WorkspacesPage({
 
   return (
     <main className="min-h-screen bg-slate-100 text-slate-950">
-      <div className="mx-auto flex min-h-screen w-full max-w-5xl flex-col px-4 py-6 sm:px-6">
+      <div className="mx-auto flex min-h-screen w-full max-w-5xl flex-col px-6 py-6">
         <header className="flex min-h-14 items-center justify-between gap-4 border-b border-slate-200 pb-4">
           <div className="flex items-center gap-3">
             <div className="grid h-9 w-9 place-items-center rounded-md bg-slate-950 text-sm font-semibold text-white">
@@ -75,7 +75,7 @@ export default async function WorkspacesPage({
           </form>
         </header>
 
-        <div className="grid flex-1 gap-6 py-6 lg:grid-cols-[1fr_22rem]">
+        <div className="grid flex-1 grid-cols-[1fr_22rem] gap-6 py-6">
           <section aria-labelledby="workspaces-heading">
             <div className="mb-5">
               <h1
@@ -94,7 +94,7 @@ export default async function WorkspacesPage({
                 <ul className="divide-y divide-slate-200">
                   {workspaces.map((workspace) => (
                     <li
-                      className="flex flex-col gap-3 px-4 py-4 sm:flex-row sm:items-center sm:justify-between"
+                      className="flex items-center justify-between gap-3 px-4 py-4"
                       key={workspace.id}
                     >
                       <div className="min-w-0">

@@ -8,6 +8,7 @@ This project is intentionally vibe-coded. Future agents must preserve product in
 - Short name: OSO
 - Repository/package name: ohm-sweet-ohm
 - Purpose: a web app for managing a home electronics workshop
+- Target platform: desktop browsers only; do not design, implement, or test mobile-specific behavior.
 - Application language: English first, additional languages later
 - First feature: a parts list
 - Current part definition: real purchasable electronic parts identified by manufacturer organization and catalog number
@@ -75,6 +76,7 @@ Do not use multiple roles to invent product behavior. Product decisions still re
 
 ## UI Direction
 
+- Treat OSO as a desktop-only application. Do not add mobile layouts, responsive mobile breakpoints, mobile navigation patterns, or mobile-specific fallbacks unless a future product decision explicitly reverses this.
 - Use modal dialogs for list actions such as adding, editing, and similar focused workflows.
 - Prefer in-place editing on lists for fields where inline edits are practical and clear.
 
@@ -82,6 +84,7 @@ Do not use multiple roles to invent product behavior. Product decisions still re
 
 - Use `pnpm typecheck` for TypeScript verification.
 - Use `pnpm test:e2e` for browser-level verification of interactive UI changes.
+- Run browser verification against desktop browser projects only; do not add mobile viewport projects or mobile-specific assertions.
 - Keep e2e tests pointed at the isolated PostgreSQL service in `docker-compose.e2e.yml`, not the normal development database.
 - Add or update e2e coverage when changing dynamic tables, dialogs, forms, or user flows.
 - The user tests the app through Docker Compose. Do not leave manually started dev servers running for handoff.

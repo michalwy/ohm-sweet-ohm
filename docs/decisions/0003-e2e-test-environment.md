@@ -18,13 +18,14 @@ Run e2e tests against an isolated PostgreSQL database from `docker-compose.e2e.y
 
 ## Rationale
 
-Playwright provides reliable browser automation for desktop and mobile viewport checks. A dedicated e2e database lets tests exercise real Prisma queries and mutations without touching local development data.
+Playwright provides reliable browser automation for desktop browser checks. OSO is a desktop-only application, so e2e coverage should not include mobile viewport projects or mobile-specific assertions. A dedicated e2e database lets tests exercise real Prisma queries and mutations without touching local development data.
 
 Resetting and seeding the e2e database before the test suite keeps test runs predictable.
 
 ## Consequences
 
 - Use `pnpm test:e2e` before considering interactive UI work complete.
+- Keep e2e browser projects desktop-only.
 - Keep e2e seed data minimal and focused on user-visible workflows.
 - Do not point e2e tests at the normal development database.
 - Add new e2e coverage when adding or changing dynamic tables, dialogs, forms, or navigation flows.

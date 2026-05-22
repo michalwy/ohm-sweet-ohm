@@ -115,7 +115,7 @@ export default async function PartCategoriesPage({
   return (
     <main className="min-h-screen bg-slate-100 text-slate-950">
       <div className="flex min-h-screen">
-        <aside className="hidden w-60 shrink-0 border-r border-slate-200 bg-white md:flex md:flex-col">
+        <aside className="flex w-60 shrink-0 flex-col border-r border-slate-200 bg-white">
           <div className="flex min-h-14 items-center gap-3 border-b border-slate-200 px-4">
             <div className="grid h-8 w-8 place-items-center rounded-md bg-slate-950 text-sm font-semibold text-white">
               {copy.appShortName}
@@ -169,50 +169,8 @@ export default async function PartCategoriesPage({
         </aside>
 
         <div className="flex min-w-0 flex-1 flex-col">
-          <header className="border-b border-slate-200 bg-white md:hidden">
-            <div className="flex min-h-14 items-center justify-between gap-4 px-4 sm:px-6">
-              <div className="flex min-w-0 items-center gap-3">
-                <div className="grid h-8 w-8 shrink-0 place-items-center rounded-md bg-slate-950 text-sm font-semibold text-white">
-                  {copy.appShortName}
-                </div>
-                <div className="min-w-0">
-                  <p className="text-sm font-semibold leading-5 text-slate-950">
-                    {copy.appName}
-                  </p>
-                  <p className="truncate text-xs leading-4 text-slate-500">
-                    {context.workspace.name}
-                  </p>
-                </div>
-              </div>
-              <Link
-                className="min-h-9 shrink-0 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:border-slate-400 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2"
-                href="/workspaces"
-              >
-                {copy.switchWorkspace}
-              </Link>
-            </div>
-            <nav
-              className="flex gap-1 border-t border-slate-200 px-3 py-2"
-              aria-label="Main navigation"
-            >
-              <Link
-                className="flex min-h-9 items-center rounded-md px-3 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
-                href={`/w/${workspaceSlug}/parts`}
-              >
-                {copy.parts}
-              </Link>
-              <Link
-                className="flex min-h-9 items-center rounded-md bg-slate-100 px-3 text-sm font-semibold text-slate-950"
-                href={`/w/${workspaceSlug}/part-categories`}
-                aria-current="page"
-              >
-                {copy.title}
-              </Link>
-            </nav>
-          </header>
-
-          <div className="flex min-h-0 flex-1 flex-col gap-4 p-4 sm:p-6">
-            <header className="flex flex-col gap-2 border-b border-slate-200 pb-4 sm:flex-row sm:items-end sm:justify-between">
+          <div className="flex min-h-0 flex-1 flex-col gap-4 p-6">
+            <header className="flex items-end justify-between gap-2 border-b border-slate-200 pb-4">
               <div>
                 <h1 className="text-2xl font-semibold tracking-normal text-slate-950">
                   {copy.title}

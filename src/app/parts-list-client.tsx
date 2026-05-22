@@ -177,7 +177,7 @@ export function PartsListClient({
         <h2 id="parts-heading" className="sr-only">
           {copy.title}
         </h2>
-        <div className="flex flex-col gap-3 border-b border-slate-200 bg-white px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-center justify-between gap-3 border-b border-slate-200 bg-white px-4 py-3">
           <div className="min-h-10">
             {hasFeedback ? (
               <>
@@ -283,7 +283,7 @@ export function PartsListClient({
         aria-labelledby="add-part-dialog-title"
         className="fixed inset-0 m-auto max-h-[calc(100vh-2rem)] w-[calc(100%-2rem)] max-w-2xl rounded-lg border border-slate-200 bg-white p-0 text-slate-950 shadow-2xl backdrop:bg-slate-950/40"
       >
-        <div className="p-4 sm:p-6">
+        <div className="p-6">
           <div className="mb-5 flex items-start justify-between gap-4 border-b border-slate-200 pb-5">
             <div>
               <h2
@@ -383,7 +383,7 @@ export function PartsListClient({
         aria-labelledby="edit-part-dialog-title"
         className="fixed inset-0 m-auto max-h-[calc(100vh-2rem)] w-[calc(100%-2rem)] max-w-2xl rounded-lg border border-slate-200 bg-white p-0 text-slate-950 shadow-2xl backdrop:bg-slate-950/40"
       >
-        <div className="p-4 sm:p-6">
+        <div className="p-6">
           <div className="mb-5 flex items-start justify-between gap-4 border-b border-slate-200 pb-5">
             <div>
               <h2
