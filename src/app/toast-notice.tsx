@@ -1,22 +1,10 @@
 "use client";
 
-import { useEffect } from "react";
-
-import { ACTION_TOAST_COOKIE_NAME } from "@/lib/actionToastCookie";
-
 type ToastNoticeProps = {
   message?: string;
 };
 
 export function ToastNotice({ message }: ToastNoticeProps) {
-  useEffect(() => {
-    if (!message) {
-      return;
-    }
-
-    document.cookie = `${ACTION_TOAST_COOKIE_NAME}=; Max-Age=0; Path=/; SameSite=Lax`;
-  }, [message]);
-
   if (!message) {
     return null;
   }

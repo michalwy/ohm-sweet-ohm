@@ -3,7 +3,6 @@ import { notFound, redirect } from "next/navigation";
 
 import { PartCategoriesClient } from "@/app/part-categories-client";
 import { hasWorkspacePermission } from "@/server/access-control/authorize";
-import { getActionToast, type ActionToast } from "@/server/actionToast";
 import { signOut } from "@/server/auth/actions";
 import {
   getCurrentSession,
@@ -45,8 +44,6 @@ const copy = {
   createCategory: "Create category",
   saveChanges: "Save changes",
   close: "Close",
-  created: "Category created.",
-  updated: "Category updated.",
   createdToast: "Category created",
   updatedToast: "Category updated",
   missingRequiredFields: "Enter a category name.",
@@ -67,8 +64,6 @@ type PartCategoriesPageProps = {
   searchParams?: Promise<{
     categoryDialog?: string;
     categoryEditDialog?: string;
-    categoryError?: string;
-    categoryUpdateError?: string;
   }>;
 };
 
@@ -106,12 +101,8 @@ export default async function PartCategoriesPage({
       }).catch(() => false)
     : false;
   const resolvedSearchParams = await searchParams;
-  const actionToast = await getActionToast();
   const categoryDialogOpen = resolvedSearchParams?.categoryDialog === "create";
   const categoryEditDialog = resolvedSearchParams?.categoryEditDialog;
-  const categoryError = resolvedSearchParams?.categoryError;
-  const categoryUpdateError = resolvedSearchParams?.categoryUpdateError;
-  const successMessage = getPartCategoriesSuccessMessage(copy, actionToast);
 
   return (
     <main className="min-h-screen bg-slate-100 text-slate-950">
@@ -192,12 +183,9 @@ export default async function PartCategoriesPage({
               categories={categories}
               categoryDialogOpen={categoryDialogOpen}
               categoryEditDialog={categoryEditDialog}
-              categoryError={categoryError}
-              categoryUpdateError={categoryUpdateError}
               canWriteCategories={canWriteCategories}
               copy={copy}
               isDatabaseAvailable={isDatabaseAvailable}
-              successMessage={successMessage}
               workspaceSlug={workspaceSlug}
             />
           </div>
@@ -205,23 +193,4 @@ export default async function PartCategoriesPage({
       </div>
     </main>
   );
-}
-
-function getPartCategoriesSuccessMessage(
-  categoryCopy: typeof copy,
-  actionToast: ActionToast | null
-) {
-  if (!actionToast) {
-    return undefined;
-  }
-
-  if (actionToast.type === "category-created") {
-    return `${categoryCopy.createdToast}: ${actionToast.name}.`;
-  }
-
-  if (actionToast.type === "category-updated") {
-    return `${categoryCopy.updatedToast}: ${actionToast.name}.`;
-  }
-
-  return undefined;
 }

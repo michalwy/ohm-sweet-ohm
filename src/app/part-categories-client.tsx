@@ -1,6 +1,8 @@
 "use client";
 
+import { useMutation } from "@tanstack/react-query";
 import {
+  type FormEvent,
   useEffect,
   useMemo,
   useRef,
@@ -37,8 +39,8 @@ type Copy = {
   createCategory: string;
   saveChanges: string;
   close: string;
-  created: string;
-  updated: string;
+  createdToast: string;
+  updatedToast: string;
   missingRequiredFields: string;
   invalidParentCategory: string;
   categoryNotFound: string;
@@ -57,12 +59,9 @@ type PartCategoriesClientProps = {
   categories: PartCategoryListItem[];
   categoryDialogOpen: boolean;
   categoryEditDialog?: string;
-  categoryError?: string;
-  categoryUpdateError?: string;
   copy: Copy;
   isDatabaseAvailable: boolean;
   canWriteCategories: boolean;
-  successMessage?: string;
   workspaceSlug: string;
 };
 
@@ -70,22 +69,31 @@ export function PartCategoriesClient({
   categories,
   categoryDialogOpen,
   categoryEditDialog,
-  categoryError,
-  categoryUpdateError,
   copy,
   isDatabaseAvailable,
   canWriteCategories,
-  successMessage,
   workspaceSlug
 }: PartCategoriesClientProps) {
   const createDialogRef = useRef<HTMLDialogElement>(null);
   const editDialogRef = useRef<HTMLDialogElement>(null);
+  const [currentCategories, setCurrentCategories] = useState(categories);
   const [createParentId, setCreateParentId] = useState("");
   const [editingCategory, setEditingCategory] =
     useState<PartCategoryListItem | null>(() =>
-      categories.find((category) => category.id === categoryEditDialog) ?? null
+      currentCategories.find((category) => category.id === categoryEditDialog) ??
+      null
     );
-  const categoryTree = useMemo(() => buildCategoryTree(categories), [categories]);
+  const [createFormResetKey, setCreateFormResetKey] = useState(0);
+  const [createFormError, setCreateFormError] = useState<string | null>(null);
+  const [updateFormError, setUpdateFormError] = useState<string | null>(null);
+  const [toastMessage, setToastMessage] = useState<{
+    id: number;
+    message: string;
+  } | null>(null);
+  const categoryTree = useMemo(
+    () => buildCategoryTree(currentCategories),
+    [currentCategories]
+  );
   const categoryExpansionStorageKey = `oso:${workspaceSlug}:part-category-expansion`;
   const defaultExpandedCategoryIds = useMemo(
     () => getExpandableCategoryIds(categoryTree),
@@ -95,6 +103,50 @@ export function PartCategoriesClient({
     categoryExpansionStorageKey,
     defaultExpandedCategoryIds
   );
+  const createCategoryMutation = useMutation({
+    mutationFn: createPartCategoryFromForm,
+    onError: () => {
+      setCreateFormError("database-unavailable");
+    },
+    onSuccess: (result) => {
+      if (!result.ok) {
+        setCreateFormError(result.error);
+        return;
+      }
+
+      setCurrentCategories(result.categories);
+      setCreateParentId("");
+      setCreateFormResetKey((currentKey) => currentKey + 1);
+      setCreateFormError(null);
+      setToastMessage({
+        id: result.submittedAt,
+        message: getCategorySuccessMessage(copy.createdToast, result.category)
+      });
+      closeDialog(createDialogRef.current);
+    }
+  });
+  const updateCategoryMutation = useMutation({
+    mutationFn: updatePartCategoryFromForm,
+    onError: () => {
+      setUpdateFormError("database-unavailable");
+    },
+    onSuccess: (result) => {
+      if (!result.ok) {
+        setUpdateFormError(result.error);
+        return;
+      }
+
+      setCurrentCategories(result.categories);
+      setEditingCategory(result.category);
+      setUpdateFormError(null);
+      setToastMessage({
+        id: result.submittedAt,
+        message: getCategorySuccessMessage(copy.updatedToast, result.category)
+      });
+      closeDialog(editDialogRef.current);
+    }
+  });
+
   useEffect(() => {
     if (categoryDialogOpen) {
       openDialog(createDialogRef.current);
@@ -106,7 +158,7 @@ export function PartCategoriesClient({
       return;
     }
 
-    const category = categories.find(
+    const category = currentCategories.find(
       (currentCategory) => currentCategory.id === categoryEditDialog
     );
 
@@ -118,7 +170,7 @@ export function PartCategoriesClient({
       setEditingCategory(category);
       openDialog(editDialogRef.current);
     });
-  }, [categories, categoryEditDialog]);
+  }, [currentCategories, categoryEditDialog]);
 
   function openCreateDialog(parentId: string | null) {
     setCreateParentId(parentId ?? "");
@@ -129,12 +181,26 @@ export function PartCategoriesClient({
       saveExpandedCategoryIds(categoryExpansionStorageKey, nextIds);
     }
 
+    setCreateFormError(null);
     window.requestAnimationFrame(() => openDialog(createDialogRef.current));
   }
 
   function openEditDialog(category: PartCategoryListItem) {
     setEditingCategory(category);
+    setUpdateFormError(null);
     window.requestAnimationFrame(() => openDialog(editDialogRef.current));
+  }
+
+  function handleCreateSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setCreateFormError(null);
+    createCategoryMutation.mutate(new FormData(event.currentTarget));
+  }
+
+  function handleUpdateSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setUpdateFormError(null);
+    updateCategoryMutation.mutate(new FormData(event.currentTarget));
   }
 
   return (
@@ -211,7 +277,7 @@ export function PartCategoriesClient({
         </div>
       </section>
 
-      <ToastNotice message={successMessage} />
+      <ToastNotice key={toastMessage?.id} message={toastMessage?.message} />
 
       <dialog
         ref={createDialogRef}
@@ -226,16 +292,20 @@ export function PartCategoriesClient({
             titleId="add-category-dialog-title"
           />
 
-          {categoryError ? (
+          {createFormError ? (
             <p className="mb-4 rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-800">
-              {getCategoryErrorMessage(copy, categoryError)}
+              {getCategoryErrorMessage(copy, createFormError)}
             </p>
           ) : null}
 
-          <form action={createPartCategoryFromForm} className="grid gap-4">
+          <form
+            key={createFormResetKey}
+            className="grid gap-4"
+            onSubmit={handleCreateSubmit}
+          >
             <input name="workspaceSlug" type="hidden" value={workspaceSlug} />
             <CategoryFormFields
-              categories={categories}
+              categories={currentCategories}
               copy={copy}
               defaultIsAssignable={true}
               isDatabaseAvailable={isDatabaseAvailable}
@@ -246,7 +316,11 @@ export function PartCategoriesClient({
             <div className="flex justify-end">
               <button
                 className="min-h-11 rounded-md border border-slate-950 bg-slate-950 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2 disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-100 disabled:text-slate-400"
-                disabled={!isDatabaseAvailable || !canWriteCategories}
+                disabled={
+                  !isDatabaseAvailable ||
+                  !canWriteCategories ||
+                  createCategoryMutation.isPending
+                }
                 type="submit"
               >
                 {copy.createCategory}
@@ -269,22 +343,22 @@ export function PartCategoriesClient({
             titleId="edit-category-dialog-title"
           />
 
-          {categoryUpdateError ? (
+          {updateFormError ? (
             <p className="mb-4 rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-800">
-              {getCategoryErrorMessage(copy, categoryUpdateError)}
+              {getCategoryErrorMessage(copy, updateFormError)}
             </p>
           ) : null}
 
           {editingCategory ? (
             <form
               key={editingCategory.id}
-              action={updatePartCategoryFromForm}
               className="grid gap-4"
+              onSubmit={handleUpdateSubmit}
             >
               <input name="workspaceSlug" type="hidden" value={workspaceSlug} />
               <input name="id" type="hidden" value={editingCategory.id} />
               <CategoryFormFields
-                categories={categories}
+                categories={currentCategories}
                 copy={copy}
                 defaultIsAssignable={editingCategory.isAssignable}
                 excludedCategoryId={editingCategory.id}
@@ -295,7 +369,11 @@ export function PartCategoriesClient({
               <div className="flex justify-end">
                 <button
                   className="min-h-11 rounded-md border border-slate-950 bg-slate-950 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2 disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-100 disabled:text-slate-400"
-                  disabled={!isDatabaseAvailable || !canWriteCategories}
+                  disabled={
+                    !isDatabaseAvailable ||
+                    !canWriteCategories ||
+                    updateCategoryMutation.isPending
+                  }
                   type="submit"
                 >
                   {copy.saveChanges}
@@ -709,6 +787,21 @@ function openDialog(dialog: HTMLDialogElement | null) {
   } catch {
     dialog.setAttribute("open", "");
   }
+}
+
+function closeDialog(dialog: HTMLDialogElement | null) {
+  if (!dialog?.open) {
+    return;
+  }
+
+  dialog.close();
+}
+
+function getCategorySuccessMessage(
+  actionLabel: string,
+  category: PartCategoryListItem
+) {
+  return `${actionLabel}: ${category.name}.`;
 }
 
 function getCategoryErrorMessage(copy: Copy, error: string) {

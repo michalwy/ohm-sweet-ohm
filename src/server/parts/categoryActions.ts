@@ -1,27 +1,42 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
 
 import { authorizeWorkspacePermission } from "@/server/access-control/authorize";
-import { setActionToast } from "@/server/actionToast";
 import { getCurrentWorkspaceContextBySlug } from "@/server/auth/currentContext";
 import {
   createPartCategory,
+  getPartCategories,
+  type PartCategoryListItem,
   updatePartCategory
 } from "@/server/parts/categories";
 
-export async function createPartCategoryFromForm(formData: FormData) {
+export type PartCategoryMutationResult =
+  | {
+      ok: true;
+      category: PartCategoryListItem;
+      categories: PartCategoryListItem[];
+      submittedAt: number;
+    }
+  | {
+      ok: false;
+      error: string;
+      submittedAt: number;
+    };
+
+export async function createPartCategoryFromForm(
+  formData: FormData
+): Promise<PartCategoryMutationResult> {
   const workspaceSlug = getRequiredFormValue(formData, "workspaceSlug");
   const name = getRequiredFormValue(formData, "name");
   const parentId = getOptionalFormValue(formData, "parentId");
   const isAssignable = getRequiredFormValue(formData, "type") === "assignable";
   const categoriesPath = getPartCategoriesPath(workspaceSlug);
+  let category: PartCategoryListItem | null = null;
+  let categories: PartCategoryListItem[] = [];
 
   if (!workspaceSlug || !name) {
-    redirect(
-      `${categoriesPath}?categoryError=missing-required-fields&categoryDialog=create`
-    );
+    return getMutationErrorState("missing-required-fields");
   }
 
   let formError: string | null = null;
@@ -38,43 +53,49 @@ export async function createPartCategoryFromForm(formData: FormData) {
         permission: "part-categories:write"
       });
 
-      await createPartCategory({
+      const createdCategory = await createPartCategory({
         workspaceId: context.workspace.id,
         parentId,
         name,
         isAssignable
       });
+      const nextCategories = await getPartCategories(context.workspace.id);
+      category =
+        nextCategories.find(
+          (currentCategory) => currentCategory.id === createdCategory.id
+        ) ?? null;
+      categories = nextCategories;
     }
   } catch (error) {
     formError = getPartCategoryFormError(error);
   }
 
   if (formError) {
-    redirect(
-      `${categoriesPath}?categoryError=${formError}&categoryDialog=create`
-    );
+    return getMutationErrorState(formError);
+  }
+
+  if (!category) {
+    return getMutationErrorState("database-unavailable");
   }
 
   revalidatePath(categoriesPath);
-  await setActionToast({
-    type: "category-created",
-    name
-  });
-  redirect(categoriesPath);
+  return getMutationSuccessState(category, categories);
 }
 
-export async function updatePartCategoryFromForm(formData: FormData) {
+export async function updatePartCategoryFromForm(
+  formData: FormData
+): Promise<PartCategoryMutationResult> {
   const workspaceSlug = getRequiredFormValue(formData, "workspaceSlug");
   const id = getRequiredFormValue(formData, "id");
   const name = getRequiredFormValue(formData, "name");
   const parentId = getOptionalFormValue(formData, "parentId");
   const isAssignable = getRequiredFormValue(formData, "type") === "assignable";
   const categoriesPath = getPartCategoriesPath(workspaceSlug);
+  let category: PartCategoryListItem | null = null;
+  let categories: PartCategoryListItem[] = [];
 
   if (!workspaceSlug || !id || !name) {
-    redirect(
-      `${categoriesPath}?categoryUpdateError=missing-required-fields&categoryEditDialog=${encodeURIComponent(id)}`
-    );
+    return getMutationErrorState("missing-required-fields");
   }
 
   let formError: string | null = null;
@@ -91,30 +112,34 @@ export async function updatePartCategoryFromForm(formData: FormData) {
         permission: "part-categories:write"
       });
 
-      await updatePartCategory({
+      const updatedCategory = await updatePartCategory({
         id,
         workspaceId: context.workspace.id,
         parentId,
         name,
         isAssignable
       });
+      const nextCategories = await getPartCategories(context.workspace.id);
+      category =
+        nextCategories.find(
+          (currentCategory) => currentCategory.id === updatedCategory.id
+        ) ?? null;
+      categories = nextCategories;
     }
   } catch (error) {
     formError = getPartCategoryFormError(error);
   }
 
   if (formError) {
-    redirect(
-      `${categoriesPath}?categoryUpdateError=${formError}&categoryEditDialog=${encodeURIComponent(id)}`
-    );
+    return getMutationErrorState(formError);
+  }
+
+  if (!category) {
+    return getMutationErrorState("database-unavailable");
   }
 
   revalidatePath(categoriesPath);
-  await setActionToast({
-    type: "category-updated",
-    name
-  });
-  redirect(categoriesPath);
+  return getMutationSuccessState(category, categories);
 }
 
 function getRequiredFormValue(formData: FormData, name: string) {
@@ -157,4 +182,24 @@ function getPartCategoryFormError(error: unknown) {
   }
 
   return "database-unavailable";
+}
+
+function getMutationSuccessState(
+  category: PartCategoryListItem,
+  categories: PartCategoryListItem[]
+): PartCategoryMutationResult {
+  return {
+    ok: true,
+    category,
+    categories,
+    submittedAt: Date.now()
+  };
+}
+
+function getMutationErrorState(error: string): PartCategoryMutationResult {
+  return {
+    ok: false,
+    error,
+    submittedAt: Date.now()
+  };
 }
