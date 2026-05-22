@@ -15,7 +15,11 @@ import {
   updatePartCategoryFromForm
 } from "@/server/parts/categoryActions";
 import type { PartCategoryListItem } from "@/server/parts/categories";
-import { ToastNotice } from "@/app/toast-notice";
+import {
+  getNextToastId,
+  ToastNotice,
+  type ToastMessage
+} from "@/app/toast-notice";
 
 type Copy = {
   title: string;
@@ -76,6 +80,7 @@ export function PartCategoriesClient({
 }: PartCategoriesClientProps) {
   const createDialogRef = useRef<HTMLDialogElement>(null);
   const editDialogRef = useRef<HTMLDialogElement>(null);
+  const nextToastIdRef = useRef(0);
   const [currentCategories, setCurrentCategories] = useState(categories);
   const [createParentId, setCreateParentId] = useState("");
   const [editingCategory, setEditingCategory] =
@@ -86,10 +91,7 @@ export function PartCategoriesClient({
   const [createFormResetKey, setCreateFormResetKey] = useState(0);
   const [createFormError, setCreateFormError] = useState<string | null>(null);
   const [updateFormError, setUpdateFormError] = useState<string | null>(null);
-  const [toastMessage, setToastMessage] = useState<{
-    id: number;
-    message: string;
-  } | null>(null);
+  const [toastMessages, setToastMessages] = useState<ToastMessage[]>([]);
   const categoryTree = useMemo(
     () => buildCategoryTree(currentCategories),
     [currentCategories]
@@ -118,8 +120,8 @@ export function PartCategoriesClient({
       setCreateParentId("");
       setCreateFormResetKey((currentKey) => currentKey + 1);
       setCreateFormError(null);
-      setToastMessage({
-        id: result.submittedAt,
+      addToastMessage({
+        id: getNextToastId(nextToastIdRef),
         message: getCategorySuccessMessage(copy.createdToast, result.category)
       });
       closeDialog(createDialogRef.current);
@@ -139,8 +141,8 @@ export function PartCategoriesClient({
       setCurrentCategories(result.categories);
       setEditingCategory(result.category);
       setUpdateFormError(null);
-      setToastMessage({
-        id: result.submittedAt,
+      addToastMessage({
+        id: getNextToastId(nextToastIdRef),
         message: getCategorySuccessMessage(copy.updatedToast, result.category)
       });
       closeDialog(editDialogRef.current);
@@ -201,6 +203,16 @@ export function PartCategoriesClient({
     event.preventDefault();
     setUpdateFormError(null);
     updateCategoryMutation.mutate(new FormData(event.currentTarget));
+  }
+
+  function addToastMessage(toast: ToastMessage) {
+    setToastMessages((currentMessages) => [...currentMessages, toast]);
+  }
+
+  function dismissToastMessage(toastId: number) {
+    setToastMessages((currentMessages) =>
+      currentMessages.filter((toast) => toast.id !== toastId)
+    );
   }
 
   return (
@@ -277,7 +289,7 @@ export function PartCategoriesClient({
         </div>
       </section>
 
-      <ToastNotice key={toastMessage?.id} message={toastMessage?.message} />
+      <ToastNotice messages={toastMessages} onDismiss={dismissToastMessage} />
 
       <dialog
         ref={createDialogRef}

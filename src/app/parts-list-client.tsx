@@ -19,7 +19,11 @@ import { createPart, updatePart } from "@/server/parts/createPart";
 import type { ManufacturerSuggestion } from "@/server/organizations/organizations";
 import type { PartCategoryListItem } from "@/server/parts/categories";
 import type { PartsListItem } from "@/server/parts/getParts";
-import { ToastNotice } from "@/app/toast-notice";
+import {
+  getNextToastId,
+  ToastNotice,
+  type ToastMessage
+} from "@/app/toast-notice";
 
 type Copy = {
   title: string;
@@ -87,14 +91,12 @@ export function PartsListClient({
 }: PartsListClientProps) {
   const createDialogRef = useRef<HTMLDialogElement>(null);
   const editDialogRef = useRef<HTMLDialogElement>(null);
+  const nextToastIdRef = useRef(0);
   const categoryTree = buildCategoryTree(partCategories);
   const [currentParts, setCurrentParts] = useState(() => sortParts(parts));
   const [currentManufacturerSuggestions, setCurrentManufacturerSuggestions] =
     useState(manufacturerSuggestions);
-  const [toastMessage, setToastMessage] = useState<{
-    id: number;
-    message: string;
-  } | null>(null);
+  const [toastMessages, setToastMessages] = useState<ToastMessage[]>([]);
   const [createCatalogNumber, setCreateCatalogNumber] = useState("");
   const [createPrimaryCategoryId, setCreatePrimaryCategoryId] = useState("");
   const [createSecondaryCategoryId, setCreateSecondaryCategoryId] =
@@ -127,8 +129,8 @@ export function PartsListClient({
       setCreatePrimaryCategoryId("");
       setCreateSecondaryCategoryId("");
       setCreateFormResetKey((currentKey) => currentKey + 1);
-      setToastMessage({
-        id: result.submittedAt,
+      addToastMessage({
+        id: getNextToastId(nextToastIdRef),
         message: getPartSuccessMessage(copy.createdToast, result.part)
       });
       closeDialog(createDialogRef.current);
@@ -154,8 +156,8 @@ export function PartsListClient({
       );
       addManufacturerSuggestion(result.part.manufacturerName);
       setEditingPart(result.part);
-      setToastMessage({
-        id: result.submittedAt,
+      addToastMessage({
+        id: getNextToastId(nextToastIdRef),
         message: getPartSuccessMessage(copy.updatedToast, result.part)
       });
       closeDialog(editDialogRef.current);
@@ -287,6 +289,16 @@ export function PartsListClient({
     });
   }
 
+  function addToastMessage(toast: ToastMessage) {
+    setToastMessages((currentMessages) => [...currentMessages, toast]);
+  }
+
+  function dismissToastMessage(toastId: number) {
+    setToastMessages((currentMessages) =>
+      currentMessages.filter((toast) => toast.id !== toastId)
+    );
+  }
+
   return (
     <>
       <section
@@ -369,7 +381,7 @@ export function PartsListClient({
         </div>
       </section>
 
-      <ToastNotice key={toastMessage?.id} message={toastMessage?.message} />
+      <ToastNotice messages={toastMessages} onDismiss={dismissToastMessage} />
 
       <dialog
         ref={createDialogRef}

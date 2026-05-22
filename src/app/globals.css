@@ -21,7 +21,7 @@ body {
 
 @keyframes toast-notice {
   0%,
-  75% {
+  90.9% {
     opacity: 1;
     transform: translateY(0);
     visibility: visible;
