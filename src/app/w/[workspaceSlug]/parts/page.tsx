@@ -2,7 +2,6 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 
 import { PartsListClient } from "@/app/parts-list-client";
-import { getActionToast, type ActionToast } from "@/server/actionToast";
 import { signOut } from "@/server/auth/actions";
 import {
   getCurrentSession,
@@ -49,8 +48,6 @@ const copy = {
   editPart: "Edit",
   saveChanges: "Save changes",
   close: "Close",
-  created: "Part created.",
-  updated: "Part updated.",
   createdToast: "Part created",
   updatedToast: "Part updated",
   missingRequiredFields: "Enter both catalog number and manufacturer.",
@@ -73,8 +70,6 @@ type PartsPageProps = {
   searchParams?: Promise<{
     partDialog?: string;
     partEditDialog?: string;
-    partFormError?: string;
-    partUpdateError?: string;
   }>;
 };
 
@@ -106,12 +101,8 @@ export default async function PartsPage({
       ])
     : [[], []];
   const resolvedSearchParams = await searchParams;
-  const actionToast = await getActionToast();
   const partDialogOpen = resolvedSearchParams?.partDialog === "open";
   const partEditDialog = resolvedSearchParams?.partEditDialog;
-  const partFormError = resolvedSearchParams?.partFormError;
-  const partUpdateError = resolvedSearchParams?.partUpdateError;
-  const successMessage = getPartsSuccessMessage(copy, actionToast);
 
   return (
     <main className="min-h-screen bg-slate-100 text-slate-950">
@@ -193,12 +184,9 @@ export default async function PartsPage({
               isDatabaseAvailable={isDatabaseAvailable}
               partDialogOpen={partDialogOpen}
               partEditDialog={partEditDialog}
-              partFormError={partFormError}
-              partUpdateError={partUpdateError}
               partCategories={partCategories}
               manufacturerSuggestions={manufacturerSuggestions}
               parts={parts}
-              successMessage={successMessage}
               workspaceSlug={workspaceSlug}
             />
           </div>
@@ -206,23 +194,4 @@ export default async function PartsPage({
       </div>
     </main>
   );
-}
-
-function getPartsSuccessMessage(
-  partsCopy: typeof copy,
-  actionToast: ActionToast | null
-) {
-  if (!actionToast) {
-    return undefined;
-  }
-
-  if (actionToast.type === "part-created") {
-    return `${partsCopy.createdToast}: ${actionToast.manufacturerName} ${actionToast.catalogNumber}.`;
-  }
-
-  if (actionToast.type === "part-updated") {
-    return `${partsCopy.updatedToast}: ${actionToast.manufacturerName} ${actionToast.catalogNumber}.`;
-  }
-
-  return undefined;
 }

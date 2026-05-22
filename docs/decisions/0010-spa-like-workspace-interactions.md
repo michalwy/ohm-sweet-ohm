@@ -47,16 +47,19 @@ active workspace section, search terms, filters, sort order, pagination cursor,
 selected record, or an intentionally deep-linkable dialog. Ephemeral state such
 as "created successfully" should not be encoded in query parameters.
 
-When the need becomes concrete, introduce boring, well-supported React ecosystem
-libraries for the data and UI layers. The expected direction is:
+Use boring, well-supported React ecosystem libraries for the data and UI layers:
 
-- a client-side query and mutation cache such as TanStack Query or SWR;
-- a table library such as TanStack Table for complex grids;
+- TanStack Query for client-side server-state, mutations, cache invalidation,
+  background refresh, and infinite queries;
+- TanStack Table for complex grids, including sorting, filtering, pagination,
+  column state, row expansion, and inline-editing foundations;
 - accessible dialog/form primitives and validation helpers when local code stops
   being enough.
 
-Introduce those libraries deliberately, with small migrations that establish one
-screen as a pattern before applying it broadly.
+Adopt these libraries through small migrations that establish one screen as a
+pattern before applying it broadly. When adding or upgrading these libraries,
+verify the current latest stable npm versions and avoid intentionally pinning to
+older majors or minors without a documented compatibility reason.
 
 ## Rationale
 
@@ -81,8 +84,10 @@ optimistic updates where appropriate, and toast feedback.
   permissions. Client-side checks are only presentation aids.
 - Future list state should be split intentionally between URL state and local UI
   state.
-- Adding a query/cache or table library is expected, but should happen with a
-  specific implementation need and a small example screen rather than as a broad
-  dependency-only change.
+- TanStack Query and TanStack Table are the default choices for future
+  workspace data grids and client-side mutations.
+- Dependency additions and upgrades for the workspace interaction stack should
+  use the latest stable package versions unless an ADR or inline note documents
+  why an older version is required.
 - E2E tests for interactive screens should assert responsive behavior without
   relying on full page reloads unless navigation is the behavior being tested.

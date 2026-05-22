@@ -1,11 +1,21 @@
 "use client";
 
-import type { CSSProperties, KeyboardEvent as ReactKeyboardEvent } from "react";
-import { useActionState, useEffect, useRef, useState } from "react";
+import type {
+  CSSProperties,
+  FormEvent,
+  KeyboardEvent as ReactKeyboardEvent
+} from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useMutation } from "@tanstack/react-query";
+import {
+  createColumnHelper,
+  flexRender,
+  getCoreRowModel,
+  useReactTable
+} from "@tanstack/react-table";
 import { createPortal } from "react-dom";
 
 import { createPart, updatePart } from "@/server/parts/createPart";
-import type { PartFormState } from "@/server/parts/createPart";
 import type { ManufacturerSuggestion } from "@/server/organizations/organizations";
 import type { PartCategoryListItem } from "@/server/parts/categories";
 import type { PartsListItem } from "@/server/parts/getParts";
@@ -38,8 +48,8 @@ type Copy = {
   saveChanges: string;
   close: string;
   addPart: string;
-  created: string;
-  updated: string;
+  createdToast: string;
+  updatedToast: string;
   missingRequiredFields: string;
   invalidCategory: string;
   secondaryWithoutPrimary: string;
@@ -54,19 +64,14 @@ type CategoryTreeItem = PartCategoryListItem & {
   children: CategoryTreeItem[];
 };
 
-const initialPartFormState: PartFormState = {};
-
 type PartsListClientProps = {
   copy: Copy;
   isDatabaseAvailable: boolean;
   partDialogOpen: boolean;
   partEditDialog?: string;
-  partFormError?: string;
-  partUpdateError?: string;
   partCategories: PartCategoryListItem[];
   manufacturerSuggestions: ManufacturerSuggestion[];
   parts: PartsListItem[];
-  successMessage?: string;
   workspaceSlug: string;
 };
 
@@ -75,17 +80,21 @@ export function PartsListClient({
   isDatabaseAvailable,
   partDialogOpen,
   partEditDialog,
-  partFormError,
-  partUpdateError,
   partCategories,
   manufacturerSuggestions,
   parts,
-  successMessage,
   workspaceSlug
 }: PartsListClientProps) {
   const createDialogRef = useRef<HTMLDialogElement>(null);
   const editDialogRef = useRef<HTMLDialogElement>(null);
   const categoryTree = buildCategoryTree(partCategories);
+  const [currentParts, setCurrentParts] = useState(() => sortParts(parts));
+  const [currentManufacturerSuggestions, setCurrentManufacturerSuggestions] =
+    useState(manufacturerSuggestions);
+  const [toastMessage, setToastMessage] = useState<{
+    id: number;
+    message: string;
+  } | null>(null);
   const [createCatalogNumber, setCreateCatalogNumber] = useState("");
   const [createPrimaryCategoryId, setCreatePrimaryCategoryId] = useState("");
   const [createSecondaryCategoryId, setCreateSecondaryCategoryId] =
@@ -95,28 +104,111 @@ export function PartsListClient({
   const [editPrimaryCategoryId, setEditPrimaryCategoryId] = useState("");
   const [editSecondaryCategoryId, setEditSecondaryCategoryId] = useState("");
   const [editingPart, setEditingPart] = useState<PartsListItem | null>(() =>
-    parts.find((part) => part.id === partEditDialog) ?? null
+    currentParts.find((part) => part.id === partEditDialog) ?? null
   );
-  const [createActionState, createFormAction] = useActionState(
-    createPart,
-    initialPartFormState
-  );
-  const [updateActionState, updateFormAction] = useActionState(
-    updatePart,
-    initialPartFormState
-  );
-  const [clearedCreateFormErrorAt, setClearedCreateFormErrorAt] = useState(0);
-  const [clearedUpdateFormErrorAt, setClearedUpdateFormErrorAt] = useState(0);
-  const createFormError =
-    createActionState.submittedAt &&
-    createActionState.submittedAt > clearedCreateFormErrorAt
-      ? (createActionState.error ?? null)
-      : (partFormError ?? null);
-  const updateFormError =
-    updateActionState.submittedAt &&
-    updateActionState.submittedAt > clearedUpdateFormErrorAt
-      ? (updateActionState.error ?? null)
-      : (partUpdateError ?? null);
+  const [createFormError, setCreateFormError] = useState<string | null>(null);
+  const [updateFormError, setUpdateFormError] = useState<string | null>(null);
+  const createPartMutation = useMutation({
+    mutationFn: createPart,
+    onError: () => {
+      setCreateFormError("database-unavailable");
+    },
+    onSuccess: (result) => {
+      if (!result.ok) {
+        setCreateFormError(result.error);
+        return;
+      }
+
+      setCurrentParts((currentItems) =>
+        sortParts([...currentItems, result.part])
+      );
+      addManufacturerSuggestion(result.part.manufacturerName);
+      setCreateCatalogNumber("");
+      setCreatePrimaryCategoryId("");
+      setCreateSecondaryCategoryId("");
+      setCreateFormResetKey((currentKey) => currentKey + 1);
+      setToastMessage({
+        id: result.submittedAt,
+        message: getPartSuccessMessage(copy.createdToast, result.part)
+      });
+      closeDialog(createDialogRef.current);
+    }
+  });
+  const updatePartMutation = useMutation({
+    mutationFn: updatePart,
+    onError: () => {
+      setUpdateFormError("database-unavailable");
+    },
+    onSuccess: (result) => {
+      if (!result.ok) {
+        setUpdateFormError(result.error);
+        return;
+      }
+
+      setCurrentParts((currentItems) =>
+        sortParts(
+          currentItems.map((part) =>
+            part.id === result.part.id ? result.part : part
+          )
+        )
+      );
+      addManufacturerSuggestion(result.part.manufacturerName);
+      setEditingPart(result.part);
+      setToastMessage({
+        id: result.submittedAt,
+        message: getPartSuccessMessage(copy.updatedToast, result.part)
+      });
+      closeDialog(editDialogRef.current);
+    }
+  });
+  const columns = useMemo(() => {
+    const columnHelper = createColumnHelper<PartsListItem>();
+
+    return [
+      columnHelper.display({
+        id: "categories",
+        header: copy.categories,
+        cell: ({ row }) => (
+          <PartCategoriesSummary copy={copy} part={row.original} />
+        )
+      }),
+      columnHelper.accessor("catalogNumber", {
+        header: copy.catalogNumber,
+        cell: ({ getValue }) => (
+          <span className="font-mono text-slate-950">{getValue()}</span>
+        )
+      }),
+      columnHelper.accessor("manufacturerName", {
+        header: copy.manufacturer,
+        cell: ({ getValue }) => (
+          <span className="text-slate-950">{getValue()}</span>
+        )
+      }),
+      columnHelper.display({
+        id: "actions",
+        header: copy.actions,
+        cell: ({ row }) => (
+          <div className="text-right">
+            <button
+              className="min-h-9 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:border-slate-400 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400"
+              disabled={!isDatabaseAvailable}
+              type="button"
+              onClick={() => openEditDialog(row.original)}
+            >
+              {copy.editPart}
+            </button>
+          </div>
+        )
+      })
+    ];
+  }, [copy, isDatabaseAvailable]);
+  // TanStack Table intentionally returns dynamic helpers that React Compiler cannot memoize.
+  // eslint-disable-next-line react-hooks/incompatible-library
+  const partsTable = useReactTable({
+    data: currentParts,
+    columns,
+    getCoreRowModel: getCoreRowModel()
+  });
 
   useEffect(() => {
     if (partDialogOpen) {
@@ -129,7 +221,9 @@ export function PartsListClient({
       return;
     }
 
-    const part = parts.find((currentPart) => currentPart.id === partEditDialog);
+    const part = currentParts.find(
+      (currentPart) => currentPart.id === partEditDialog
+    );
 
     if (!part) {
       return;
@@ -142,14 +236,14 @@ export function PartsListClient({
       setEditSecondaryCategoryId(part.secondaryCategoryId ?? "");
       openDialog(editDialogRef.current);
     });
-  }, [partEditDialog, parts]);
+  }, [partEditDialog, currentParts]);
 
   function openEditDialog(part: PartsListItem) {
     setEditingPart(part);
     setEditCatalogNumber(part.catalogNumber);
     setEditPrimaryCategoryId(part.primaryCategoryId ?? "");
     setEditSecondaryCategoryId(part.secondaryCategoryId ?? "");
-    setClearedUpdateFormErrorAt(updateActionState.submittedAt ?? 0);
+    setUpdateFormError(null);
     window.requestAnimationFrame(() => openDialog(editDialogRef.current));
   }
 
@@ -158,8 +252,39 @@ export function PartsListClient({
     setCreatePrimaryCategoryId("");
     setCreateSecondaryCategoryId("");
     setCreateFormResetKey((currentKey) => currentKey + 1);
-    setClearedCreateFormErrorAt(createActionState.submittedAt ?? 0);
+    setCreateFormError(null);
     openDialog(createDialogRef.current);
+  }
+
+  function handleCreateSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setCreateFormError(null);
+    createPartMutation.mutate(new FormData(event.currentTarget));
+  }
+
+  function handleUpdateSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setUpdateFormError(null);
+    updatePartMutation.mutate(new FormData(event.currentTarget));
+  }
+
+  function addManufacturerSuggestion(manufacturerName: string) {
+    setCurrentManufacturerSuggestions((currentSuggestions) => {
+      if (
+        currentSuggestions.some(
+          (suggestion) => suggestion.name === manufacturerName
+        )
+      ) {
+        return currentSuggestions;
+      }
+
+      return [
+        ...currentSuggestions,
+        { id: manufacturerName, name: manufacturerName }
+      ].sort((left, right) =>
+          left.name.localeCompare(right.name, "en", { sensitivity: "base" })
+        );
+    });
   }
 
   return (
@@ -184,59 +309,47 @@ export function PartsListClient({
         <div className="min-h-0 flex-1 overflow-auto">
           <table className="min-w-full border-separate border-spacing-0 text-left text-sm">
             <thead className="sticky top-0 z-10 bg-slate-50">
-              <tr>
-                <th
-                  scope="col"
-                  className="border-b border-slate-200 px-4 py-3 font-semibold text-slate-600"
-                >
-                  {copy.categories}
-                </th>
-                <th
-                  scope="col"
-                  className="border-b border-slate-200 px-4 py-3 font-semibold text-slate-600"
-                >
-                  {copy.catalogNumber}
-                </th>
-                <th
-                  scope="col"
-                  className="border-b border-slate-200 px-4 py-3 font-semibold text-slate-600"
-                >
-                  {copy.manufacturer}
-                </th>
-                <th
-                  scope="col"
-                  className="w-28 border-b border-slate-200 px-4 py-3 text-right font-semibold text-slate-600"
-                >
-                  {copy.actions}
-                </th>
-              </tr>
+              {partsTable.getHeaderGroups().map((headerGroup) => (
+                <tr key={headerGroup.id}>
+                  {headerGroup.headers.map((header) => (
+                    <th
+                      key={header.id}
+                      scope="col"
+                      className={`border-b border-slate-200 px-4 py-3 font-semibold text-slate-600 ${
+                        header.column.id === "actions" ? "w-28 text-right" : ""
+                      }`}
+                    >
+                      {header.isPlaceholder
+                        ? null
+                        : flexRender(
+                            header.column.columnDef.header,
+                            header.getContext()
+                          )}
+                    </th>
+                  ))}
+                </tr>
+              ))}
             </thead>
             <tbody className="bg-white">
-              {parts.length > 0 ? (
-                parts.map((part) => (
+              {partsTable.getRowModel().rows.length > 0 ? (
+                partsTable.getRowModel().rows.map((row) => (
                   <tr
-                    key={part.id}
+                    key={row.id}
                     className="border-b border-slate-100 transition hover:bg-slate-50"
                   >
-                    <td className="border-b border-slate-100 px-4 py-3 text-slate-700">
-                      <PartCategoriesSummary copy={copy} part={part} />
-                    </td>
-                    <td className="border-b border-slate-100 px-4 py-3 font-mono text-slate-950">
-                      {part.catalogNumber}
-                    </td>
-                    <td className="border-b border-slate-100 px-4 py-3 text-slate-950">
-                      {part.manufacturerName}
-                    </td>
-                    <td className="border-b border-slate-100 px-4 py-2 text-right">
-                      <button
-                        className="min-h-9 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:border-slate-400 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400"
-                        disabled={!isDatabaseAvailable}
-                        type="button"
-                        onClick={() => openEditDialog(part)}
+                    {row.getVisibleCells().map((cell) => (
+                      <td
+                        key={cell.id}
+                        className={`border-b border-slate-100 px-4 py-3 text-slate-700 ${
+                          cell.column.id === "actions" ? "py-2" : ""
+                        }`}
                       >
-                        {copy.editPart}
-                      </button>
-                    </td>
+                        {flexRender(
+                          cell.column.columnDef.cell,
+                          cell.getContext()
+                        )}
+                      </td>
+                    ))}
                   </tr>
                 ))
               ) : (
@@ -256,7 +369,7 @@ export function PartsListClient({
         </div>
       </section>
 
-      <ToastNotice message={successMessage} />
+      <ToastNotice key={toastMessage?.id} message={toastMessage?.message} />
 
       <dialog
         ref={createDialogRef}
@@ -280,11 +393,7 @@ export function PartsListClient({
               <button
                 className="min-h-9 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:border-slate-400 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2"
                 type="submit"
-                onClick={() =>
-                  setClearedCreateFormErrorAt(
-                    createActionState.submittedAt ?? 0
-                  )
-                }
+                onClick={() => setCreateFormError(null)}
               >
                 {copy.close}
               </button>
@@ -299,7 +408,7 @@ export function PartsListClient({
             </p>
           ) : null}
 
-          <form action={createFormAction} className="grid gap-4">
+          <form className="grid gap-4" onSubmit={handleCreateSubmit}>
             <input name="workspaceSlug" type="hidden" value={workspaceSlug} />
             <label className="grid gap-2 text-sm font-medium text-slate-700">
               {copy.catalogNumber}
@@ -321,7 +430,7 @@ export function PartsListClient({
               inputId="create-manufacturer-name"
               name="manufacturerName"
               placeholder={copy.manufacturerPlaceholder}
-              suggestions={manufacturerSuggestions}
+              suggestions={currentManufacturerSuggestions}
             />
             <CategoryTreeSelect
               categories={partCategories}
@@ -353,7 +462,7 @@ export function PartsListClient({
               <button
                 className="min-h-11 rounded-md border border-slate-950 bg-slate-950 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2 disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-100 disabled:text-slate-400"
                 type="submit"
-                disabled={!isDatabaseAvailable}
+                disabled={!isDatabaseAvailable || createPartMutation.isPending}
               >
                 {copy.createPart}
               </button>
@@ -384,11 +493,7 @@ export function PartsListClient({
               <button
                 className="min-h-9 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:border-slate-400 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2"
                 type="submit"
-                onClick={() =>
-                  setClearedUpdateFormErrorAt(
-                    updateActionState.submittedAt ?? 0
-                  )
-                }
+                onClick={() => setUpdateFormError(null)}
               >
                 {copy.close}
               </button>
@@ -404,7 +509,7 @@ export function PartsListClient({
           ) : null}
 
           {editingPart ? (
-            <form action={updateFormAction} className="grid gap-4">
+            <form className="grid gap-4" onSubmit={handleUpdateSubmit}>
               <input name="workspaceSlug" type="hidden" value={workspaceSlug} />
               <input name="id" type="hidden" value={editingPart.id} />
               <label className="grid gap-2 text-sm font-medium text-slate-700">
@@ -428,7 +533,7 @@ export function PartsListClient({
                 inputId="edit-manufacturer-name"
                 name="manufacturerName"
                 placeholder={copy.manufacturerPlaceholder}
-                suggestions={manufacturerSuggestions}
+                suggestions={currentManufacturerSuggestions}
               />
               <CategoryTreeSelect
                 categories={partCategories}
@@ -464,7 +569,7 @@ export function PartsListClient({
                 <button
                   className="min-h-11 rounded-md border border-slate-950 bg-slate-950 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2 disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-100 disabled:text-slate-400"
                   type="submit"
-                  disabled={!isDatabaseAvailable}
+                  disabled={!isDatabaseAvailable || updatePartMutation.isPending}
                 >
                   {copy.saveChanges}
                 </button>
@@ -487,6 +592,36 @@ function openDialog(dialog: HTMLDialogElement | null) {
   } catch {
     dialog.setAttribute("open", "");
   }
+}
+
+function closeDialog(dialog: HTMLDialogElement | null) {
+  if (!dialog?.open) {
+    return;
+  }
+
+  dialog.close();
+}
+
+function getPartSuccessMessage(actionLabel: string, part: PartsListItem) {
+  return `${actionLabel}: ${part.manufacturerName} ${part.catalogNumber}.`;
+}
+
+function sortParts(parts: PartsListItem[]) {
+  return [...parts].sort((left, right) => {
+    const manufacturerOrder = left.manufacturerName.localeCompare(
+      right.manufacturerName,
+      "en",
+      { sensitivity: "base" }
+    );
+
+    if (manufacturerOrder !== 0) {
+      return manufacturerOrder;
+    }
+
+    return left.catalogNumber.localeCompare(right.catalogNumber, "en", {
+      sensitivity: "base"
+    });
+  });
 }
 
 function getCategoryErrorMessage(copy: Copy, error: string) {

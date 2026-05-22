@@ -1,27 +1,33 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
 
 import { Prisma } from "@/generated/prisma/client";
 import { authorizeWorkspacePermission } from "@/server/access-control/authorize";
-import { setActionToast } from "@/server/actionToast";
 import { getCurrentWorkspaceContextBySlug } from "@/server/auth/currentContext";
 import { prisma } from "@/server/db/prisma";
 import {
   ensureOrganizationWithRole,
   ORGANIZATION_ROLE_MANUFACTURER
 } from "@/server/organizations/organizations";
+import { getPartCategories } from "@/server/parts/categories";
+import type { PartsListItem } from "@/server/parts/getParts";
 
-export type PartFormState = {
-  error?: string;
-  submittedAt?: number;
-};
+export type PartMutationResult =
+  | {
+      ok: true;
+      part: PartsListItem;
+      submittedAt: number;
+    }
+  | {
+      ok: false;
+      error: string;
+      submittedAt: number;
+    };
 
 export async function createPart(
-  _state: PartFormState,
   formData: FormData
-): Promise<PartFormState> {
+): Promise<PartMutationResult> {
   const workspaceSlug = getRequiredFormValue(formData, "workspaceSlug");
   const catalogNumber = getRequiredFormValue(formData, "catalogNumber");
   const manufacturerName = getRequiredFormValue(formData, "manufacturerName");
@@ -31,6 +37,7 @@ export async function createPart(
     "secondaryCategoryId"
   );
   const partsPath = getPartsPath(workspaceSlug);
+  let part: PartsListItem | null = null;
 
   if (!workspaceSlug || !catalogNumber || !manufacturerName) {
     return getFormErrorState("missing-required-fields");
@@ -64,7 +71,7 @@ export async function createPart(
         });
 
         try {
-          await prisma.part.create({
+          const createdPart = await prisma.part.create({
             data: {
               workspaceId: context.workspace.id,
               catalogNumber,
@@ -72,6 +79,10 @@ export async function createPart(
               primaryCategoryId,
               secondaryCategoryId
             }
+          });
+          part = await getPartListItem({
+            id: createdPart.id,
+            workspaceId: context.workspace.id
           });
         } catch (error) {
           formError = getPartWriteError(error);
@@ -86,19 +97,17 @@ export async function createPart(
     return getFormErrorState(formError);
   }
 
+  if (!part) {
+    return getFormErrorState("database-unavailable");
+  }
+
   revalidatePath(partsPath);
-  await setActionToast({
-    type: "part-created",
-    catalogNumber,
-    manufacturerName
-  });
-  redirect(partsPath);
+  return getFormSuccessState(part);
 }
 
 export async function updatePart(
-  _state: PartFormState,
   formData: FormData
-): Promise<PartFormState> {
+): Promise<PartMutationResult> {
   const workspaceSlug = getRequiredFormValue(formData, "workspaceSlug");
   const id = getRequiredFormValue(formData, "id");
   const catalogNumber = getRequiredFormValue(formData, "catalogNumber");
@@ -109,6 +118,7 @@ export async function updatePart(
     "secondaryCategoryId"
   );
   const partsPath = getPartsPath(workspaceSlug);
+  let part: PartsListItem | null = null;
 
   if (!workspaceSlug || !id || !catalogNumber || !manufacturerName) {
     return getFormErrorState("missing-required-fields");
@@ -142,7 +152,7 @@ export async function updatePart(
         });
 
         try {
-          await prisma.part.updateMany({
+          const updateResult = await prisma.part.updateMany({
             where: {
               id,
               workspaceId: context.workspace.id
@@ -154,6 +164,15 @@ export async function updatePart(
               secondaryCategoryId
             }
           });
+
+          if (updateResult.count === 0) {
+            formError = "database-unavailable";
+          } else {
+            part = await getPartListItem({
+              id,
+              workspaceId: context.workspace.id
+            });
+          }
         } catch (error) {
           formError = getPartWriteError(error);
         }
@@ -167,13 +186,12 @@ export async function updatePart(
     return getFormErrorState(formError);
   }
 
+  if (!part) {
+    return getFormErrorState("database-unavailable");
+  }
+
   revalidatePath(partsPath);
-  await setActionToast({
-    type: "part-updated",
-    catalogNumber,
-    manufacturerName
-  });
-  redirect(partsPath);
+  return getFormSuccessState(part);
 }
 
 function getRequiredFormValue(formData: FormData, name: string) {
@@ -260,9 +278,69 @@ function getPartWriteError(error: unknown) {
   return "database-unavailable";
 }
 
-function getFormErrorState(error: string): PartFormState {
+function getFormSuccessState(part: PartsListItem): PartMutationResult {
   return {
+    ok: true,
+    part,
+    submittedAt: Date.now()
+  };
+}
+
+function getFormErrorState(error: string): PartMutationResult {
+  return {
+    ok: false,
     error,
     submittedAt: Date.now()
+  };
+}
+
+async function getPartListItem({
+  id,
+  workspaceId
+}: {
+  id: string;
+  workspaceId: string;
+}) {
+  const [part, categories] = await Promise.all([
+    prisma.part.findFirst({
+      where: {
+        id,
+        workspaceId
+      },
+      select: {
+        id: true,
+        catalogNumber: true,
+        manufacturer: {
+          select: {
+            name: true
+          }
+        },
+        primaryCategoryId: true,
+        secondaryCategoryId: true
+      }
+    }),
+    getPartCategories(workspaceId)
+  ]);
+
+  if (!part) {
+    return null;
+  }
+
+  const categoryPathsById = new Map(
+    categories.map((category) => [category.id, category.path])
+  );
+
+  return {
+    id: part.id,
+    catalogNumber: part.catalogNumber,
+    manufacturerName: part.manufacturer.name,
+    primaryCategoryId: part.primaryCategoryId,
+    primaryCategoryPath: part.primaryCategoryId
+      ? categoryPathsById.get(part.primaryCategoryId) ?? null
+      : null,
+    secondaryCategoryId: part.secondaryCategoryId,
+    secondaryCategoryPath: part.secondaryCategoryId
+      ? categoryPathsById.get(part.secondaryCategoryId) ?? null
+      : null
   };
 }

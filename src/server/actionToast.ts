@@ -4,16 +4,10 @@ import { cookies } from "next/headers";
 
 import { ACTION_TOAST_COOKIE_NAME } from "@/lib/actionToastCookie";
 
-export type ActionToast =
-  | {
-      type: "part-created" | "part-updated";
-      catalogNumber: string;
-      manufacturerName: string;
-    }
-  | {
-      type: "category-created" | "category-updated";
-      name: string;
-    };
+export type ActionToast = {
+  type: "category-created" | "category-updated";
+  name: string;
+};
 
 export async function getActionToast() {
   const cookieStore = await cookies();
@@ -45,19 +39,6 @@ export async function setActionToast(toast: ActionToast) {
 function parseActionToast(value: unknown): ActionToast | null {
   if (!value || typeof value !== "object") {
     return null;
-  }
-
-  if (
-    hasStringProperty(value, "type") &&
-    (value.type === "part-created" || value.type === "part-updated") &&
-    hasStringProperty(value, "catalogNumber") &&
-    hasStringProperty(value, "manufacturerName")
-  ) {
-    return {
-      type: value.type,
-      catalogNumber: value.catalogNumber,
-      manufacturerName: value.manufacturerName
-    };
   }
 
   if (
