@@ -22,6 +22,7 @@ model Part {
   primaryCategory   PartCategory? @relation("PartPrimaryCategory", fields: [primaryCategoryId], references: [id], onDelete: SetNull)
   secondaryCategory PartCategory? @relation("PartSecondaryCategory", fields: [secondaryCategoryId], references: [id], onDelete: SetNull)
 
+  @@unique([workspaceId, manufacturerId, catalogNumber])
   @@index([workspaceId, catalogNumber])
   @@index([workspaceId, manufacturerId])
   @@index([workspaceId, primaryCategoryId])

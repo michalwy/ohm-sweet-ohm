@@ -117,6 +117,25 @@ test.describe("parts list", () => {
     );
     await expect(createdPartRow).toContainText("Passives / Resistors");
 
+    await page.getByRole("button", { name: "Add part" }).click();
+    await expect(addPartDialog).toBeVisible();
+    await addPartDialog.getByLabel("Catalog number").fill(catalogNumber);
+    await addPartDialog.getByLabel("Manufacturer").fill("Microchip Technology");
+    await page.getByRole("button", { name: "Create part" }).click();
+
+    await expect(
+      page.getByText(
+        "A part with this manufacturer and catalog number already exists."
+      )
+    ).toHaveCount(1);
+    await expect(addPartDialog.getByLabel("Catalog number")).toHaveValue(
+      catalogNumber
+    );
+    await expect(addPartDialog.getByLabel("Manufacturer")).toHaveValue(
+      "Microchip Technology"
+    );
+    await addPartDialog.getByRole("button", { name: "Close" }).click();
+
     await createdPartRow.getByRole("button", { name: "Edit" }).click();
     const editPartDialog = page.getByRole("dialog", { name: "Edit part" });
     await expect(editPartDialog).toBeVisible();
@@ -126,12 +145,27 @@ test.describe("parts list", () => {
     await expect(editPartDialog.getByLabel("Manufacturer")).toHaveValue(
       "Microchip Technology"
     );
+    await editPartDialog.getByLabel("Catalog number").fill("NE555P");
+    await editPartDialog.getByLabel("Manufacturer").fill("Texas Instruments");
+    await editPartDialog.getByRole("button", { name: "Save changes" }).click();
+    await expect(
+      page.getByText(
+        "A part with this manufacturer and catalog number already exists."
+      )
+    ).toHaveCount(1);
+    await expect(editPartDialog.getByLabel("Catalog number")).toHaveValue(
+      "NE555P"
+    );
+    await expect(editPartDialog.getByLabel("Manufacturer")).toHaveValue(
+      "Texas Instruments"
+    );
     await editPartDialog.getByLabel("Catalog number").fill(updatedCatalogNumber);
     const editManufacturerInput = editPartDialog.getByLabel("Manufacturer");
     await editManufacturerInput.fill("dio");
     await page.keyboard.press("Enter");
     await expect(editManufacturerInput).toHaveValue("Diodes Incorporated");
     await editManufacturerInput.fill(updatedManufacturer);
+    await page.keyboard.press("Escape");
     await editPartDialog.getByLabel("Primary category").click();
     await expect(
       page.getByRole("option", { name: /Integrated circuits/ })

@@ -55,6 +55,8 @@ const copy = {
   secondaryWithoutPrimary:
     "Choose a primary category before choosing a secondary category.",
   duplicateCategories: "Primary and secondary categories must be different.",
+  duplicatePart:
+    "A part with this manufacturer and catalog number already exists.",
   emptyTitle: "No parts yet",
   emptyBody: "Parts will appear here once they exist.",
   databaseUnavailable:

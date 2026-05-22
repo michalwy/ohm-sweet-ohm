@@ -1,10 +1,11 @@
 "use client";
 
 import type { CSSProperties, KeyboardEvent as ReactKeyboardEvent } from "react";
-import { useEffect, useRef, useState } from "react";
+import { useActionState, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
 import { createPart, updatePart } from "@/server/parts/createPart";
+import type { PartFormState } from "@/server/parts/createPart";
 import type { ManufacturerSuggestion } from "@/server/organizations/organizations";
 import type { PartCategoryListItem } from "@/server/parts/categories";
 import type { PartsListItem } from "@/server/parts/getParts";
@@ -42,6 +43,7 @@ type Copy = {
   invalidCategory: string;
   secondaryWithoutPrimary: string;
   duplicateCategories: string;
+  duplicatePart: string;
   emptyTitle: string;
   emptyBody: string;
   databaseUnavailable: string;
@@ -50,6 +52,8 @@ type Copy = {
 type CategoryTreeItem = PartCategoryListItem & {
   children: CategoryTreeItem[];
 };
+
+const initialPartFormState: PartFormState = {};
 
 type PartsListClientProps = {
   copy: Copy;
@@ -83,15 +87,42 @@ export function PartsListClient({
   const createDialogRef = useRef<HTMLDialogElement>(null);
   const editDialogRef = useRef<HTMLDialogElement>(null);
   const categoryTree = buildCategoryTree(partCategories);
+  const [createCatalogNumber, setCreateCatalogNumber] = useState("");
   const [createPrimaryCategoryId, setCreatePrimaryCategoryId] = useState("");
   const [createSecondaryCategoryId, setCreateSecondaryCategoryId] =
     useState("");
+  const [createFormResetKey, setCreateFormResetKey] = useState(0);
+  const [editCatalogNumber, setEditCatalogNumber] = useState("");
   const [editPrimaryCategoryId, setEditPrimaryCategoryId] = useState("");
   const [editSecondaryCategoryId, setEditSecondaryCategoryId] = useState("");
   const [editingPart, setEditingPart] = useState<PartsListItem | null>(() =>
     parts.find((part) => part.id === partEditDialog) ?? null
   );
-  const hasFeedback = partCreated || partUpdated || partUpdateError;
+  const [createActionState, createFormAction] = useActionState(
+    createPart,
+    initialPartFormState
+  );
+  const [updateActionState, updateFormAction] = useActionState(
+    updatePart,
+    initialPartFormState
+  );
+  const [createFormError, setCreateFormError] = useState(partFormError ?? null);
+  const [updateFormError, setUpdateFormError] = useState(
+    partUpdateError ?? null
+  );
+  const hasFeedback = partCreated || partUpdated;
+
+  useEffect(() => {
+    if (createActionState.submittedAt) {
+      setCreateFormError(createActionState.error ?? null);
+    }
+  }, [createActionState]);
+
+  useEffect(() => {
+    if (updateActionState.submittedAt) {
+      setUpdateFormError(updateActionState.error ?? null);
+    }
+  }, [updateActionState]);
 
   useEffect(() => {
     if (partDialogOpen) {
@@ -112,6 +143,7 @@ export function PartsListClient({
 
     window.requestAnimationFrame(() => {
       setEditingPart(part);
+      setEditCatalogNumber(part.catalogNumber);
       setEditPrimaryCategoryId(part.primaryCategoryId ?? "");
       setEditSecondaryCategoryId(part.secondaryCategoryId ?? "");
       openDialog(editDialogRef.current);
@@ -120,9 +152,20 @@ export function PartsListClient({
 
   function openEditDialog(part: PartsListItem) {
     setEditingPart(part);
+    setEditCatalogNumber(part.catalogNumber);
     setEditPrimaryCategoryId(part.primaryCategoryId ?? "");
     setEditSecondaryCategoryId(part.secondaryCategoryId ?? "");
+    setUpdateFormError(null);
     window.requestAnimationFrame(() => openDialog(editDialogRef.current));
+  }
+
+  function openCreateDialog() {
+    setCreateCatalogNumber("");
+    setCreatePrimaryCategoryId("");
+    setCreateSecondaryCategoryId("");
+    setCreateFormResetKey((currentKey) => currentKey + 1);
+    setCreateFormError(null);
+    openDialog(createDialogRef.current);
   }
 
   return (
@@ -148,11 +191,6 @@ export function PartsListClient({
                     {copy.updated}
                   </p>
                 ) : null}
-                {partUpdateError ? (
-                  <p className="rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-sm font-medium text-rose-800">
-                    {getUpdateErrorMessage(copy, partUpdateError)}
-                  </p>
-                ) : null}
               </>
             ) : null}
           </div>
@@ -160,7 +198,7 @@ export function PartsListClient({
             className="min-h-10 rounded-md border border-slate-950 bg-slate-950 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2 disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-100 disabled:text-slate-400"
             disabled={!isDatabaseAvailable}
             type="button"
-            onClick={() => openDialog(createDialogRef.current)}
+            onClick={openCreateDialog}
           >
             {copy.addPart}
           </button>
@@ -262,21 +300,22 @@ export function PartsListClient({
               <button
                 className="min-h-9 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:border-slate-400 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2"
                 type="submit"
+                onClick={() => setCreateFormError(null)}
               >
                 {copy.close}
               </button>
             </form>
           </div>
 
-          {partFormError ? (
+          {createFormError ? (
             <p className="mb-4 rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-800">
-              {partFormError === "missing-required-fields"
+              {createFormError === "missing-required-fields"
                 ? copy.missingRequiredFields
-                : getCategoryErrorMessage(copy, partFormError)}
+                : getCategoryErrorMessage(copy, createFormError)}
             </p>
           ) : null}
 
-          <form action={createPart} className="grid gap-4">
+          <form action={createFormAction} className="grid gap-4">
             <input name="workspaceSlug" type="hidden" value={workspaceSlug} />
             <label className="grid gap-2 text-sm font-medium text-slate-700">
               {copy.catalogNumber}
@@ -286,10 +325,13 @@ export function PartsListClient({
                 placeholder={copy.catalogNumberPlaceholder}
                 required
                 type="text"
+                value={createCatalogNumber}
                 disabled={!isDatabaseAvailable}
+                onChange={(event) => setCreateCatalogNumber(event.target.value)}
               />
             </label>
             <ManufacturerAutocomplete
+              key={`create-manufacturer-${createFormResetKey}`}
               copy={copy}
               disabled={!isDatabaseAvailable}
               inputId="create-manufacturer-name"
@@ -358,34 +400,36 @@ export function PartsListClient({
               <button
                 className="min-h-9 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:border-slate-400 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2"
                 type="submit"
+                onClick={() => setUpdateFormError(null)}
               >
                 {copy.close}
               </button>
             </form>
           </div>
 
-          {partUpdateError ? (
+          {updateFormError ? (
             <p className="mb-4 rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-800">
-              {partUpdateError === "missing-required-fields"
+              {updateFormError === "missing-required-fields"
                 ? copy.missingRequiredFields
-                : getCategoryErrorMessage(copy, partUpdateError)}
+                : getCategoryErrorMessage(copy, updateFormError)}
             </p>
           ) : null}
 
           {editingPart ? (
-            <form action={updatePart} className="grid gap-4">
+            <form action={updateFormAction} className="grid gap-4">
               <input name="workspaceSlug" type="hidden" value={workspaceSlug} />
               <input name="id" type="hidden" value={editingPart.id} />
               <label className="grid gap-2 text-sm font-medium text-slate-700">
                 {copy.catalogNumber}
                 <input
                   className="min-h-11 rounded-md border border-slate-300 bg-white px-3 py-2 font-mono text-base text-slate-950 outline-none transition placeholder:text-slate-400 hover:border-slate-400 focus:border-slate-500 focus:ring-2 focus:ring-slate-200 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400"
-                  defaultValue={editingPart.catalogNumber}
                   name="catalogNumber"
                   placeholder={copy.catalogNumberPlaceholder}
                   required
                   type="text"
+                  value={editCatalogNumber}
                   disabled={!isDatabaseAvailable}
+                  onChange={(event) => setEditCatalogNumber(event.target.value)}
                 />
               </label>
               <ManufacturerAutocomplete
@@ -457,15 +501,11 @@ function openDialog(dialog: HTMLDialogElement | null) {
   }
 }
 
-function getUpdateErrorMessage(copy: Copy, error: string) {
-  if (error === "missing-required-fields") {
-    return copy.missingRequiredFields;
+function getCategoryErrorMessage(copy: Copy, error: string) {
+  if (error === "duplicate-part") {
+    return copy.duplicatePart;
   }
 
-  return getCategoryErrorMessage(copy, error);
-}
-
-function getCategoryErrorMessage(copy: Copy, error: string) {
   if (error === "invalid-category") {
     return copy.invalidCategory;
   }

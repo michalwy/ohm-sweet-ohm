@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
+import { Prisma } from "@/generated/prisma/client";
 import { authorizeWorkspacePermission } from "@/server/access-control/authorize";
 import { getCurrentWorkspaceContextBySlug } from "@/server/auth/currentContext";
 import { prisma } from "@/server/db/prisma";
@@ -11,7 +12,15 @@ import {
   ORGANIZATION_ROLE_MANUFACTURER
 } from "@/server/organizations/organizations";
 
-export async function createPart(formData: FormData) {
+export type PartFormState = {
+  error?: string;
+  submittedAt?: number;
+};
+
+export async function createPart(
+  _state: PartFormState,
+  formData: FormData
+): Promise<PartFormState> {
   const workspaceSlug = getRequiredFormValue(formData, "workspaceSlug");
   const catalogNumber = getRequiredFormValue(formData, "catalogNumber");
   const manufacturerName = getRequiredFormValue(formData, "manufacturerName");
@@ -23,7 +32,7 @@ export async function createPart(formData: FormData) {
   const partsPath = getPartsPath(workspaceSlug);
 
   if (!workspaceSlug || !catalogNumber || !manufacturerName) {
-    redirect(`${partsPath}?partFormError=missing-required-fields&partDialog=open`);
+    return getFormErrorState("missing-required-fields");
   }
 
   let formError: string | null = null;
@@ -53,15 +62,19 @@ export async function createPart(formData: FormData) {
           role: ORGANIZATION_ROLE_MANUFACTURER
         });
 
-        await prisma.part.create({
-          data: {
-            workspaceId: context.workspace.id,
-            catalogNumber,
-            manufacturerId: manufacturer.id,
-            primaryCategoryId,
-            secondaryCategoryId
-          }
-        });
+        try {
+          await prisma.part.create({
+            data: {
+              workspaceId: context.workspace.id,
+              catalogNumber,
+              manufacturerId: manufacturer.id,
+              primaryCategoryId,
+              secondaryCategoryId
+            }
+          });
+        } catch (error) {
+          formError = getPartWriteError(error);
+        }
       }
     }
   } catch {
@@ -69,14 +82,17 @@ export async function createPart(formData: FormData) {
   }
 
   if (formError) {
-    redirect(`${partsPath}?partFormError=${formError}&partDialog=open`);
+    return getFormErrorState(formError);
   }
 
   revalidatePath(partsPath);
   redirect(`${partsPath}?partCreated=1`);
 }
 
-export async function updatePart(formData: FormData) {
+export async function updatePart(
+  _state: PartFormState,
+  formData: FormData
+): Promise<PartFormState> {
   const workspaceSlug = getRequiredFormValue(formData, "workspaceSlug");
   const id = getRequiredFormValue(formData, "id");
   const catalogNumber = getRequiredFormValue(formData, "catalogNumber");
@@ -89,9 +105,7 @@ export async function updatePart(formData: FormData) {
   const partsPath = getPartsPath(workspaceSlug);
 
   if (!workspaceSlug || !id || !catalogNumber || !manufacturerName) {
-    redirect(
-      `${partsPath}?partUpdateError=missing-required-fields&partEditDialog=${encodeURIComponent(id)}`
-    );
+    return getFormErrorState("missing-required-fields");
   }
 
   let formError: string | null = null;
@@ -121,18 +135,22 @@ export async function updatePart(formData: FormData) {
           role: ORGANIZATION_ROLE_MANUFACTURER
         });
 
-        await prisma.part.updateMany({
-          where: {
-            id,
-            workspaceId: context.workspace.id
-          },
-          data: {
-            catalogNumber,
-            manufacturerId: manufacturer.id,
-            primaryCategoryId,
-            secondaryCategoryId
-          }
-        });
+        try {
+          await prisma.part.updateMany({
+            where: {
+              id,
+              workspaceId: context.workspace.id
+            },
+            data: {
+              catalogNumber,
+              manufacturerId: manufacturer.id,
+              primaryCategoryId,
+              secondaryCategoryId
+            }
+          });
+        } catch (error) {
+          formError = getPartWriteError(error);
+        }
       }
     }
   } catch {
@@ -140,9 +158,7 @@ export async function updatePart(formData: FormData) {
   }
 
   if (formError) {
-    redirect(
-      `${partsPath}?partUpdateError=${formError}&partEditDialog=${encodeURIComponent(id)}`
-    );
+    return getFormErrorState(formError);
   }
 
   revalidatePath(partsPath);
@@ -220,4 +236,22 @@ async function validatePartCategoryAssignment({
   }
 
   return null;
+}
+
+function getPartWriteError(error: unknown) {
+  if (
+    error instanceof Prisma.PrismaClientKnownRequestError &&
+    error.code === "P2002"
+  ) {
+    return "duplicate-part";
+  }
+
+  return "database-unavailable";
+}
+
+function getFormErrorState(error: string): PartFormState {
+  return {
+    error,
+    submittedAt: Date.now()
+  };
 }

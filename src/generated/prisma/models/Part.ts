@@ -229,6 +229,7 @@ export type PartOrderByWithRelationInput = {
 
 export type PartWhereUniqueInput = Prisma.AtLeast<{
   id?: string
+  workspaceId_manufacturerId_catalogNumber?: Prisma.PartWorkspaceIdManufacturerIdCatalogNumberCompoundUniqueInput
   AND?: Prisma.PartWhereInput | Prisma.PartWhereInput[]
   OR?: Prisma.PartWhereInput[]
   NOT?: Prisma.PartWhereInput | Prisma.PartWhereInput[]
@@ -243,7 +244,7 @@ export type PartWhereUniqueInput = Prisma.AtLeast<{
   manufacturer?: Prisma.XOR<Prisma.OrganizationScalarRelationFilter, Prisma.OrganizationWhereInput>
   primaryCategory?: Prisma.XOR<Prisma.PartCategoryNullableScalarRelationFilter, Prisma.PartCategoryWhereInput> | null
   secondaryCategory?: Prisma.XOR<Prisma.PartCategoryNullableScalarRelationFilter, Prisma.PartCategoryWhereInput> | null
-}, "id">
+}, "id" | "workspaceId_manufacturerId_catalogNumber">
 
 export type PartOrderByWithAggregationInput = {
   id?: Prisma.SortOrder
@@ -344,6 +345,12 @@ export type PartUncheckedUpdateManyInput = {
   secondaryCategoryId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+}
+
+export type PartWorkspaceIdManufacturerIdCatalogNumberCompoundUniqueInput = {
+  workspaceId: string
+  manufacturerId: string
+  catalogNumber: string
 }
 
 export type PartCountOrderByAggregateInput = {

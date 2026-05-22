@@ -11,6 +11,7 @@ This project is intentionally vibe-coded. Future agents must preserve product in
 - Application language: English first, additional languages later
 - First feature: a parts list
 - Current part definition: real purchasable electronic parts identified by manufacturer organization and catalog number
+- Parts must be unique within a workspace by manufacturer organization and catalog number.
 
 ## Working Rules
 
