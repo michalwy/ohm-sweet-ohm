@@ -210,6 +210,7 @@ export type PartWhereInput = {
   manufacturer?: Prisma.XOR<Prisma.OrganizationScalarRelationFilter, Prisma.OrganizationWhereInput>
   primaryCategory?: Prisma.XOR<Prisma.PartCategoryNullableScalarRelationFilter, Prisma.PartCategoryWhereInput> | null
   secondaryCategory?: Prisma.XOR<Prisma.PartCategoryNullableScalarRelationFilter, Prisma.PartCategoryWhereInput> | null
+  parameterValues?: Prisma.PartParameterValueListRelationFilter
 }
 
 export type PartOrderByWithRelationInput = {
@@ -225,6 +226,7 @@ export type PartOrderByWithRelationInput = {
   manufacturer?: Prisma.OrganizationOrderByWithRelationInput
   primaryCategory?: Prisma.PartCategoryOrderByWithRelationInput
   secondaryCategory?: Prisma.PartCategoryOrderByWithRelationInput
+  parameterValues?: Prisma.PartParameterValueOrderByRelationAggregateInput
 }
 
 export type PartWhereUniqueInput = Prisma.AtLeast<{
@@ -244,6 +246,7 @@ export type PartWhereUniqueInput = Prisma.AtLeast<{
   manufacturer?: Prisma.XOR<Prisma.OrganizationScalarRelationFilter, Prisma.OrganizationWhereInput>
   primaryCategory?: Prisma.XOR<Prisma.PartCategoryNullableScalarRelationFilter, Prisma.PartCategoryWhereInput> | null
   secondaryCategory?: Prisma.XOR<Prisma.PartCategoryNullableScalarRelationFilter, Prisma.PartCategoryWhereInput> | null
+  parameterValues?: Prisma.PartParameterValueListRelationFilter
 }, "id" | "workspaceId_manufacturerId_catalogNumber">
 
 export type PartOrderByWithAggregationInput = {
@@ -283,6 +286,7 @@ export type PartCreateInput = {
   manufacturer: Prisma.OrganizationCreateNestedOneWithoutManufacturedPartsInput
   primaryCategory?: Prisma.PartCategoryCreateNestedOneWithoutPrimaryPartsInput
   secondaryCategory?: Prisma.PartCategoryCreateNestedOneWithoutSecondaryPartsInput
+  parameterValues?: Prisma.PartParameterValueCreateNestedManyWithoutPartInput
 }
 
 export type PartUncheckedCreateInput = {
@@ -294,6 +298,7 @@ export type PartUncheckedCreateInput = {
   secondaryCategoryId?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  parameterValues?: Prisma.PartParameterValueUncheckedCreateNestedManyWithoutPartInput
 }
 
 export type PartUpdateInput = {
@@ -305,6 +310,7 @@ export type PartUpdateInput = {
   manufacturer?: Prisma.OrganizationUpdateOneRequiredWithoutManufacturedPartsNestedInput
   primaryCategory?: Prisma.PartCategoryUpdateOneWithoutPrimaryPartsNestedInput
   secondaryCategory?: Prisma.PartCategoryUpdateOneWithoutSecondaryPartsNestedInput
+  parameterValues?: Prisma.PartParameterValueUpdateManyWithoutPartNestedInput
 }
 
 export type PartUncheckedUpdateInput = {
@@ -316,6 +322,7 @@ export type PartUncheckedUpdateInput = {
   secondaryCategoryId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  parameterValues?: Prisma.PartParameterValueUncheckedUpdateManyWithoutPartNestedInput
 }
 
 export type PartCreateManyInput = {
@@ -394,6 +401,11 @@ export type PartListRelationFilter = {
 
 export type PartOrderByRelationAggregateInput = {
   _count?: Prisma.SortOrder
+}
+
+export type PartScalarRelationFilter = {
+  is?: Prisma.PartWhereInput
+  isNot?: Prisma.PartWhereInput
 }
 
 export type StringFieldUpdateOperationsInput = {
@@ -534,6 +546,20 @@ export type PartUncheckedUpdateManyWithoutSecondaryCategoryNestedInput = {
   deleteMany?: Prisma.PartScalarWhereInput | Prisma.PartScalarWhereInput[]
 }
 
+export type PartCreateNestedOneWithoutParameterValuesInput = {
+  create?: Prisma.XOR<Prisma.PartCreateWithoutParameterValuesInput, Prisma.PartUncheckedCreateWithoutParameterValuesInput>
+  connectOrCreate?: Prisma.PartCreateOrConnectWithoutParameterValuesInput
+  connect?: Prisma.PartWhereUniqueInput
+}
+
+export type PartUpdateOneRequiredWithoutParameterValuesNestedInput = {
+  create?: Prisma.XOR<Prisma.PartCreateWithoutParameterValuesInput, Prisma.PartUncheckedCreateWithoutParameterValuesInput>
+  connectOrCreate?: Prisma.PartCreateOrConnectWithoutParameterValuesInput
+  upsert?: Prisma.PartUpsertWithoutParameterValuesInput
+  connect?: Prisma.PartWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.PartUpdateToOneWithWhereWithoutParameterValuesInput, Prisma.PartUpdateWithoutParameterValuesInput>, Prisma.PartUncheckedUpdateWithoutParameterValuesInput>
+}
+
 export type PartCreateNestedManyWithoutWorkspaceInput = {
   create?: Prisma.XOR<Prisma.PartCreateWithoutWorkspaceInput, Prisma.PartUncheckedCreateWithoutWorkspaceInput> | Prisma.PartCreateWithoutWorkspaceInput[] | Prisma.PartUncheckedCreateWithoutWorkspaceInput[]
   connectOrCreate?: Prisma.PartCreateOrConnectWithoutWorkspaceInput | Prisma.PartCreateOrConnectWithoutWorkspaceInput[]
@@ -584,6 +610,7 @@ export type PartCreateWithoutManufacturerInput = {
   workspace: Prisma.WorkspaceCreateNestedOneWithoutPartsInput
   primaryCategory?: Prisma.PartCategoryCreateNestedOneWithoutPrimaryPartsInput
   secondaryCategory?: Prisma.PartCategoryCreateNestedOneWithoutSecondaryPartsInput
+  parameterValues?: Prisma.PartParameterValueCreateNestedManyWithoutPartInput
 }
 
 export type PartUncheckedCreateWithoutManufacturerInput = {
@@ -594,6 +621,7 @@ export type PartUncheckedCreateWithoutManufacturerInput = {
   secondaryCategoryId?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  parameterValues?: Prisma.PartParameterValueUncheckedCreateNestedManyWithoutPartInput
 }
 
 export type PartCreateOrConnectWithoutManufacturerInput = {
@@ -644,6 +672,7 @@ export type PartCreateWithoutPrimaryCategoryInput = {
   workspace: Prisma.WorkspaceCreateNestedOneWithoutPartsInput
   manufacturer: Prisma.OrganizationCreateNestedOneWithoutManufacturedPartsInput
   secondaryCategory?: Prisma.PartCategoryCreateNestedOneWithoutSecondaryPartsInput
+  parameterValues?: Prisma.PartParameterValueCreateNestedManyWithoutPartInput
 }
 
 export type PartUncheckedCreateWithoutPrimaryCategoryInput = {
@@ -654,6 +683,7 @@ export type PartUncheckedCreateWithoutPrimaryCategoryInput = {
   secondaryCategoryId?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  parameterValues?: Prisma.PartParameterValueUncheckedCreateNestedManyWithoutPartInput
 }
 
 export type PartCreateOrConnectWithoutPrimaryCategoryInput = {
@@ -674,6 +704,7 @@ export type PartCreateWithoutSecondaryCategoryInput = {
   workspace: Prisma.WorkspaceCreateNestedOneWithoutPartsInput
   manufacturer: Prisma.OrganizationCreateNestedOneWithoutManufacturedPartsInput
   primaryCategory?: Prisma.PartCategoryCreateNestedOneWithoutPrimaryPartsInput
+  parameterValues?: Prisma.PartParameterValueCreateNestedManyWithoutPartInput
 }
 
 export type PartUncheckedCreateWithoutSecondaryCategoryInput = {
@@ -684,6 +715,7 @@ export type PartUncheckedCreateWithoutSecondaryCategoryInput = {
   primaryCategoryId?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  parameterValues?: Prisma.PartParameterValueUncheckedCreateNestedManyWithoutPartInput
 }
 
 export type PartCreateOrConnectWithoutSecondaryCategoryInput = {
@@ -728,6 +760,66 @@ export type PartUpdateManyWithWhereWithoutSecondaryCategoryInput = {
   data: Prisma.XOR<Prisma.PartUpdateManyMutationInput, Prisma.PartUncheckedUpdateManyWithoutSecondaryCategoryInput>
 }
 
+export type PartCreateWithoutParameterValuesInput = {
+  id?: string
+  catalogNumber: string
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  workspace: Prisma.WorkspaceCreateNestedOneWithoutPartsInput
+  manufacturer: Prisma.OrganizationCreateNestedOneWithoutManufacturedPartsInput
+  primaryCategory?: Prisma.PartCategoryCreateNestedOneWithoutPrimaryPartsInput
+  secondaryCategory?: Prisma.PartCategoryCreateNestedOneWithoutSecondaryPartsInput
+}
+
+export type PartUncheckedCreateWithoutParameterValuesInput = {
+  id?: string
+  workspaceId: string
+  catalogNumber: string
+  manufacturerId: string
+  primaryCategoryId?: string | null
+  secondaryCategoryId?: string | null
+  createdAt?: Date | string
+  updatedAt?: Date | string
+}
+
+export type PartCreateOrConnectWithoutParameterValuesInput = {
+  where: Prisma.PartWhereUniqueInput
+  create: Prisma.XOR<Prisma.PartCreateWithoutParameterValuesInput, Prisma.PartUncheckedCreateWithoutParameterValuesInput>
+}
+
+export type PartUpsertWithoutParameterValuesInput = {
+  update: Prisma.XOR<Prisma.PartUpdateWithoutParameterValuesInput, Prisma.PartUncheckedUpdateWithoutParameterValuesInput>
+  create: Prisma.XOR<Prisma.PartCreateWithoutParameterValuesInput, Prisma.PartUncheckedCreateWithoutParameterValuesInput>
+  where?: Prisma.PartWhereInput
+}
+
+export type PartUpdateToOneWithWhereWithoutParameterValuesInput = {
+  where?: Prisma.PartWhereInput
+  data: Prisma.XOR<Prisma.PartUpdateWithoutParameterValuesInput, Prisma.PartUncheckedUpdateWithoutParameterValuesInput>
+}
+
+export type PartUpdateWithoutParameterValuesInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  catalogNumber?: Prisma.StringFieldUpdateOperationsInput | string
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  workspace?: Prisma.WorkspaceUpdateOneRequiredWithoutPartsNestedInput
+  manufacturer?: Prisma.OrganizationUpdateOneRequiredWithoutManufacturedPartsNestedInput
+  primaryCategory?: Prisma.PartCategoryUpdateOneWithoutPrimaryPartsNestedInput
+  secondaryCategory?: Prisma.PartCategoryUpdateOneWithoutSecondaryPartsNestedInput
+}
+
+export type PartUncheckedUpdateWithoutParameterValuesInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  workspaceId?: Prisma.StringFieldUpdateOperationsInput | string
+  catalogNumber?: Prisma.StringFieldUpdateOperationsInput | string
+  manufacturerId?: Prisma.StringFieldUpdateOperationsInput | string
+  primaryCategoryId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  secondaryCategoryId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+}
+
 export type PartCreateWithoutWorkspaceInput = {
   id?: string
   catalogNumber: string
@@ -736,6 +828,7 @@ export type PartCreateWithoutWorkspaceInput = {
   manufacturer: Prisma.OrganizationCreateNestedOneWithoutManufacturedPartsInput
   primaryCategory?: Prisma.PartCategoryCreateNestedOneWithoutPrimaryPartsInput
   secondaryCategory?: Prisma.PartCategoryCreateNestedOneWithoutSecondaryPartsInput
+  parameterValues?: Prisma.PartParameterValueCreateNestedManyWithoutPartInput
 }
 
 export type PartUncheckedCreateWithoutWorkspaceInput = {
@@ -746,6 +839,7 @@ export type PartUncheckedCreateWithoutWorkspaceInput = {
   secondaryCategoryId?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  parameterValues?: Prisma.PartParameterValueUncheckedCreateNestedManyWithoutPartInput
 }
 
 export type PartCreateOrConnectWithoutWorkspaceInput = {
@@ -792,6 +886,7 @@ export type PartUpdateWithoutManufacturerInput = {
   workspace?: Prisma.WorkspaceUpdateOneRequiredWithoutPartsNestedInput
   primaryCategory?: Prisma.PartCategoryUpdateOneWithoutPrimaryPartsNestedInput
   secondaryCategory?: Prisma.PartCategoryUpdateOneWithoutSecondaryPartsNestedInput
+  parameterValues?: Prisma.PartParameterValueUpdateManyWithoutPartNestedInput
 }
 
 export type PartUncheckedUpdateWithoutManufacturerInput = {
@@ -802,6 +897,7 @@ export type PartUncheckedUpdateWithoutManufacturerInput = {
   secondaryCategoryId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  parameterValues?: Prisma.PartParameterValueUncheckedUpdateManyWithoutPartNestedInput
 }
 
 export type PartUncheckedUpdateManyWithoutManufacturerInput = {
@@ -842,6 +938,7 @@ export type PartUpdateWithoutPrimaryCategoryInput = {
   workspace?: Prisma.WorkspaceUpdateOneRequiredWithoutPartsNestedInput
   manufacturer?: Prisma.OrganizationUpdateOneRequiredWithoutManufacturedPartsNestedInput
   secondaryCategory?: Prisma.PartCategoryUpdateOneWithoutSecondaryPartsNestedInput
+  parameterValues?: Prisma.PartParameterValueUpdateManyWithoutPartNestedInput
 }
 
 export type PartUncheckedUpdateWithoutPrimaryCategoryInput = {
@@ -852,6 +949,7 @@ export type PartUncheckedUpdateWithoutPrimaryCategoryInput = {
   secondaryCategoryId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  parameterValues?: Prisma.PartParameterValueUncheckedUpdateManyWithoutPartNestedInput
 }
 
 export type PartUncheckedUpdateManyWithoutPrimaryCategoryInput = {
@@ -872,6 +970,7 @@ export type PartUpdateWithoutSecondaryCategoryInput = {
   workspace?: Prisma.WorkspaceUpdateOneRequiredWithoutPartsNestedInput
   manufacturer?: Prisma.OrganizationUpdateOneRequiredWithoutManufacturedPartsNestedInput
   primaryCategory?: Prisma.PartCategoryUpdateOneWithoutPrimaryPartsNestedInput
+  parameterValues?: Prisma.PartParameterValueUpdateManyWithoutPartNestedInput
 }
 
 export type PartUncheckedUpdateWithoutSecondaryCategoryInput = {
@@ -882,6 +981,7 @@ export type PartUncheckedUpdateWithoutSecondaryCategoryInput = {
   primaryCategoryId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  parameterValues?: Prisma.PartParameterValueUncheckedUpdateManyWithoutPartNestedInput
 }
 
 export type PartUncheckedUpdateManyWithoutSecondaryCategoryInput = {
@@ -912,6 +1012,7 @@ export type PartUpdateWithoutWorkspaceInput = {
   manufacturer?: Prisma.OrganizationUpdateOneRequiredWithoutManufacturedPartsNestedInput
   primaryCategory?: Prisma.PartCategoryUpdateOneWithoutPrimaryPartsNestedInput
   secondaryCategory?: Prisma.PartCategoryUpdateOneWithoutSecondaryPartsNestedInput
+  parameterValues?: Prisma.PartParameterValueUpdateManyWithoutPartNestedInput
 }
 
 export type PartUncheckedUpdateWithoutWorkspaceInput = {
@@ -922,6 +1023,7 @@ export type PartUncheckedUpdateWithoutWorkspaceInput = {
   secondaryCategoryId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  parameterValues?: Prisma.PartParameterValueUncheckedUpdateManyWithoutPartNestedInput
 }
 
 export type PartUncheckedUpdateManyWithoutWorkspaceInput = {
@@ -934,6 +1036,35 @@ export type PartUncheckedUpdateManyWithoutWorkspaceInput = {
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
 
+
+/**
+ * Count Type PartCountOutputType
+ */
+
+export type PartCountOutputType = {
+  parameterValues: number
+}
+
+export type PartCountOutputTypeSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  parameterValues?: boolean | PartCountOutputTypeCountParameterValuesArgs
+}
+
+/**
+ * PartCountOutputType without action
+ */
+export type PartCountOutputTypeDefaultArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the PartCountOutputType
+   */
+  select?: Prisma.PartCountOutputTypeSelect<ExtArgs> | null
+}
+
+/**
+ * PartCountOutputType without action
+ */
+export type PartCountOutputTypeCountParameterValuesArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.PartParameterValueWhereInput
+}
 
 
 export type PartSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
@@ -949,6 +1080,8 @@ export type PartSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = r
   manufacturer?: boolean | Prisma.OrganizationDefaultArgs<ExtArgs>
   primaryCategory?: boolean | Prisma.Part$primaryCategoryArgs<ExtArgs>
   secondaryCategory?: boolean | Prisma.Part$secondaryCategoryArgs<ExtArgs>
+  parameterValues?: boolean | Prisma.Part$parameterValuesArgs<ExtArgs>
+  _count?: boolean | Prisma.PartCountOutputTypeDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["part"]>
 
 export type PartSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
@@ -998,6 +1131,8 @@ export type PartInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = 
   manufacturer?: boolean | Prisma.OrganizationDefaultArgs<ExtArgs>
   primaryCategory?: boolean | Prisma.Part$primaryCategoryArgs<ExtArgs>
   secondaryCategory?: boolean | Prisma.Part$secondaryCategoryArgs<ExtArgs>
+  parameterValues?: boolean | Prisma.Part$parameterValuesArgs<ExtArgs>
+  _count?: boolean | Prisma.PartCountOutputTypeDefaultArgs<ExtArgs>
 }
 export type PartIncludeCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   workspace?: boolean | Prisma.WorkspaceDefaultArgs<ExtArgs>
@@ -1019,6 +1154,7 @@ export type $PartPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs =
     manufacturer: Prisma.$OrganizationPayload<ExtArgs>
     primaryCategory: Prisma.$PartCategoryPayload<ExtArgs> | null
     secondaryCategory: Prisma.$PartCategoryPayload<ExtArgs> | null
+    parameterValues: Prisma.$PartParameterValuePayload<ExtArgs>[]
   }
   scalars: runtime.Types.Extensions.GetPayloadResult<{
     id: string
@@ -1427,6 +1563,7 @@ export interface Prisma__PartClient<T, Null = never, ExtArgs extends runtime.Typ
   manufacturer<T extends Prisma.OrganizationDefaultArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.OrganizationDefaultArgs<ExtArgs>>): Prisma.Prisma__OrganizationClient<runtime.Types.Result.GetResult<Prisma.$OrganizationPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
   primaryCategory<T extends Prisma.Part$primaryCategoryArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Part$primaryCategoryArgs<ExtArgs>>): Prisma.Prisma__PartCategoryClient<runtime.Types.Result.GetResult<Prisma.$PartCategoryPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
   secondaryCategory<T extends Prisma.Part$secondaryCategoryArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Part$secondaryCategoryArgs<ExtArgs>>): Prisma.Prisma__PartCategoryClient<runtime.Types.Result.GetResult<Prisma.$PartCategoryPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+  parameterValues<T extends Prisma.Part$parameterValuesArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Part$parameterValuesArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$PartParameterValuePayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   /**
    * Attaches callbacks for the resolution and/or rejection of the Promise.
    * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -1900,6 +2037,30 @@ export type Part$secondaryCategoryArgs<ExtArgs extends runtime.Types.Extensions.
    */
   include?: Prisma.PartCategoryInclude<ExtArgs> | null
   where?: Prisma.PartCategoryWhereInput
+}
+
+/**
+ * Part.parameterValues
+ */
+export type Part$parameterValuesArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the PartParameterValue
+   */
+  select?: Prisma.PartParameterValueSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the PartParameterValue
+   */
+  omit?: Prisma.PartParameterValueOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.PartParameterValueInclude<ExtArgs> | null
+  where?: Prisma.PartParameterValueWhereInput
+  orderBy?: Prisma.PartParameterValueOrderByWithRelationInput | Prisma.PartParameterValueOrderByWithRelationInput[]
+  cursor?: Prisma.PartParameterValueWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.PartParameterValueScalarFieldEnum | Prisma.PartParameterValueScalarFieldEnum[]
 }
 
 /**

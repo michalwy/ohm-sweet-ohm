@@ -1,0 +1,92 @@
+import type {
+  EffectiveCategoryParameter,
+  EffectiveParameterDefaultValue
+} from "./parameters";
+import type { ParameterValueType } from "./parameterValues";
+
+export type CategoryParameterInheritanceInput = {
+  categoryChain: Array<{
+    id: string;
+    primaryParameterId: string | null;
+  }>;
+  categoryParameters: Array<{
+    categoryId: string;
+    parameterId: string;
+    sortOrder: number;
+    defaultValue: EffectiveParameterDefaultValue | null;
+    parameter: {
+      id: string;
+      name: string;
+      description: string | null;
+      type: ParameterValueType;
+      baseUnitSymbol: string | null;
+      choiceOptions: Array<{
+        id: string;
+        label: string;
+        sortOrder: number;
+      }>;
+    };
+  }>;
+};
+
+export function resolveEffectiveCategoryParameters({
+  categoryChain,
+  categoryParameters
+}: CategoryParameterInheritanceInput): EffectiveCategoryParameter[] {
+  const parametersByCategoryId = new Map<string, typeof categoryParameters>();
+
+  for (const categoryParameter of categoryParameters) {
+    const existing = parametersByCategoryId.get(categoryParameter.categoryId) ?? [];
+    existing.push(categoryParameter);
+    parametersByCategoryId.set(categoryParameter.categoryId, existing);
+  }
+
+  const effectiveByParameterId = new Map<string, EffectiveCategoryParameter>();
+
+  for (const category of categoryChain) {
+    const localParameters = parametersByCategoryId.get(category.id) ?? [];
+
+    for (const categoryParameter of localParameters) {
+      effectiveByParameterId.set(categoryParameter.parameterId, {
+        parameter: categoryParameter.parameter,
+        sourceCategoryId: category.id,
+        sortOrder: categoryParameter.sortOrder,
+        defaultValue: categoryParameter.defaultValue,
+        isPrimary: false
+      });
+    }
+  }
+
+  const primaryParameterId = getEffectivePrimaryParameterId(categoryChain);
+
+  return [...effectiveByParameterId.values()]
+    .map((effectiveParameter) => ({
+      ...effectiveParameter,
+      isPrimary: effectiveParameter.parameter.id === primaryParameterId
+    }))
+    .sort((left, right) => {
+      const sortOrderDifference = left.sortOrder - right.sortOrder;
+
+      if (sortOrderDifference !== 0) {
+        return sortOrderDifference;
+      }
+
+      return left.parameter.name.localeCompare(right.parameter.name, "en", {
+        sensitivity: "base"
+      });
+    });
+}
+
+export function getEffectivePrimaryParameterId(
+  categoryChain: Array<{
+    primaryParameterId: string | null;
+  }>
+) {
+  for (const category of [...categoryChain].reverse()) {
+    if (category.primaryParameterId) {
+      return category.primaryParameterId;
+    }
+  }
+
+  return null;
+}

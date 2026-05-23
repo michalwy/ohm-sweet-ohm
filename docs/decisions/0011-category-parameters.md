@@ -1,0 +1,163 @@
+# 0011. Category Parameters
+
+## Status
+
+Accepted
+
+## Context
+
+Part categories need to describe which typed properties are available for parts assigned to that category. A resistor category may expose `Resistance` and `Power Rating`; a capacitor category may expose `Capacitance` and `Rated Voltage`. Part rows also need a short **Value** column driven by the category's primary parameter.
+
+Parts can have a primary category and an optional secondary category, as documented in [0008. Part Categories](0008-part-categories.md). Parameter behavior is based only on the part's primary category. Secondary categories do not contribute parameters, defaults, validation, or the displayed **Value** column.
+
+## Decision
+
+Add a workspace-scoped parameter dictionary. A parameter is identified by its database `id`, not by a user-facing key. Parameter names are editable, but normalized names are unique within a workspace after trimming, collapsing whitespace, and comparing case-insensitively.
+
+Parameters have:
+
+- `name`
+- `description`
+- `type`: `TEXT`, `NUMBER`, `QUANTITY`, `BOOLEAN`, or `CHOICE`
+- `baseUnitSymbol`, only for `QUANTITY`
+- choice options, only for `CHOICE`
+
+Choice options have stable ids and editable labels. Option labels are unique per parameter after trimming, collapsing whitespace, and comparing case-insensitively. Part values store the option id, not the option label.
+
+Categories attach parameters through `CategoryParameter`. This record represents either a local attachment or an override of an inherited attachment. Category parameter configuration contains:
+
+- `sortOrder`
+- optional `defaultValue`
+
+All parameters are optional. There is no `required` flag in this model. Future completeness workflows should use recommendations, reports, filters, or export-specific validation rather than blocking part saves.
+
+The category's primary parameter is stored as nullable `PartCategory.primaryParameterId`, not as a boolean on `CategoryParameter`. The primary parameter controls the parts-list **Value** column. A category may have no primary parameter. If it has one, it must point to a parameter that is effective for that category, either locally attached or inherited.
+
+## Inheritance
+
+Categories remain a single-parent tree. Effective parameters are computed dynamically from the ancestor chain:
+
+- A child inherits all parameter attachments from its parent.
+- With multiple levels such as `A / B / C`, `B` inherits from `A`, and `C` inherits from the effective set of `B`.
+- Adding a parameter to `A` later makes it effective for `B` and `C` automatically.
+- A child can attach the same dictionary parameter to override category-level configuration such as `sortOrder` or `defaultValue`.
+- A child cannot disable an inherited parameter in the first version.
+- If a child has no `primaryParameterId`, it inherits the nearest primary parameter from its ancestors.
+- A child cannot clear an inherited primary parameter without selecting a different effective primary parameter.
+- Effective parameters are sorted by effective `sortOrder`, then parameter name.
+
+Default values are category-level form defaults. They prefill new or missing values in part forms. If the user saves the form with that value, it becomes a normal `PartParameterValue`. Later changes to defaults do not update existing part values. An override with an empty default intentionally clears an inherited default.
+
+## Typed Values
+
+Part values are stored by `Parameter.id`, independent of the category attachment that made the parameter effective. Server-side validation must ensure a part only stores values for parameters effective in its current primary category.
+
+Changing a part's primary category is a category change. If existing parameter values are not effective in the new primary category, the UI must show those values and require explicit confirmation before deleting them. The application should not keep hidden orphaned values.
+
+Typed value storage keeps normalized values for comparison/search and display values for UI:
+
+- `TEXT`: cleaned text display; search/filter comparisons are case-insensitive.
+- `NUMBER`: normalized numeric value plus cleaned display value.
+- `QUANTITY`: normalized base-unit value plus cleaned display value.
+- `BOOLEAN`: boolean value; display is `Yes` or `No`.
+- `CHOICE`: choice option id; display uses the option label.
+
+For `QUANTITY`, the parameter defines one base unit. Missing unit input means the base unit. The parser accepts known SI prefixes and aliases, then normalizes display to a canonical unit form while preserving the user's chosen scale. Supported prefixes are `p`, `n`, `µ`/`u`, `m`, no prefix, `k`, `M`, and `G`.
+
+Examples for `Resistance` with base unit `Ω`:
+
+- `10 kohm`, `10 k`, `10kΩ`, and `10000 Ω` normalize to the same base value.
+- `10kohm` displays as `10 kΩ`.
+- `10000` displays as `10000 Ω`.
+- `4,7 kΩ` displays as `4.7 kΩ`.
+- Unknown units are rejected.
+
+Tolerances and ranges are not part of `QUANTITY`; they should be modeled as separate parameters when needed.
+
+## Mutation Rules
+
+If any part value exists for a parameter, block changes to the parameter's `type` and `baseUnitSymbol`.
+
+For `CHOICE` parameters:
+
+- Adding an option is allowed.
+- Editing an option label is allowed.
+- Deleting an option is allowed only when it is not used by any part value or category default.
+
+Deleting a dictionary parameter is allowed only when it is not attached to any category, used as any category primary parameter, used by any part value, or used by any default value.
+
+Detaching a parameter from a category is blocked when:
+
+- any category in the affected subtree points to it as primary,
+- any part in the affected subtree has a value for it,
+- any descendant category has an override for it.
+
+The application must validate that parameters, categories, parts, choice options, category attachments, defaults, and values all belong to the same workspace. Database foreign keys do not fully express this cross-table workspace invariant, so server-side domain code must enforce it.
+
+## UI Implementation Brief
+
+Build UI in a separate step after the schema/domain layer is in place. Keep the app desktop-only.
+
+Parameter dictionary screen:
+
+- Add a workspace-scoped parameter management surface guarded by `parameters:read` and `parameters:write`.
+- Use a dense table layout with columns for name, type, base unit, option summary, and description.
+- Use modal dialogs for add/edit workflows.
+- Enforce English user-facing copy.
+- For `QUANTITY`, show base unit as a required field.
+- For `CHOICE`, manage options with stable rows, sort order, and case-insensitive duplicate-label validation.
+- Disable or explain blocked edits when a type, base unit, option, or parameter is already used.
+
+Category parameter configuration:
+
+- Extend category management so a selected category shows effective parameters from ancestors and local/override records.
+- Clearly distinguish inherited parameters from local attachments/overrides.
+- Allow attaching a dictionary parameter to a category.
+- Allow overriding `sortOrder` and `defaultValue`.
+- Do not offer a control to disable inherited parameters.
+- Allow selecting one effective parameter as the category's primary parameter, or leaving primary unset when no primary exists in the ancestor chain.
+- If the category inherits a primary parameter, do not offer a "clear inherited primary" action; changing primary requires selecting another effective parameter.
+- Show effective ordering exactly as the part form will use it.
+
+Part create/edit form:
+
+- Show parameter fields from the part's primary category only.
+- Ignore secondary category parameters completely.
+- Sort fields by effective `sortOrder`, then parameter name.
+- Prefill missing values from effective defaults.
+- Store saved values as normal `PartParameterValue` records.
+- When changing primary category, reload the effective parameter list immediately and show values that would be removed. Require confirmation before saving the category change and deleting those values.
+
+Parts list:
+
+- Keep the column label **Value**.
+- Resolve the row value from the part's primary category effective primary parameter.
+- Show the part's display value for that parameter.
+- Leave the column empty when there is no effective primary parameter or the part has no value for it.
+
+## Consequences
+
+This model keeps parameter meaning in one workspace dictionary while leaving category-specific behavior in category attachments and primary-parameter selection.
+
+The first implementation deliberately avoids global parameter templates, localization tables, required parameters, category-specific choice subsets, and inherited-parameter disabling. These can be added later when concrete workflows require them.
+
+## Handoff Notes
+
+Implemented so far:
+
+- Parameter dictionary schema, migration, generated Prisma client, permissions, server mutations, and parsing/normalization helpers.
+- Parameter dictionary UI at `/w/[workspaceSlug]/parameters` with shared create/edit dialog and draft-based choice option editing.
+- Category dialog tabs where parameter attachments are edited inside the same create/edit category dialog.
+- Category parameter attachment drafts are only persisted by the dialog-level save action.
+- Category parameter defaults use type-aware controls for `CHOICE` and `BOOLEAN`; other types still use text input parsed server-side.
+- Part create/edit and list integration for effective category parameters and primary parameter display.
+- Unit coverage for inheritance and parsing, plus e2e coverage for parameter dictionary and category parameter configuration flows.
+
+Recommended next steps:
+
+- Manually review the category parameter tab in Docker Compose with a realistic set of parameters, especially inherited defaults, local overrides, and the compact grid layout.
+- Add focused e2e coverage for inherited primary/default behavior across a three-level category tree.
+- Add e2e coverage for editing an existing attached `CHOICE`/`BOOLEAN` default value, not only attaching a new one.
+- Consider a clearer loading state for the category parameter tab; the editor is intentionally withheld until effective parameters load to avoid draft overwrite races.
+- Consider extracting shared typed default-value controls once part forms and category default controls converge.
+- Decide the first filtering/search workflow before adding indexes or UI for normalized parameter value search.

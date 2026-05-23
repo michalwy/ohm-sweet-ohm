@@ -9,9 +9,13 @@
  * 🟢 You can import this file directly.
  */
 export type * from './models/Part'
+export type * from './models/Parameter'
+export type * from './models/ParameterChoiceOption'
 export type * from './models/Organization'
 export type * from './models/OrganizationRole'
 export type * from './models/PartCategory'
+export type * from './models/CategoryParameter'
+export type * from './models/PartParameterValue'
 export type * from './models/PartCategoryClosure'
 export type * from './models/User'
 export type * from './models/Session'

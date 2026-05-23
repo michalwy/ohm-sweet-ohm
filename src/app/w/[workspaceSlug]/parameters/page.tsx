@@ -1,83 +1,67 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 
-import { PartsListClient } from "@/app/parts-list-client";
+import { ParametersClient } from "@/app/parameters-client";
+import { hasWorkspacePermission } from "@/server/access-control/authorize";
 import { signOut } from "@/server/auth/actions";
 import {
   getCurrentSession,
   getCurrentWorkspaceContextBySlug
 } from "@/server/auth/currentContext";
-import { getManufacturerSuggestionsForPartForm } from "@/server/organizations/organizations";
-import { getPartCategoriesForPartForm } from "@/server/parts/categories";
-import { getPartsList } from "@/server/parts/getParts";
+import { getWorkspaceParameters } from "@/server/parts/parameterMutations";
+import type { ParameterListItem } from "@/server/parts/parameterMutations";
 
 export const dynamic = "force-dynamic";
 
 const copy = {
   appShortName: "OSO",
   appName: "OhmSweetOhm",
-  appSubtitle: "Home electronics workshop",
   signOut: "Sign out",
   switchWorkspace: "Switch workspace",
-  title: "Parts",
+  parts: "Parts",
   partCategories: "Part categories",
-  parameters: "Parameters",
+  title: "Parameters",
   intro:
-    "Real purchasable electronic parts tracked by manufacturer and catalog number.",
-  catalogNumber: "Catalog number",
-  categories: "Categories",
-  primaryCategory: "Primary category",
-  secondaryCategory: "Secondary category",
-  noCategory: "No category",
-  noSecondaryCategory: "No secondary category",
-  manufacturer: "Manufacturer",
-  noMatchingManufacturers: "No matching manufacturers",
-  actions: "Actions",
-  newPartTitle: "Add part",
-  newPartBody: "Create a real purchasable electronic part.",
-  editPartTitle: "Edit part",
-  editPartBody: "Update this part's manufacturer and catalog number.",
-  catalogNumberPlaceholder: "NE555P",
-  manufacturerPlaceholder: "Texas Instruments",
-  categoryPlaceholder: "Choose a category",
-  searchCategories: "Search categories",
-  noMatchingCategories: "No matching categories",
-  expandCategory: "Expand",
-  collapseCategory: "Collapse",
-  addPart: "Add part",
-  createPart: "Create part",
-  editPart: "Edit",
-  saveChanges: "Save changes",
+    "Manage the workspace dictionary of typed parameters used by part categories.",
+  addParameter: "Add parameter",
+  edit: "Edit",
+  delete: "Delete",
   close: "Close",
-  createdToast: "Part created",
-  updatedToast: "Part updated",
-  missingRequiredFields: "Enter both catalog number and manufacturer.",
-  invalidCategory: "Choose valid assignable categories.",
-  secondaryWithoutPrimary:
-    "Choose a primary category before choosing a secondary category.",
-  duplicateCategories: "Primary and secondary categories must be different.",
-  duplicatePart:
-    "A part with this manufacturer and catalog number already exists.",
-  emptyTitle: "No parts yet",
-  emptyBody: "Parts will appear here once they exist.",
+  createParameter: "Create parameter",
+  saveChanges: "Save changes",
+  addOption: "Add option",
+  deleteOption: "Delete",
+  newParameterTitle: "Add parameter",
+  editParameterTitle: "Edit parameter",
+  name: "Name",
+  description: "Description",
+  type: "Type",
+  baseUnit: "Base unit",
+  options: "Options",
+  noOptions: "No options",
+  noParameters: "No parameters yet",
+  text: "Text",
+  number: "Number",
+  quantity: "Quantity",
+  boolean: "Boolean",
+  choice: "Choice",
+  optionLabel: "Option label",
+  sortOrder: "Sort order",
+  createdToast: "Parameter created",
+  updatedToast: "Parameter updated",
+  deletedToast: "Parameter deleted",
+  invalidInput: "Check the parameter fields and try again.",
   databaseUnavailable:
-    "Database is not available, so the list is shown empty for now."
+    "Database is not available, so the parameter dictionary is shown empty for now."
 };
 
-type PartsPageProps = {
+type ParametersPageProps = {
   params: Promise<{
     workspaceSlug: string;
   }>;
-  searchParams?: Promise<{
-    partDialog?: string;
-    partEditDialog?: string;
-  }>;
 };
 
-export default async function PartsPage({
-  params,
-  searchParams
-}: PartsPageProps) {
+export default async function ParametersPage({ params }: ParametersPageProps) {
   const { workspaceSlug } = await params;
   const session = await getCurrentSession();
 
@@ -91,19 +75,22 @@ export default async function PartsPage({
     notFound();
   }
 
-  const { parts, isDatabaseAvailable } = await getPartsList(context);
-  const [partCategories, manufacturerSuggestions] = isDatabaseAvailable
-    ? await Promise.all([
-        getPartCategoriesForPartForm(context).catch(() => []),
-        getManufacturerSuggestionsForPartForm({
-          userId: context.user.id,
-          workspaceId: context.workspace.id
-        }).catch(() => [])
-      ])
-    : [[], []];
-  const resolvedSearchParams = await searchParams;
-  const partDialogOpen = resolvedSearchParams?.partDialog === "open";
-  const partEditDialog = resolvedSearchParams?.partEditDialog;
+  let isDatabaseAvailable = true;
+  let parameters: ParameterListItem[] = [];
+
+  try {
+    parameters = await getWorkspaceParameters(context.workspace.id);
+  } catch {
+    isDatabaseAvailable = false;
+  }
+
+  const canWriteParameters = isDatabaseAvailable
+    ? await hasWorkspacePermission({
+        userId: context.user.id,
+        workspaceId: context.workspace.id,
+        permission: "parameters:write"
+      }).catch(() => false)
+    : false;
 
   return (
     <main className="min-h-screen bg-slate-100 text-slate-950">
@@ -127,11 +114,10 @@ export default async function PartsPage({
             aria-label="Main navigation"
           >
             <Link
-              className="flex min-h-10 items-center rounded-md bg-slate-100 px-3 text-sm font-semibold text-slate-950"
+              className="flex min-h-10 items-center rounded-md px-3 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
               href={`/w/${workspaceSlug}/parts`}
-              aria-current="page"
             >
-              {copy.title}
+              {copy.parts}
             </Link>
             <Link
               className="flex min-h-10 items-center rounded-md px-3 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
@@ -140,10 +126,11 @@ export default async function PartsPage({
               {copy.partCategories}
             </Link>
             <Link
-              className="flex min-h-10 items-center rounded-md px-3 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+              aria-current="page"
+              className="flex min-h-10 items-center rounded-md bg-slate-100 px-3 text-sm font-semibold text-slate-950"
               href={`/w/${workspaceSlug}/parameters`}
             >
-              {copy.parameters}
+              {copy.title}
             </Link>
           </nav>
           <div className="border-t border-slate-200 p-3">
@@ -186,14 +173,11 @@ export default async function PartsPage({
               </p>
             ) : null}
 
-            <PartsListClient
+            <ParametersClient
+              canWriteParameters={canWriteParameters}
               copy={copy}
               isDatabaseAvailable={isDatabaseAvailable}
-              partDialogOpen={partDialogOpen}
-              partEditDialog={partEditDialog}
-              partCategories={partCategories}
-              manufacturerSuggestions={manufacturerSuggestions}
-              parts={parts}
+              parameters={parameters}
               workspaceSlug={workspaceSlug}
             />
           </div>

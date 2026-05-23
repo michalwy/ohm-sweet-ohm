@@ -52,9 +52,13 @@ export const AnyNull = runtime.AnyNull
 
 export const ModelName = {
   Part: 'Part',
+  Parameter: 'Parameter',
+  ParameterChoiceOption: 'ParameterChoiceOption',
   Organization: 'Organization',
   OrganizationRole: 'OrganizationRole',
   PartCategory: 'PartCategory',
+  CategoryParameter: 'CategoryParameter',
+  PartParameterValue: 'PartParameterValue',
   PartCategoryClosure: 'PartCategoryClosure',
   User: 'User',
   Session: 'Session',
@@ -98,6 +102,34 @@ export const PartScalarFieldEnum = {
 export type PartScalarFieldEnum = (typeof PartScalarFieldEnum)[keyof typeof PartScalarFieldEnum]
 
 
+export const ParameterScalarFieldEnum = {
+  id: 'id',
+  workspaceId: 'workspaceId',
+  name: 'name',
+  normalizedName: 'normalizedName',
+  description: 'description',
+  type: 'type',
+  baseUnitSymbol: 'baseUnitSymbol',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type ParameterScalarFieldEnum = (typeof ParameterScalarFieldEnum)[keyof typeof ParameterScalarFieldEnum]
+
+
+export const ParameterChoiceOptionScalarFieldEnum = {
+  id: 'id',
+  parameterId: 'parameterId',
+  label: 'label',
+  normalizedLabel: 'normalizedLabel',
+  sortOrder: 'sortOrder',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type ParameterChoiceOptionScalarFieldEnum = (typeof ParameterChoiceOptionScalarFieldEnum)[keyof typeof ParameterChoiceOptionScalarFieldEnum]
+
+
 export const OrganizationScalarFieldEnum = {
   id: 'id',
   workspaceId: 'workspaceId',
@@ -123,6 +155,7 @@ export const PartCategoryScalarFieldEnum = {
   id: 'id',
   workspaceId: 'workspaceId',
   parentId: 'parentId',
+  primaryParameterId: 'primaryParameterId',
   name: 'name',
   isAssignable: 'isAssignable',
   createdAt: 'createdAt',
@@ -130,6 +163,43 @@ export const PartCategoryScalarFieldEnum = {
 } as const
 
 export type PartCategoryScalarFieldEnum = (typeof PartCategoryScalarFieldEnum)[keyof typeof PartCategoryScalarFieldEnum]
+
+
+export const CategoryParameterScalarFieldEnum = {
+  id: 'id',
+  workspaceId: 'workspaceId',
+  categoryId: 'categoryId',
+  parameterId: 'parameterId',
+  sortOrder: 'sortOrder',
+  defaultTextValue: 'defaultTextValue',
+  defaultNumberValue: 'defaultNumberValue',
+  defaultQuantityBaseValue: 'defaultQuantityBaseValue',
+  defaultBooleanValue: 'defaultBooleanValue',
+  defaultChoiceOptionId: 'defaultChoiceOptionId',
+  defaultDisplayValue: 'defaultDisplayValue',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type CategoryParameterScalarFieldEnum = (typeof CategoryParameterScalarFieldEnum)[keyof typeof CategoryParameterScalarFieldEnum]
+
+
+export const PartParameterValueScalarFieldEnum = {
+  id: 'id',
+  workspaceId: 'workspaceId',
+  partId: 'partId',
+  parameterId: 'parameterId',
+  textValue: 'textValue',
+  numberValue: 'numberValue',
+  quantityBaseValue: 'quantityBaseValue',
+  booleanValue: 'booleanValue',
+  choiceOptionId: 'choiceOptionId',
+  displayValue: 'displayValue',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type PartParameterValueScalarFieldEnum = (typeof PartParameterValueScalarFieldEnum)[keyof typeof PartParameterValueScalarFieldEnum]
 
 
 export const PartCategoryClosureScalarFieldEnum = {

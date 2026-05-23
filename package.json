@@ -8,6 +8,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "test:unit": "tsx --test tests/unit/**/*.test.ts",
     "typecheck": "next typegen && tsc --noEmit",
     "e2e:db:up": "docker compose -f docker-compose.e2e.yml up -d --wait db-e2e",
     "e2e:db:reset": "pnpm e2e:db:up && DATABASE_URL=\"postgresql://oso:oso_e2e_password@localhost:5433/ohm_sweet_ohm_e2e?schema=public\" prisma migrate reset --force && DATABASE_URL=\"postgresql://oso:oso_e2e_password@localhost:5433/ohm_sweet_ohm_e2e?schema=public\" prisma generate && DATABASE_URL=\"postgresql://oso:oso_e2e_password@localhost:5433/ohm_sweet_ohm_e2e?schema=public\" tsx prisma/seed.e2e.ts",

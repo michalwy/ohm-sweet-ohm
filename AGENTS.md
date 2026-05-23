@@ -60,6 +60,7 @@ Do not use multiple roles to invent product behavior. Product decisions still re
 - Use Better Auth for application authentication as documented in `docs/decisions/0006-authentication-provider.md`; do not reintroduce development current-user shortcuts.
 - Use the registration and workspace routing flow documented in `docs/decisions/0007-workspace-registration-and-routing.md`: sign-up creates only a global user, sign-in returns users to their last accessible workspace when remembered, users choose or create workspaces at `/workspaces`, workspace URLs use `/w/[workspaceSlug]/...`, and slug resolution must still authorize by internal `workspaceId`.
 - Use the organization model documented in `docs/decisions/0009-organizations-for-part-manufacturers.md`: manufacturers are workspace-scoped organizations with a `manufacturer` role, not a manufacturer-only table. Do not infer supplier, buyer, purchase, or pricing behavior from this model.
+- Use the category-parameter model documented in `docs/decisions/0011-category-parameters.md`: parameters are workspace-scoped dictionary records, category attachments/overrides define defaults and sort order, category `primaryParameterId` controls the parts-list Value column, all parameters are optional, and part parameter values come only from the part's primary category.
 - Treat new domain resources as workspace-scoped by default. Add `workspaceId` and scope server-side queries/mutations to the current workspace unless an explicit product decision says the resource is global.
 - Keep authorization checks in server-side application/domain code, not UI components.
 - When adding workspace-scoped functionality, protect every server-side read or mutation with the appropriate permission. If no suitable permission exists yet, introduce an explicit permission key for that resource/action before exposing the behavior.
@@ -80,6 +81,7 @@ Do not use multiple roles to invent product behavior. Product decisions still re
 
 - Treat OSO as a desktop-only application. Do not add mobile layouts, responsive mobile breakpoints, mobile navigation patterns, or mobile-specific fallbacks unless a future product decision explicitly reverses this.
 - Use modal dialogs for list actions such as adding, editing, and similar focused workflows.
+- Treat tabs inside dialogs as visual grouping only. A dialog must have one logical save action that persists values from all tabs and then closes the dialog when the save succeeds.
 - Prefer in-place editing on lists for fields where inline edits are practical and clear.
 - For rich workspace screens, reserve URL state for navigation, filters, sorting, pagination, selected records, and deep-linkable UI. Do not put ephemeral success feedback in URL parameters; use local toast feedback instead.
 

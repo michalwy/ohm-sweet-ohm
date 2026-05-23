@@ -17,16 +17,65 @@ model Part {
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
 
-  workspace         Workspace     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  manufacturer      Organization  @relation("PartManufacturer", fields: [manufacturerId], references: [id], onDelete: Restrict)
-  primaryCategory   PartCategory? @relation("PartPrimaryCategory", fields: [primaryCategoryId], references: [id], onDelete: SetNull)
-  secondaryCategory PartCategory? @relation("PartSecondaryCategory", fields: [secondaryCategoryId], references: [id], onDelete: SetNull)
+  workspace         Workspace            @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  manufacturer      Organization         @relation("PartManufacturer", fields: [manufacturerId], references: [id], onDelete: Restrict)
+  primaryCategory   PartCategory?        @relation("PartPrimaryCategory", fields: [primaryCategoryId], references: [id], onDelete: SetNull)
+  secondaryCategory PartCategory?        @relation("PartSecondaryCategory", fields: [secondaryCategoryId], references: [id], onDelete: SetNull)
+  parameterValues   PartParameterValue[]
 
   @@unique([workspaceId, manufacturerId, catalogNumber])
   @@index([workspaceId, catalogNumber])
   @@index([workspaceId, manufacturerId])
   @@index([workspaceId, primaryCategoryId])
   @@index([workspaceId, secondaryCategoryId])
+}
+
+enum ParameterType {
+  TEXT
+  NUMBER
+  QUANTITY
+  BOOLEAN
+  CHOICE
+}
+
+model Parameter {
+  id             String        @id @default(cuid())
+  workspaceId    String
+  name           String
+  normalizedName String
+  description    String?
+  type           ParameterType
+  baseUnitSymbol String?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  workspace            Workspace               @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  choiceOptions        ParameterChoiceOption[]
+  categoryParameters   CategoryParameter[]
+  partValues           PartParameterValue[]
+  primaryForCategories PartCategory[]          @relation("PartCategoryPrimaryParameter")
+
+  @@unique([workspaceId, normalizedName])
+  @@index([workspaceId, name])
+  @@index([workspaceId, type])
+}
+
+model ParameterChoiceOption {
+  id              String   @id @default(cuid())
+  parameterId     String
+  label           String
+  normalizedLabel String
+  sortOrder       Int      @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  parameter                      Parameter            @relation(fields: [parameterId], references: [id], onDelete: Cascade)
+  categoryParameterDefaultValues CategoryParameter[]  @relation("CategoryParameterDefaultChoiceOption")
+  partParameterValues            PartParameterValue[] @relation("PartParameterValueChoiceOption")
+
+  @@unique([parameterId, normalizedLabel])
+  @@index([parameterId, sortOrder])
+  @@index([parameterId, label])
 }
 
 model Organization {
@@ -37,9 +86,9 @@ model Organization {
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
-  workspace          Workspace          @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  roles              OrganizationRole[]
-  manufacturedParts  Part[]             @relation("PartManufacturer")
+  workspace         Workspace          @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  roles             OrganizationRole[]
+  manufacturedParts Part[]             @relation("PartManufacturer")
 
   @@unique([workspaceId, normalizedName])
   @@index([workspaceId, name])
@@ -57,25 +106,81 @@ model OrganizationRole {
 }
 
 model PartCategory {
-  id           String   @id @default(cuid())
-  workspaceId  String
-  parentId     String?
-  name         String
-  isAssignable Boolean  @default(true)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id                 String   @id @default(cuid())
+  workspaceId        String
+  parentId           String?
+  primaryParameterId String?
+  name               String
+  isAssignable       Boolean  @default(true)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
 
-  workspace             Workspace             @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  parent                PartCategory?         @relation("PartCategoryTree", fields: [parentId], references: [id], onDelete: Restrict)
-  children              PartCategory[]        @relation("PartCategoryTree")
-  primaryParts          Part[]                @relation("PartPrimaryCategory")
-  secondaryParts        Part[]                @relation("PartSecondaryCategory")
-  ancestorClosures      PartCategoryClosure[] @relation("PartCategoryClosureAncestor")
-  descendantClosures    PartCategoryClosure[] @relation("PartCategoryClosureDescendant")
+  workspace          Workspace             @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  parent             PartCategory?         @relation("PartCategoryTree", fields: [parentId], references: [id], onDelete: Restrict)
+  children           PartCategory[]        @relation("PartCategoryTree")
+  primaryParameter   Parameter?            @relation("PartCategoryPrimaryParameter", fields: [primaryParameterId], references: [id], onDelete: Restrict)
+  categoryParameters CategoryParameter[]
+  primaryParts       Part[]                @relation("PartPrimaryCategory")
+  secondaryParts     Part[]                @relation("PartSecondaryCategory")
+  ancestorClosures   PartCategoryClosure[] @relation("PartCategoryClosureAncestor")
+  descendantClosures PartCategoryClosure[] @relation("PartCategoryClosureDescendant")
 
   @@index([workspaceId])
   @@index([workspaceId, parentId])
+  @@index([workspaceId, primaryParameterId])
   @@index([workspaceId, name])
+}
+
+model CategoryParameter {
+  id                       String   @id @default(cuid())
+  workspaceId              String
+  categoryId               String
+  parameterId              String
+  sortOrder                Int      @default(0)
+  defaultTextValue         String?
+  defaultNumberValue       Decimal?
+  defaultQuantityBaseValue Decimal?
+  defaultBooleanValue      Boolean?
+  defaultChoiceOptionId    String?
+  defaultDisplayValue      String?
+  createdAt                DateTime @default(now())
+  updatedAt                DateTime @updatedAt
+
+  workspace           Workspace              @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  category            PartCategory           @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  parameter           Parameter              @relation(fields: [parameterId], references: [id], onDelete: Restrict)
+  defaultChoiceOption ParameterChoiceOption? @relation("CategoryParameterDefaultChoiceOption", fields: [defaultChoiceOptionId], references: [id], onDelete: Restrict)
+
+  @@unique([categoryId, parameterId])
+  @@index([workspaceId, categoryId])
+  @@index([workspaceId, parameterId])
+  @@index([parameterId])
+}
+
+model PartParameterValue {
+  id                String   @id @default(cuid())
+  workspaceId       String
+  partId            String
+  parameterId       String
+  textValue         String?
+  numberValue       Decimal?
+  quantityBaseValue Decimal?
+  booleanValue      Boolean?
+  choiceOptionId    String?
+  displayValue      String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  workspace    Workspace              @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  part         Part                   @relation(fields: [partId], references: [id], onDelete: Cascade)
+  parameter    Parameter              @relation(fields: [parameterId], references: [id], onDelete: Restrict)
+  choiceOption ParameterChoiceOption? @relation("PartParameterValueChoiceOption", fields: [choiceOptionId], references: [id], onDelete: Restrict)
+
+  @@unique([partId, parameterId])
+  @@index([workspaceId, partId])
+  @@index([workspaceId, parameterId])
+  @@index([parameterId])
+  @@index([choiceOptionId])
 }
 
 model PartCategoryClosure {
@@ -84,9 +189,9 @@ model PartCategoryClosure {
   descendantId String
   depth        Int
 
-  workspace   Workspace    @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  ancestor    PartCategory @relation("PartCategoryClosureAncestor", fields: [ancestorId], references: [id], onDelete: Cascade)
-  descendant  PartCategory @relation("PartCategoryClosureDescendant", fields: [descendantId], references: [id], onDelete: Cascade)
+  workspace  Workspace    @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  ancestor   PartCategory @relation("PartCategoryClosureAncestor", fields: [ancestorId], references: [id], onDelete: Cascade)
+  descendant PartCategory @relation("PartCategoryClosureDescendant", fields: [descendantId], references: [id], onDelete: Cascade)
 
   @@id([ancestorId, descendantId])
   @@index([workspaceId, ancestorId])
@@ -160,12 +265,15 @@ model Workspace {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  members WorkspaceMember[]
-  parts   Part[]
-  organizations Organization[]
-  partCategories PartCategory[]
+  members              WorkspaceMember[]
+  parts                Part[]
+  organizations        Organization[]
+  partCategories       PartCategory[]
   partCategoryClosures PartCategoryClosure[]
-  roles   Role[]
+  parameters           Parameter[]
+  categoryParameters   CategoryParameter[]
+  partParameterValues  PartParameterValue[]
+  roles                Role[]
 }
 
 model WorkspaceMember {

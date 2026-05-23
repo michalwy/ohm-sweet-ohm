@@ -28,6 +28,7 @@ export type PartCategoryMinAggregateOutputType = {
   id: string | null
   workspaceId: string | null
   parentId: string | null
+  primaryParameterId: string | null
   name: string | null
   isAssignable: boolean | null
   createdAt: Date | null
@@ -38,6 +39,7 @@ export type PartCategoryMaxAggregateOutputType = {
   id: string | null
   workspaceId: string | null
   parentId: string | null
+  primaryParameterId: string | null
   name: string | null
   isAssignable: boolean | null
   createdAt: Date | null
@@ -48,6 +50,7 @@ export type PartCategoryCountAggregateOutputType = {
   id: number
   workspaceId: number
   parentId: number
+  primaryParameterId: number
   name: number
   isAssignable: number
   createdAt: number
@@ -60,6 +63,7 @@ export type PartCategoryMinAggregateInputType = {
   id?: true
   workspaceId?: true
   parentId?: true
+  primaryParameterId?: true
   name?: true
   isAssignable?: true
   createdAt?: true
@@ -70,6 +74,7 @@ export type PartCategoryMaxAggregateInputType = {
   id?: true
   workspaceId?: true
   parentId?: true
+  primaryParameterId?: true
   name?: true
   isAssignable?: true
   createdAt?: true
@@ -80,6 +85,7 @@ export type PartCategoryCountAggregateInputType = {
   id?: true
   workspaceId?: true
   parentId?: true
+  primaryParameterId?: true
   name?: true
   isAssignable?: true
   createdAt?: true
@@ -163,6 +169,7 @@ export type PartCategoryGroupByOutputType = {
   id: string
   workspaceId: string
   parentId: string | null
+  primaryParameterId: string | null
   name: string
   isAssignable: boolean
   createdAt: Date
@@ -194,6 +201,7 @@ export type PartCategoryWhereInput = {
   id?: Prisma.StringFilter<"PartCategory"> | string
   workspaceId?: Prisma.StringFilter<"PartCategory"> | string
   parentId?: Prisma.StringNullableFilter<"PartCategory"> | string | null
+  primaryParameterId?: Prisma.StringNullableFilter<"PartCategory"> | string | null
   name?: Prisma.StringFilter<"PartCategory"> | string
   isAssignable?: Prisma.BoolFilter<"PartCategory"> | boolean
   createdAt?: Prisma.DateTimeFilter<"PartCategory"> | Date | string
@@ -201,6 +209,8 @@ export type PartCategoryWhereInput = {
   workspace?: Prisma.XOR<Prisma.WorkspaceScalarRelationFilter, Prisma.WorkspaceWhereInput>
   parent?: Prisma.XOR<Prisma.PartCategoryNullableScalarRelationFilter, Prisma.PartCategoryWhereInput> | null
   children?: Prisma.PartCategoryListRelationFilter
+  primaryParameter?: Prisma.XOR<Prisma.ParameterNullableScalarRelationFilter, Prisma.ParameterWhereInput> | null
+  categoryParameters?: Prisma.CategoryParameterListRelationFilter
   primaryParts?: Prisma.PartListRelationFilter
   secondaryParts?: Prisma.PartListRelationFilter
   ancestorClosures?: Prisma.PartCategoryClosureListRelationFilter
@@ -211,6 +221,7 @@ export type PartCategoryOrderByWithRelationInput = {
   id?: Prisma.SortOrder
   workspaceId?: Prisma.SortOrder
   parentId?: Prisma.SortOrderInput | Prisma.SortOrder
+  primaryParameterId?: Prisma.SortOrderInput | Prisma.SortOrder
   name?: Prisma.SortOrder
   isAssignable?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
@@ -218,6 +229,8 @@ export type PartCategoryOrderByWithRelationInput = {
   workspace?: Prisma.WorkspaceOrderByWithRelationInput
   parent?: Prisma.PartCategoryOrderByWithRelationInput
   children?: Prisma.PartCategoryOrderByRelationAggregateInput
+  primaryParameter?: Prisma.ParameterOrderByWithRelationInput
+  categoryParameters?: Prisma.CategoryParameterOrderByRelationAggregateInput
   primaryParts?: Prisma.PartOrderByRelationAggregateInput
   secondaryParts?: Prisma.PartOrderByRelationAggregateInput
   ancestorClosures?: Prisma.PartCategoryClosureOrderByRelationAggregateInput
@@ -231,6 +244,7 @@ export type PartCategoryWhereUniqueInput = Prisma.AtLeast<{
   NOT?: Prisma.PartCategoryWhereInput | Prisma.PartCategoryWhereInput[]
   workspaceId?: Prisma.StringFilter<"PartCategory"> | string
   parentId?: Prisma.StringNullableFilter<"PartCategory"> | string | null
+  primaryParameterId?: Prisma.StringNullableFilter<"PartCategory"> | string | null
   name?: Prisma.StringFilter<"PartCategory"> | string
   isAssignable?: Prisma.BoolFilter<"PartCategory"> | boolean
   createdAt?: Prisma.DateTimeFilter<"PartCategory"> | Date | string
@@ -238,6 +252,8 @@ export type PartCategoryWhereUniqueInput = Prisma.AtLeast<{
   workspace?: Prisma.XOR<Prisma.WorkspaceScalarRelationFilter, Prisma.WorkspaceWhereInput>
   parent?: Prisma.XOR<Prisma.PartCategoryNullableScalarRelationFilter, Prisma.PartCategoryWhereInput> | null
   children?: Prisma.PartCategoryListRelationFilter
+  primaryParameter?: Prisma.XOR<Prisma.ParameterNullableScalarRelationFilter, Prisma.ParameterWhereInput> | null
+  categoryParameters?: Prisma.CategoryParameterListRelationFilter
   primaryParts?: Prisma.PartListRelationFilter
   secondaryParts?: Prisma.PartListRelationFilter
   ancestorClosures?: Prisma.PartCategoryClosureListRelationFilter
@@ -248,6 +264,7 @@ export type PartCategoryOrderByWithAggregationInput = {
   id?: Prisma.SortOrder
   workspaceId?: Prisma.SortOrder
   parentId?: Prisma.SortOrderInput | Prisma.SortOrder
+  primaryParameterId?: Prisma.SortOrderInput | Prisma.SortOrder
   name?: Prisma.SortOrder
   isAssignable?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
@@ -264,6 +281,7 @@ export type PartCategoryScalarWhereWithAggregatesInput = {
   id?: Prisma.StringWithAggregatesFilter<"PartCategory"> | string
   workspaceId?: Prisma.StringWithAggregatesFilter<"PartCategory"> | string
   parentId?: Prisma.StringNullableWithAggregatesFilter<"PartCategory"> | string | null
+  primaryParameterId?: Prisma.StringNullableWithAggregatesFilter<"PartCategory"> | string | null
   name?: Prisma.StringWithAggregatesFilter<"PartCategory"> | string
   isAssignable?: Prisma.BoolWithAggregatesFilter<"PartCategory"> | boolean
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"PartCategory"> | Date | string
@@ -279,6 +297,8 @@ export type PartCategoryCreateInput = {
   workspace: Prisma.WorkspaceCreateNestedOneWithoutPartCategoriesInput
   parent?: Prisma.PartCategoryCreateNestedOneWithoutChildrenInput
   children?: Prisma.PartCategoryCreateNestedManyWithoutParentInput
+  primaryParameter?: Prisma.ParameterCreateNestedOneWithoutPrimaryForCategoriesInput
+  categoryParameters?: Prisma.CategoryParameterCreateNestedManyWithoutCategoryInput
   primaryParts?: Prisma.PartCreateNestedManyWithoutPrimaryCategoryInput
   secondaryParts?: Prisma.PartCreateNestedManyWithoutSecondaryCategoryInput
   ancestorClosures?: Prisma.PartCategoryClosureCreateNestedManyWithoutAncestorInput
@@ -289,11 +309,13 @@ export type PartCategoryUncheckedCreateInput = {
   id?: string
   workspaceId: string
   parentId?: string | null
+  primaryParameterId?: string | null
   name: string
   isAssignable?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
   children?: Prisma.PartCategoryUncheckedCreateNestedManyWithoutParentInput
+  categoryParameters?: Prisma.CategoryParameterUncheckedCreateNestedManyWithoutCategoryInput
   primaryParts?: Prisma.PartUncheckedCreateNestedManyWithoutPrimaryCategoryInput
   secondaryParts?: Prisma.PartUncheckedCreateNestedManyWithoutSecondaryCategoryInput
   ancestorClosures?: Prisma.PartCategoryClosureUncheckedCreateNestedManyWithoutAncestorInput
@@ -309,6 +331,8 @@ export type PartCategoryUpdateInput = {
   workspace?: Prisma.WorkspaceUpdateOneRequiredWithoutPartCategoriesNestedInput
   parent?: Prisma.PartCategoryUpdateOneWithoutChildrenNestedInput
   children?: Prisma.PartCategoryUpdateManyWithoutParentNestedInput
+  primaryParameter?: Prisma.ParameterUpdateOneWithoutPrimaryForCategoriesNestedInput
+  categoryParameters?: Prisma.CategoryParameterUpdateManyWithoutCategoryNestedInput
   primaryParts?: Prisma.PartUpdateManyWithoutPrimaryCategoryNestedInput
   secondaryParts?: Prisma.PartUpdateManyWithoutSecondaryCategoryNestedInput
   ancestorClosures?: Prisma.PartCategoryClosureUpdateManyWithoutAncestorNestedInput
@@ -319,11 +343,13 @@ export type PartCategoryUncheckedUpdateInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   workspaceId?: Prisma.StringFieldUpdateOperationsInput | string
   parentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  primaryParameterId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   name?: Prisma.StringFieldUpdateOperationsInput | string
   isAssignable?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   children?: Prisma.PartCategoryUncheckedUpdateManyWithoutParentNestedInput
+  categoryParameters?: Prisma.CategoryParameterUncheckedUpdateManyWithoutCategoryNestedInput
   primaryParts?: Prisma.PartUncheckedUpdateManyWithoutPrimaryCategoryNestedInput
   secondaryParts?: Prisma.PartUncheckedUpdateManyWithoutSecondaryCategoryNestedInput
   ancestorClosures?: Prisma.PartCategoryClosureUncheckedUpdateManyWithoutAncestorNestedInput
@@ -334,6 +360,7 @@ export type PartCategoryCreateManyInput = {
   id?: string
   workspaceId: string
   parentId?: string | null
+  primaryParameterId?: string | null
   name: string
   isAssignable?: boolean
   createdAt?: Date | string
@@ -352,6 +379,7 @@ export type PartCategoryUncheckedUpdateManyInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   workspaceId?: Prisma.StringFieldUpdateOperationsInput | string
   parentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  primaryParameterId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   name?: Prisma.StringFieldUpdateOperationsInput | string
   isAssignable?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -377,6 +405,7 @@ export type PartCategoryCountOrderByAggregateInput = {
   id?: Prisma.SortOrder
   workspaceId?: Prisma.SortOrder
   parentId?: Prisma.SortOrder
+  primaryParameterId?: Prisma.SortOrder
   name?: Prisma.SortOrder
   isAssignable?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
@@ -387,6 +416,7 @@ export type PartCategoryMaxOrderByAggregateInput = {
   id?: Prisma.SortOrder
   workspaceId?: Prisma.SortOrder
   parentId?: Prisma.SortOrder
+  primaryParameterId?: Prisma.SortOrder
   name?: Prisma.SortOrder
   isAssignable?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
@@ -397,6 +427,7 @@ export type PartCategoryMinOrderByAggregateInput = {
   id?: Prisma.SortOrder
   workspaceId?: Prisma.SortOrder
   parentId?: Prisma.SortOrder
+  primaryParameterId?: Prisma.SortOrder
   name?: Prisma.SortOrder
   isAssignable?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
@@ -438,6 +469,48 @@ export type PartCategoryUpdateOneWithoutSecondaryPartsNestedInput = {
   delete?: Prisma.PartCategoryWhereInput | boolean
   connect?: Prisma.PartCategoryWhereUniqueInput
   update?: Prisma.XOR<Prisma.XOR<Prisma.PartCategoryUpdateToOneWithWhereWithoutSecondaryPartsInput, Prisma.PartCategoryUpdateWithoutSecondaryPartsInput>, Prisma.PartCategoryUncheckedUpdateWithoutSecondaryPartsInput>
+}
+
+export type PartCategoryCreateNestedManyWithoutPrimaryParameterInput = {
+  create?: Prisma.XOR<Prisma.PartCategoryCreateWithoutPrimaryParameterInput, Prisma.PartCategoryUncheckedCreateWithoutPrimaryParameterInput> | Prisma.PartCategoryCreateWithoutPrimaryParameterInput[] | Prisma.PartCategoryUncheckedCreateWithoutPrimaryParameterInput[]
+  connectOrCreate?: Prisma.PartCategoryCreateOrConnectWithoutPrimaryParameterInput | Prisma.PartCategoryCreateOrConnectWithoutPrimaryParameterInput[]
+  createMany?: Prisma.PartCategoryCreateManyPrimaryParameterInputEnvelope
+  connect?: Prisma.PartCategoryWhereUniqueInput | Prisma.PartCategoryWhereUniqueInput[]
+}
+
+export type PartCategoryUncheckedCreateNestedManyWithoutPrimaryParameterInput = {
+  create?: Prisma.XOR<Prisma.PartCategoryCreateWithoutPrimaryParameterInput, Prisma.PartCategoryUncheckedCreateWithoutPrimaryParameterInput> | Prisma.PartCategoryCreateWithoutPrimaryParameterInput[] | Prisma.PartCategoryUncheckedCreateWithoutPrimaryParameterInput[]
+  connectOrCreate?: Prisma.PartCategoryCreateOrConnectWithoutPrimaryParameterInput | Prisma.PartCategoryCreateOrConnectWithoutPrimaryParameterInput[]
+  createMany?: Prisma.PartCategoryCreateManyPrimaryParameterInputEnvelope
+  connect?: Prisma.PartCategoryWhereUniqueInput | Prisma.PartCategoryWhereUniqueInput[]
+}
+
+export type PartCategoryUpdateManyWithoutPrimaryParameterNestedInput = {
+  create?: Prisma.XOR<Prisma.PartCategoryCreateWithoutPrimaryParameterInput, Prisma.PartCategoryUncheckedCreateWithoutPrimaryParameterInput> | Prisma.PartCategoryCreateWithoutPrimaryParameterInput[] | Prisma.PartCategoryUncheckedCreateWithoutPrimaryParameterInput[]
+  connectOrCreate?: Prisma.PartCategoryCreateOrConnectWithoutPrimaryParameterInput | Prisma.PartCategoryCreateOrConnectWithoutPrimaryParameterInput[]
+  upsert?: Prisma.PartCategoryUpsertWithWhereUniqueWithoutPrimaryParameterInput | Prisma.PartCategoryUpsertWithWhereUniqueWithoutPrimaryParameterInput[]
+  createMany?: Prisma.PartCategoryCreateManyPrimaryParameterInputEnvelope
+  set?: Prisma.PartCategoryWhereUniqueInput | Prisma.PartCategoryWhereUniqueInput[]
+  disconnect?: Prisma.PartCategoryWhereUniqueInput | Prisma.PartCategoryWhereUniqueInput[]
+  delete?: Prisma.PartCategoryWhereUniqueInput | Prisma.PartCategoryWhereUniqueInput[]
+  connect?: Prisma.PartCategoryWhereUniqueInput | Prisma.PartCategoryWhereUniqueInput[]
+  update?: Prisma.PartCategoryUpdateWithWhereUniqueWithoutPrimaryParameterInput | Prisma.PartCategoryUpdateWithWhereUniqueWithoutPrimaryParameterInput[]
+  updateMany?: Prisma.PartCategoryUpdateManyWithWhereWithoutPrimaryParameterInput | Prisma.PartCategoryUpdateManyWithWhereWithoutPrimaryParameterInput[]
+  deleteMany?: Prisma.PartCategoryScalarWhereInput | Prisma.PartCategoryScalarWhereInput[]
+}
+
+export type PartCategoryUncheckedUpdateManyWithoutPrimaryParameterNestedInput = {
+  create?: Prisma.XOR<Prisma.PartCategoryCreateWithoutPrimaryParameterInput, Prisma.PartCategoryUncheckedCreateWithoutPrimaryParameterInput> | Prisma.PartCategoryCreateWithoutPrimaryParameterInput[] | Prisma.PartCategoryUncheckedCreateWithoutPrimaryParameterInput[]
+  connectOrCreate?: Prisma.PartCategoryCreateOrConnectWithoutPrimaryParameterInput | Prisma.PartCategoryCreateOrConnectWithoutPrimaryParameterInput[]
+  upsert?: Prisma.PartCategoryUpsertWithWhereUniqueWithoutPrimaryParameterInput | Prisma.PartCategoryUpsertWithWhereUniqueWithoutPrimaryParameterInput[]
+  createMany?: Prisma.PartCategoryCreateManyPrimaryParameterInputEnvelope
+  set?: Prisma.PartCategoryWhereUniqueInput | Prisma.PartCategoryWhereUniqueInput[]
+  disconnect?: Prisma.PartCategoryWhereUniqueInput | Prisma.PartCategoryWhereUniqueInput[]
+  delete?: Prisma.PartCategoryWhereUniqueInput | Prisma.PartCategoryWhereUniqueInput[]
+  connect?: Prisma.PartCategoryWhereUniqueInput | Prisma.PartCategoryWhereUniqueInput[]
+  update?: Prisma.PartCategoryUpdateWithWhereUniqueWithoutPrimaryParameterInput | Prisma.PartCategoryUpdateWithWhereUniqueWithoutPrimaryParameterInput[]
+  updateMany?: Prisma.PartCategoryUpdateManyWithWhereWithoutPrimaryParameterInput | Prisma.PartCategoryUpdateManyWithWhereWithoutPrimaryParameterInput[]
+  deleteMany?: Prisma.PartCategoryScalarWhereInput | Prisma.PartCategoryScalarWhereInput[]
 }
 
 export type PartCategoryCreateNestedOneWithoutChildrenInput = {
@@ -500,6 +573,20 @@ export type PartCategoryUncheckedUpdateManyWithoutParentNestedInput = {
   update?: Prisma.PartCategoryUpdateWithWhereUniqueWithoutParentInput | Prisma.PartCategoryUpdateWithWhereUniqueWithoutParentInput[]
   updateMany?: Prisma.PartCategoryUpdateManyWithWhereWithoutParentInput | Prisma.PartCategoryUpdateManyWithWhereWithoutParentInput[]
   deleteMany?: Prisma.PartCategoryScalarWhereInput | Prisma.PartCategoryScalarWhereInput[]
+}
+
+export type PartCategoryCreateNestedOneWithoutCategoryParametersInput = {
+  create?: Prisma.XOR<Prisma.PartCategoryCreateWithoutCategoryParametersInput, Prisma.PartCategoryUncheckedCreateWithoutCategoryParametersInput>
+  connectOrCreate?: Prisma.PartCategoryCreateOrConnectWithoutCategoryParametersInput
+  connect?: Prisma.PartCategoryWhereUniqueInput
+}
+
+export type PartCategoryUpdateOneRequiredWithoutCategoryParametersNestedInput = {
+  create?: Prisma.XOR<Prisma.PartCategoryCreateWithoutCategoryParametersInput, Prisma.PartCategoryUncheckedCreateWithoutCategoryParametersInput>
+  connectOrCreate?: Prisma.PartCategoryCreateOrConnectWithoutCategoryParametersInput
+  upsert?: Prisma.PartCategoryUpsertWithoutCategoryParametersInput
+  connect?: Prisma.PartCategoryWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.PartCategoryUpdateToOneWithWhereWithoutCategoryParametersInput, Prisma.PartCategoryUpdateWithoutCategoryParametersInput>, Prisma.PartCategoryUncheckedUpdateWithoutCategoryParametersInput>
 }
 
 export type PartCategoryCreateNestedOneWithoutAncestorClosuresInput = {
@@ -581,6 +668,8 @@ export type PartCategoryCreateWithoutPrimaryPartsInput = {
   workspace: Prisma.WorkspaceCreateNestedOneWithoutPartCategoriesInput
   parent?: Prisma.PartCategoryCreateNestedOneWithoutChildrenInput
   children?: Prisma.PartCategoryCreateNestedManyWithoutParentInput
+  primaryParameter?: Prisma.ParameterCreateNestedOneWithoutPrimaryForCategoriesInput
+  categoryParameters?: Prisma.CategoryParameterCreateNestedManyWithoutCategoryInput
   secondaryParts?: Prisma.PartCreateNestedManyWithoutSecondaryCategoryInput
   ancestorClosures?: Prisma.PartCategoryClosureCreateNestedManyWithoutAncestorInput
   descendantClosures?: Prisma.PartCategoryClosureCreateNestedManyWithoutDescendantInput
@@ -590,11 +679,13 @@ export type PartCategoryUncheckedCreateWithoutPrimaryPartsInput = {
   id?: string
   workspaceId: string
   parentId?: string | null
+  primaryParameterId?: string | null
   name: string
   isAssignable?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
   children?: Prisma.PartCategoryUncheckedCreateNestedManyWithoutParentInput
+  categoryParameters?: Prisma.CategoryParameterUncheckedCreateNestedManyWithoutCategoryInput
   secondaryParts?: Prisma.PartUncheckedCreateNestedManyWithoutSecondaryCategoryInput
   ancestorClosures?: Prisma.PartCategoryClosureUncheckedCreateNestedManyWithoutAncestorInput
   descendantClosures?: Prisma.PartCategoryClosureUncheckedCreateNestedManyWithoutDescendantInput
@@ -614,6 +705,8 @@ export type PartCategoryCreateWithoutSecondaryPartsInput = {
   workspace: Prisma.WorkspaceCreateNestedOneWithoutPartCategoriesInput
   parent?: Prisma.PartCategoryCreateNestedOneWithoutChildrenInput
   children?: Prisma.PartCategoryCreateNestedManyWithoutParentInput
+  primaryParameter?: Prisma.ParameterCreateNestedOneWithoutPrimaryForCategoriesInput
+  categoryParameters?: Prisma.CategoryParameterCreateNestedManyWithoutCategoryInput
   primaryParts?: Prisma.PartCreateNestedManyWithoutPrimaryCategoryInput
   ancestorClosures?: Prisma.PartCategoryClosureCreateNestedManyWithoutAncestorInput
   descendantClosures?: Prisma.PartCategoryClosureCreateNestedManyWithoutDescendantInput
@@ -623,11 +716,13 @@ export type PartCategoryUncheckedCreateWithoutSecondaryPartsInput = {
   id?: string
   workspaceId: string
   parentId?: string | null
+  primaryParameterId?: string | null
   name: string
   isAssignable?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
   children?: Prisma.PartCategoryUncheckedCreateNestedManyWithoutParentInput
+  categoryParameters?: Prisma.CategoryParameterUncheckedCreateNestedManyWithoutCategoryInput
   primaryParts?: Prisma.PartUncheckedCreateNestedManyWithoutPrimaryCategoryInput
   ancestorClosures?: Prisma.PartCategoryClosureUncheckedCreateNestedManyWithoutAncestorInput
   descendantClosures?: Prisma.PartCategoryClosureUncheckedCreateNestedManyWithoutDescendantInput
@@ -658,6 +753,8 @@ export type PartCategoryUpdateWithoutPrimaryPartsInput = {
   workspace?: Prisma.WorkspaceUpdateOneRequiredWithoutPartCategoriesNestedInput
   parent?: Prisma.PartCategoryUpdateOneWithoutChildrenNestedInput
   children?: Prisma.PartCategoryUpdateManyWithoutParentNestedInput
+  primaryParameter?: Prisma.ParameterUpdateOneWithoutPrimaryForCategoriesNestedInput
+  categoryParameters?: Prisma.CategoryParameterUpdateManyWithoutCategoryNestedInput
   secondaryParts?: Prisma.PartUpdateManyWithoutSecondaryCategoryNestedInput
   ancestorClosures?: Prisma.PartCategoryClosureUpdateManyWithoutAncestorNestedInput
   descendantClosures?: Prisma.PartCategoryClosureUpdateManyWithoutDescendantNestedInput
@@ -667,11 +764,13 @@ export type PartCategoryUncheckedUpdateWithoutPrimaryPartsInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   workspaceId?: Prisma.StringFieldUpdateOperationsInput | string
   parentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  primaryParameterId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   name?: Prisma.StringFieldUpdateOperationsInput | string
   isAssignable?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   children?: Prisma.PartCategoryUncheckedUpdateManyWithoutParentNestedInput
+  categoryParameters?: Prisma.CategoryParameterUncheckedUpdateManyWithoutCategoryNestedInput
   secondaryParts?: Prisma.PartUncheckedUpdateManyWithoutSecondaryCategoryNestedInput
   ancestorClosures?: Prisma.PartCategoryClosureUncheckedUpdateManyWithoutAncestorNestedInput
   descendantClosures?: Prisma.PartCategoryClosureUncheckedUpdateManyWithoutDescendantNestedInput
@@ -697,6 +796,8 @@ export type PartCategoryUpdateWithoutSecondaryPartsInput = {
   workspace?: Prisma.WorkspaceUpdateOneRequiredWithoutPartCategoriesNestedInput
   parent?: Prisma.PartCategoryUpdateOneWithoutChildrenNestedInput
   children?: Prisma.PartCategoryUpdateManyWithoutParentNestedInput
+  primaryParameter?: Prisma.ParameterUpdateOneWithoutPrimaryForCategoriesNestedInput
+  categoryParameters?: Prisma.CategoryParameterUpdateManyWithoutCategoryNestedInput
   primaryParts?: Prisma.PartUpdateManyWithoutPrimaryCategoryNestedInput
   ancestorClosures?: Prisma.PartCategoryClosureUpdateManyWithoutAncestorNestedInput
   descendantClosures?: Prisma.PartCategoryClosureUpdateManyWithoutDescendantNestedInput
@@ -706,14 +807,88 @@ export type PartCategoryUncheckedUpdateWithoutSecondaryPartsInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   workspaceId?: Prisma.StringFieldUpdateOperationsInput | string
   parentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  primaryParameterId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   name?: Prisma.StringFieldUpdateOperationsInput | string
   isAssignable?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   children?: Prisma.PartCategoryUncheckedUpdateManyWithoutParentNestedInput
+  categoryParameters?: Prisma.CategoryParameterUncheckedUpdateManyWithoutCategoryNestedInput
   primaryParts?: Prisma.PartUncheckedUpdateManyWithoutPrimaryCategoryNestedInput
   ancestorClosures?: Prisma.PartCategoryClosureUncheckedUpdateManyWithoutAncestorNestedInput
   descendantClosures?: Prisma.PartCategoryClosureUncheckedUpdateManyWithoutDescendantNestedInput
+}
+
+export type PartCategoryCreateWithoutPrimaryParameterInput = {
+  id?: string
+  name: string
+  isAssignable?: boolean
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  workspace: Prisma.WorkspaceCreateNestedOneWithoutPartCategoriesInput
+  parent?: Prisma.PartCategoryCreateNestedOneWithoutChildrenInput
+  children?: Prisma.PartCategoryCreateNestedManyWithoutParentInput
+  categoryParameters?: Prisma.CategoryParameterCreateNestedManyWithoutCategoryInput
+  primaryParts?: Prisma.PartCreateNestedManyWithoutPrimaryCategoryInput
+  secondaryParts?: Prisma.PartCreateNestedManyWithoutSecondaryCategoryInput
+  ancestorClosures?: Prisma.PartCategoryClosureCreateNestedManyWithoutAncestorInput
+  descendantClosures?: Prisma.PartCategoryClosureCreateNestedManyWithoutDescendantInput
+}
+
+export type PartCategoryUncheckedCreateWithoutPrimaryParameterInput = {
+  id?: string
+  workspaceId: string
+  parentId?: string | null
+  name: string
+  isAssignable?: boolean
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  children?: Prisma.PartCategoryUncheckedCreateNestedManyWithoutParentInput
+  categoryParameters?: Prisma.CategoryParameterUncheckedCreateNestedManyWithoutCategoryInput
+  primaryParts?: Prisma.PartUncheckedCreateNestedManyWithoutPrimaryCategoryInput
+  secondaryParts?: Prisma.PartUncheckedCreateNestedManyWithoutSecondaryCategoryInput
+  ancestorClosures?: Prisma.PartCategoryClosureUncheckedCreateNestedManyWithoutAncestorInput
+  descendantClosures?: Prisma.PartCategoryClosureUncheckedCreateNestedManyWithoutDescendantInput
+}
+
+export type PartCategoryCreateOrConnectWithoutPrimaryParameterInput = {
+  where: Prisma.PartCategoryWhereUniqueInput
+  create: Prisma.XOR<Prisma.PartCategoryCreateWithoutPrimaryParameterInput, Prisma.PartCategoryUncheckedCreateWithoutPrimaryParameterInput>
+}
+
+export type PartCategoryCreateManyPrimaryParameterInputEnvelope = {
+  data: Prisma.PartCategoryCreateManyPrimaryParameterInput | Prisma.PartCategoryCreateManyPrimaryParameterInput[]
+  skipDuplicates?: boolean
+}
+
+export type PartCategoryUpsertWithWhereUniqueWithoutPrimaryParameterInput = {
+  where: Prisma.PartCategoryWhereUniqueInput
+  update: Prisma.XOR<Prisma.PartCategoryUpdateWithoutPrimaryParameterInput, Prisma.PartCategoryUncheckedUpdateWithoutPrimaryParameterInput>
+  create: Prisma.XOR<Prisma.PartCategoryCreateWithoutPrimaryParameterInput, Prisma.PartCategoryUncheckedCreateWithoutPrimaryParameterInput>
+}
+
+export type PartCategoryUpdateWithWhereUniqueWithoutPrimaryParameterInput = {
+  where: Prisma.PartCategoryWhereUniqueInput
+  data: Prisma.XOR<Prisma.PartCategoryUpdateWithoutPrimaryParameterInput, Prisma.PartCategoryUncheckedUpdateWithoutPrimaryParameterInput>
+}
+
+export type PartCategoryUpdateManyWithWhereWithoutPrimaryParameterInput = {
+  where: Prisma.PartCategoryScalarWhereInput
+  data: Prisma.XOR<Prisma.PartCategoryUpdateManyMutationInput, Prisma.PartCategoryUncheckedUpdateManyWithoutPrimaryParameterInput>
+}
+
+export type PartCategoryScalarWhereInput = {
+  AND?: Prisma.PartCategoryScalarWhereInput | Prisma.PartCategoryScalarWhereInput[]
+  OR?: Prisma.PartCategoryScalarWhereInput[]
+  NOT?: Prisma.PartCategoryScalarWhereInput | Prisma.PartCategoryScalarWhereInput[]
+  id?: Prisma.StringFilter<"PartCategory"> | string
+  workspaceId?: Prisma.StringFilter<"PartCategory"> | string
+  parentId?: Prisma.StringNullableFilter<"PartCategory"> | string | null
+  primaryParameterId?: Prisma.StringNullableFilter<"PartCategory"> | string | null
+  name?: Prisma.StringFilter<"PartCategory"> | string
+  isAssignable?: Prisma.BoolFilter<"PartCategory"> | boolean
+  createdAt?: Prisma.DateTimeFilter<"PartCategory"> | Date | string
+  updatedAt?: Prisma.DateTimeFilter<"PartCategory"> | Date | string
 }
 
 export type PartCategoryCreateWithoutChildrenInput = {
@@ -724,6 +899,8 @@ export type PartCategoryCreateWithoutChildrenInput = {
   updatedAt?: Date | string
   workspace: Prisma.WorkspaceCreateNestedOneWithoutPartCategoriesInput
   parent?: Prisma.PartCategoryCreateNestedOneWithoutChildrenInput
+  primaryParameter?: Prisma.ParameterCreateNestedOneWithoutPrimaryForCategoriesInput
+  categoryParameters?: Prisma.CategoryParameterCreateNestedManyWithoutCategoryInput
   primaryParts?: Prisma.PartCreateNestedManyWithoutPrimaryCategoryInput
   secondaryParts?: Prisma.PartCreateNestedManyWithoutSecondaryCategoryInput
   ancestorClosures?: Prisma.PartCategoryClosureCreateNestedManyWithoutAncestorInput
@@ -734,10 +911,12 @@ export type PartCategoryUncheckedCreateWithoutChildrenInput = {
   id?: string
   workspaceId: string
   parentId?: string | null
+  primaryParameterId?: string | null
   name: string
   isAssignable?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
+  categoryParameters?: Prisma.CategoryParameterUncheckedCreateNestedManyWithoutCategoryInput
   primaryParts?: Prisma.PartUncheckedCreateNestedManyWithoutPrimaryCategoryInput
   secondaryParts?: Prisma.PartUncheckedCreateNestedManyWithoutSecondaryCategoryInput
   ancestorClosures?: Prisma.PartCategoryClosureUncheckedCreateNestedManyWithoutAncestorInput
@@ -757,6 +936,8 @@ export type PartCategoryCreateWithoutParentInput = {
   updatedAt?: Date | string
   workspace: Prisma.WorkspaceCreateNestedOneWithoutPartCategoriesInput
   children?: Prisma.PartCategoryCreateNestedManyWithoutParentInput
+  primaryParameter?: Prisma.ParameterCreateNestedOneWithoutPrimaryForCategoriesInput
+  categoryParameters?: Prisma.CategoryParameterCreateNestedManyWithoutCategoryInput
   primaryParts?: Prisma.PartCreateNestedManyWithoutPrimaryCategoryInput
   secondaryParts?: Prisma.PartCreateNestedManyWithoutSecondaryCategoryInput
   ancestorClosures?: Prisma.PartCategoryClosureCreateNestedManyWithoutAncestorInput
@@ -766,11 +947,13 @@ export type PartCategoryCreateWithoutParentInput = {
 export type PartCategoryUncheckedCreateWithoutParentInput = {
   id?: string
   workspaceId: string
+  primaryParameterId?: string | null
   name: string
   isAssignable?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
   children?: Prisma.PartCategoryUncheckedCreateNestedManyWithoutParentInput
+  categoryParameters?: Prisma.CategoryParameterUncheckedCreateNestedManyWithoutCategoryInput
   primaryParts?: Prisma.PartUncheckedCreateNestedManyWithoutPrimaryCategoryInput
   secondaryParts?: Prisma.PartUncheckedCreateNestedManyWithoutSecondaryCategoryInput
   ancestorClosures?: Prisma.PartCategoryClosureUncheckedCreateNestedManyWithoutAncestorInput
@@ -806,6 +989,8 @@ export type PartCategoryUpdateWithoutChildrenInput = {
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   workspace?: Prisma.WorkspaceUpdateOneRequiredWithoutPartCategoriesNestedInput
   parent?: Prisma.PartCategoryUpdateOneWithoutChildrenNestedInput
+  primaryParameter?: Prisma.ParameterUpdateOneWithoutPrimaryForCategoriesNestedInput
+  categoryParameters?: Prisma.CategoryParameterUpdateManyWithoutCategoryNestedInput
   primaryParts?: Prisma.PartUpdateManyWithoutPrimaryCategoryNestedInput
   secondaryParts?: Prisma.PartUpdateManyWithoutSecondaryCategoryNestedInput
   ancestorClosures?: Prisma.PartCategoryClosureUpdateManyWithoutAncestorNestedInput
@@ -816,10 +1001,12 @@ export type PartCategoryUncheckedUpdateWithoutChildrenInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   workspaceId?: Prisma.StringFieldUpdateOperationsInput | string
   parentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  primaryParameterId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   name?: Prisma.StringFieldUpdateOperationsInput | string
   isAssignable?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  categoryParameters?: Prisma.CategoryParameterUncheckedUpdateManyWithoutCategoryNestedInput
   primaryParts?: Prisma.PartUncheckedUpdateManyWithoutPrimaryCategoryNestedInput
   secondaryParts?: Prisma.PartUncheckedUpdateManyWithoutSecondaryCategoryNestedInput
   ancestorClosures?: Prisma.PartCategoryClosureUncheckedUpdateManyWithoutAncestorNestedInput
@@ -842,17 +1029,84 @@ export type PartCategoryUpdateManyWithWhereWithoutParentInput = {
   data: Prisma.XOR<Prisma.PartCategoryUpdateManyMutationInput, Prisma.PartCategoryUncheckedUpdateManyWithoutParentInput>
 }
 
-export type PartCategoryScalarWhereInput = {
-  AND?: Prisma.PartCategoryScalarWhereInput | Prisma.PartCategoryScalarWhereInput[]
-  OR?: Prisma.PartCategoryScalarWhereInput[]
-  NOT?: Prisma.PartCategoryScalarWhereInput | Prisma.PartCategoryScalarWhereInput[]
-  id?: Prisma.StringFilter<"PartCategory"> | string
-  workspaceId?: Prisma.StringFilter<"PartCategory"> | string
-  parentId?: Prisma.StringNullableFilter<"PartCategory"> | string | null
-  name?: Prisma.StringFilter<"PartCategory"> | string
-  isAssignable?: Prisma.BoolFilter<"PartCategory"> | boolean
-  createdAt?: Prisma.DateTimeFilter<"PartCategory"> | Date | string
-  updatedAt?: Prisma.DateTimeFilter<"PartCategory"> | Date | string
+export type PartCategoryCreateWithoutCategoryParametersInput = {
+  id?: string
+  name: string
+  isAssignable?: boolean
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  workspace: Prisma.WorkspaceCreateNestedOneWithoutPartCategoriesInput
+  parent?: Prisma.PartCategoryCreateNestedOneWithoutChildrenInput
+  children?: Prisma.PartCategoryCreateNestedManyWithoutParentInput
+  primaryParameter?: Prisma.ParameterCreateNestedOneWithoutPrimaryForCategoriesInput
+  primaryParts?: Prisma.PartCreateNestedManyWithoutPrimaryCategoryInput
+  secondaryParts?: Prisma.PartCreateNestedManyWithoutSecondaryCategoryInput
+  ancestorClosures?: Prisma.PartCategoryClosureCreateNestedManyWithoutAncestorInput
+  descendantClosures?: Prisma.PartCategoryClosureCreateNestedManyWithoutDescendantInput
+}
+
+export type PartCategoryUncheckedCreateWithoutCategoryParametersInput = {
+  id?: string
+  workspaceId: string
+  parentId?: string | null
+  primaryParameterId?: string | null
+  name: string
+  isAssignable?: boolean
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  children?: Prisma.PartCategoryUncheckedCreateNestedManyWithoutParentInput
+  primaryParts?: Prisma.PartUncheckedCreateNestedManyWithoutPrimaryCategoryInput
+  secondaryParts?: Prisma.PartUncheckedCreateNestedManyWithoutSecondaryCategoryInput
+  ancestorClosures?: Prisma.PartCategoryClosureUncheckedCreateNestedManyWithoutAncestorInput
+  descendantClosures?: Prisma.PartCategoryClosureUncheckedCreateNestedManyWithoutDescendantInput
+}
+
+export type PartCategoryCreateOrConnectWithoutCategoryParametersInput = {
+  where: Prisma.PartCategoryWhereUniqueInput
+  create: Prisma.XOR<Prisma.PartCategoryCreateWithoutCategoryParametersInput, Prisma.PartCategoryUncheckedCreateWithoutCategoryParametersInput>
+}
+
+export type PartCategoryUpsertWithoutCategoryParametersInput = {
+  update: Prisma.XOR<Prisma.PartCategoryUpdateWithoutCategoryParametersInput, Prisma.PartCategoryUncheckedUpdateWithoutCategoryParametersInput>
+  create: Prisma.XOR<Prisma.PartCategoryCreateWithoutCategoryParametersInput, Prisma.PartCategoryUncheckedCreateWithoutCategoryParametersInput>
+  where?: Prisma.PartCategoryWhereInput
+}
+
+export type PartCategoryUpdateToOneWithWhereWithoutCategoryParametersInput = {
+  where?: Prisma.PartCategoryWhereInput
+  data: Prisma.XOR<Prisma.PartCategoryUpdateWithoutCategoryParametersInput, Prisma.PartCategoryUncheckedUpdateWithoutCategoryParametersInput>
+}
+
+export type PartCategoryUpdateWithoutCategoryParametersInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  isAssignable?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  workspace?: Prisma.WorkspaceUpdateOneRequiredWithoutPartCategoriesNestedInput
+  parent?: Prisma.PartCategoryUpdateOneWithoutChildrenNestedInput
+  children?: Prisma.PartCategoryUpdateManyWithoutParentNestedInput
+  primaryParameter?: Prisma.ParameterUpdateOneWithoutPrimaryForCategoriesNestedInput
+  primaryParts?: Prisma.PartUpdateManyWithoutPrimaryCategoryNestedInput
+  secondaryParts?: Prisma.PartUpdateManyWithoutSecondaryCategoryNestedInput
+  ancestorClosures?: Prisma.PartCategoryClosureUpdateManyWithoutAncestorNestedInput
+  descendantClosures?: Prisma.PartCategoryClosureUpdateManyWithoutDescendantNestedInput
+}
+
+export type PartCategoryUncheckedUpdateWithoutCategoryParametersInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  workspaceId?: Prisma.StringFieldUpdateOperationsInput | string
+  parentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  primaryParameterId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  isAssignable?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  children?: Prisma.PartCategoryUncheckedUpdateManyWithoutParentNestedInput
+  primaryParts?: Prisma.PartUncheckedUpdateManyWithoutPrimaryCategoryNestedInput
+  secondaryParts?: Prisma.PartUncheckedUpdateManyWithoutSecondaryCategoryNestedInput
+  ancestorClosures?: Prisma.PartCategoryClosureUncheckedUpdateManyWithoutAncestorNestedInput
+  descendantClosures?: Prisma.PartCategoryClosureUncheckedUpdateManyWithoutDescendantNestedInput
 }
 
 export type PartCategoryCreateWithoutAncestorClosuresInput = {
@@ -864,6 +1118,8 @@ export type PartCategoryCreateWithoutAncestorClosuresInput = {
   workspace: Prisma.WorkspaceCreateNestedOneWithoutPartCategoriesInput
   parent?: Prisma.PartCategoryCreateNestedOneWithoutChildrenInput
   children?: Prisma.PartCategoryCreateNestedManyWithoutParentInput
+  primaryParameter?: Prisma.ParameterCreateNestedOneWithoutPrimaryForCategoriesInput
+  categoryParameters?: Prisma.CategoryParameterCreateNestedManyWithoutCategoryInput
   primaryParts?: Prisma.PartCreateNestedManyWithoutPrimaryCategoryInput
   secondaryParts?: Prisma.PartCreateNestedManyWithoutSecondaryCategoryInput
   descendantClosures?: Prisma.PartCategoryClosureCreateNestedManyWithoutDescendantInput
@@ -873,11 +1129,13 @@ export type PartCategoryUncheckedCreateWithoutAncestorClosuresInput = {
   id?: string
   workspaceId: string
   parentId?: string | null
+  primaryParameterId?: string | null
   name: string
   isAssignable?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
   children?: Prisma.PartCategoryUncheckedCreateNestedManyWithoutParentInput
+  categoryParameters?: Prisma.CategoryParameterUncheckedCreateNestedManyWithoutCategoryInput
   primaryParts?: Prisma.PartUncheckedCreateNestedManyWithoutPrimaryCategoryInput
   secondaryParts?: Prisma.PartUncheckedCreateNestedManyWithoutSecondaryCategoryInput
   descendantClosures?: Prisma.PartCategoryClosureUncheckedCreateNestedManyWithoutDescendantInput
@@ -897,6 +1155,8 @@ export type PartCategoryCreateWithoutDescendantClosuresInput = {
   workspace: Prisma.WorkspaceCreateNestedOneWithoutPartCategoriesInput
   parent?: Prisma.PartCategoryCreateNestedOneWithoutChildrenInput
   children?: Prisma.PartCategoryCreateNestedManyWithoutParentInput
+  primaryParameter?: Prisma.ParameterCreateNestedOneWithoutPrimaryForCategoriesInput
+  categoryParameters?: Prisma.CategoryParameterCreateNestedManyWithoutCategoryInput
   primaryParts?: Prisma.PartCreateNestedManyWithoutPrimaryCategoryInput
   secondaryParts?: Prisma.PartCreateNestedManyWithoutSecondaryCategoryInput
   ancestorClosures?: Prisma.PartCategoryClosureCreateNestedManyWithoutAncestorInput
@@ -906,11 +1166,13 @@ export type PartCategoryUncheckedCreateWithoutDescendantClosuresInput = {
   id?: string
   workspaceId: string
   parentId?: string | null
+  primaryParameterId?: string | null
   name: string
   isAssignable?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
   children?: Prisma.PartCategoryUncheckedCreateNestedManyWithoutParentInput
+  categoryParameters?: Prisma.CategoryParameterUncheckedCreateNestedManyWithoutCategoryInput
   primaryParts?: Prisma.PartUncheckedCreateNestedManyWithoutPrimaryCategoryInput
   secondaryParts?: Prisma.PartUncheckedCreateNestedManyWithoutSecondaryCategoryInput
   ancestorClosures?: Prisma.PartCategoryClosureUncheckedCreateNestedManyWithoutAncestorInput
@@ -941,6 +1203,8 @@ export type PartCategoryUpdateWithoutAncestorClosuresInput = {
   workspace?: Prisma.WorkspaceUpdateOneRequiredWithoutPartCategoriesNestedInput
   parent?: Prisma.PartCategoryUpdateOneWithoutChildrenNestedInput
   children?: Prisma.PartCategoryUpdateManyWithoutParentNestedInput
+  primaryParameter?: Prisma.ParameterUpdateOneWithoutPrimaryForCategoriesNestedInput
+  categoryParameters?: Prisma.CategoryParameterUpdateManyWithoutCategoryNestedInput
   primaryParts?: Prisma.PartUpdateManyWithoutPrimaryCategoryNestedInput
   secondaryParts?: Prisma.PartUpdateManyWithoutSecondaryCategoryNestedInput
   descendantClosures?: Prisma.PartCategoryClosureUpdateManyWithoutDescendantNestedInput
@@ -950,11 +1214,13 @@ export type PartCategoryUncheckedUpdateWithoutAncestorClosuresInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   workspaceId?: Prisma.StringFieldUpdateOperationsInput | string
   parentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  primaryParameterId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   name?: Prisma.StringFieldUpdateOperationsInput | string
   isAssignable?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   children?: Prisma.PartCategoryUncheckedUpdateManyWithoutParentNestedInput
+  categoryParameters?: Prisma.CategoryParameterUncheckedUpdateManyWithoutCategoryNestedInput
   primaryParts?: Prisma.PartUncheckedUpdateManyWithoutPrimaryCategoryNestedInput
   secondaryParts?: Prisma.PartUncheckedUpdateManyWithoutSecondaryCategoryNestedInput
   descendantClosures?: Prisma.PartCategoryClosureUncheckedUpdateManyWithoutDescendantNestedInput
@@ -980,6 +1246,8 @@ export type PartCategoryUpdateWithoutDescendantClosuresInput = {
   workspace?: Prisma.WorkspaceUpdateOneRequiredWithoutPartCategoriesNestedInput
   parent?: Prisma.PartCategoryUpdateOneWithoutChildrenNestedInput
   children?: Prisma.PartCategoryUpdateManyWithoutParentNestedInput
+  primaryParameter?: Prisma.ParameterUpdateOneWithoutPrimaryForCategoriesNestedInput
+  categoryParameters?: Prisma.CategoryParameterUpdateManyWithoutCategoryNestedInput
   primaryParts?: Prisma.PartUpdateManyWithoutPrimaryCategoryNestedInput
   secondaryParts?: Prisma.PartUpdateManyWithoutSecondaryCategoryNestedInput
   ancestorClosures?: Prisma.PartCategoryClosureUpdateManyWithoutAncestorNestedInput
@@ -989,11 +1257,13 @@ export type PartCategoryUncheckedUpdateWithoutDescendantClosuresInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   workspaceId?: Prisma.StringFieldUpdateOperationsInput | string
   parentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  primaryParameterId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   name?: Prisma.StringFieldUpdateOperationsInput | string
   isAssignable?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   children?: Prisma.PartCategoryUncheckedUpdateManyWithoutParentNestedInput
+  categoryParameters?: Prisma.CategoryParameterUncheckedUpdateManyWithoutCategoryNestedInput
   primaryParts?: Prisma.PartUncheckedUpdateManyWithoutPrimaryCategoryNestedInput
   secondaryParts?: Prisma.PartUncheckedUpdateManyWithoutSecondaryCategoryNestedInput
   ancestorClosures?: Prisma.PartCategoryClosureUncheckedUpdateManyWithoutAncestorNestedInput
@@ -1007,6 +1277,8 @@ export type PartCategoryCreateWithoutWorkspaceInput = {
   updatedAt?: Date | string
   parent?: Prisma.PartCategoryCreateNestedOneWithoutChildrenInput
   children?: Prisma.PartCategoryCreateNestedManyWithoutParentInput
+  primaryParameter?: Prisma.ParameterCreateNestedOneWithoutPrimaryForCategoriesInput
+  categoryParameters?: Prisma.CategoryParameterCreateNestedManyWithoutCategoryInput
   primaryParts?: Prisma.PartCreateNestedManyWithoutPrimaryCategoryInput
   secondaryParts?: Prisma.PartCreateNestedManyWithoutSecondaryCategoryInput
   ancestorClosures?: Prisma.PartCategoryClosureCreateNestedManyWithoutAncestorInput
@@ -1016,11 +1288,13 @@ export type PartCategoryCreateWithoutWorkspaceInput = {
 export type PartCategoryUncheckedCreateWithoutWorkspaceInput = {
   id?: string
   parentId?: string | null
+  primaryParameterId?: string | null
   name: string
   isAssignable?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
   children?: Prisma.PartCategoryUncheckedCreateNestedManyWithoutParentInput
+  categoryParameters?: Prisma.CategoryParameterUncheckedCreateNestedManyWithoutCategoryInput
   primaryParts?: Prisma.PartUncheckedCreateNestedManyWithoutPrimaryCategoryInput
   secondaryParts?: Prisma.PartUncheckedCreateNestedManyWithoutSecondaryCategoryInput
   ancestorClosures?: Prisma.PartCategoryClosureUncheckedCreateNestedManyWithoutAncestorInput
@@ -1053,9 +1327,62 @@ export type PartCategoryUpdateManyWithWhereWithoutWorkspaceInput = {
   data: Prisma.XOR<Prisma.PartCategoryUpdateManyMutationInput, Prisma.PartCategoryUncheckedUpdateManyWithoutWorkspaceInput>
 }
 
+export type PartCategoryCreateManyPrimaryParameterInput = {
+  id?: string
+  workspaceId: string
+  parentId?: string | null
+  name: string
+  isAssignable?: boolean
+  createdAt?: Date | string
+  updatedAt?: Date | string
+}
+
+export type PartCategoryUpdateWithoutPrimaryParameterInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  isAssignable?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  workspace?: Prisma.WorkspaceUpdateOneRequiredWithoutPartCategoriesNestedInput
+  parent?: Prisma.PartCategoryUpdateOneWithoutChildrenNestedInput
+  children?: Prisma.PartCategoryUpdateManyWithoutParentNestedInput
+  categoryParameters?: Prisma.CategoryParameterUpdateManyWithoutCategoryNestedInput
+  primaryParts?: Prisma.PartUpdateManyWithoutPrimaryCategoryNestedInput
+  secondaryParts?: Prisma.PartUpdateManyWithoutSecondaryCategoryNestedInput
+  ancestorClosures?: Prisma.PartCategoryClosureUpdateManyWithoutAncestorNestedInput
+  descendantClosures?: Prisma.PartCategoryClosureUpdateManyWithoutDescendantNestedInput
+}
+
+export type PartCategoryUncheckedUpdateWithoutPrimaryParameterInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  workspaceId?: Prisma.StringFieldUpdateOperationsInput | string
+  parentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  isAssignable?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  children?: Prisma.PartCategoryUncheckedUpdateManyWithoutParentNestedInput
+  categoryParameters?: Prisma.CategoryParameterUncheckedUpdateManyWithoutCategoryNestedInput
+  primaryParts?: Prisma.PartUncheckedUpdateManyWithoutPrimaryCategoryNestedInput
+  secondaryParts?: Prisma.PartUncheckedUpdateManyWithoutSecondaryCategoryNestedInput
+  ancestorClosures?: Prisma.PartCategoryClosureUncheckedUpdateManyWithoutAncestorNestedInput
+  descendantClosures?: Prisma.PartCategoryClosureUncheckedUpdateManyWithoutDescendantNestedInput
+}
+
+export type PartCategoryUncheckedUpdateManyWithoutPrimaryParameterInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  workspaceId?: Prisma.StringFieldUpdateOperationsInput | string
+  parentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  isAssignable?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+}
+
 export type PartCategoryCreateManyParentInput = {
   id?: string
   workspaceId: string
+  primaryParameterId?: string | null
   name: string
   isAssignable?: boolean
   createdAt?: Date | string
@@ -1070,6 +1397,8 @@ export type PartCategoryUpdateWithoutParentInput = {
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   workspace?: Prisma.WorkspaceUpdateOneRequiredWithoutPartCategoriesNestedInput
   children?: Prisma.PartCategoryUpdateManyWithoutParentNestedInput
+  primaryParameter?: Prisma.ParameterUpdateOneWithoutPrimaryForCategoriesNestedInput
+  categoryParameters?: Prisma.CategoryParameterUpdateManyWithoutCategoryNestedInput
   primaryParts?: Prisma.PartUpdateManyWithoutPrimaryCategoryNestedInput
   secondaryParts?: Prisma.PartUpdateManyWithoutSecondaryCategoryNestedInput
   ancestorClosures?: Prisma.PartCategoryClosureUpdateManyWithoutAncestorNestedInput
@@ -1079,11 +1408,13 @@ export type PartCategoryUpdateWithoutParentInput = {
 export type PartCategoryUncheckedUpdateWithoutParentInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   workspaceId?: Prisma.StringFieldUpdateOperationsInput | string
+  primaryParameterId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   name?: Prisma.StringFieldUpdateOperationsInput | string
   isAssignable?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   children?: Prisma.PartCategoryUncheckedUpdateManyWithoutParentNestedInput
+  categoryParameters?: Prisma.CategoryParameterUncheckedUpdateManyWithoutCategoryNestedInput
   primaryParts?: Prisma.PartUncheckedUpdateManyWithoutPrimaryCategoryNestedInput
   secondaryParts?: Prisma.PartUncheckedUpdateManyWithoutSecondaryCategoryNestedInput
   ancestorClosures?: Prisma.PartCategoryClosureUncheckedUpdateManyWithoutAncestorNestedInput
@@ -1093,6 +1424,7 @@ export type PartCategoryUncheckedUpdateWithoutParentInput = {
 export type PartCategoryUncheckedUpdateManyWithoutParentInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   workspaceId?: Prisma.StringFieldUpdateOperationsInput | string
+  primaryParameterId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   name?: Prisma.StringFieldUpdateOperationsInput | string
   isAssignable?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -1102,6 +1434,7 @@ export type PartCategoryUncheckedUpdateManyWithoutParentInput = {
 export type PartCategoryCreateManyWorkspaceInput = {
   id?: string
   parentId?: string | null
+  primaryParameterId?: string | null
   name: string
   isAssignable?: boolean
   createdAt?: Date | string
@@ -1116,6 +1449,8 @@ export type PartCategoryUpdateWithoutWorkspaceInput = {
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   parent?: Prisma.PartCategoryUpdateOneWithoutChildrenNestedInput
   children?: Prisma.PartCategoryUpdateManyWithoutParentNestedInput
+  primaryParameter?: Prisma.ParameterUpdateOneWithoutPrimaryForCategoriesNestedInput
+  categoryParameters?: Prisma.CategoryParameterUpdateManyWithoutCategoryNestedInput
   primaryParts?: Prisma.PartUpdateManyWithoutPrimaryCategoryNestedInput
   secondaryParts?: Prisma.PartUpdateManyWithoutSecondaryCategoryNestedInput
   ancestorClosures?: Prisma.PartCategoryClosureUpdateManyWithoutAncestorNestedInput
@@ -1125,11 +1460,13 @@ export type PartCategoryUpdateWithoutWorkspaceInput = {
 export type PartCategoryUncheckedUpdateWithoutWorkspaceInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   parentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  primaryParameterId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   name?: Prisma.StringFieldUpdateOperationsInput | string
   isAssignable?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   children?: Prisma.PartCategoryUncheckedUpdateManyWithoutParentNestedInput
+  categoryParameters?: Prisma.CategoryParameterUncheckedUpdateManyWithoutCategoryNestedInput
   primaryParts?: Prisma.PartUncheckedUpdateManyWithoutPrimaryCategoryNestedInput
   secondaryParts?: Prisma.PartUncheckedUpdateManyWithoutSecondaryCategoryNestedInput
   ancestorClosures?: Prisma.PartCategoryClosureUncheckedUpdateManyWithoutAncestorNestedInput
@@ -1139,6 +1476,7 @@ export type PartCategoryUncheckedUpdateWithoutWorkspaceInput = {
 export type PartCategoryUncheckedUpdateManyWithoutWorkspaceInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   parentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  primaryParameterId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   name?: Prisma.StringFieldUpdateOperationsInput | string
   isAssignable?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -1152,6 +1490,7 @@ export type PartCategoryUncheckedUpdateManyWithoutWorkspaceInput = {
 
 export type PartCategoryCountOutputType = {
   children: number
+  categoryParameters: number
   primaryParts: number
   secondaryParts: number
   ancestorClosures: number
@@ -1160,6 +1499,7 @@ export type PartCategoryCountOutputType = {
 
 export type PartCategoryCountOutputTypeSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   children?: boolean | PartCategoryCountOutputTypeCountChildrenArgs
+  categoryParameters?: boolean | PartCategoryCountOutputTypeCountCategoryParametersArgs
   primaryParts?: boolean | PartCategoryCountOutputTypeCountPrimaryPartsArgs
   secondaryParts?: boolean | PartCategoryCountOutputTypeCountSecondaryPartsArgs
   ancestorClosures?: boolean | PartCategoryCountOutputTypeCountAncestorClosuresArgs
@@ -1181,6 +1521,13 @@ export type PartCategoryCountOutputTypeDefaultArgs<ExtArgs extends runtime.Types
  */
 export type PartCategoryCountOutputTypeCountChildrenArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   where?: Prisma.PartCategoryWhereInput
+}
+
+/**
+ * PartCategoryCountOutputType without action
+ */
+export type PartCategoryCountOutputTypeCountCategoryParametersArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.CategoryParameterWhereInput
 }
 
 /**
@@ -1216,6 +1563,7 @@ export type PartCategorySelect<ExtArgs extends runtime.Types.Extensions.Internal
   id?: boolean
   workspaceId?: boolean
   parentId?: boolean
+  primaryParameterId?: boolean
   name?: boolean
   isAssignable?: boolean
   createdAt?: boolean
@@ -1223,6 +1571,8 @@ export type PartCategorySelect<ExtArgs extends runtime.Types.Extensions.Internal
   workspace?: boolean | Prisma.WorkspaceDefaultArgs<ExtArgs>
   parent?: boolean | Prisma.PartCategory$parentArgs<ExtArgs>
   children?: boolean | Prisma.PartCategory$childrenArgs<ExtArgs>
+  primaryParameter?: boolean | Prisma.PartCategory$primaryParameterArgs<ExtArgs>
+  categoryParameters?: boolean | Prisma.PartCategory$categoryParametersArgs<ExtArgs>
   primaryParts?: boolean | Prisma.PartCategory$primaryPartsArgs<ExtArgs>
   secondaryParts?: boolean | Prisma.PartCategory$secondaryPartsArgs<ExtArgs>
   ancestorClosures?: boolean | Prisma.PartCategory$ancestorClosuresArgs<ExtArgs>
@@ -1234,41 +1584,48 @@ export type PartCategorySelectCreateManyAndReturn<ExtArgs extends runtime.Types.
   id?: boolean
   workspaceId?: boolean
   parentId?: boolean
+  primaryParameterId?: boolean
   name?: boolean
   isAssignable?: boolean
   createdAt?: boolean
   updatedAt?: boolean
   workspace?: boolean | Prisma.WorkspaceDefaultArgs<ExtArgs>
   parent?: boolean | Prisma.PartCategory$parentArgs<ExtArgs>
+  primaryParameter?: boolean | Prisma.PartCategory$primaryParameterArgs<ExtArgs>
 }, ExtArgs["result"]["partCategory"]>
 
 export type PartCategorySelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   id?: boolean
   workspaceId?: boolean
   parentId?: boolean
+  primaryParameterId?: boolean
   name?: boolean
   isAssignable?: boolean
   createdAt?: boolean
   updatedAt?: boolean
   workspace?: boolean | Prisma.WorkspaceDefaultArgs<ExtArgs>
   parent?: boolean | Prisma.PartCategory$parentArgs<ExtArgs>
+  primaryParameter?: boolean | Prisma.PartCategory$primaryParameterArgs<ExtArgs>
 }, ExtArgs["result"]["partCategory"]>
 
 export type PartCategorySelectScalar = {
   id?: boolean
   workspaceId?: boolean
   parentId?: boolean
+  primaryParameterId?: boolean
   name?: boolean
   isAssignable?: boolean
   createdAt?: boolean
   updatedAt?: boolean
 }
 
-export type PartCategoryOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "workspaceId" | "parentId" | "name" | "isAssignable" | "createdAt" | "updatedAt", ExtArgs["result"]["partCategory"]>
+export type PartCategoryOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "workspaceId" | "parentId" | "primaryParameterId" | "name" | "isAssignable" | "createdAt" | "updatedAt", ExtArgs["result"]["partCategory"]>
 export type PartCategoryInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   workspace?: boolean | Prisma.WorkspaceDefaultArgs<ExtArgs>
   parent?: boolean | Prisma.PartCategory$parentArgs<ExtArgs>
   children?: boolean | Prisma.PartCategory$childrenArgs<ExtArgs>
+  primaryParameter?: boolean | Prisma.PartCategory$primaryParameterArgs<ExtArgs>
+  categoryParameters?: boolean | Prisma.PartCategory$categoryParametersArgs<ExtArgs>
   primaryParts?: boolean | Prisma.PartCategory$primaryPartsArgs<ExtArgs>
   secondaryParts?: boolean | Prisma.PartCategory$secondaryPartsArgs<ExtArgs>
   ancestorClosures?: boolean | Prisma.PartCategory$ancestorClosuresArgs<ExtArgs>
@@ -1278,10 +1635,12 @@ export type PartCategoryInclude<ExtArgs extends runtime.Types.Extensions.Interna
 export type PartCategoryIncludeCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   workspace?: boolean | Prisma.WorkspaceDefaultArgs<ExtArgs>
   parent?: boolean | Prisma.PartCategory$parentArgs<ExtArgs>
+  primaryParameter?: boolean | Prisma.PartCategory$primaryParameterArgs<ExtArgs>
 }
 export type PartCategoryIncludeUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   workspace?: boolean | Prisma.WorkspaceDefaultArgs<ExtArgs>
   parent?: boolean | Prisma.PartCategory$parentArgs<ExtArgs>
+  primaryParameter?: boolean | Prisma.PartCategory$primaryParameterArgs<ExtArgs>
 }
 
 export type $PartCategoryPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
@@ -1290,6 +1649,8 @@ export type $PartCategoryPayload<ExtArgs extends runtime.Types.Extensions.Intern
     workspace: Prisma.$WorkspacePayload<ExtArgs>
     parent: Prisma.$PartCategoryPayload<ExtArgs> | null
     children: Prisma.$PartCategoryPayload<ExtArgs>[]
+    primaryParameter: Prisma.$ParameterPayload<ExtArgs> | null
+    categoryParameters: Prisma.$CategoryParameterPayload<ExtArgs>[]
     primaryParts: Prisma.$PartPayload<ExtArgs>[]
     secondaryParts: Prisma.$PartPayload<ExtArgs>[]
     ancestorClosures: Prisma.$PartCategoryClosurePayload<ExtArgs>[]
@@ -1299,6 +1660,7 @@ export type $PartCategoryPayload<ExtArgs extends runtime.Types.Extensions.Intern
     id: string
     workspaceId: string
     parentId: string | null
+    primaryParameterId: string | null
     name: string
     isAssignable: boolean
     createdAt: Date
@@ -1700,6 +2062,8 @@ export interface Prisma__PartCategoryClient<T, Null = never, ExtArgs extends run
   workspace<T extends Prisma.WorkspaceDefaultArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.WorkspaceDefaultArgs<ExtArgs>>): Prisma.Prisma__WorkspaceClient<runtime.Types.Result.GetResult<Prisma.$WorkspacePayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
   parent<T extends Prisma.PartCategory$parentArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.PartCategory$parentArgs<ExtArgs>>): Prisma.Prisma__PartCategoryClient<runtime.Types.Result.GetResult<Prisma.$PartCategoryPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
   children<T extends Prisma.PartCategory$childrenArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.PartCategory$childrenArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$PartCategoryPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  primaryParameter<T extends Prisma.PartCategory$primaryParameterArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.PartCategory$primaryParameterArgs<ExtArgs>>): Prisma.Prisma__ParameterClient<runtime.Types.Result.GetResult<Prisma.$ParameterPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+  categoryParameters<T extends Prisma.PartCategory$categoryParametersArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.PartCategory$categoryParametersArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$CategoryParameterPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   primaryParts<T extends Prisma.PartCategory$primaryPartsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.PartCategory$primaryPartsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$PartPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   secondaryParts<T extends Prisma.PartCategory$secondaryPartsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.PartCategory$secondaryPartsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$PartPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   ancestorClosures<T extends Prisma.PartCategory$ancestorClosuresArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.PartCategory$ancestorClosuresArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$PartCategoryClosurePayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
@@ -1736,6 +2100,7 @@ export interface PartCategoryFieldRefs {
   readonly id: Prisma.FieldRef<"PartCategory", 'String'>
   readonly workspaceId: Prisma.FieldRef<"PartCategory", 'String'>
   readonly parentId: Prisma.FieldRef<"PartCategory", 'String'>
+  readonly primaryParameterId: Prisma.FieldRef<"PartCategory", 'String'>
   readonly name: Prisma.FieldRef<"PartCategory", 'String'>
   readonly isAssignable: Prisma.FieldRef<"PartCategory", 'Boolean'>
   readonly createdAt: Prisma.FieldRef<"PartCategory", 'DateTime'>
@@ -2181,6 +2546,49 @@ export type PartCategory$childrenArgs<ExtArgs extends runtime.Types.Extensions.I
   take?: number
   skip?: number
   distinct?: Prisma.PartCategoryScalarFieldEnum | Prisma.PartCategoryScalarFieldEnum[]
+}
+
+/**
+ * PartCategory.primaryParameter
+ */
+export type PartCategory$primaryParameterArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the Parameter
+   */
+  select?: Prisma.ParameterSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the Parameter
+   */
+  omit?: Prisma.ParameterOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.ParameterInclude<ExtArgs> | null
+  where?: Prisma.ParameterWhereInput
+}
+
+/**
+ * PartCategory.categoryParameters
+ */
+export type PartCategory$categoryParametersArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the CategoryParameter
+   */
+  select?: Prisma.CategoryParameterSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the CategoryParameter
+   */
+  omit?: Prisma.CategoryParameterOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.CategoryParameterInclude<ExtArgs> | null
+  where?: Prisma.CategoryParameterWhereInput
+  orderBy?: Prisma.CategoryParameterOrderByWithRelationInput | Prisma.CategoryParameterOrderByWithRelationInput[]
+  cursor?: Prisma.CategoryParameterWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.CategoryParameterScalarFieldEnum | Prisma.CategoryParameterScalarFieldEnum[]
 }
 
 /**

@@ -3,11 +3,11 @@
 import { useMutation } from "@tanstack/react-query";
 import {
   type FormEvent,
+  type SetStateAction,
   useEffect,
   useMemo,
   useRef,
-  useState,
-  useSyncExternalStore
+  useState
 } from "react";
 
 import {
@@ -15,6 +15,12 @@ import {
   updatePartCategoryFromForm
 } from "@/server/parts/categoryActions";
 import type { PartCategoryListItem } from "@/server/parts/categories";
+import {
+  getEffectiveCategoryParametersForWorkspace,
+  saveCategoryParameterConfigurationForWorkspace
+} from "@/server/parts/parameterActions";
+import type { ParameterListItem } from "@/server/parts/parameterMutations";
+import type { EffectiveCategoryParameter } from "@/server/parts/parameters";
 import {
   getNextToastId,
   ToastNotice,
@@ -26,6 +32,23 @@ type Copy = {
   addRootCategory: string;
   addChild: string;
   edit: string;
+  configureParameters: string;
+  categoryParameters: string;
+  detailsTab: string;
+  parametersTab: string;
+  createCategoryBeforeParameters: string;
+  parameter: string;
+  sortOrder: string;
+  defaultValue: string;
+  primaryParameter: string;
+  inherited: string;
+  local: string;
+  attachParameter: string;
+  saveParameterConfig: string;
+  detachParameter: string;
+  noPrimaryParameter: string;
+  noParameters: string;
+  selectCategory: string;
   expandCategory: string;
   collapseCategory: string;
   actions: string;
@@ -45,11 +68,15 @@ type Copy = {
   close: string;
   createdToast: string;
   updatedToast: string;
+  parameterConfigUpdatedToast: string;
+  parameterConfigDeletedToast: string;
+  primaryParameterUpdatedToast: string;
   missingRequiredFields: string;
   invalidParentCategory: string;
   categoryNotFound: string;
   categoryTreeCycle: string;
   permissionDenied: string;
+  invalidParameterDefaultValue: string;
   emptyTitle: string;
   emptyBody: string;
   databaseUnavailable: string;
@@ -59,6 +86,15 @@ type CategoryTreeItem = PartCategoryListItem & {
   children: CategoryTreeItem[];
 };
 
+type CategoryDialogMode = "create" | "edit";
+type CategoryDialogTab = "details" | "parameters";
+
+type CategoryDialogSubmitInput = {
+  formData: FormData;
+  parameterDrafts: CategoryParameterDraft[];
+  primaryParameterId: string;
+};
+
 type PartCategoriesClientProps = {
   categories: PartCategoryListItem[];
   categoryDialogOpen: boolean;
@@ -66,6 +102,7 @@ type PartCategoriesClientProps = {
   copy: Copy;
   isDatabaseAvailable: boolean;
   canWriteCategories: boolean;
+  parameters: ParameterListItem[];
   workspaceSlug: string;
 };
 
@@ -76,21 +113,28 @@ export function PartCategoriesClient({
   copy,
   isDatabaseAvailable,
   canWriteCategories,
+  parameters,
   workspaceSlug
 }: PartCategoriesClientProps) {
-  const createDialogRef = useRef<HTMLDialogElement>(null);
-  const editDialogRef = useRef<HTMLDialogElement>(null);
+  const categoryDialogRef = useRef<HTMLDialogElement>(null);
   const nextToastIdRef = useRef(0);
   const [currentCategories, setCurrentCategories] = useState(categories);
+  const [categoryDialogMode, setCategoryDialogMode] =
+    useState<CategoryDialogMode | null>(null);
+  const [activeCategoryDialogTab, setActiveCategoryDialogTab] =
+    useState<CategoryDialogTab>("details");
   const [createParentId, setCreateParentId] = useState("");
   const [editingCategory, setEditingCategory] =
     useState<PartCategoryListItem | null>(() =>
       currentCategories.find((category) => category.id === categoryEditDialog) ??
       null
     );
+  const [createCategoryParameterDrafts, setCreateCategoryParameterDrafts] =
+    useState<CategoryParameterDraft[]>([]);
+  const [createCategoryPrimaryParameterId, setCreateCategoryPrimaryParameterId] =
+    useState("");
   const [createFormResetKey, setCreateFormResetKey] = useState(0);
-  const [createFormError, setCreateFormError] = useState<string | null>(null);
-  const [updateFormError, setUpdateFormError] = useState<string | null>(null);
+  const [categoryFormError, setCategoryFormError] = useState<string | null>(null);
   const [toastMessages, setToastMessages] = useState<ToastMessage[]>([]);
   const categoryTree = useMemo(
     () => buildCategoryTree(currentCategories),
@@ -101,57 +145,125 @@ export function PartCategoriesClient({
     () => getExpandableCategoryIds(categoryTree),
     [categoryTree]
   );
-  const expandedCategoryIds = useStoredExpandedCategoryIds(
-    categoryExpansionStorageKey,
+  const [expandedCategoryIds, setExpandedCategoryIds] = useState<Set<string>>(
     defaultExpandedCategoryIds
   );
   const createCategoryMutation = useMutation({
-    mutationFn: createPartCategoryFromForm,
+    mutationFn: ({ formData }: CategoryDialogSubmitInput) =>
+      createPartCategoryFromForm(formData),
     onError: () => {
-      setCreateFormError("database-unavailable");
+      setCategoryFormError("database-unavailable");
     },
-    onSuccess: (result) => {
+    onSuccess: async (result, variables) => {
       if (!result.ok) {
-        setCreateFormError(result.error);
+        setCategoryFormError(result.error);
         return;
       }
 
+      if (
+        variables.parameterDrafts.length > 0 ||
+        variables.primaryParameterId
+      ) {
+        const configResult = await saveCategoryParameterConfigurationForWorkspace({
+          workspaceSlug,
+          categoryId: result.category.id,
+          primaryParameterId: variables.primaryParameterId || null,
+          parameters: getLocalCategoryParameterInputs(
+            variables.parameterDrafts,
+            result.category.id
+          )
+        });
+
+        if (!configResult.ok) {
+          setCurrentCategories(result.categories);
+          setEditingCategory(result.category);
+          setCategoryDialogMode("edit");
+          setActiveCategoryDialogTab("parameters");
+          setCategoryFormError(configResult.error);
+          return;
+        }
+      }
+
       setCurrentCategories(result.categories);
+      if (result.category.parentId) {
+        setExpandedCategoryIds((currentIds) => {
+          const nextIds = new Set(currentIds);
+          nextIds.add(result.category.parentId as string);
+          saveExpandedCategoryIds(categoryExpansionStorageKey, nextIds);
+          return nextIds;
+        });
+      }
       setCreateParentId("");
+      setCreateCategoryParameterDrafts([]);
+      setCreateCategoryPrimaryParameterId("");
       setCreateFormResetKey((currentKey) => currentKey + 1);
-      setCreateFormError(null);
+      setCategoryFormError(null);
       addToastMessage({
         id: getNextToastId(nextToastIdRef),
         message: getCategorySuccessMessage(copy.createdToast, result.category)
       });
-      closeDialog(createDialogRef.current);
+      closeCategoryDialog();
     }
   });
+
+  useEffect(() => {
+    window.requestAnimationFrame(() => {
+      setExpandedCategoryIds(
+        getInitialExpandedCategoryIds(
+          categoryExpansionStorageKey,
+          defaultExpandedCategoryIds
+        )
+      );
+    });
+  }, [categoryExpansionStorageKey, defaultExpandedCategoryIds]);
   const updateCategoryMutation = useMutation({
-    mutationFn: updatePartCategoryFromForm,
+    mutationFn: ({ formData }: CategoryDialogSubmitInput) =>
+      updatePartCategoryFromForm(formData),
     onError: () => {
-      setUpdateFormError("database-unavailable");
+      setCategoryFormError("database-unavailable");
     },
-    onSuccess: (result) => {
+    onSuccess: async (result, variables) => {
       if (!result.ok) {
-        setUpdateFormError(result.error);
+        setCategoryFormError(result.error);
+        return;
+      }
+
+      const configResult = await saveCategoryParameterConfigurationForWorkspace({
+        workspaceSlug,
+        categoryId: result.category.id,
+        primaryParameterId: variables.primaryParameterId || null,
+        parameters: getLocalCategoryParameterInputs(
+          variables.parameterDrafts,
+          result.category.id
+        )
+      });
+
+      if (!configResult.ok) {
+        setCurrentCategories(result.categories);
+        setEditingCategory(result.category);
+        setActiveCategoryDialogTab("parameters");
+        setCategoryFormError(configResult.error);
         return;
       }
 
       setCurrentCategories(result.categories);
       setEditingCategory(result.category);
-      setUpdateFormError(null);
+      setCategoryFormError(null);
       addToastMessage({
         id: getNextToastId(nextToastIdRef),
         message: getCategorySuccessMessage(copy.updatedToast, result.category)
       });
-      closeDialog(editDialogRef.current);
+      closeCategoryDialog();
     }
   });
 
   useEffect(() => {
     if (categoryDialogOpen) {
-      openDialog(createDialogRef.current);
+      window.requestAnimationFrame(() => {
+        setCategoryDialogMode("create");
+        setActiveCategoryDialogTab("details");
+        openDialog(categoryDialogRef.current);
+      });
     }
   }, [categoryDialogOpen]);
 
@@ -170,12 +282,20 @@ export function PartCategoriesClient({
 
     window.requestAnimationFrame(() => {
       setEditingCategory(category);
-      openDialog(editDialogRef.current);
+      setCategoryDialogMode("edit");
+      setActiveCategoryDialogTab("details");
+      openDialog(categoryDialogRef.current);
     });
   }, [currentCategories, categoryEditDialog]);
 
   function openCreateDialog(parentId: string | null) {
     setCreateParentId(parentId ?? "");
+    setEditingCategory(null);
+    setCreateCategoryParameterDrafts([]);
+    setCreateCategoryPrimaryParameterId("");
+    setCategoryDialogMode("create");
+    setActiveCategoryDialogTab("details");
+    setCreateFormResetKey((currentKey) => currentKey + 1);
 
     if (parentId) {
       const nextIds = new Set(expandedCategoryIds);
@@ -183,26 +303,55 @@ export function PartCategoriesClient({
       saveExpandedCategoryIds(categoryExpansionStorageKey, nextIds);
     }
 
-    setCreateFormError(null);
-    window.requestAnimationFrame(() => openDialog(createDialogRef.current));
+    setCategoryFormError(null);
+    window.requestAnimationFrame(() => openDialog(categoryDialogRef.current));
   }
 
   function openEditDialog(category: PartCategoryListItem) {
     setEditingCategory(category);
-    setUpdateFormError(null);
-    window.requestAnimationFrame(() => openDialog(editDialogRef.current));
+    setCategoryDialogMode("edit");
+    setActiveCategoryDialogTab("details");
+    setCategoryFormError(null);
+    setCreateFormResetKey((currentKey) => currentKey + 1);
+    window.requestAnimationFrame(() => openDialog(categoryDialogRef.current));
   }
 
-  function handleCreateSubmit(event: FormEvent<HTMLFormElement>) {
+  function handleCreateSubmit(
+    event: FormEvent<HTMLFormElement>,
+    parameterDrafts: CategoryParameterDraft[],
+    primaryParameterId: string
+  ) {
     event.preventDefault();
-    setCreateFormError(null);
-    createCategoryMutation.mutate(new FormData(event.currentTarget));
+    setCategoryFormError(null);
+    createCategoryMutation.mutate({
+      formData: new FormData(event.currentTarget),
+      parameterDrafts,
+      primaryParameterId
+    });
   }
 
-  function handleUpdateSubmit(event: FormEvent<HTMLFormElement>) {
+  function handleUpdateSubmit(
+    event: FormEvent<HTMLFormElement>,
+    parameterDrafts: CategoryParameterDraft[],
+    primaryParameterId: string
+  ) {
     event.preventDefault();
-    setUpdateFormError(null);
-    updateCategoryMutation.mutate(new FormData(event.currentTarget));
+    setCategoryFormError(null);
+    updateCategoryMutation.mutate({
+      formData: new FormData(event.currentTarget),
+      parameterDrafts,
+      primaryParameterId
+    });
+  }
+
+  function closeCategoryDialog() {
+    closeDialog(categoryDialogRef.current);
+    setCategoryDialogMode(null);
+    setEditingCategory(null);
+    setCreateCategoryParameterDrafts([]);
+    setCreateCategoryPrimaryParameterId("");
+    setCategoryFormError(null);
+    setActiveCategoryDialogTab("details");
   }
 
   function addToastMessage(toast: ToastMessage) {
@@ -272,6 +421,7 @@ export function PartCategoriesClient({
                       categoryExpansionStorageKey,
                       nextIds
                     );
+                    setExpandedCategoryIds(nextIds);
                   }}
                 />
               ))}
@@ -292,111 +442,644 @@ export function PartCategoriesClient({
       <ToastNotice messages={toastMessages} onDismiss={dismissToastMessage} />
 
       <dialog
-        ref={createDialogRef}
-        aria-labelledby="add-category-dialog-title"
-        className="fixed inset-0 m-auto max-h-[calc(100vh-2rem)] w-[calc(100%-2rem)] max-w-2xl rounded-lg border border-slate-200 bg-white p-0 text-slate-950 shadow-2xl backdrop:bg-slate-950/40"
+        ref={categoryDialogRef}
+        aria-labelledby="category-dialog-title"
+        className="fixed inset-0 m-auto max-h-[calc(100vh-2rem)] w-[calc(100%-2rem)] max-w-4xl rounded-lg border border-slate-200 bg-white p-0 text-slate-950 shadow-2xl backdrop:bg-slate-950/40"
+        onClose={() => {
+          setCategoryDialogMode(null);
+          setEditingCategory(null);
+          setCategoryFormError(null);
+          setActiveCategoryDialogTab("details");
+        }}
       >
-        <div className="p-6">
-          <DialogHeader
-            body={copy.newCategoryBody}
-            closeLabel={copy.close}
-            title={copy.newCategoryTitle}
-            titleId="add-category-dialog-title"
+        {categoryDialogMode ? (
+          <CategoryDialogContent
+            key={`${categoryDialogMode}-${editingCategory?.id ?? "new"}-${createFormResetKey}`}
+            activeTab={activeCategoryDialogTab}
+            canWriteCategories={canWriteCategories}
+            categories={currentCategories}
+            copy={copy}
+            createParentId={createParentId}
+            error={categoryFormError}
+            isDatabaseAvailable={isDatabaseAvailable}
+            isPending={
+              categoryDialogMode === "create"
+                ? createCategoryMutation.isPending
+                : updateCategoryMutation.isPending
+            }
+            mode={categoryDialogMode}
+            parameters={parameters}
+            createParameterDrafts={createCategoryParameterDrafts}
+            createPrimaryParameterId={createCategoryPrimaryParameterId}
+            category={editingCategory}
+            workspaceSlug={workspaceSlug}
+            onCreateSubmit={handleCreateSubmit}
+            onParentIdChange={setCreateParentId}
+            onCreateParameterDraftsChange={setCreateCategoryParameterDrafts}
+            onCreatePrimaryParameterIdChange={setCreateCategoryPrimaryParameterId}
+            onTabChange={setActiveCategoryDialogTab}
+            onUpdateSubmit={handleUpdateSubmit}
           />
-
-          {createFormError ? (
-            <p className="mb-4 rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-800">
-              {getCategoryErrorMessage(copy, createFormError)}
-            </p>
-          ) : null}
-
-          <form
-            key={createFormResetKey}
-            className="grid gap-4"
-            onSubmit={handleCreateSubmit}
-          >
-            <input name="workspaceSlug" type="hidden" value={workspaceSlug} />
-            <CategoryFormFields
-              categories={currentCategories}
-              copy={copy}
-              defaultIsAssignable={true}
-              isDatabaseAvailable={isDatabaseAvailable}
-              nameDefaultValue=""
-              parentId={createParentId}
-              setParentId={setCreateParentId}
-            />
-            <div className="flex justify-end">
-              <button
-                className="min-h-11 rounded-md border border-slate-950 bg-slate-950 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2 disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-100 disabled:text-slate-400"
-                disabled={
-                  !isDatabaseAvailable ||
-                  !canWriteCategories ||
-                  createCategoryMutation.isPending
-                }
-                type="submit"
-              >
-                {copy.createCategory}
-              </button>
-            </div>
-          </form>
-        </div>
-      </dialog>
-
-      <dialog
-        ref={editDialogRef}
-        aria-labelledby="edit-category-dialog-title"
-        className="fixed inset-0 m-auto max-h-[calc(100vh-2rem)] w-[calc(100%-2rem)] max-w-2xl rounded-lg border border-slate-200 bg-white p-0 text-slate-950 shadow-2xl backdrop:bg-slate-950/40"
-      >
-        <div className="p-6">
-          <DialogHeader
-            body={copy.editCategoryBody}
-            closeLabel={copy.close}
-            title={copy.editCategoryTitle}
-            titleId="edit-category-dialog-title"
-          />
-
-          {updateFormError ? (
-            <p className="mb-4 rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-800">
-              {getCategoryErrorMessage(copy, updateFormError)}
-            </p>
-          ) : null}
-
-          {editingCategory ? (
-            <form
-              key={editingCategory.id}
-              className="grid gap-4"
-              onSubmit={handleUpdateSubmit}
-            >
-              <input name="workspaceSlug" type="hidden" value={workspaceSlug} />
-              <input name="id" type="hidden" value={editingCategory.id} />
-              <CategoryFormFields
-                categories={currentCategories}
-                copy={copy}
-                defaultIsAssignable={editingCategory.isAssignable}
-                excludedCategoryId={editingCategory.id}
-                isDatabaseAvailable={isDatabaseAvailable}
-                nameDefaultValue={editingCategory.name}
-                parentId={editingCategory.parentId ?? ""}
-              />
-              <div className="flex justify-end">
-                <button
-                  className="min-h-11 rounded-md border border-slate-950 bg-slate-950 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2 disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-100 disabled:text-slate-400"
-                  disabled={
-                    !isDatabaseAvailable ||
-                    !canWriteCategories ||
-                    updateCategoryMutation.isPending
-                  }
-                  type="submit"
-                >
-                  {copy.saveChanges}
-                </button>
-              </div>
-            </form>
-          ) : null}
-        </div>
+        ) : null}
       </dialog>
     </>
   );
+}
+
+function CategoryDialogContent({
+  activeTab,
+  canWriteCategories,
+  categories,
+  category,
+  copy,
+  createParentId,
+  error,
+  isDatabaseAvailable,
+  isPending,
+  mode,
+  parameters,
+  createParameterDrafts,
+  createPrimaryParameterId,
+  workspaceSlug,
+  onCreateSubmit,
+  onParentIdChange,
+  onCreateParameterDraftsChange,
+  onCreatePrimaryParameterIdChange,
+  onTabChange,
+  onUpdateSubmit
+}: {
+  activeTab: CategoryDialogTab;
+  canWriteCategories: boolean;
+  categories: PartCategoryListItem[];
+  category: PartCategoryListItem | null;
+  copy: Copy;
+  createParentId: string;
+  error: string | null;
+  isDatabaseAvailable: boolean;
+  isPending: boolean;
+  mode: CategoryDialogMode;
+  parameters: ParameterListItem[];
+  createParameterDrafts: CategoryParameterDraft[];
+  createPrimaryParameterId: string;
+  workspaceSlug: string;
+  onCreateSubmit: (
+    event: FormEvent<HTMLFormElement>,
+    parameterDrafts: CategoryParameterDraft[],
+    primaryParameterId: string
+  ) => void;
+  onParentIdChange: (parentId: string) => void;
+  onCreateParameterDraftsChange: (drafts: CategoryParameterDraft[]) => void;
+  onCreatePrimaryParameterIdChange: (parameterId: string) => void;
+  onTabChange: (tab: CategoryDialogTab) => void;
+  onUpdateSubmit: (
+    event: FormEvent<HTMLFormElement>,
+    parameterDrafts: CategoryParameterDraft[],
+    primaryParameterId: string
+  ) => void;
+}) {
+  const title = mode === "create" ? copy.newCategoryTitle : copy.editCategoryTitle;
+  const body = mode === "create" ? copy.newCategoryBody : copy.editCategoryBody;
+  const formId = "category-details-form";
+  const [editParameterDrafts, setEditParameterDrafts] = useState<
+    CategoryParameterDraft[]
+  >([]);
+  const [editPrimaryParameterId, setEditPrimaryParameterId] = useState("");
+  const [editParametersError, setEditParametersError] = useState<string | null>(
+    null
+  );
+  const [editParametersLoaded, setEditParametersLoaded] = useState(
+    mode === "create"
+  );
+  const loadEffectiveParametersMutation = useMutation({
+    mutationFn: getEffectiveCategoryParametersForWorkspace,
+    onSuccess: (result) => {
+      if (!result.ok) {
+        setEditParametersError(result.error);
+        setEditParametersLoaded(false);
+        return;
+      }
+
+      setEditParameterDrafts(
+        result.data.map((parameter) =>
+          toCategoryParameterDraft(parameter, category?.id ?? "")
+        )
+      );
+      setEditPrimaryParameterId(
+        result.data.find((parameter) => parameter.isPrimary)?.parameter.id ?? ""
+      );
+      setEditParametersError(null);
+      setEditParametersLoaded(true);
+    },
+    onError: () => {
+      setEditParametersError("database-unavailable");
+      setEditParametersLoaded(false);
+    }
+  });
+  const activeParameterDrafts =
+    mode === "create" ? createParameterDrafts : editParameterDrafts;
+  const activePrimaryParameterId =
+    mode === "create" ? createPrimaryParameterId : editPrimaryParameterId;
+  const displayedError = error ?? editParametersError;
+  const areParameterControlsEnabled = mode === "create" || editParametersLoaded;
+  const isSaveDisabled =
+    !isDatabaseAvailable ||
+    !canWriteCategories ||
+    isPending ||
+    (mode === "edit" && !editParametersLoaded);
+
+  useEffect(() => {
+    if (mode !== "edit" || !category) {
+      return;
+    }
+
+    loadEffectiveParametersMutation.mutate({
+      workspaceSlug,
+      categoryId: category.id
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [category?.id, mode, workspaceSlug]);
+
+  function setActiveParameterDrafts(update: CategoryParameterDraftUpdate) {
+    if (mode === "create") {
+      onCreateParameterDraftsChange(
+        typeof update === "function" ? update(createParameterDrafts) : update
+      );
+      return;
+    }
+
+    setEditParameterDrafts(update);
+  }
+
+  function setActivePrimaryParameterId(parameterId: string) {
+    if (mode === "create") {
+      onCreatePrimaryParameterIdChange(parameterId);
+      return;
+    }
+
+    setEditPrimaryParameterId(parameterId);
+  }
+
+  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    if (mode === "create") {
+      onCreateSubmit(event, createParameterDrafts, createPrimaryParameterId);
+      return;
+    }
+
+    onUpdateSubmit(event, editParameterDrafts, editPrimaryParameterId);
+  }
+
+  return (
+    <div className="p-6">
+      <DialogHeader
+        body={body}
+        closeLabel={copy.close}
+        title={title}
+        titleId="category-dialog-title"
+      />
+      <div className="mb-5 flex gap-2 border-b border-slate-200">
+        <button
+          className={`min-h-10 border-b-2 px-3 text-sm font-medium ${
+            activeTab === "details"
+              ? "border-slate-950 text-slate-950"
+              : "border-transparent text-slate-500 hover:text-slate-800"
+          }`}
+          type="button"
+          onClick={() => onTabChange("details")}
+        >
+          {copy.detailsTab}
+        </button>
+        <button
+          className={`min-h-10 border-b-2 px-3 text-sm font-medium ${
+            activeTab === "parameters"
+              ? "border-slate-950 text-slate-950"
+              : "border-transparent text-slate-500 hover:text-slate-800"
+          }`}
+          type="button"
+          onClick={() => onTabChange("parameters")}
+        >
+          {copy.parametersTab}
+        </button>
+      </div>
+      {displayedError ? (
+        <p className="mb-4 rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-800">
+          {getCategoryErrorMessage(copy, displayedError)}
+        </p>
+      ) : null}
+      <form
+        key={`${mode}-${category?.id ?? "new"}`}
+        className={activeTab === "details" ? "grid gap-4" : "hidden"}
+        id={formId}
+        onSubmit={handleSubmit}
+      >
+        <input name="workspaceSlug" type="hidden" value={workspaceSlug} />
+        {mode === "edit" && category ? (
+          <input name="id" type="hidden" value={category.id} />
+        ) : null}
+        <CategoryFormFields
+          categories={categories}
+          copy={copy}
+          defaultIsAssignable={category?.isAssignable ?? true}
+          excludedCategoryId={category?.id}
+          isDatabaseAvailable={isDatabaseAvailable}
+          nameDefaultValue={category?.name ?? ""}
+          parentId={mode === "create" ? createParentId : category?.parentId ?? ""}
+          setParentId={mode === "create" ? onParentIdChange : undefined}
+        />
+      </form>
+      {activeTab === "parameters" && areParameterControlsEnabled ? (
+        <CategoryParametersDraftEditor
+          canWriteCategories={canWriteCategories}
+          categoryId={category?.id ?? ""}
+          copy={copy}
+          drafts={activeParameterDrafts}
+          isDatabaseAvailable={isDatabaseAvailable && areParameterControlsEnabled}
+          parameters={parameters}
+          primaryParameterId={activePrimaryParameterId}
+          onDraftsChange={setActiveParameterDrafts}
+          onPrimaryParameterIdChange={setActivePrimaryParameterId}
+        />
+      ) : null}
+      {activeTab === "parameters" && !areParameterControlsEnabled ? (
+        <p className="text-sm text-slate-500">Loading parameters...</p>
+      ) : null}
+      <div className="mt-5 flex justify-end border-t border-slate-200 pt-5">
+        <button
+          className="min-h-11 rounded-md border border-slate-950 bg-slate-950 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2 disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-100 disabled:text-slate-400"
+          disabled={isSaveDisabled}
+          form={formId}
+          type="submit"
+        >
+          {mode === "create" ? copy.createCategory : copy.saveChanges}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+type CategoryParameterDraft = {
+  parameter: ParameterListItem;
+  sourceCategoryId: string;
+  isLocal: boolean;
+  sortOrder: number;
+  defaultValue: string;
+};
+
+type CategoryParameterDraftUpdate = SetStateAction<CategoryParameterDraft[]>;
+
+function CategoryParametersDraftEditor({
+  canWriteCategories,
+  categoryId,
+  copy,
+  drafts,
+  isDatabaseAvailable,
+  parameters,
+  primaryParameterId,
+  onDraftsChange,
+  onPrimaryParameterIdChange
+}: {
+  canWriteCategories: boolean;
+  categoryId: string;
+  copy: Copy;
+  drafts: CategoryParameterDraft[];
+  isDatabaseAvailable: boolean;
+  parameters: ParameterListItem[];
+  primaryParameterId: string;
+  onDraftsChange: (update: CategoryParameterDraftUpdate) => void;
+  onPrimaryParameterIdChange: (parameterId: string) => void;
+}) {
+  const availableParameters = parameters.filter(
+    (parameter) =>
+      !drafts.some((draft) => draft.parameter.id === parameter.id)
+  );
+
+  function updateDraft(
+    parameterId: string,
+    patch: Partial<Pick<CategoryParameterDraft, "sortOrder" | "defaultValue">>
+  ) {
+    onDraftsChange((currentDrafts) =>
+      currentDrafts.map((draft) =>
+        draft.parameter.id === parameterId
+          ? { ...draft, ...patch, isLocal: true }
+          : draft
+      )
+    );
+  }
+
+  function handleAddParameter(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const formData = new FormData(event.currentTarget);
+    const parameter = parameters.find(
+      (item) => item.id === getFormValue(formData, "parameterId")
+    );
+
+    if (!parameter) {
+      return;
+    }
+
+    onDraftsChange((currentDrafts) => [
+      ...currentDrafts,
+      {
+        parameter,
+        sourceCategoryId: "",
+        isLocal: true,
+        sortOrder: Number(getFormValue(formData, "sortOrder") || "0"),
+        defaultValue: getFormValue(formData, "defaultValue")
+      }
+    ]);
+    event.currentTarget.reset();
+  }
+
+  function removeDraft(parameterId: string) {
+    onDraftsChange((currentDrafts) =>
+      currentDrafts.filter((draft) => draft.parameter.id !== parameterId)
+    );
+
+    if (primaryParameterId === parameterId) {
+      onPrimaryParameterIdChange("");
+    }
+  }
+
+  return (
+    <div className="grid gap-3">
+      <label className="grid max-w-sm gap-2 text-sm font-medium text-slate-700">
+        {copy.primaryParameter}
+        <select
+          className={categoryParameterInputClassName}
+          disabled={!isDatabaseAvailable || !canWriteCategories}
+          value={primaryParameterId}
+          onChange={(event) =>
+            onPrimaryParameterIdChange(event.currentTarget.value)
+          }
+        >
+          <option value="">{copy.noPrimaryParameter}</option>
+          {drafts.map((draft) => (
+            <option key={draft.parameter.id} value={draft.parameter.id}>
+              {draft.parameter.name}
+            </option>
+          ))}
+        </select>
+      </label>
+      <CategoryParameterDraftList
+        canWriteCategories={canWriteCategories}
+        categoryId={categoryId}
+        copy={copy}
+        drafts={drafts}
+        isDatabaseAvailable={isDatabaseAvailable}
+        onRemove={removeDraft}
+        onUpdate={updateDraft}
+      />
+      <CategoryParameterAttachForm
+        availableParameters={availableParameters}
+        canWriteCategories={canWriteCategories}
+        copy={copy}
+        isDatabaseAvailable={isDatabaseAvailable}
+        onSubmit={handleAddParameter}
+      />
+    </div>
+  );
+}
+
+function CategoryParameterDraftList({
+  canWriteCategories,
+  categoryId,
+  copy,
+  drafts,
+  isDatabaseAvailable,
+  onRemove,
+  onUpdate
+}: {
+  canWriteCategories: boolean;
+  categoryId: string;
+  copy: Copy;
+  drafts: CategoryParameterDraft[];
+  isDatabaseAvailable: boolean;
+  onRemove: (parameterId: string) => void;
+  onUpdate: (
+    parameterId: string,
+    patch: Partial<Pick<CategoryParameterDraft, "sortOrder" | "defaultValue">>
+  ) => void;
+}) {
+  if (drafts.length === 0) {
+    return <p className="text-sm text-slate-500">{copy.noParameters}</p>;
+  }
+
+  return (
+    <div className="grid gap-1.5">
+        <div className="grid grid-cols-[minmax(0,1fr)_5.5rem_minmax(7rem,10rem)_7rem] gap-2 px-1 text-xs font-medium text-slate-500">
+        <span>{copy.parameter}</span>
+        <span>{copy.sortOrder}</span>
+        <span>{copy.defaultValue}</span>
+        <span className="sr-only">{copy.detachParameter}</span>
+      </div>
+      {drafts.map((draft) => (
+        <div
+          key={draft.parameter.id}
+          className="grid grid-cols-[minmax(0,1fr)_5.5rem_minmax(7rem,10rem)_7rem] items-center gap-2 rounded-md border border-slate-200 bg-white px-2 py-1.5"
+          data-testid="category-parameter-draft-row"
+        >
+          <div className="min-w-0">
+            <p className="truncate text-sm font-semibold text-slate-950">
+              {draft.parameter.name}
+            </p>
+            <p className="text-xs text-slate-500">
+              {draft.sourceCategoryId === categoryId || draft.isLocal
+                ? copy.local
+                : copy.inherited}
+            </p>
+          </div>
+          <input
+            aria-label={copy.sortOrder}
+            className={categoryParameterInputClassName}
+            type="number"
+            value={draft.sortOrder}
+            onChange={(event) =>
+              onUpdate(draft.parameter.id, {
+                sortOrder: Number(event.currentTarget.value || "0")
+              })
+            }
+          />
+          <CategoryParameterDefaultValueControl
+            copy={copy}
+            parameter={draft.parameter}
+            value={draft.defaultValue}
+            onChange={(defaultValue) =>
+              onUpdate(draft.parameter.id, { defaultValue })
+            }
+          />
+          <button
+            className="min-h-9 min-w-28 whitespace-nowrap rounded-md border border-rose-200 bg-white px-2.5 py-1.5 text-sm font-medium text-rose-700 transition hover:border-rose-300 hover:bg-rose-50 focus:outline-none focus:ring-2 focus:ring-rose-200 focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400"
+            disabled={
+              !isDatabaseAvailable ||
+              !canWriteCategories ||
+              (!draft.isLocal && draft.sourceCategoryId !== categoryId)
+            }
+            type="button"
+            onClick={() => onRemove(draft.parameter.id)}
+          >
+            {copy.detachParameter}
+          </button>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function CategoryParameterAttachForm({
+  availableParameters,
+  canWriteCategories,
+  copy,
+  isDatabaseAvailable,
+  onSubmit
+}: {
+  availableParameters: ParameterListItem[];
+  canWriteCategories: boolean;
+  copy: Copy;
+  isDatabaseAvailable: boolean;
+  onSubmit: (event: FormEvent<HTMLFormElement>) => void;
+}) {
+  const [selectedParameterId, setSelectedParameterId] = useState(
+    availableParameters[0]?.id ?? ""
+  );
+  const selectedParameter =
+    availableParameters.find((parameter) => parameter.id === selectedParameterId) ??
+    availableParameters[0] ??
+    null;
+
+  return (
+    <form
+      className="grid grid-cols-[minmax(0,1fr)_5.5rem_minmax(7rem,10rem)_7rem] items-end gap-2 rounded-md border border-dashed border-slate-300 bg-slate-50 p-2"
+      onSubmit={onSubmit}
+    >
+      <label className="grid gap-1 text-xs font-medium text-slate-600">
+        {copy.parameter}
+        <select
+          className={categoryParameterInputClassName}
+          name="parameterId"
+          required
+          value={selectedParameter?.id ?? ""}
+          onChange={(event) => setSelectedParameterId(event.currentTarget.value)}
+        >
+          {availableParameters.map((parameter) => (
+            <option key={parameter.id} value={parameter.id}>
+              {parameter.name}
+            </option>
+          ))}
+        </select>
+      </label>
+      <label className="grid gap-1 text-xs font-medium text-slate-600">
+        {copy.sortOrder}
+        <input
+          className={categoryParameterInputClassName}
+          name="sortOrder"
+          type="number"
+        />
+      </label>
+      <label className="grid gap-1 text-xs font-medium text-slate-600">
+        {copy.defaultValue}
+        <CategoryParameterDefaultValueControl
+          copy={copy}
+          name="defaultValue"
+          parameter={selectedParameter}
+        />
+      </label>
+      <button
+        className="min-h-9 min-w-28 whitespace-nowrap rounded-md border border-slate-950 bg-slate-950 px-3 py-1.5 text-sm font-semibold text-white transition hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2 disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-100 disabled:text-slate-400"
+        disabled={
+          !isDatabaseAvailable ||
+          !canWriteCategories ||
+          availableParameters.length === 0
+        }
+        type="submit"
+      >
+        {copy.attachParameter}
+      </button>
+    </form>
+  );
+}
+
+function CategoryParameterDefaultValueControl({
+  copy,
+  name,
+  parameter,
+  value,
+  onChange
+}: {
+  copy: Copy;
+  name?: string;
+  parameter: ParameterListItem | null;
+  value?: string;
+  onChange?: (defaultValue: string) => void;
+}) {
+  if (parameter?.type === "CHOICE") {
+    return (
+      <select
+        aria-label={copy.defaultValue}
+        className={categoryParameterInputClassName}
+        name={name}
+        value={value}
+        onChange={(event) => onChange?.(event.currentTarget.value)}
+      >
+        <option value="" />
+        {parameter.choiceOptions.map((option) => (
+          <option key={option.id} value={option.label}>
+            {option.label}
+          </option>
+        ))}
+      </select>
+    );
+  }
+
+  if (parameter?.type === "BOOLEAN") {
+    return (
+      <select
+        aria-label={copy.defaultValue}
+        className={categoryParameterInputClassName}
+        name={name}
+        value={value}
+        onChange={(event) => onChange?.(event.currentTarget.value)}
+      >
+        <option value="" />
+        <option value="Yes">Yes</option>
+        <option value="No">No</option>
+      </select>
+    );
+  }
+
+  return (
+    <input
+      aria-label={copy.defaultValue}
+      className={categoryParameterInputClassName}
+      name={name}
+      value={value}
+      onChange={(event) => onChange?.(event.currentTarget.value)}
+    />
+  );
+}
+
+function getLocalCategoryParameterInputs(
+  drafts: CategoryParameterDraft[],
+  categoryId: string
+) {
+  return drafts
+    .filter((draft) => draft.isLocal || draft.sourceCategoryId === categoryId)
+    .map((draft) => ({
+      parameterId: draft.parameter.id,
+      sortOrder: draft.sortOrder,
+      defaultValue: draft.defaultValue ? { rawValue: draft.defaultValue } : null
+    }));
+}
+
+function toCategoryParameterDraft(
+  effectiveParameter: EffectiveCategoryParameter,
+  categoryId: string
+): CategoryParameterDraft {
+  return {
+    parameter: effectiveParameter.parameter,
+    sourceCategoryId: effectiveParameter.sourceCategoryId,
+    isLocal: effectiveParameter.sourceCategoryId === categoryId,
+    sortOrder: effectiveParameter.sortOrder,
+    defaultValue: effectiveParameter.defaultValue?.displayValue ?? ""
+  };
 }
 
 function CategoryNode({
@@ -690,51 +1373,31 @@ function getExpandableCategoryIds(categories: CategoryTreeItem[]) {
   return expandableIds;
 }
 
-function useStoredExpandedCategoryIds(
+function getInitialExpandedCategoryIds(
   storageKey: string,
   defaultExpandedCategoryIds: Set<string>
 ) {
-  const storedValue = useSyncExternalStore(
-    subscribeToCategoryExpansionStorage,
-    () => readStoredExpandedCategoryIds(storageKey),
-    () => null
-  );
+  const storedValue = readStoredExpandedCategoryIds(storageKey);
 
-  return useMemo(() => {
-    if (!storedValue) {
-      return defaultExpandedCategoryIds;
-    }
-
-    try {
-      const parsedValue: unknown = JSON.parse(storedValue);
-
-      if (!Array.isArray(parsedValue)) {
-        return defaultExpandedCategoryIds;
-      }
-
-      return new Set(
-        parsedValue.filter(
-          (categoryId): categoryId is string => typeof categoryId === "string"
-        )
-      );
-    } catch {
-      return defaultExpandedCategoryIds;
-    }
-  }, [defaultExpandedCategoryIds, storedValue]);
-}
-
-function subscribeToCategoryExpansionStorage(onStoreChange: () => void) {
-  if (typeof window === "undefined") {
-    return () => {};
+  if (!storedValue) {
+    return defaultExpandedCategoryIds;
   }
 
-  window.addEventListener("storage", onStoreChange);
-  window.addEventListener("oso:part-category-expansion", onStoreChange);
+  try {
+    const parsedValue: unknown = JSON.parse(storedValue);
 
-  return () => {
-    window.removeEventListener("storage", onStoreChange);
-    window.removeEventListener("oso:part-category-expansion", onStoreChange);
-  };
+    if (!Array.isArray(parsedValue)) {
+      return defaultExpandedCategoryIds;
+    }
+
+    return new Set(
+      parsedValue.filter(
+        (categoryId): categoryId is string => typeof categoryId === "string"
+      )
+    );
+  } catch {
+    return defaultExpandedCategoryIds;
+  }
 }
 
 function readStoredExpandedCategoryIds(storageKey: string) {
@@ -816,6 +1479,12 @@ function getCategorySuccessMessage(
   return `${actionLabel}: ${category.name}.`;
 }
 
+function getFormValue(formData: FormData, name: string) {
+  const value = formData.get(name);
+
+  return typeof value === "string" ? value.trim() : "";
+}
+
 function getCategoryErrorMessage(copy: Copy, error: string) {
   if (error === "missing-required-fields" || error === "category-name-required") {
     return copy.missingRequiredFields;
@@ -837,5 +1506,21 @@ function getCategoryErrorMessage(copy: Copy, error: string) {
     return copy.permissionDenied;
   }
 
+  if (
+    error === "invalid-choice-value" ||
+    error === "invalid-number-value" ||
+    error === "invalid-quantity-value" ||
+    error === "invalid-quantity-prefix" ||
+    error === "invalid-quantity-unit" ||
+    error === "invalid-boolean-value" ||
+    error === "parameter-value-required" ||
+    error === "quantity-unit-required"
+  ) {
+    return copy.invalidParameterDefaultValue;
+  }
+
   return copy.databaseUnavailable;
 }
+
+const categoryParameterInputClassName =
+  "min-h-9 min-w-0 rounded-md border border-slate-300 bg-white px-2.5 py-1.5 text-sm text-slate-950 outline-none transition placeholder:text-slate-400 hover:border-slate-400 focus:border-slate-500 focus:ring-2 focus:ring-slate-200 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400";

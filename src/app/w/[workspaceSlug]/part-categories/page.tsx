@@ -12,6 +12,8 @@ import {
   getPartCategoriesForManagement,
   type PartCategoryListItem
 } from "@/server/parts/categories";
+import { getWorkspaceParameters } from "@/server/parts/parameterMutations";
+import type { ParameterListItem } from "@/server/parts/parameterMutations";
 
 export const dynamic = "force-dynamic";
 
@@ -21,12 +23,34 @@ const copy = {
   signOut: "Sign out",
   switchWorkspace: "Switch workspace",
   parts: "Parts",
+  parameters: "Parameters",
   title: "Part categories",
   intro:
     "Manage the category tree used to organize real purchasable electronic parts.",
   addRootCategory: "Add root category",
   addChild: "Add child",
   edit: "Edit",
+  configureParameters: "Configure parameters",
+  categoryParameters: "Category parameters",
+  detailsTab: "Details",
+  parametersTab: "Parameters",
+  createCategoryBeforeParameters:
+    "Create the category before assigning parameters.",
+  parameter: "Parameter",
+  sortOrder: "Sort order",
+  defaultValue: "Default value",
+  primaryParameter: "Primary parameter",
+  inherited: "Inherited",
+  local: "Local",
+  attachParameter: "Attach",
+  saveParameterConfig: "Save configuration",
+  detachParameter: "Detach",
+  noPrimaryParameter: "No local primary",
+  noParameters: "No parameters configured",
+  selectCategory: "Select a category",
+  parameterConfigUpdatedToast: "Category parameter configuration updated",
+  parameterConfigDeletedToast: "Category parameter configuration removed",
+  primaryParameterUpdatedToast: "Primary parameter updated",
   expandCategory: "Expand",
   collapseCategory: "Collapse",
   actions: "Actions",
@@ -51,6 +75,8 @@ const copy = {
   categoryNotFound: "This category is no longer available.",
   categoryTreeCycle: "Choose a parent outside this category branch.",
   permissionDenied: "You do not have permission to manage categories.",
+  invalidParameterDefaultValue:
+    "Choose a valid default value for each category parameter.",
   emptyTitle: "No categories yet",
   emptyBody: "Create a root category to start organizing the parts tree.",
   databaseUnavailable:
@@ -86,9 +112,13 @@ export default async function PartCategoriesPage({
 
   let isDatabaseAvailable = true;
   let categories: PartCategoryListItem[] = [];
+  let parameters: ParameterListItem[] = [];
 
   try {
-    categories = await getPartCategoriesForManagement(context);
+    [categories, parameters] = await Promise.all([
+      getPartCategoriesForManagement(context),
+      getWorkspaceParameters(context.workspace.id)
+    ]);
   } catch {
     isDatabaseAvailable = false;
   }
@@ -138,6 +168,12 @@ export default async function PartCategoriesPage({
             >
               {copy.title}
             </Link>
+            <Link
+              className="flex min-h-10 items-center rounded-md px-3 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+              href={`/w/${workspaceSlug}/parameters`}
+            >
+              {copy.parameters}
+            </Link>
           </nav>
           <div className="border-t border-slate-200 p-3">
             <p className="mb-2 truncate text-xs leading-5 text-slate-500">
@@ -186,6 +222,7 @@ export default async function PartCategoriesPage({
               canWriteCategories={canWriteCategories}
               copy={copy}
               isDatabaseAvailable={isDatabaseAvailable}
+              parameters={parameters}
               workspaceSlug={workspaceSlug}
             />
           </div>

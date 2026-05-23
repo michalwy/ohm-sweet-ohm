@@ -433,14 +433,6 @@ export type PartCategoryClosureUncheckedUpdateManyWithoutDescendantNestedInput =
   deleteMany?: Prisma.PartCategoryClosureScalarWhereInput | Prisma.PartCategoryClosureScalarWhereInput[]
 }
 
-export type IntFieldUpdateOperationsInput = {
-  set?: number
-  increment?: number
-  decrement?: number
-  multiply?: number
-  divide?: number
-}
-
 export type PartCategoryClosureCreateNestedManyWithoutWorkspaceInput = {
   create?: Prisma.XOR<Prisma.PartCategoryClosureCreateWithoutWorkspaceInput, Prisma.PartCategoryClosureUncheckedCreateWithoutWorkspaceInput> | Prisma.PartCategoryClosureCreateWithoutWorkspaceInput[] | Prisma.PartCategoryClosureUncheckedCreateWithoutWorkspaceInput[]
   connectOrCreate?: Prisma.PartCategoryClosureCreateOrConnectWithoutWorkspaceInput | Prisma.PartCategoryClosureCreateOrConnectWithoutWorkspaceInput[]
