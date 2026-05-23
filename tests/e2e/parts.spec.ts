@@ -529,6 +529,58 @@ test.describe("parts list", () => {
     await expect(
       page.locator("p").filter({ hasText: /^Resistors configured$/ })
     ).toBeVisible();
+
+    await page.getByRole("link", { name: "Parts" }).click();
+    await expect(page).toHaveURL(/\/w\/default\/parts$/);
+    await page.getByRole("button", { name: "Add part" }).click();
+    const addPartDialog = page.getByRole("dialog", { name: "Add part" });
+    await expect(addPartDialog).toBeVisible();
+    await addPartDialog.getByLabel("Catalog number").fill(`RC0603-${suffix}`);
+    await addPartDialog.getByLabel("Manufacturer").fill("Yageo");
+    await addPartDialog.getByLabel("Primary category").click();
+    await page.getByPlaceholder("Search categories").fill("configured");
+    await expect(
+      addPartDialog.getByRole("button", {
+        name: /Primary category.*Passives \/ Resistors configured/
+      })
+    ).toBeVisible();
+    await expect(addPartDialog.getByLabel(resistanceName)).toHaveValue("10 kΩ");
+    await addPartDialog.getByLabel(resistanceName).fill("4,7 kΩ");
+    await addPartDialog.getByRole("button", { name: "Create part" }).click();
+    await expect(page.getByRole("status")).toHaveText(
+      `Part created: Yageo RC0603-${suffix}.`
+    );
+    const resistorRow = page.getByRole("row", {
+      name: new RegExp(`RC0603-${suffix}.*4.7 kΩ.*Yageo`)
+    });
+    await expect(resistorRow).toBeVisible();
+    await expect(resistorRow).toContainText("Passives / Resistors configured");
+
+    await resistorRow.getByRole("button", { name: "Edit" }).click();
+    const editPartDialog = page.getByRole("dialog", { name: "Edit part" });
+    await expect(editPartDialog).toBeVisible();
+    await editPartDialog.getByLabel("Primary category").click();
+    await page.getByPlaceholder("Search categories").fill("diodes");
+    await expect(
+      editPartDialog.getByRole("button", {
+        name: /Primary category.*Semiconductors \/ Diodes/
+      })
+    ).toBeVisible();
+    await expect(page.getByText("Values to remove")).toBeVisible();
+    await editPartDialog
+      .getByLabel(
+        "Confirm removing parameter values that no longer apply to the selected primary category."
+      )
+      .check();
+    await editPartDialog.getByRole("button", { name: "Save changes" }).click();
+    await expect(page.getByRole("status")).toHaveText(
+      `Part updated: Yageo RC0603-${suffix}.`
+    );
+    const updatedResistorRow = page.getByRole("row", {
+      name: new RegExp(`RC0603-${suffix}.*Yageo`)
+    });
+    await expect(updatedResistorRow).toContainText("Semiconductors / Diodes");
+    await expect(updatedResistorRow).not.toContainText("4.7 kΩ");
   });
 
   test("returns signed-in users to their last workspace", async ({ page }) => {

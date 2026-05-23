@@ -12,6 +12,12 @@ import {
 } from "@/server/organizations/organizations";
 import { getPartCategories } from "@/server/parts/categories";
 import type { PartsListItem } from "@/server/parts/getParts";
+import {
+  getEffectivePartCategoryParameters,
+  getPartParameterValuesOutsidePrimaryCategory,
+  type EffectiveCategoryParameter
+} from "@/server/parts/parameters";
+import { parseParameterValue } from "@/server/parts/parameterValues";
 
 export type PartMutationResult =
   | {
@@ -36,6 +42,7 @@ export async function createPart(
     formData,
     "secondaryCategoryId"
   );
+  const submittedParameterValues = getSubmittedParameterValues(formData);
   const partsPath = getPartsPath(workspaceSlug);
   let part: PartsListItem | null = null;
 
@@ -64,28 +71,60 @@ export async function createPart(
       });
 
       if (!formError) {
-        const manufacturer = await ensureOrganizationWithRole({
-          workspaceId: context.workspace.id,
-          name: manufacturerName,
-          role: ORGANIZATION_ROLE_MANUFACTURER
+        const effectiveParameters = primaryCategoryId
+          ? await getEffectivePartCategoryParameters({
+              workspaceId: context.workspace.id,
+              categoryId: primaryCategoryId
+            })
+          : [];
+        const parameterValueWrites = tryGetPartParameterValueWrites({
+          effectiveParameters,
+          submittedValues: submittedParameterValues
         });
 
-        try {
-          const createdPart = await prisma.part.create({
-            data: {
-              workspaceId: context.workspace.id,
-              catalogNumber,
-              manufacturerId: manufacturer.id,
-              primaryCategoryId,
-              secondaryCategoryId
-            }
+        if (!parameterValueWrites) {
+          formError = "invalid-parameter-value";
+        } else {
+          const manufacturer = await ensureOrganizationWithRole({
+            workspaceId: context.workspace.id,
+            name: manufacturerName,
+            role: ORGANIZATION_ROLE_MANUFACTURER
           });
-          part = await getPartListItem({
-            id: createdPart.id,
-            workspaceId: context.workspace.id
-          });
-        } catch (error) {
-          formError = getPartWriteError(error);
+
+          try {
+            const createdPart = await prisma.$transaction(async (tx) => {
+              const nextPart = await tx.part.create({
+                data: {
+                  workspaceId: context.workspace.id,
+                  catalogNumber,
+                  manufacturerId: manufacturer.id,
+                  primaryCategoryId,
+                  secondaryCategoryId
+                },
+                select: {
+                  id: true
+                }
+              });
+
+              await syncPartParameterValues({
+                tx,
+                workspaceId: context.workspace.id,
+                partId: nextPart.id,
+                effectiveParameterIds: effectiveParameters.map(
+                  (effectiveParameter) => effectiveParameter.parameter.id
+                ),
+                parameterValueWrites
+              });
+
+              return nextPart;
+            });
+            part = await getPartListItem({
+              id: createdPart.id,
+              workspaceId: context.workspace.id
+            });
+          } catch (error) {
+            formError = getPartWriteError(error);
+          }
         }
       }
     }
@@ -117,6 +156,9 @@ export async function updatePart(
     formData,
     "secondaryCategoryId"
   );
+  const submittedParameterValues = getSubmittedParameterValues(formData);
+  const confirmedParameterValueRemoval =
+    getRequiredFormValue(formData, "confirmParameterValueRemoval") === "yes";
   const partsPath = getPartsPath(workspaceSlug);
   let part: PartsListItem | null = null;
 
@@ -145,36 +187,80 @@ export async function updatePart(
       });
 
       if (!formError) {
-        const manufacturer = await ensureOrganizationWithRole({
+        const outsideValues = await getPartParameterValuesOutsidePrimaryCategory({
           workspaceId: context.workspace.id,
-          name: manufacturerName,
-          role: ORGANIZATION_ROLE_MANUFACTURER
+          partId: id,
+          primaryCategoryId
         });
 
-        try {
-          const updateResult = await prisma.part.updateMany({
-            where: {
-              id,
-              workspaceId: context.workspace.id
-            },
-            data: {
-              catalogNumber,
-              manufacturerId: manufacturer.id,
-              primaryCategoryId,
-              secondaryCategoryId
-            }
+        if (outsideValues.length > 0 && !confirmedParameterValueRemoval) {
+          formError = "confirm-parameter-value-removal";
+        }
+      }
+
+      if (!formError) {
+        const effectiveParameters = primaryCategoryId
+          ? await getEffectivePartCategoryParameters({
+              workspaceId: context.workspace.id,
+              categoryId: primaryCategoryId
+            })
+          : [];
+        const effectiveParameterIds = effectiveParameters.map(
+          (effectiveParameter) => effectiveParameter.parameter.id
+        );
+        const parameterValueWrites = tryGetPartParameterValueWrites({
+          effectiveParameters,
+          submittedValues: submittedParameterValues
+        });
+
+        if (!parameterValueWrites) {
+          formError = "invalid-parameter-value";
+        } else {
+          const manufacturer = await ensureOrganizationWithRole({
+            workspaceId: context.workspace.id,
+            name: manufacturerName,
+            role: ORGANIZATION_ROLE_MANUFACTURER
           });
 
-          if (updateResult.count === 0) {
-            formError = "database-unavailable";
-          } else {
-            part = await getPartListItem({
-              id,
-              workspaceId: context.workspace.id
+          try {
+            const updateResult = await prisma.$transaction(async (tx) => {
+              const nextUpdateResult = await tx.part.updateMany({
+                where: {
+                  id,
+                  workspaceId: context.workspace.id
+                },
+                data: {
+                  catalogNumber,
+                  manufacturerId: manufacturer.id,
+                  primaryCategoryId,
+                  secondaryCategoryId
+                }
+              });
+
+              if (nextUpdateResult.count > 0) {
+                await syncPartParameterValues({
+                  tx,
+                  workspaceId: context.workspace.id,
+                  partId: id,
+                  effectiveParameterIds,
+                  parameterValueWrites
+                });
+              }
+
+              return nextUpdateResult;
             });
+
+            if (updateResult.count === 0) {
+              formError = "database-unavailable";
+            } else {
+              part = await getPartListItem({
+                id,
+                workspaceId: context.workspace.id
+              });
+            }
+          } catch (error) {
+            formError = getPartWriteError(error);
           }
-        } catch (error) {
-          formError = getPartWriteError(error);
         }
       }
     }
@@ -208,6 +294,20 @@ function getOptionalFormValue(formData: FormData, name: string) {
   const value = getRequiredFormValue(formData, name);
 
   return value || null;
+}
+
+function getSubmittedParameterValues(formData: FormData) {
+  const submittedValues = new Map<string, string>();
+
+  for (const [name, value] of formData.entries()) {
+    if (!name.startsWith("parameterValue:") || typeof value !== "string") {
+      continue;
+    }
+
+    submittedValues.set(name.slice("parameterValue:".length), value.trim());
+  }
+
+  return submittedValues;
 }
 
 function getPartsPath(workspaceSlug: string) {
@@ -268,6 +368,10 @@ async function validatePartCategoryAssignment({
 }
 
 function getPartWriteError(error: unknown) {
+  if (error instanceof Error && error.message === "invalid_parameter_value") {
+    return "invalid-parameter-value";
+  }
+
   if (
     error instanceof Prisma.PrismaClientKnownRequestError &&
     error.code === "P2002"
@@ -294,6 +398,148 @@ function getFormErrorState(error: string): PartMutationResult {
   };
 }
 
+function tryGetPartParameterValueWrites({
+  effectiveParameters,
+  submittedValues
+}: {
+  effectiveParameters: EffectiveCategoryParameter[];
+  submittedValues: Map<string, string>;
+}) {
+  try {
+    return effectiveParameters.map((effectiveParameter) => {
+      const rawValue = submittedValues.get(effectiveParameter.parameter.id) ?? "";
+
+      if (!rawValue) {
+        return {
+          parameterId: effectiveParameter.parameter.id,
+          data: null
+        };
+      }
+      return {
+        parameterId: effectiveParameter.parameter.id,
+        data: getPartParameterValueData({
+          effectiveParameter,
+          rawValue
+        })
+      };
+    });
+  } catch {
+    return null;
+  }
+}
+
+function getPartParameterValueData({
+  effectiveParameter,
+  rawValue
+}: {
+  effectiveParameter: EffectiveCategoryParameter;
+  rawValue: string;
+}) {
+  const emptyValue = {
+    textValue: null,
+    numberValue: null,
+    quantityBaseValue: null,
+    booleanValue: null,
+    choiceOptionId: null,
+    displayValue: null
+  };
+  const parsedValue = parseParameterValue({
+    type: effectiveParameter.parameter.type,
+    rawValue,
+    baseUnitSymbol: effectiveParameter.parameter.baseUnitSymbol,
+    choiceOptions: effectiveParameter.parameter.choiceOptions
+  });
+
+  switch (parsedValue.type) {
+    case "TEXT":
+      return {
+        ...emptyValue,
+        textValue: parsedValue.textValue,
+        displayValue: parsedValue.displayValue
+      };
+    case "NUMBER":
+      return {
+        ...emptyValue,
+        numberValue: new Prisma.Decimal(parsedValue.numberValue),
+        displayValue: parsedValue.displayValue
+      };
+    case "QUANTITY":
+      return {
+        ...emptyValue,
+        quantityBaseValue: new Prisma.Decimal(parsedValue.quantityBaseValue),
+        displayValue: parsedValue.displayValue
+      };
+    case "BOOLEAN":
+      return {
+        ...emptyValue,
+        booleanValue: parsedValue.booleanValue,
+        displayValue: parsedValue.displayValue
+      };
+    case "CHOICE":
+      return {
+        ...emptyValue,
+        choiceOptionId: parsedValue.choiceOptionId,
+        displayValue: parsedValue.displayValue
+      };
+  }
+}
+
+async function syncPartParameterValues({
+  tx,
+  workspaceId,
+  partId,
+  effectiveParameterIds,
+  parameterValueWrites
+}: {
+  tx: Prisma.TransactionClient;
+  workspaceId: string;
+  partId: string;
+  effectiveParameterIds: string[];
+  parameterValueWrites: Array<{
+    parameterId: string;
+    data: ReturnType<typeof getPartParameterValueData> | null;
+  }>;
+}) {
+  await tx.partParameterValue.deleteMany({
+    where: {
+      workspaceId,
+      partId,
+      parameterId: {
+        notIn: effectiveParameterIds
+      }
+    }
+  });
+
+  for (const parameterValueWrite of parameterValueWrites) {
+    if (!parameterValueWrite.data) {
+      await tx.partParameterValue.deleteMany({
+        where: {
+          workspaceId,
+          partId,
+          parameterId: parameterValueWrite.parameterId
+        }
+      });
+      continue;
+    }
+
+    await tx.partParameterValue.upsert({
+      where: {
+        partId_parameterId: {
+          partId,
+          parameterId: parameterValueWrite.parameterId
+        }
+      },
+      create: {
+        workspaceId,
+        partId,
+        parameterId: parameterValueWrite.parameterId,
+        ...parameterValueWrite.data
+      },
+      update: parameterValueWrite.data
+    });
+  }
+}
+
 async function getPartListItem({
   id,
   workspaceId
@@ -316,7 +562,14 @@ async function getPartListItem({
           }
         },
         primaryCategoryId: true,
-        secondaryCategoryId: true
+        secondaryCategoryId: true,
+        parameterValues: {
+          orderBy: [{ parameter: { name: "asc" } }, { id: "asc" }],
+          select: {
+            parameterId: true,
+            displayValue: true
+          }
+        }
       }
     }),
     getPartCategories(workspaceId)
@@ -329,11 +582,31 @@ async function getPartListItem({
   const categoryPathsById = new Map(
     categories.map((category) => [category.id, category.path])
   );
+  const primaryParameterId = part.primaryCategoryId
+    ? (
+        await getEffectivePartCategoryParameters({
+          workspaceId,
+          categoryId: part.primaryCategoryId
+        })
+      ).find((effectiveParameter) => effectiveParameter.isPrimary)?.parameter.id ??
+      null
+    : null;
+  const parameterValues = part.parameterValues
+    .filter((parameterValue) => parameterValue.displayValue !== null)
+    .map((parameterValue) => ({
+      parameterId: parameterValue.parameterId,
+      displayValue: parameterValue.displayValue ?? ""
+    }));
 
   return {
     id: part.id,
     catalogNumber: part.catalogNumber,
     manufacturerName: part.manufacturer.name,
+    valueDisplayValue: primaryParameterId
+      ? parameterValues.find(
+          (parameterValue) => parameterValue.parameterId === primaryParameterId
+        )?.displayValue ?? null
+      : null,
     primaryCategoryId: part.primaryCategoryId,
     primaryCategoryPath: part.primaryCategoryId
       ? categoryPathsById.get(part.primaryCategoryId) ?? null
@@ -341,6 +614,7 @@ async function getPartListItem({
     secondaryCategoryId: part.secondaryCategoryId,
     secondaryCategoryPath: part.secondaryCategoryId
       ? categoryPathsById.get(part.secondaryCategoryId) ?? null
-      : null
+      : null,
+    parameterValues
   };
 }

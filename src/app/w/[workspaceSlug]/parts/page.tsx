@@ -10,6 +10,7 @@ import {
 import { getManufacturerSuggestionsForPartForm } from "@/server/organizations/organizations";
 import { getPartCategoriesForPartForm } from "@/server/parts/categories";
 import { getPartsList } from "@/server/parts/getParts";
+import { getEffectivePartCategoryParameters } from "@/server/parts/parameters";
 
 export const dynamic = "force-dynamic";
 
@@ -25,6 +26,8 @@ const copy = {
   intro:
     "Real purchasable electronic parts tracked by manufacturer and catalog number.",
   catalogNumber: "Catalog number",
+  value: "Value",
+  parameterValues: "Parameter values",
   categories: "Categories",
   primaryCategory: "Primary category",
   secondaryCategory: "Secondary category",
@@ -58,6 +61,10 @@ const copy = {
   duplicateCategories: "Primary and secondary categories must be different.",
   duplicatePart:
     "A part with this manufacturer and catalog number already exists.",
+  invalidParameterValue: "Enter valid parameter values for the selected category.",
+  confirmParameterValueRemoval:
+    "Confirm removing parameter values that no longer apply to the selected primary category.",
+  parameterValuesToRemove: "Values to remove",
   emptyTitle: "No parts yet",
   emptyBody: "Parts will appear here once they exist.",
   databaseUnavailable:
@@ -101,6 +108,21 @@ export default async function PartsPage({
         }).catch(() => [])
       ])
     : [[], []];
+  const categoryParametersByCategoryId = isDatabaseAvailable
+    ? Object.fromEntries(
+        await Promise.all(
+          partCategories.map(async (category) => [
+            category.id,
+            category.isAssignable
+              ? await getEffectivePartCategoryParameters({
+                  workspaceId: context.workspace.id,
+                  categoryId: category.id
+                }).catch(() => [])
+              : []
+          ])
+        )
+      )
+    : {};
   const resolvedSearchParams = await searchParams;
   const partDialogOpen = resolvedSearchParams?.partDialog === "open";
   const partEditDialog = resolvedSearchParams?.partEditDialog;
@@ -192,6 +214,7 @@ export default async function PartsPage({
               partDialogOpen={partDialogOpen}
               partEditDialog={partEditDialog}
               partCategories={partCategories}
+              categoryParametersByCategoryId={categoryParametersByCategoryId}
               manufacturerSuggestions={manufacturerSuggestions}
               parts={parts}
               workspaceSlug={workspaceSlug}

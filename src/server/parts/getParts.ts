@@ -3,15 +3,23 @@ import "server-only";
 import { authorizeWorkspacePermission } from "@/server/access-control/authorize";
 import { prisma } from "@/server/db/prisma";
 import { getPartCategories } from "@/server/parts/categories";
+import { getEffectivePartCategoryParameters } from "@/server/parts/parameters";
 
 export type PartsListItem = {
   id: string;
   catalogNumber: string;
   manufacturerName: string;
+  valueDisplayValue: string | null;
   primaryCategoryId: string | null;
   primaryCategoryPath: string | null;
   secondaryCategoryId: string | null;
   secondaryCategoryPath: string | null;
+  parameterValues: PartParameterValueListItem[];
+};
+
+export type PartParameterValueListItem = {
+  parameterId: string;
+  displayValue: string;
 };
 
 export type PartsListResult = {
@@ -53,7 +61,14 @@ export async function getPartsList(
             }
           },
           primaryCategoryId: true,
-          secondaryCategoryId: true
+          secondaryCategoryId: true,
+          parameterValues: {
+            orderBy: [{ parameter: { name: "asc" } }, { id: "asc" }],
+            select: {
+              parameterId: true,
+              displayValue: true
+            }
+          }
         }
       }),
       getPartCategories(context.workspace.id)
@@ -61,21 +76,49 @@ export async function getPartsList(
     const categoryPathsById = new Map(
       categories.map((category) => [category.id, category.path])
     );
+    const primaryParameterIdsByCategoryId =
+      await getPrimaryParameterIdsByCategoryId({
+        workspaceId: context.workspace.id,
+        categoryIds: parts
+          .map((part) => part.primaryCategoryId)
+          .filter((categoryId): categoryId is string => Boolean(categoryId))
+      });
 
     return {
-      parts: parts.map((part) => ({
-        id: part.id,
-        catalogNumber: part.catalogNumber,
-        manufacturerName: part.manufacturer.name,
-        primaryCategoryId: part.primaryCategoryId,
-        primaryCategoryPath: part.primaryCategoryId
-          ? categoryPathsById.get(part.primaryCategoryId) ?? null
-          : null,
-        secondaryCategoryId: part.secondaryCategoryId,
-        secondaryCategoryPath: part.secondaryCategoryId
-          ? categoryPathsById.get(part.secondaryCategoryId) ?? null
-          : null
-      })),
+      parts: parts.map((part) => {
+        const parameterValues = part.parameterValues
+          .filter(
+            (parameterValue) => parameterValue.displayValue !== null
+          )
+          .map((parameterValue) => ({
+            parameterId: parameterValue.parameterId,
+            displayValue: parameterValue.displayValue ?? ""
+          }));
+        const primaryParameterId = part.primaryCategoryId
+          ? primaryParameterIdsByCategoryId.get(part.primaryCategoryId) ?? null
+          : null;
+
+        return {
+          id: part.id,
+          catalogNumber: part.catalogNumber,
+          manufacturerName: part.manufacturer.name,
+          valueDisplayValue: primaryParameterId
+            ? parameterValues.find(
+                (parameterValue) =>
+                  parameterValue.parameterId === primaryParameterId
+              )?.displayValue ?? null
+            : null,
+          primaryCategoryId: part.primaryCategoryId,
+          primaryCategoryPath: part.primaryCategoryId
+            ? categoryPathsById.get(part.primaryCategoryId) ?? null
+            : null,
+          secondaryCategoryId: part.secondaryCategoryId,
+          secondaryCategoryPath: part.secondaryCategoryId
+            ? categoryPathsById.get(part.secondaryCategoryId) ?? null
+            : null,
+          parameterValues
+        };
+      }),
       isDatabaseAvailable: true
     };
   } catch {
@@ -84,4 +127,29 @@ export async function getPartsList(
       isDatabaseAvailable: false
     };
   }
+}
+
+async function getPrimaryParameterIdsByCategoryId({
+  workspaceId,
+  categoryIds
+}: {
+  workspaceId: string;
+  categoryIds: string[];
+}) {
+  const uniqueCategoryIds = [...new Set(categoryIds)];
+  const entries = await Promise.all(
+    uniqueCategoryIds.map(async (categoryId) => {
+      const effectiveParameters = await getEffectivePartCategoryParameters({
+        workspaceId,
+        categoryId
+      });
+      const primaryParameter = effectiveParameters.find(
+        (effectiveParameter) => effectiveParameter.isPrimary
+      );
+
+      return [categoryId, primaryParameter?.parameter.id ?? null] as const;
+    })
+  );
+
+  return new Map(entries);
 }

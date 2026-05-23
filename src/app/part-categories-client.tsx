@@ -145,6 +145,7 @@ export function PartCategoriesClient({
     () => getExpandableCategoryIds(categoryTree),
     [categoryTree]
   );
+  const expansionInteractedRef = useRef(false);
   const [expandedCategoryIds, setExpandedCategoryIds] = useState<Set<string>>(
     defaultExpandedCategoryIds
   );
@@ -208,6 +209,10 @@ export function PartCategoriesClient({
 
   useEffect(() => {
     window.requestAnimationFrame(() => {
+      if (expansionInteractedRef.current) {
+        return;
+      }
+
       setExpandedCategoryIds(
         getInitialExpandedCategoryIds(
           categoryExpansionStorageKey,
@@ -409,6 +414,7 @@ export function PartCategoriesClient({
                   onEdit={openEditDialog}
                   expandedCategoryIds={expandedCategoryIds}
                   onToggleExpanded={(categoryId) => {
+                    expansionInteractedRef.current = true;
                     const nextIds = new Set(expandedCategoryIds);
 
                     if (nextIds.has(categoryId)) {

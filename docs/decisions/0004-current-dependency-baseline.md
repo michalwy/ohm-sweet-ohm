@@ -26,8 +26,8 @@ Keep ESLint on the latest supported 9.x release until the Next.js ESLint plugin 
 
 ## Consequences
 
-- `pnpm typecheck` runs `next typegen` before TypeScript checking.
+- `pnpm typecheck` regenerates the Prisma client and runs `next typegen` before TypeScript checking.
 - Prisma datasource URLs are configured in `prisma.config.ts`, not `prisma/schema.prisma`.
 - PostgreSQL access goes through `@prisma/adapter-pg`.
-- Generated Prisma client files under `src/generated/prisma` are part of the application source baseline.
+- Generated Prisma client files under `src/generated/prisma` are ignored and should be regenerated locally.
 - Future dependency upgrades should run `pnpm typecheck`, `pnpm lint`, `pnpm build`, and `pnpm test:e2e`.

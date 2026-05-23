@@ -151,6 +151,7 @@ Implemented so far:
 - Category parameter attachment drafts are only persisted by the dialog-level save action.
 - Category parameter defaults use type-aware controls for `CHOICE` and `BOOLEAN`; other types still use text input parsed server-side.
 - Part create/edit and list integration for effective category parameters and primary parameter display.
+- Part edit requires explicit confirmation before deleting saved values that are no longer effective after a primary-category change.
 - Unit coverage for inheritance and parsing, plus e2e coverage for parameter dictionary and category parameter configuration flows.
 
 Recommended next steps:
@@ -160,4 +161,5 @@ Recommended next steps:
 - Add e2e coverage for editing an existing attached `CHOICE`/`BOOLEAN` default value, not only attaching a new one.
 - Consider a clearer loading state for the category parameter tab; the editor is intentionally withheld until effective parameters load to avoid draft overwrite races.
 - Consider extracting shared typed default-value controls once part forms and category default controls converge.
+- Consider improving the part value-removal confirmation copy once parameter names are shown alongside saved display values.
 - Decide the first filtering/search workflow before adding indexes or UI for normalized parameter value search.

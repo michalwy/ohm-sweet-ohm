@@ -6,7 +6,7 @@ The application language is English by default, with the project structured so a
 
 ## Project Status
 
-This repository currently contains only the application skeleton. Domain features, data models, workflows, and UI screens will be designed in later iterations.
+This repository contains the first working OSO application slice: authentication, workspace routing, workspace-scoped access control, a parts list, manufacturer organizations, part categories, and category-driven part parameters. Inventory, storage, supplier, purchase, pricing, lifecycle, import, and filtering workflows are still intentionally undefined until product decisions are made.
 
 ## Tech Direction
 

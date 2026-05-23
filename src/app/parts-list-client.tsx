@@ -19,6 +19,7 @@ import { createPart, updatePart } from "@/server/parts/createPart";
 import type { ManufacturerSuggestion } from "@/server/organizations/organizations";
 import type { PartCategoryListItem } from "@/server/parts/categories";
 import type { PartsListItem } from "@/server/parts/getParts";
+import type { EffectiveCategoryParameter } from "@/server/parts/parameters";
 import {
   getNextToastId,
   ToastNotice,
@@ -28,6 +29,8 @@ import {
 type Copy = {
   title: string;
   catalogNumber: string;
+  value: string;
+  parameterValues: string;
   categories: string;
   primaryCategory: string;
   secondaryCategory: string;
@@ -59,6 +62,9 @@ type Copy = {
   secondaryWithoutPrimary: string;
   duplicateCategories: string;
   duplicatePart: string;
+  invalidParameterValue: string;
+  confirmParameterValueRemoval: string;
+  parameterValuesToRemove: string;
   emptyTitle: string;
   emptyBody: string;
   databaseUnavailable: string;
@@ -74,6 +80,7 @@ type PartsListClientProps = {
   partDialogOpen: boolean;
   partEditDialog?: string;
   partCategories: PartCategoryListItem[];
+  categoryParametersByCategoryId: Record<string, EffectiveCategoryParameter[]>;
   manufacturerSuggestions: ManufacturerSuggestion[];
   parts: PartsListItem[];
   workspaceSlug: string;
@@ -85,6 +92,7 @@ export function PartsListClient({
   partDialogOpen,
   partEditDialog,
   partCategories,
+  categoryParametersByCategoryId,
   manufacturerSuggestions,
   parts,
   workspaceSlug
@@ -179,6 +187,18 @@ export function PartsListClient({
         cell: ({ getValue }) => (
           <span className="font-mono text-slate-950">{getValue()}</span>
         )
+      }),
+      columnHelper.accessor("valueDisplayValue", {
+        header: copy.value,
+        cell: ({ getValue }) => {
+          const value = getValue();
+
+          return value ? (
+            <span className="text-slate-950">{value}</span>
+          ) : (
+            <span className="text-slate-400">-</span>
+          );
+        }
       }),
       columnHelper.accessor("manufacturerName", {
         header: copy.manufacturer,
@@ -366,7 +386,7 @@ export function PartsListClient({
                 ))
               ) : (
                 <tr>
-                  <td className="px-4 py-10" colSpan={4}>
+                  <td className="px-4 py-10" colSpan={5}>
                     <p className="text-base font-medium text-slate-950">
                       {copy.emptyTitle}
                     </p>
@@ -416,7 +436,7 @@ export function PartsListClient({
             <p className="mb-4 rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-800">
               {createFormError === "missing-required-fields"
                 ? copy.missingRequiredFields
-                : getCategoryErrorMessage(copy, createFormError)}
+                : getPartFormErrorMessage(copy, createFormError)}
             </p>
           ) : null}
 
@@ -470,6 +490,14 @@ export function PartsListClient({
               selectedId={createSecondaryCategoryId}
               onSelectedIdChange={setCreateSecondaryCategoryId}
             />
+            <PartParameterFields
+              key={`create-parameters-${createPrimaryCategoryId}-${createFormResetKey}`}
+              categoryParametersByCategoryId={categoryParametersByCategoryId}
+              copy={copy}
+              disabled={!isDatabaseAvailable}
+              part={null}
+              selectedPrimaryCategoryId={createPrimaryCategoryId}
+            />
             <div className="flex justify-end">
               <button
                 className="min-h-11 rounded-md border border-slate-950 bg-slate-950 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2 disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-100 disabled:text-slate-400"
@@ -516,7 +544,7 @@ export function PartsListClient({
             <p className="mb-4 rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-800">
               {updateFormError === "missing-required-fields"
                 ? copy.missingRequiredFields
-                : getCategoryErrorMessage(copy, updateFormError)}
+                : getPartFormErrorMessage(copy, updateFormError)}
             </p>
           ) : null}
 
@@ -577,6 +605,14 @@ export function PartsListClient({
                 selectedId={editSecondaryCategoryId}
                 onSelectedIdChange={setEditSecondaryCategoryId}
               />
+              <PartParameterFields
+                key={`edit-parameters-${editingPart.id}-${editPrimaryCategoryId}`}
+                categoryParametersByCategoryId={categoryParametersByCategoryId}
+                copy={copy}
+                disabled={!isDatabaseAvailable}
+                part={editingPart}
+                selectedPrimaryCategoryId={editPrimaryCategoryId}
+              />
               <div className="flex justify-end">
                 <button
                   className="min-h-11 rounded-md border border-slate-950 bg-slate-950 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2 disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-100 disabled:text-slate-400"
@@ -636,7 +672,7 @@ function sortParts(parts: PartsListItem[]) {
   });
 }
 
-function getCategoryErrorMessage(copy: Copy, error: string) {
+function getPartFormErrorMessage(copy: Copy, error: string) {
   if (error === "duplicate-part") {
     return copy.duplicatePart;
   }
@@ -651,6 +687,14 @@ function getCategoryErrorMessage(copy: Copy, error: string) {
 
   if (error === "duplicate-categories") {
     return copy.duplicateCategories;
+  }
+
+  if (error === "invalid-parameter-value") {
+    return copy.invalidParameterValue;
+  }
+
+  if (error === "confirm-parameter-value-removal") {
+    return copy.confirmParameterValueRemoval;
   }
 
   return copy.databaseUnavailable;
@@ -884,6 +928,145 @@ function scoreManufacturerMatch(query: string, manufacturerName: string) {
 
 function normalizeManufacturerSearchText(value: string) {
   return value.trim().replace(/\s+/g, " ").toLocaleLowerCase("en");
+}
+
+function PartParameterFields({
+  categoryParametersByCategoryId,
+  copy,
+  disabled,
+  part,
+  selectedPrimaryCategoryId
+}: {
+  categoryParametersByCategoryId: Record<string, EffectiveCategoryParameter[]>;
+  copy: Copy;
+  disabled: boolean;
+  part: PartsListItem | null;
+  selectedPrimaryCategoryId: string;
+}) {
+  const effectiveParameters = selectedPrimaryCategoryId
+    ? categoryParametersByCategoryId[selectedPrimaryCategoryId] ?? []
+    : [];
+  const effectiveParameterIds = new Set(
+    effectiveParameters.map((effectiveParameter) => effectiveParameter.parameter.id)
+  );
+  const existingValuesByParameterId = new Map(
+    (part?.parameterValues ?? []).map((parameterValue) => [
+      parameterValue.parameterId,
+      parameterValue.displayValue
+    ])
+  );
+  const valuesToRemove = (part?.parameterValues ?? []).filter(
+    (parameterValue) => !effectiveParameterIds.has(parameterValue.parameterId)
+  );
+
+  if (effectiveParameters.length === 0 && valuesToRemove.length === 0) {
+    return null;
+  }
+
+  return (
+    <fieldset className="grid gap-3 rounded-md border border-slate-200 p-4">
+      <legend className="px-1 text-sm font-semibold text-slate-700">
+        {copy.parameterValues}
+      </legend>
+      {effectiveParameters.map((effectiveParameter) => (
+        <PartParameterField
+          key={effectiveParameter.parameter.id}
+          disabled={disabled}
+          effectiveParameter={effectiveParameter}
+          value={
+            existingValuesByParameterId.get(effectiveParameter.parameter.id) ??
+            effectiveParameter.defaultValue?.displayValue ??
+            ""
+          }
+        />
+      ))}
+      {valuesToRemove.length > 0 ? (
+        <div className="grid gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-950">
+          <p className="font-medium">{copy.parameterValuesToRemove}</p>
+          <ul className="grid gap-1">
+            {valuesToRemove.map((parameterValue) => (
+              <li key={parameterValue.parameterId}>{parameterValue.displayValue}</li>
+            ))}
+          </ul>
+          <label className="flex items-start gap-2 font-medium">
+            <input
+              className="mt-1 h-4 w-4 rounded border-slate-300"
+              disabled={disabled}
+              name="confirmParameterValueRemoval"
+              required
+              type="checkbox"
+              value="yes"
+            />
+            <span>{copy.confirmParameterValueRemoval}</span>
+          </label>
+        </div>
+      ) : null}
+    </fieldset>
+  );
+}
+
+function PartParameterField({
+  disabled,
+  effectiveParameter,
+  value
+}: {
+  disabled: boolean;
+  effectiveParameter: EffectiveCategoryParameter;
+  value: string;
+}) {
+  const parameter = effectiveParameter.parameter;
+  const inputName = `parameterValue:${parameter.id}`;
+  const descriptionId = `${parameter.id}-description`;
+  const commonClassName =
+    "min-h-11 rounded-md border border-slate-300 bg-white px-3 py-2 text-base text-slate-950 outline-none transition placeholder:text-slate-400 hover:border-slate-400 focus:border-slate-500 focus:ring-2 focus:ring-slate-200 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400";
+
+  return (
+    <label className="grid gap-2 text-sm font-medium text-slate-700">
+      {parameter.name}
+      {parameter.type === "BOOLEAN" ? (
+        <select
+          aria-describedby={parameter.description ? descriptionId : undefined}
+          className={commonClassName}
+          defaultValue={value}
+          disabled={disabled}
+          name={inputName}
+        >
+          <option value="">-</option>
+          <option value="Yes">Yes</option>
+          <option value="No">No</option>
+        </select>
+      ) : parameter.type === "CHOICE" ? (
+        <select
+          aria-describedby={parameter.description ? descriptionId : undefined}
+          className={commonClassName}
+          defaultValue={value}
+          disabled={disabled}
+          name={inputName}
+        >
+          <option value="">-</option>
+          {parameter.choiceOptions.map((choiceOption) => (
+            <option key={choiceOption.id} value={choiceOption.label}>
+              {choiceOption.label}
+            </option>
+          ))}
+        </select>
+      ) : (
+        <input
+          aria-describedby={parameter.description ? descriptionId : undefined}
+          className={commonClassName}
+          defaultValue={value}
+          disabled={disabled}
+          name={inputName}
+          type={parameter.type === "NUMBER" ? "number" : "text"}
+        />
+      )}
+      {parameter.description ? (
+        <span id={descriptionId} className="text-xs font-normal text-slate-500">
+          {parameter.description}
+        </span>
+      ) : null}
+    </label>
+  );
 }
 
 function CategoryTreeSelect({
