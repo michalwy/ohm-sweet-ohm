@@ -72,6 +72,15 @@ describe("category parameter inheritance", () => {
         }
       ]
     );
+
+    const powerParameter = effectiveParameters.find(
+      (parameter) => parameter.parameter.id === "power"
+    );
+    assert.equal(powerParameter?.inheritedParameter?.sourceCategoryId, "resistors");
+    assert.equal(
+      powerParameter?.inheritedParameter?.defaultValue?.displayValue,
+      "0.25 W"
+    );
   });
 
   test("inherits the nearest primary parameter when a category has no local primary", () => {

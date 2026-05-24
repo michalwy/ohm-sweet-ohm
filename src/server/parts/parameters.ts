@@ -21,6 +21,7 @@ export type EffectiveCategoryParameter = {
   sortOrder: number;
   defaultValue: EffectiveParameterDefaultValue | null;
   isPrimary: boolean;
+  inheritedParameter: EffectiveCategoryParameter | null;
 };
 
 export type EffectiveParameterDefaultValue = {
@@ -100,50 +101,6 @@ export async function getEffectivePartCategoryParameters({
       }
     }))
   });
-}
-
-export async function getPartParameterValuesOutsidePrimaryCategory({
-  workspaceId,
-  partId,
-  primaryCategoryId
-}: {
-  workspaceId: string;
-  partId: string;
-  primaryCategoryId: string | null;
-}) {
-  const existingValues = await prisma.partParameterValue.findMany({
-    where: {
-      workspaceId,
-      partId
-    },
-    select: {
-      id: true,
-      parameterId: true,
-      displayValue: true,
-      parameter: {
-        select: {
-          name: true
-        }
-      }
-    },
-    orderBy: [{ parameter: { name: "asc" } }, { id: "asc" }]
-  });
-
-  if (!primaryCategoryId) {
-    return existingValues;
-  }
-
-  const effectiveParameters = await getEffectivePartCategoryParameters({
-    workspaceId,
-    categoryId: primaryCategoryId
-  });
-  const effectiveParameterIds = new Set(
-    effectiveParameters.map((effectiveParameter) => effectiveParameter.parameter.id)
-  );
-
-  return existingValues.filter(
-    (existingValue) => !effectiveParameterIds.has(existingValue.parameterId)
-  );
 }
 
 export async function assertPrimaryParameterIsEffectiveForCategory({
@@ -258,61 +215,26 @@ export async function assertCanDeleteParameter({
 export async function assertCanDetachCategoryParameter({
   workspaceId,
   categoryId,
-  parameterId
+  parameterId: _parameterId
 }: {
   workspaceId: string;
   categoryId: string;
   parameterId: string;
 }) {
-  const descendantCategoryIds = await getDescendantCategoryIds({
-    workspaceId,
-    categoryId
+  void _parameterId;
+
+  const category = await prisma.partCategory.findFirst({
+    where: {
+      workspaceId,
+      id: categoryId
+    },
+    select: {
+      id: true
+    }
   });
-  const [primaryCategoryCount, descendantOverrideCount, partValueCount] =
-    await Promise.all([
-      prisma.partCategory.count({
-        where: {
-          workspaceId,
-          id: {
-            in: descendantCategoryIds
-          },
-          primaryParameterId: parameterId
-        }
-      }),
-      prisma.categoryParameter.count({
-        where: {
-          workspaceId,
-          parameterId,
-          categoryId: {
-            in: descendantCategoryIds.filter(
-              (descendantCategoryId) => descendantCategoryId !== categoryId
-            )
-          }
-        }
-      }),
-      prisma.partParameterValue.count({
-        where: {
-          workspaceId,
-          parameterId,
-          part: {
-            primaryCategoryId: {
-              in: descendantCategoryIds
-            }
-          }
-        }
-      })
-    ]);
 
-  if (primaryCategoryCount > 0) {
-    throw new Error("category_parameter_used_as_primary");
-  }
-
-  if (descendantOverrideCount > 0) {
-    throw new Error("category_parameter_has_descendant_overrides");
-  }
-
-  if (partValueCount > 0) {
-    throw new Error("category_parameter_has_part_values");
+  if (!category) {
+    throw new Error("category_not_found");
   }
 }
 
@@ -346,30 +268,6 @@ async function getCategoryChain({
   }
 
   return closures.map((closure) => closure.ancestor);
-}
-
-async function getDescendantCategoryIds({
-  workspaceId,
-  categoryId
-}: {
-  workspaceId: string;
-  categoryId: string;
-}) {
-  const closures = await prisma.partCategoryClosure.findMany({
-    where: {
-      workspaceId,
-      ancestorId: categoryId
-    },
-    select: {
-      descendantId: true
-    }
-  });
-
-  if (closures.length === 0) {
-    throw new Error("category_not_found");
-  }
-
-  return closures.map((closure) => closure.descendantId);
 }
 
 function getDefaultValue(categoryParameter: {

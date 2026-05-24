@@ -50,9 +50,9 @@ Default values are category-level form defaults. They prefill new or missing val
 
 ## Typed Values
 
-Part values are stored by `Parameter.id`, independent of the category attachment that made the parameter effective. Server-side validation must ensure a part only stores values for parameters effective in its current primary category.
+Part values are stored by `Parameter.id`, independent of the category attachment that made the parameter effective. Server-side validation must ensure submitted values are only accepted for parameters effective in the part's current primary category.
 
-Changing a part's primary category is a category change. If existing parameter values are not effective in the new primary category, the UI must show those values and require explicit confirmation before deleting them. The application should not keep hidden orphaned values.
+Changing a part's primary category does not delete existing `PartParameterValue` records. Values that are not effective in the new primary category are hidden from the part form and the parts-list **Value** column, but remain attached to the part. If that parameter later becomes effective for the part again, the previous value should be shown and used.
 
 Typed value storage keeps normalized values for comparison/search and display values for UI:
 
@@ -86,11 +86,7 @@ For `CHOICE` parameters:
 
 Deleting a dictionary parameter is allowed only when it is not attached to any category, used as any category primary parameter, used by any part value, or used by any default value.
 
-Detaching a parameter from a category is blocked when:
-
-- any category in the affected subtree points to it as primary,
-- any part in the affected subtree has a value for it,
-- any descendant category has an override for it.
+Detaching a local parameter attachment from a category is always allowed. Detaching the attachment does not delete existing part values for that parameter. If the local attachment overrides an inherited attachment for the same parameter, detaching the local attachment reveals the inherited effective parameter again. Descendant category overrides are independent local attachments and are not removed by detaching an ancestor attachment.
 
 The application must validate that parameters, categories, parts, choice options, category attachments, defaults, and values all belong to the same workspace. Database foreign keys do not fully express this cross-table workspace invariant, so server-side domain code must enforce it.
 
@@ -126,7 +122,7 @@ Part create/edit form:
 - Sort fields by effective `sortOrder`, then parameter name.
 - Prefill missing values from effective defaults.
 - Store saved values as normal `PartParameterValue` records.
-- When changing primary category, reload the effective parameter list immediately and show values that would be removed. Require confirmation before saving the category change and deleting those values.
+- When changing primary category, reload the effective parameter list immediately. Values outside the new effective set are hidden but preserved.
 
 Parts list:
 
@@ -151,7 +147,8 @@ Implemented so far:
 - Category parameter attachment drafts are only persisted by the dialog-level save action.
 - Category parameter defaults use type-aware controls for `CHOICE` and `BOOLEAN`; other types still use text input parsed server-side.
 - Part create/edit and list integration for effective category parameters and primary parameter display.
-- Part edit requires explicit confirmation before deleting saved values that are no longer effective after a primary-category change.
+- Part values are preserved when category parameter attachments are detached or when a part's primary category changes.
+- Detaching a local category parameter override falls back to the inherited parameter when one exists.
 - Unit coverage for inheritance and parsing, plus e2e coverage for parameter dictionary and category parameter configuration flows.
 
 Recommended next steps:
@@ -161,5 +158,4 @@ Recommended next steps:
 - Add e2e coverage for editing an existing attached `CHOICE`/`BOOLEAN` default value, not only attaching a new one.
 - Consider a clearer loading state for the category parameter tab; the editor is intentionally withheld until effective parameters load to avoid draft overwrite races.
 - Consider extracting shared typed default-value controls once part forms and category default controls converge.
-- Consider improving the part value-removal confirmation copy once parameter names are shown alongside saved display values.
 - Decide the first filtering/search workflow before adding indexes or UI for normalized parameter value search.

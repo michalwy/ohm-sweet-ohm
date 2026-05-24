@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { Pool } from "pg";
 
 test.describe("parts list", () => {
   test("redirects anonymous users to sign in", async ({ page }) => {
@@ -353,6 +354,7 @@ test.describe("parts list", () => {
     const resistanceName = `Resistance ${suffix}`;
     const mountingName = `Mounting type ${suffix}`;
     const polarizedName = `Polarized ${suffix}`;
+    const overrideName = `Override marker ${suffix}`;
 
     await page.goto("/");
     await page.getByLabel("Email").fill("owner@ohmsweetohm.local");
@@ -441,8 +443,29 @@ test.describe("parts list", () => {
     await expect(page.getByRole("row", { name: new RegExp(polarizedName) }))
       .toBeVisible();
 
+    await page.getByRole("button", { name: "Add parameter" }).click();
+    await expect(addParameterDialog).toBeVisible();
+    await addParameterDialog.getByLabel("Name").fill(overrideName);
+    await addParameterDialog.getByLabel("Type").selectOption("TEXT");
+    await addParameterDialog
+      .getByRole("button", { name: "Create parameter" })
+      .click();
+    await expect(page.getByRole("status")).toHaveText(
+      `Parameter created: ${overrideName}.`
+    );
+    await expect(page.getByRole("row", { name: new RegExp(overrideName) }))
+      .toBeVisible();
+
+    await attachTextParameterToCategory({
+      categoryName: "Passives",
+      parameterName: overrideName,
+      defaultValue: "Inherited marker",
+      sortOrder: 90
+    });
+
     await page.getByRole("link", { name: "Part categories" }).click();
     await expect(page).toHaveURL(/\/w\/default\/part-categories$/);
+
     const resistorCategoryNode = page
       .getByTestId("part-category-node")
       .filter({
@@ -516,6 +539,26 @@ test.describe("parts list", () => {
         .getByTestId("category-parameter-draft-row")
         .filter({ hasText: resistanceName })
     ).toBeVisible();
+    const overrideDraftRow = editCategoryDialog
+      .getByTestId("category-parameter-draft-row")
+      .filter({ hasText: overrideName });
+    await expect(overrideDraftRow.filter({ hasText: "Inherited" }))
+      .toBeVisible();
+    await expect(
+      overrideDraftRow.getByLabel("Default value")
+    ).toHaveValue("Inherited marker");
+    await overrideDraftRow.getByLabel("Sort order").fill("5");
+    await overrideDraftRow.getByLabel("Default value").fill("Local marker");
+    await expect(overrideDraftRow.filter({ hasText: "Local" })).toBeVisible();
+    await expect(
+      overrideDraftRow.getByLabel("Default value")
+    ).toHaveValue("Local marker");
+    await overrideDraftRow.getByRole("button", { name: "Detach" }).click();
+    await expect(overrideDraftRow.filter({ hasText: "Inherited" }))
+      .toBeVisible();
+    await expect(
+      overrideDraftRow.getByLabel("Default value")
+    ).toHaveValue("Inherited marker");
     await editCategoryDialog.getByLabel("Primary parameter").selectOption({
       label: resistanceName
     });
@@ -566,12 +609,6 @@ test.describe("parts list", () => {
         name: /Primary category.*Semiconductors \/ Diodes/
       })
     ).toBeVisible();
-    await expect(page.getByText("Values to remove")).toBeVisible();
-    await editPartDialog
-      .getByLabel(
-        "Confirm removing parameter values that no longer apply to the selected primary category."
-      )
-      .check();
     await editPartDialog.getByRole("button", { name: "Save changes" }).click();
     await expect(page.getByRole("status")).toHaveText(
       `Part updated: Yageo RC0603-${suffix}.`
@@ -581,6 +618,24 @@ test.describe("parts list", () => {
     });
     await expect(updatedResistorRow).toContainText("Semiconductors / Diodes");
     await expect(updatedResistorRow).not.toContainText("4.7 kΩ");
+
+    await updatedResistorRow.getByRole("button", { name: "Edit" }).click();
+    await expect(editPartDialog).toBeVisible();
+    await editPartDialog.getByLabel("Primary category").click();
+    await page.getByPlaceholder("Search categories").fill("configured");
+    await expect(
+      editPartDialog.getByRole("button", {
+        name: /Primary category.*Passives \/ Resistors configured/
+      })
+    ).toBeVisible();
+    await expect(editPartDialog.getByLabel(resistanceName)).toHaveValue(
+      "4.7 kΩ"
+    );
+    await editPartDialog.getByRole("button", { name: "Save changes" }).click();
+    await expect(page.getByRole("status")).toHaveText(
+      `Part updated: Yageo RC0603-${suffix}.`
+    );
+    await expect(updatedResistorRow).toContainText("4.7 kΩ");
   });
 
   test("returns signed-in users to their last workspace", async ({ page }) => {
@@ -610,3 +665,92 @@ test.describe("parts list", () => {
     ).toBeVisible();
   });
 });
+
+async function attachTextParameterToCategory({
+  categoryName,
+  parameterName,
+  defaultValue,
+  sortOrder
+}: {
+  categoryName: string;
+  parameterName: string;
+  defaultValue: string;
+  sortOrder: number;
+}) {
+  const connectionString =
+    process.env.DATABASE_URL ??
+    "postgresql://oso:oso_e2e_password@localhost:5433/ohm_sweet_ohm_e2e?schema=public";
+  const pool = new Pool({ connectionString });
+
+  try {
+    const result = await pool.query<{
+      workspace_id: string;
+      category_id: string;
+      parameter_id: string;
+    }>(
+      `
+        SELECT
+          workspace.id AS workspace_id,
+          category.id AS category_id,
+          parameter.id AS parameter_id
+        FROM "Workspace" workspace
+        JOIN "PartCategory" category
+          ON category."workspaceId" = workspace.id
+          AND category.name = $1
+        JOIN "Parameter" parameter
+          ON parameter."workspaceId" = workspace.id
+          AND parameter.name = $2
+        WHERE workspace.slug = 'default'
+        LIMIT 1
+      `,
+      [categoryName, parameterName]
+    );
+    const ids = result.rows[0];
+
+    if (!ids) {
+      throw new Error("e2e_category_parameter_setup_failed");
+    }
+
+    await pool.query(
+      `
+        INSERT INTO "CategoryParameter" (
+          id,
+          "workspaceId",
+          "categoryId",
+          "parameterId",
+          "sortOrder",
+          "defaultTextValue",
+          "defaultDisplayValue",
+          "createdAt",
+          "updatedAt"
+        )
+        VALUES (
+          'cp_e2e_override_marker',
+          $1,
+          $2,
+          $3,
+          $4,
+          $5,
+          $5,
+          now(),
+          now()
+        )
+        ON CONFLICT ("categoryId", "parameterId")
+        DO UPDATE SET
+          "sortOrder" = EXCLUDED."sortOrder",
+          "defaultTextValue" = EXCLUDED."defaultTextValue",
+          "defaultDisplayValue" = EXCLUDED."defaultDisplayValue",
+          "updatedAt" = now()
+      `,
+      [
+        ids.workspace_id,
+        ids.category_id,
+        ids.parameter_id,
+        sortOrder,
+        defaultValue
+      ]
+    );
+  } finally {
+    await pool.end();
+  }
+}

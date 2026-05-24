@@ -63,8 +63,6 @@ type Copy = {
   duplicateCategories: string;
   duplicatePart: string;
   invalidParameterValue: string;
-  confirmParameterValueRemoval: string;
-  parameterValuesToRemove: string;
   emptyTitle: string;
   emptyBody: string;
   databaseUnavailable: string;
@@ -693,10 +691,6 @@ function getPartFormErrorMessage(copy: Copy, error: string) {
     return copy.invalidParameterValue;
   }
 
-  if (error === "confirm-parameter-value-removal") {
-    return copy.confirmParameterValueRemoval;
-  }
-
   return copy.databaseUnavailable;
 }
 
@@ -946,20 +940,14 @@ function PartParameterFields({
   const effectiveParameters = selectedPrimaryCategoryId
     ? categoryParametersByCategoryId[selectedPrimaryCategoryId] ?? []
     : [];
-  const effectiveParameterIds = new Set(
-    effectiveParameters.map((effectiveParameter) => effectiveParameter.parameter.id)
-  );
   const existingValuesByParameterId = new Map(
     (part?.parameterValues ?? []).map((parameterValue) => [
       parameterValue.parameterId,
       parameterValue.displayValue
     ])
   );
-  const valuesToRemove = (part?.parameterValues ?? []).filter(
-    (parameterValue) => !effectiveParameterIds.has(parameterValue.parameterId)
-  );
 
-  if (effectiveParameters.length === 0 && valuesToRemove.length === 0) {
+  if (effectiveParameters.length === 0) {
     return null;
   }
 
@@ -980,27 +968,6 @@ function PartParameterFields({
           }
         />
       ))}
-      {valuesToRemove.length > 0 ? (
-        <div className="grid gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-950">
-          <p className="font-medium">{copy.parameterValuesToRemove}</p>
-          <ul className="grid gap-1">
-            {valuesToRemove.map((parameterValue) => (
-              <li key={parameterValue.parameterId}>{parameterValue.displayValue}</li>
-            ))}
-          </ul>
-          <label className="flex items-start gap-2 font-medium">
-            <input
-              className="mt-1 h-4 w-4 rounded border-slate-300"
-              disabled={disabled}
-              name="confirmParameterValueRemoval"
-              required
-              type="checkbox"
-              value="yes"
-            />
-            <span>{copy.confirmParameterValueRemoval}</span>
-          </label>
-        </div>
-      ) : null}
     </fieldset>
   );
 }

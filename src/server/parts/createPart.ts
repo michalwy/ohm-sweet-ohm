@@ -14,7 +14,6 @@ import { getPartCategories } from "@/server/parts/categories";
 import type { PartsListItem } from "@/server/parts/getParts";
 import {
   getEffectivePartCategoryParameters,
-  getPartParameterValuesOutsidePrimaryCategory,
   type EffectiveCategoryParameter
 } from "@/server/parts/parameters";
 import { parseParameterValue } from "@/server/parts/parameterValues";
@@ -110,9 +109,6 @@ export async function createPart(
                 tx,
                 workspaceId: context.workspace.id,
                 partId: nextPart.id,
-                effectiveParameterIds: effectiveParameters.map(
-                  (effectiveParameter) => effectiveParameter.parameter.id
-                ),
                 parameterValueWrites
               });
 
@@ -157,8 +153,6 @@ export async function updatePart(
     "secondaryCategoryId"
   );
   const submittedParameterValues = getSubmittedParameterValues(formData);
-  const confirmedParameterValueRemoval =
-    getRequiredFormValue(formData, "confirmParameterValueRemoval") === "yes";
   const partsPath = getPartsPath(workspaceSlug);
   let part: PartsListItem | null = null;
 
@@ -187,27 +181,12 @@ export async function updatePart(
       });
 
       if (!formError) {
-        const outsideValues = await getPartParameterValuesOutsidePrimaryCategory({
-          workspaceId: context.workspace.id,
-          partId: id,
-          primaryCategoryId
-        });
-
-        if (outsideValues.length > 0 && !confirmedParameterValueRemoval) {
-          formError = "confirm-parameter-value-removal";
-        }
-      }
-
-      if (!formError) {
         const effectiveParameters = primaryCategoryId
           ? await getEffectivePartCategoryParameters({
               workspaceId: context.workspace.id,
               categoryId: primaryCategoryId
             })
           : [];
-        const effectiveParameterIds = effectiveParameters.map(
-          (effectiveParameter) => effectiveParameter.parameter.id
-        );
         const parameterValueWrites = tryGetPartParameterValueWrites({
           effectiveParameters,
           submittedValues: submittedParameterValues
@@ -242,7 +221,6 @@ export async function updatePart(
                   tx,
                   workspaceId: context.workspace.id,
                   partId: id,
-                  effectiveParameterIds,
                   parameterValueWrites
                 });
               }
@@ -488,28 +466,16 @@ async function syncPartParameterValues({
   tx,
   workspaceId,
   partId,
-  effectiveParameterIds,
   parameterValueWrites
 }: {
   tx: Prisma.TransactionClient;
   workspaceId: string;
   partId: string;
-  effectiveParameterIds: string[];
   parameterValueWrites: Array<{
     parameterId: string;
     data: ReturnType<typeof getPartParameterValueData> | null;
   }>;
 }) {
-  await tx.partParameterValue.deleteMany({
-    where: {
-      workspaceId,
-      partId,
-      parameterId: {
-        notIn: effectiveParameterIds
-      }
-    }
-  });
-
   for (const parameterValueWrite of parameterValueWrites) {
     if (!parameterValueWrite.data) {
       await tx.partParameterValue.deleteMany({

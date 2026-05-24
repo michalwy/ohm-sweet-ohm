@@ -550,6 +550,8 @@ function CategoryDialogContent({
     CategoryParameterDraft[]
   >([]);
   const [editPrimaryParameterId, setEditPrimaryParameterId] = useState("");
+  const editParameterDraftsRef = useRef<CategoryParameterDraft[]>([]);
+  const editPrimaryParameterIdRef = useRef("");
   const [editParametersError, setEditParametersError] = useState<string | null>(
     null
   );
@@ -558,19 +560,19 @@ function CategoryDialogContent({
   );
   const loadEffectiveParametersMutation = useMutation({
     mutationFn: getEffectiveCategoryParametersForWorkspace,
-    onSuccess: (result) => {
+    onSuccess: (result, variables) => {
       if (!result.ok) {
         setEditParametersError(result.error);
         setEditParametersLoaded(false);
         return;
       }
 
-      setEditParameterDrafts(
+      setEditDrafts(
         result.data.map((parameter) =>
-          toCategoryParameterDraft(parameter, category?.id ?? "")
+          toCategoryParameterDraft(parameter, variables.categoryId)
         )
       );
-      setEditPrimaryParameterId(
+      setEditPrimaryParameter(
         result.data.find((parameter) => parameter.isPrimary)?.parameter.id ?? ""
       );
       setEditParametersError(null);
@@ -613,7 +615,7 @@ function CategoryDialogContent({
       return;
     }
 
-    setEditParameterDrafts(update);
+    setEditDrafts(update);
   }
 
   function setActivePrimaryParameterId(parameterId: string) {
@@ -622,7 +624,7 @@ function CategoryDialogContent({
       return;
     }
 
-    setEditPrimaryParameterId(parameterId);
+    setEditPrimaryParameter(parameterId);
   }
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -631,7 +633,26 @@ function CategoryDialogContent({
       return;
     }
 
-    onUpdateSubmit(event, editParameterDrafts, editPrimaryParameterId);
+    onUpdateSubmit(
+      event,
+      editParameterDraftsRef.current,
+      editPrimaryParameterIdRef.current
+    );
+  }
+
+  function setEditDrafts(update: CategoryParameterDraftUpdate) {
+    const nextDrafts =
+      typeof update === "function"
+        ? update(editParameterDraftsRef.current)
+        : update;
+
+    editParameterDraftsRef.current = nextDrafts;
+    setEditParameterDrafts(nextDrafts);
+  }
+
+  function setEditPrimaryParameter(parameterId: string) {
+    editPrimaryParameterIdRef.current = parameterId;
+    setEditPrimaryParameterId(parameterId);
   }
 
   return (
@@ -728,6 +749,7 @@ type CategoryParameterDraft = {
   isLocal: boolean;
   sortOrder: number;
   defaultValue: string;
+  inheritedDraft: CategoryParameterDraft | null;
 };
 
 type CategoryParameterDraftUpdate = SetStateAction<CategoryParameterDraft[]>;
@@ -763,11 +785,23 @@ function CategoryParametersDraftEditor({
     patch: Partial<Pick<CategoryParameterDraft, "sortOrder" | "defaultValue">>
   ) {
     onDraftsChange((currentDrafts) =>
-      currentDrafts.map((draft) =>
-        draft.parameter.id === parameterId
-          ? { ...draft, ...patch, isLocal: true }
-          : draft
-      )
+      currentDrafts.map((draft) => {
+        if (draft.parameter.id !== parameterId) {
+          return draft;
+        }
+
+        const inheritedDraft =
+          draft.inheritedDraft ??
+          (!draft.isLocal && draft.sourceCategoryId !== categoryId
+            ? {
+                ...draft,
+                isLocal: false,
+                inheritedDraft: null
+              }
+            : null);
+
+        return { ...draft, ...patch, isLocal: true, inheritedDraft };
+      })
     );
   }
 
@@ -789,7 +823,8 @@ function CategoryParametersDraftEditor({
         sourceCategoryId: "",
         isLocal: true,
         sortOrder: Number(getFormValue(formData, "sortOrder") || "0"),
-        defaultValue: getFormValue(formData, "defaultValue")
+        defaultValue: getFormValue(formData, "defaultValue"),
+        inheritedDraft: null
       }
     ]);
     event.currentTarget.reset();
@@ -797,10 +832,20 @@ function CategoryParametersDraftEditor({
 
   function removeDraft(parameterId: string) {
     onDraftsChange((currentDrafts) =>
-      currentDrafts.filter((draft) => draft.parameter.id !== parameterId)
+      currentDrafts.flatMap((draft) => {
+        if (draft.parameter.id !== parameterId) {
+          return [draft];
+        }
+
+        return draft.inheritedDraft ? [draft.inheritedDraft] : [];
+      })
     );
 
-    if (primaryParameterId === parameterId) {
+    const removedDraft = drafts.find(
+      (draft) => draft.parameter.id === parameterId
+    );
+
+    if (primaryParameterId === parameterId && !removedDraft?.inheritedDraft) {
       onPrimaryParameterIdChange("");
     }
   }
@@ -1084,7 +1129,10 @@ function toCategoryParameterDraft(
     sourceCategoryId: effectiveParameter.sourceCategoryId,
     isLocal: effectiveParameter.sourceCategoryId === categoryId,
     sortOrder: effectiveParameter.sortOrder,
-    defaultValue: effectiveParameter.defaultValue?.displayValue ?? ""
+    defaultValue: effectiveParameter.defaultValue?.displayValue ?? "",
+    inheritedDraft: effectiveParameter.inheritedParameter
+      ? toCategoryParameterDraft(effectiveParameter.inheritedParameter, categoryId)
+      : null
   };
 }
 

@@ -47,12 +47,16 @@ export function resolveEffectiveCategoryParameters({
     const localParameters = parametersByCategoryId.get(category.id) ?? [];
 
     for (const categoryParameter of localParameters) {
+      const inheritedParameter =
+        effectiveByParameterId.get(categoryParameter.parameterId) ?? null;
+
       effectiveByParameterId.set(categoryParameter.parameterId, {
         parameter: categoryParameter.parameter,
         sourceCategoryId: category.id,
         sortOrder: categoryParameter.sortOrder,
         defaultValue: categoryParameter.defaultValue,
-        isPrimary: false
+        isPrimary: false,
+        inheritedParameter
       });
     }
   }

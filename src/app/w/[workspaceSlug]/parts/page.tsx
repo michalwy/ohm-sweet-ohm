@@ -62,9 +62,6 @@ const copy = {
   duplicatePart:
     "A part with this manufacturer and catalog number already exists.",
   invalidParameterValue: "Enter valid parameter values for the selected category.",
-  confirmParameterValueRemoval:
-    "Confirm removing parameter values that no longer apply to the selected primary category.",
-  parameterValuesToRemove: "Values to remove",
   emptyTitle: "No parts yet",
   emptyBody: "Parts will appear here once they exist.",
   databaseUnavailable:
