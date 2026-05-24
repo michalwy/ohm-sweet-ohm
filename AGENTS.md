@@ -26,6 +26,7 @@ This project is intentionally vibe-coded. Future agents must preserve product in
 - Keep the project runnable locally and deployable to cloud infrastructure.
 - Favor boring, well-supported tools over novelty.
 - Preserve existing user changes. Do not rewrite unrelated files.
+- Keep `TODO.md` as the shared backlog for explicitly requested but unfinished work. When the user names new TODO items, append them there. Before starting related work, check whether the task is already listed; if an agent completes an item, remove it or update it to reflect the remaining work.
 - Do not create git commits unless the user explicitly asks for a commit.
 - This is currently a solo project. When the user asks for a commit, commit directly to `main` by default after appropriate local verification.
 - When pushing to `main`, try `git push origin main` first. If the push is rejected because the remote has new work, then fetch the remote, rebase local commits onto `origin/main`, rerun appropriate verification if the rebase changes the tested code, and push again.
