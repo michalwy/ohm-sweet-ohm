@@ -302,7 +302,7 @@ export function AttributesClient({
       <dialog
         ref={attributeDialogRef}
         aria-labelledby="attribute-dialog-title"
-        className="fixed inset-0 m-auto h-[min(42rem,calc(100vh-2rem))] w-[min(48rem,calc(100vw-3rem))] rounded-lg border border-slate-200 bg-white p-0 text-slate-950 shadow-2xl backdrop:bg-slate-950/40"
+        className="fixed inset-0 m-auto max-h-[calc(100vh-2rem)] w-[min(48rem,calc(100vw-3rem))] overflow-hidden rounded-lg border border-slate-200 bg-white p-0 text-slate-950 shadow-2xl backdrop:bg-slate-950/40"
         onClose={() => {
           setAttributeDialogMode(null);
           setEditingAttribute(null);
@@ -408,7 +408,7 @@ function AttributeDialogContent({
   }
 
   return (
-    <div className="flex h-full min-h-0 flex-col">
+    <div className="flex max-h-[calc(100vh-2rem)] min-h-0 flex-col">
       <div className="flex items-start justify-between gap-4 border-b border-slate-200 px-5 py-4">
         <h2
           id="attribute-dialog-title"
@@ -427,7 +427,7 @@ function AttributeDialogContent({
         </form>
       </div>
       <form
-        className="flex min-h-0 flex-1 flex-col"
+        className="flex min-h-0 flex-1 flex-col overflow-hidden"
         id={formId}
         onSubmit={(event) => {
           event.preventDefault();
@@ -507,8 +507,8 @@ function AttributeDialogContent({
         <div
           className={
             mode === "edit"
-              ? "flex items-center justify-between border-t border-slate-200 px-5 py-4"
-              : "flex justify-end border-t border-slate-200 px-5 py-4"
+              ? "flex shrink-0 items-center justify-between border-t border-slate-200 px-5 py-4"
+              : "flex shrink-0 justify-end border-t border-slate-200 px-5 py-4"
           }
         >
           {mode === "edit" && onDelete ? (

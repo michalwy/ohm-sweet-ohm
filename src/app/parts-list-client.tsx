@@ -5,7 +5,7 @@ import type {
   FormEvent,
   KeyboardEvent as ReactKeyboardEvent
 } from "react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import {
   createColumnHelper,
@@ -106,6 +106,8 @@ export function PartsListClient({
 }: PartsListClientProps) {
   const createDialogRef = useRef<HTMLDialogElement>(null);
   const editDialogRef = useRef<HTMLDialogElement>(null);
+  const createDetailsContentRef = useRef<HTMLDivElement>(null);
+  const editDetailsContentRef = useRef<HTMLDivElement>(null);
   const nextToastIdRef = useRef(0);
   const categoryTree = buildCategoryTree(partCategories);
   const [currentParts, setCurrentParts] = useState(() => sortParts(parts));
@@ -117,6 +119,8 @@ export function PartsListClient({
   const [createSecondaryCategoryId, setCreateSecondaryCategoryId] =
     useState("");
   const [createActiveTab, setCreateActiveTab] = useState<PartDialogTab>("details");
+  const [createDetailsContentHeight, setCreateDetailsContentHeight] =
+    useState<number | null>(null);
   const [createAttributeValues, setCreateAttributeValues] = useState<
     Record<string, string>
   >({});
@@ -125,6 +129,8 @@ export function PartsListClient({
   const [editPrimaryCategoryId, setEditPrimaryCategoryId] = useState("");
   const [editSecondaryCategoryId, setEditSecondaryCategoryId] = useState("");
   const [editActiveTab, setEditActiveTab] = useState<PartDialogTab>("details");
+  const [editDetailsContentHeight, setEditDetailsContentHeight] =
+    useState<number | null>(null);
   const [editAttributeValues, setEditAttributeValues] = useState<
     Record<string, string>
   >({});
@@ -278,6 +284,28 @@ export function PartsListClient({
       setEditActiveTab("details");
     }
   }, [editActiveTab, editHasAttributesTab]);
+
+  useLayoutEffect(() => {
+    if (createActiveTab !== "details") {
+      return undefined;
+    }
+
+    return observeElementContentHeight(
+      createDetailsContentRef.current,
+      setCreateDetailsContentHeight
+    );
+  }, [createActiveTab]);
+
+  useLayoutEffect(() => {
+    if (editActiveTab !== "details") {
+      return undefined;
+    }
+
+    return observeElementContentHeight(
+      editDetailsContentRef.current,
+      setEditDetailsContentHeight
+    );
+  }, [editActiveTab, editingPart]);
 
   useEffect(() => {
     if (partDialogOpen) {
@@ -513,78 +541,78 @@ export function PartsListClient({
                 onTabChange={setCreateActiveTab}
               />
             </div>
-            <div className="relative min-h-0 flex-1 overflow-hidden px-5 py-4">
-              <div
-                className={
-                  createActiveTab === "details"
-                    ? "grid min-h-0 gap-3 overflow-auto pr-1"
-                    : "invisible grid min-h-0 gap-3 overflow-auto pr-1"
-                }
-                aria-hidden={createActiveTab !== "details"}
-                inert={createActiveTab !== "details" ? true : undefined}
-              >
-                <PartDetailsFields
-                  catalogNumber={createCatalogNumber}
-                  catalogNumberInputId="create-catalog-number"
-                  categoryTree={categoryTree}
-                  copy={copy}
-                  disabled={!isDatabaseAvailable}
-                  formResetKey={createFormResetKey}
-                  manufacturerInputId="create-manufacturer-name"
-                  manufacturerSuggestions={currentManufacturerSuggestions}
-                  partCategories={partCategories}
-                  primaryCategoryId={createPrimaryCategoryId}
-                  secondaryCategoryId={createSecondaryCategoryId}
-                  onCatalogNumberChange={setCreateCatalogNumber}
-                  onPrimaryCategoryChange={(categoryId) => {
-                    setCreatePrimaryCategoryId(categoryId);
-                    setCreateSecondaryCategoryId("");
-                  }}
-                  onSecondaryCategoryChange={setCreateSecondaryCategoryId}
-                />
-                <PartAttributeSections
-                  categoryAttributesByCategoryId={categoryAttributesByCategoryId}
-                  partCategories={partCategories}
-                  copy={copy}
-                  disabled={!isDatabaseAvailable}
-                  part={null}
-                  selectedPrimaryCategoryId={createPrimaryCategoryId}
-                  selectedSecondaryCategoryId={createSecondaryCategoryId}
-                  tab="details"
-                  values={createAttributeValues}
-                  onValueChange={(attributeId, value) =>
-                    setCreateAttributeValues((currentValues) => ({
-                      ...currentValues,
-                      [attributeId]: value
-                    }))
-                  }
-                />
-              </div>
-              <div
-                className={
-                  createActiveTab === "attributes"
-                    ? "absolute inset-0 grid gap-3 overflow-auto px-5 py-4 pr-6"
-                    : "hidden"
-                }
-              >
-                <PartAttributeSections
-                  categoryAttributesByCategoryId={categoryAttributesByCategoryId}
-                  partCategories={partCategories}
-                  copy={copy}
-                  disabled={!isDatabaseAvailable}
-                  part={null}
-                  selectedPrimaryCategoryId={createPrimaryCategoryId}
-                  selectedSecondaryCategoryId={createSecondaryCategoryId}
-                  tab="attributes"
-                  values={createAttributeValues}
-                  onValueChange={(attributeId, value) =>
-                    setCreateAttributeValues((currentValues) => ({
-                      ...currentValues,
-                      [attributeId]: value
-                    }))
-                  }
-                />
-              </div>
+            <div
+              className="min-h-0 flex-[0_1_auto] overflow-auto px-5 py-4"
+              style={getDialogBodyHeightStyle(createDetailsContentHeight)}
+            >
+              {createActiveTab === "details" ? (
+                <div
+                  ref={createDetailsContentRef}
+                  className="grid gap-3 pr-1"
+                >
+                  <PartDetailsFields
+                    catalogNumber={createCatalogNumber}
+                    catalogNumberInputId="create-catalog-number"
+                    categoryTree={categoryTree}
+                    copy={copy}
+                    disabled={!isDatabaseAvailable}
+                    formResetKey={createFormResetKey}
+                    manufacturerInputId="create-manufacturer-name"
+                    manufacturerSuggestions={currentManufacturerSuggestions}
+                    partCategories={partCategories}
+                    primaryCategoryId={createPrimaryCategoryId}
+                    secondaryCategoryId={createSecondaryCategoryId}
+                    onCatalogNumberChange={setCreateCatalogNumber}
+                    onPrimaryCategoryChange={(categoryId) => {
+                      setCreatePrimaryCategoryId(categoryId);
+                      setCreateSecondaryCategoryId("");
+                    }}
+                    onSecondaryCategoryChange={setCreateSecondaryCategoryId}
+                  />
+                  <PartAttributeSections
+                    categoryAttributesByCategoryId={
+                      categoryAttributesByCategoryId
+                    }
+                    partCategories={partCategories}
+                    copy={copy}
+                    disabled={!isDatabaseAvailable}
+                    part={null}
+                    selectedPrimaryCategoryId={createPrimaryCategoryId}
+                    selectedSecondaryCategoryId={createSecondaryCategoryId}
+                    tab="details"
+                    values={createAttributeValues}
+                    onValueChange={(attributeId, value) =>
+                      setCreateAttributeValues((currentValues) => ({
+                        ...currentValues,
+                        [attributeId]: value
+                      }))
+                    }
+                  />
+                </div>
+              ) : null}
+              {createActiveTab === "attributes" ? (
+                <div className="grid gap-3 pr-1">
+                  <PartAttributeSections
+                    categoryAttributesByCategoryId={
+                      categoryAttributesByCategoryId
+                    }
+                    partCategories={partCategories}
+                    copy={copy}
+                    disabled={!isDatabaseAvailable}
+                    part={null}
+                    selectedPrimaryCategoryId={createPrimaryCategoryId}
+                    selectedSecondaryCategoryId={createSecondaryCategoryId}
+                    tab="attributes"
+                    values={createAttributeValues}
+                    onValueChange={(attributeId, value) =>
+                      setCreateAttributeValues((currentValues) => ({
+                        ...currentValues,
+                        [attributeId]: value
+                      }))
+                    }
+                  />
+                </div>
+              ) : null}
             </div>
             <div className="flex shrink-0 justify-end border-t border-slate-200 px-5 py-4">
               <button
@@ -659,82 +687,85 @@ export function PartsListClient({
                   onTabChange={setEditActiveTab}
                 />
               </div>
-              <div className="relative min-h-0 flex-1 overflow-hidden px-5 py-4">
-                <div
-                  className={
-                    editActiveTab === "details"
-                      ? "grid min-h-0 gap-3 overflow-auto pr-1"
-                      : "invisible grid min-h-0 gap-3 overflow-auto pr-1"
-                  }
-                  aria-hidden={editActiveTab !== "details"}
-                  inert={editActiveTab !== "details" ? true : undefined}
-                >
-                  <PartDetailsFields
-                    catalogNumber={editCatalogNumber}
-                    catalogNumberInputId="edit-catalog-number"
-                    categoryTree={categoryTree}
-                    copy={copy}
-                    defaultManufacturerName={editingPart.manufacturerName}
-                    disabled={!isDatabaseAvailable}
-                    formResetKey={`${editingPart.id}-${editingPart.manufacturerName}`}
-                    manufacturerInputId="edit-manufacturer-name"
-                    manufacturerSuggestions={currentManufacturerSuggestions}
-                    partCategories={partCategories}
-                    primaryCategoryId={editPrimaryCategoryId}
-                    secondaryCategoryId={editSecondaryCategoryId}
-                    onCatalogNumberChange={setEditCatalogNumber}
-                    onPrimaryCategoryChange={(categoryId) => {
-                      setEditPrimaryCategoryId(categoryId);
+              <div
+                className="min-h-0 flex-[0_1_auto] overflow-auto px-5 py-4"
+                style={getDialogBodyHeightStyle(editDetailsContentHeight)}
+              >
+                {editActiveTab === "details" ? (
+                  <div
+                    ref={editDetailsContentRef}
+                    className="grid gap-3 pr-1"
+                  >
+                    <PartDetailsFields
+                      catalogNumber={editCatalogNumber}
+                      catalogNumberInputId="edit-catalog-number"
+                      categoryTree={categoryTree}
+                      copy={copy}
+                      defaultManufacturerName={editingPart.manufacturerName}
+                      disabled={!isDatabaseAvailable}
+                      formResetKey={`${editingPart.id}-${editingPart.manufacturerName}`}
+                      manufacturerInputId="edit-manufacturer-name"
+                      manufacturerSuggestions={currentManufacturerSuggestions}
+                      partCategories={partCategories}
+                      primaryCategoryId={editPrimaryCategoryId}
+                      secondaryCategoryId={editSecondaryCategoryId}
+                      onCatalogNumberChange={setEditCatalogNumber}
+                      onPrimaryCategoryChange={(categoryId) => {
+                        setEditPrimaryCategoryId(categoryId);
 
-                      if (!categoryId || editSecondaryCategoryId === categoryId) {
-                        setEditSecondaryCategoryId("");
+                        if (
+                          !categoryId ||
+                          editSecondaryCategoryId === categoryId
+                        ) {
+                          setEditSecondaryCategoryId("");
+                        }
+                      }}
+                      onSecondaryCategoryChange={setEditSecondaryCategoryId}
+                    />
+                    <PartAttributeSections
+                      categoryAttributesByCategoryId={
+                        categoryAttributesByCategoryId
                       }
-                    }}
-                    onSecondaryCategoryChange={setEditSecondaryCategoryId}
-                  />
-                  <PartAttributeSections
-                    categoryAttributesByCategoryId={categoryAttributesByCategoryId}
-                    partCategories={partCategories}
-                    copy={copy}
-                    disabled={!isDatabaseAvailable}
-                    part={editingPart}
-                    selectedPrimaryCategoryId={editPrimaryCategoryId}
-                    selectedSecondaryCategoryId={editSecondaryCategoryId}
-                    tab="details"
-                    values={editAttributeValues}
-                    onValueChange={(attributeId, value) =>
-                      setEditAttributeValues((currentValues) => ({
-                        ...currentValues,
-                        [attributeId]: value
-                      }))
-                    }
-                  />
-                </div>
-                <div
-                  className={
-                    editActiveTab === "attributes"
-                      ? "absolute inset-0 grid gap-3 overflow-auto px-5 py-4 pr-6"
-                      : "hidden"
-                  }
-                >
-                  <PartAttributeSections
-                    categoryAttributesByCategoryId={categoryAttributesByCategoryId}
-                    partCategories={partCategories}
-                    copy={copy}
-                    disabled={!isDatabaseAvailable}
-                    part={editingPart}
-                    selectedPrimaryCategoryId={editPrimaryCategoryId}
-                    selectedSecondaryCategoryId={editSecondaryCategoryId}
-                    tab="attributes"
-                    values={editAttributeValues}
-                    onValueChange={(attributeId, value) =>
-                      setEditAttributeValues((currentValues) => ({
-                        ...currentValues,
-                        [attributeId]: value
-                      }))
-                    }
-                  />
-                </div>
+                      partCategories={partCategories}
+                      copy={copy}
+                      disabled={!isDatabaseAvailable}
+                      part={editingPart}
+                      selectedPrimaryCategoryId={editPrimaryCategoryId}
+                      selectedSecondaryCategoryId={editSecondaryCategoryId}
+                      tab="details"
+                      values={editAttributeValues}
+                      onValueChange={(attributeId, value) =>
+                        setEditAttributeValues((currentValues) => ({
+                          ...currentValues,
+                          [attributeId]: value
+                        }))
+                      }
+                    />
+                  </div>
+                ) : null}
+                {editActiveTab === "attributes" ? (
+                  <div className="grid gap-3 pr-1">
+                    <PartAttributeSections
+                      categoryAttributesByCategoryId={
+                        categoryAttributesByCategoryId
+                      }
+                      partCategories={partCategories}
+                      copy={copy}
+                      disabled={!isDatabaseAvailable}
+                      part={editingPart}
+                      selectedPrimaryCategoryId={editPrimaryCategoryId}
+                      selectedSecondaryCategoryId={editSecondaryCategoryId}
+                      tab="attributes"
+                      values={editAttributeValues}
+                      onValueChange={(attributeId, value) =>
+                        setEditAttributeValues((currentValues) => ({
+                          ...currentValues,
+                          [attributeId]: value
+                        }))
+                      }
+                    />
+                  </div>
+                ) : null}
               </div>
               <div className="flex shrink-0 justify-end border-t border-slate-200 px-5 py-4">
                 <button
@@ -771,6 +802,33 @@ function closeDialog(dialog: HTMLDialogElement | null) {
   }
 
   dialog.close();
+}
+
+function observeElementContentHeight(
+  element: HTMLElement | null,
+  onHeightChange: (height: number) => void
+) {
+  if (!element) {
+    return undefined;
+  }
+
+  function updateHeight() {
+    onHeightChange(Math.ceil(element?.scrollHeight ?? 0));
+  }
+
+  updateHeight();
+
+  const resizeObserver = new ResizeObserver(updateHeight);
+
+  resizeObserver.observe(element);
+
+  return () => resizeObserver.disconnect();
+}
+
+function getDialogBodyHeightStyle(contentHeight: number | null) {
+  return contentHeight
+    ? { height: `${contentHeight + dialogBodyVerticalPadding}px` }
+    : undefined;
 }
 
 function CloseIcon() {
@@ -2171,6 +2229,7 @@ function getVisibleCategoryOptions(
 
 const primaryButtonClassName =
   "min-h-9 rounded-md border border-[var(--color-action-primary)] bg-[var(--color-action-primary)] px-3 py-1.5 text-sm font-semibold text-white transition hover:border-[var(--color-action-primary-hover)] hover:bg-[var(--color-action-primary-hover)] focus:outline-none focus:ring-2 focus:ring-[var(--color-action-focus)] focus:ring-offset-2 disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-100 disabled:text-slate-400";
+const dialogBodyVerticalPadding = 32;
 
 function PartCategoriesSummary({
   copy,

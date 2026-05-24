@@ -5,6 +5,7 @@ import {
   type FormEvent,
   type SetStateAction,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState
@@ -451,7 +452,7 @@ export function PartCategoriesClient({
       <dialog
         ref={categoryDialogRef}
         aria-labelledby="category-dialog-title"
-        className="fixed inset-0 m-auto h-[min(44rem,calc(100vh-2rem))] w-[min(56rem,calc(100vw-3rem))] rounded-lg border border-slate-200 bg-white p-0 text-slate-950 shadow-2xl backdrop:bg-slate-950/40"
+        className="fixed inset-0 m-auto max-h-[calc(100vh-2rem)] w-[min(56rem,calc(100vw-3rem))] overflow-hidden rounded-lg border border-slate-200 bg-white p-0 text-slate-950 shadow-2xl backdrop:bg-slate-950/40"
         onClose={() => {
           setCategoryDialogMode(null);
           setEditingCategory(null);
@@ -553,6 +554,10 @@ function CategoryDialogContent({
   const [editValueAttributeId, setEditValueAttributeId] = useState("");
   const editAttributeDraftsRef = useRef<CategoryAttributeDraft[]>([]);
   const editValueAttributeIdRef = useRef("");
+  const detailsContentRef = useRef<HTMLFormElement>(null);
+  const [detailsContentHeight, setDetailsContentHeight] = useState<
+    number | null
+  >(null);
   const [editAttributesError, setEditAttributesError] = useState<string | null>(
     null
   );
@@ -608,6 +613,17 @@ function CategoryDialogContent({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [category?.id, mode, workspaceSlug]);
 
+  useLayoutEffect(() => {
+    if (activeTab !== "details") {
+      return undefined;
+    }
+
+    return observeElementContentHeight(
+      detailsContentRef.current,
+      setDetailsContentHeight
+    );
+  }, [activeTab, category, mode]);
+
   function setActiveAttributeDrafts(update: CategoryAttributeDraftUpdate) {
     if (mode === "create") {
       onCreateAttributeDraftsChange(
@@ -657,38 +673,43 @@ function CategoryDialogContent({
   }
 
   return (
-    <div className="flex h-full min-h-0 flex-col">
+    <div className="flex max-h-[calc(100vh-2rem)] min-h-0 flex-col">
       <DialogHeader
         body={body}
         closeLabel={copy.close}
         title={title}
         titleId="category-dialog-title"
       />
-      <div className="flex gap-2 border-b border-slate-200 px-5">
-        <button
-          className={`min-h-10 border-b-2 px-3 text-sm font-medium ${
-            activeTab === "details"
-              ? "border-[var(--color-accent)] text-slate-950"
-              : "border-transparent text-slate-500 hover:text-slate-800"
-          }`}
-          type="button"
-          onClick={() => onTabChange("details")}
-        >
-          {copy.detailsTab}
-        </button>
-        <button
-          className={`min-h-10 border-b-2 px-3 text-sm font-medium ${
-            activeTab === "attributes"
-              ? "border-[var(--color-accent)] text-slate-950"
-              : "border-transparent text-slate-500 hover:text-slate-800"
-          }`}
-          type="button"
-          onClick={() => onTabChange("attributes")}
-        >
-          {copy.attributesTab}
-        </button>
+      <div className="shrink-0 border-b border-slate-200 px-5">
+        <div className="flex gap-2">
+          <button
+            className={`min-h-10 border-b-2 px-3 text-sm font-medium ${
+              activeTab === "details"
+                ? "border-[var(--color-accent)] text-slate-950"
+                : "border-transparent text-slate-500 hover:text-slate-800"
+            }`}
+            type="button"
+            onClick={() => onTabChange("details")}
+          >
+            {copy.detailsTab}
+          </button>
+          <button
+            className={`min-h-10 border-b-2 px-3 text-sm font-medium ${
+              activeTab === "attributes"
+                ? "border-[var(--color-accent)] text-slate-950"
+                : "border-transparent text-slate-500 hover:text-slate-800"
+            }`}
+            type="button"
+            onClick={() => onTabChange("attributes")}
+          >
+            {copy.attributesTab}
+          </button>
+        </div>
       </div>
-      <div className="min-h-0 flex-1 overflow-auto px-5 py-4">
+      <div
+        className="min-h-0 flex-[0_1_auto] overflow-auto px-5 py-4"
+        style={getDialogBodyHeightStyle(detailsContentHeight)}
+      >
         {displayedError ? (
           <p className="mb-3 rounded-md border border-[var(--color-error-border)] bg-[var(--color-error-soft)] px-3 py-2 text-sm text-[var(--color-error)]">
             {getCategoryErrorMessage(copy, displayedError)}
@@ -696,7 +717,12 @@ function CategoryDialogContent({
         ) : null}
         <form
           key={`${mode}-${category?.id ?? "new"}`}
-          className={activeTab === "details" ? "grid gap-3" : "hidden"}
+          ref={detailsContentRef}
+          className={
+            activeTab === "details"
+              ? "grid gap-3 pr-1"
+              : "hidden"
+          }
           id={formId}
           onSubmit={handleSubmit}
         >
@@ -715,24 +741,33 @@ function CategoryDialogContent({
             setParentId={mode === "create" ? onParentIdChange : undefined}
           />
         </form>
-        {activeTab === "attributes" && areAttributeControlsEnabled ? (
-          <CategoryAttributesDraftEditor
-            canWriteCategories={canWriteCategories}
-            categoryId={category?.id ?? ""}
-            copy={copy}
-            drafts={activeAttributeDrafts}
-            isDatabaseAvailable={isDatabaseAvailable && areAttributeControlsEnabled}
-            attributes={attributes}
-            valueAttributeId={activeValueAttributeId}
-            onDraftsChange={setActiveAttributeDrafts}
-            onValueAttributeIdChange={setActiveValueAttributeId}
-          />
-        ) : null}
-        {activeTab === "attributes" && !areAttributeControlsEnabled ? (
-          <p className="text-sm text-slate-500">Loading attributes...</p>
-        ) : null}
+        <div
+          className={
+            activeTab === "attributes"
+              ? "pr-1"
+              : "hidden"
+          }
+        >
+          {areAttributeControlsEnabled ? (
+            <CategoryAttributesDraftEditor
+              canWriteCategories={canWriteCategories}
+              categoryId={category?.id ?? ""}
+              copy={copy}
+              drafts={activeAttributeDrafts}
+              isDatabaseAvailable={
+                isDatabaseAvailable && areAttributeControlsEnabled
+              }
+              attributes={attributes}
+              valueAttributeId={activeValueAttributeId}
+              onDraftsChange={setActiveAttributeDrafts}
+              onValueAttributeIdChange={setActiveValueAttributeId}
+            />
+          ) : (
+            <p className="text-sm text-slate-500">Loading attributes...</p>
+          )}
+        </div>
       </div>
-      <div className="flex justify-end border-t border-slate-200 px-5 py-4">
+      <div className="flex shrink-0 justify-end border-t border-slate-200 px-5 py-4">
         <button
           className={primaryButtonClassName}
           disabled={isSaveDisabled}
@@ -1571,6 +1606,33 @@ function closeDialog(dialog: HTMLDialogElement | null) {
   dialog.close();
 }
 
+function observeElementContentHeight(
+  element: HTMLElement | null,
+  onHeightChange: (height: number) => void
+) {
+  if (!element) {
+    return undefined;
+  }
+
+  function updateHeight() {
+    onHeightChange(Math.ceil(element?.scrollHeight ?? 0));
+  }
+
+  updateHeight();
+
+  const resizeObserver = new ResizeObserver(updateHeight);
+
+  resizeObserver.observe(element);
+
+  return () => resizeObserver.disconnect();
+}
+
+function getDialogBodyHeightStyle(contentHeight: number | null) {
+  return contentHeight
+    ? { height: `${contentHeight + dialogBodyVerticalPadding}px` }
+    : undefined;
+}
+
 function getCategorySuccessMessage(
   actionLabel: string,
   category: PartCategoryListItem
@@ -1627,3 +1689,4 @@ const primaryButtonClassName =
   "min-h-9 rounded-md border border-[var(--color-action-primary)] bg-[var(--color-action-primary)] px-3 py-1.5 text-sm font-semibold text-white transition hover:border-[var(--color-action-primary-hover)] hover:bg-[var(--color-action-primary-hover)] focus:outline-none focus:ring-2 focus:ring-[var(--color-action-focus)] focus:ring-offset-2 disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-100 disabled:text-slate-400";
 const iconButtonClassName =
   "grid h-8 w-8 place-items-center rounded-md border border-transparent text-slate-500 transition hover:border-slate-200 hover:bg-slate-50 hover:text-slate-950 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2";
+const dialogBodyVerticalPadding = 32;
