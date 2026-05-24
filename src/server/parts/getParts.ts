@@ -3,7 +3,7 @@ import "server-only";
 import { authorizeWorkspacePermission } from "@/server/access-control/authorize";
 import { prisma } from "@/server/db/prisma";
 import { getPartCategories } from "@/server/parts/categories";
-import { getEffectivePartCategoryParameters } from "@/server/parts/parameters";
+import { getEffectivePartCategoryAttributes } from "@/server/parts/attributes";
 
 export type PartsListItem = {
   id: string;
@@ -14,11 +14,11 @@ export type PartsListItem = {
   primaryCategoryPath: string | null;
   secondaryCategoryId: string | null;
   secondaryCategoryPath: string | null;
-  parameterValues: PartParameterValueListItem[];
+  attributeValues: PartAttributeValueListItem[];
 };
 
-export type PartParameterValueListItem = {
-  parameterId: string;
+export type PartAttributeValueListItem = {
+  attributeId: string;
   displayValue: string;
 };
 
@@ -62,10 +62,10 @@ export async function getPartsList(
           },
           primaryCategoryId: true,
           secondaryCategoryId: true,
-          parameterValues: {
-            orderBy: [{ parameter: { name: "asc" } }, { id: "asc" }],
+          attributeValues: {
+            orderBy: [{ attribute: { name: "asc" } }, { id: "asc" }],
             select: {
-              parameterId: true,
+              attributeId: true,
               displayValue: true
             }
           }
@@ -76,8 +76,8 @@ export async function getPartsList(
     const categoryPathsById = new Map(
       categories.map((category) => [category.id, category.path])
     );
-    const valueParameterIdsByCategoryId =
-      await getValueParameterIdsByCategoryId({
+    const valueAttributeIdsByCategoryId =
+      await getValueAttributeIdsByCategoryId({
         workspaceId: context.workspace.id,
         categoryIds: parts
           .map((part) => part.primaryCategoryId)
@@ -86,26 +86,26 @@ export async function getPartsList(
 
     return {
       parts: parts.map((part) => {
-        const parameterValues = part.parameterValues
+        const attributeValues = part.attributeValues
           .filter(
-            (parameterValue) => parameterValue.displayValue !== null
+            (attributeValue) => attributeValue.displayValue !== null
           )
-          .map((parameterValue) => ({
-            parameterId: parameterValue.parameterId,
-            displayValue: parameterValue.displayValue ?? ""
+          .map((attributeValue) => ({
+            attributeId: attributeValue.attributeId,
+            displayValue: attributeValue.displayValue ?? ""
           }));
-        const valueParameterId = part.primaryCategoryId
-          ? valueParameterIdsByCategoryId.get(part.primaryCategoryId) ?? null
+        const valueAttributeId = part.primaryCategoryId
+          ? valueAttributeIdsByCategoryId.get(part.primaryCategoryId) ?? null
           : null;
 
         return {
           id: part.id,
           catalogNumber: part.catalogNumber,
           manufacturerName: part.manufacturer.name,
-          valueDisplayValue: valueParameterId
-            ? parameterValues.find(
-                (parameterValue) =>
-                  parameterValue.parameterId === valueParameterId
+          valueDisplayValue: valueAttributeId
+            ? attributeValues.find(
+                (attributeValue) =>
+                  attributeValue.attributeId === valueAttributeId
               )?.displayValue ?? null
             : null,
           primaryCategoryId: part.primaryCategoryId,
@@ -116,7 +116,7 @@ export async function getPartsList(
           secondaryCategoryPath: part.secondaryCategoryId
             ? categoryPathsById.get(part.secondaryCategoryId) ?? null
             : null,
-          parameterValues
+          attributeValues
         };
       }),
       isDatabaseAvailable: true
@@ -129,7 +129,7 @@ export async function getPartsList(
   }
 }
 
-async function getValueParameterIdsByCategoryId({
+async function getValueAttributeIdsByCategoryId({
   workspaceId,
   categoryIds
 }: {
@@ -139,15 +139,15 @@ async function getValueParameterIdsByCategoryId({
   const uniqueCategoryIds = [...new Set(categoryIds)];
   const entries = await Promise.all(
     uniqueCategoryIds.map(async (categoryId) => {
-      const effectiveParameters = await getEffectivePartCategoryParameters({
+      const effectiveAttributes = await getEffectivePartCategoryAttributes({
         workspaceId,
         categoryId
       });
-      const valueParameter = effectiveParameters.find(
-        (effectiveParameter) => effectiveParameter.isValue
+      const valueAttribute = effectiveAttributes.find(
+        (effectiveAttribute) => effectiveAttribute.isValue
       );
 
-      return [categoryId, valueParameter?.parameter.id ?? null] as const;
+      return [categoryId, valueAttribute?.attribute.id ?? null] as const;
     })
   );
 

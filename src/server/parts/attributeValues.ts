@@ -1,4 +1,4 @@
-export type ParameterValueType =
+export type AttributeValueType =
   | "TEXT"
   | "NUMBER"
   | "QUANTITY"
@@ -10,7 +10,7 @@ export type ChoiceOptionInput = {
   label: string;
 };
 
-export type ParsedParameterValue =
+export type ParsedAttributeValue =
   | {
       type: "TEXT";
       textValue: string;
@@ -59,27 +59,27 @@ export function normalizeDictionaryName(value: string) {
   return normalizeWhitespace(value).toLocaleLowerCase("en");
 }
 
-export function normalizeTextParameterValue(value: string) {
+export function normalizeTextAttributeValue(value: string) {
   return normalizeWhitespace(value);
 }
 
-export function parseParameterValue({
+export function parseAttributeValue({
   type,
   rawValue,
   baseUnitSymbol,
   choiceOptions = []
 }: {
-  type: ParameterValueType;
+  type: AttributeValueType;
   rawValue: string;
   baseUnitSymbol?: string | null;
   choiceOptions?: ChoiceOptionInput[];
-}): ParsedParameterValue {
+}): ParsedAttributeValue {
   switch (type) {
     case "TEXT": {
-      const displayValue = normalizeTextParameterValue(rawValue);
+      const displayValue = normalizeTextAttributeValue(rawValue);
 
       if (!displayValue) {
-        throw new Error("parameter_value_required");
+        throw new Error("attribute_value_required");
       }
 
       return {
@@ -112,7 +112,7 @@ function parseQuantityValue({
 }: {
   rawValue: string;
   baseUnitSymbol?: string | null;
-}): ParsedParameterValue {
+}): ParsedAttributeValue {
   const unitSymbol = normalizeWhitespace(baseUnitSymbol ?? "");
 
   if (!unitSymbol) {
@@ -196,7 +196,7 @@ function isUnitAlias(value: string, baseUnitSymbol: string) {
   return value.toLocaleLowerCase("en") === baseUnitSymbol.toLocaleLowerCase("en");
 }
 
-function parseBooleanValue(rawValue: string): ParsedParameterValue {
+function parseBooleanValue(rawValue: string): ParsedAttributeValue {
   const normalizedValue = normalizeWhitespace(rawValue).toLocaleLowerCase("en");
 
   if (["true", "yes", "1"].includes(normalizedValue)) {
@@ -224,7 +224,7 @@ function parseChoiceValue({
 }: {
   rawValue: string;
   choiceOptions: ChoiceOptionInput[];
-}): ParsedParameterValue {
+}): ParsedAttributeValue {
   const normalizedValue = normalizeDictionaryName(rawValue);
   const option = choiceOptions.find(
     (choiceOption) => normalizeDictionaryName(choiceOption.label) === normalizedValue

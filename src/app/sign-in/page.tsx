@@ -45,7 +45,7 @@ export default async function SignInPage({ searchParams }: SignInPageProps) {
         className="w-full max-w-sm rounded-lg border border-slate-200 bg-white p-6 shadow-sm"
       >
         <div className="mb-6 flex items-center gap-3">
-          <div className="grid h-9 w-9 place-items-center rounded-md bg-slate-950 text-sm font-semibold text-white">
+          <div className="grid h-9 w-9 place-items-center rounded-md bg-[var(--color-accent)] text-sm font-semibold text-white">
             {copy.appShortName}
           </div>
           <div>
@@ -66,7 +66,7 @@ export default async function SignInPage({ searchParams }: SignInPageProps) {
         </h1>
 
         {error ? (
-          <p className="mt-4 rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-800">
+          <p className="mt-4 rounded-md border border-[var(--color-error-border)] bg-[var(--color-error-soft)] px-3 py-2 text-sm text-[var(--color-error)]">
             {error === "missing-fields"
               ? copy.missingFields
               : copy.invalidCredentials}
@@ -98,7 +98,7 @@ export default async function SignInPage({ searchParams }: SignInPageProps) {
           </label>
 
           <button
-            className="min-h-11 rounded-md border border-slate-950 bg-slate-950 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2"
+            className="min-h-10 rounded-md border border-[var(--color-action-primary)] bg-[var(--color-action-primary)] px-4 py-2 text-sm font-semibold text-white transition hover:border-[var(--color-action-primary-hover)] hover:bg-[var(--color-action-primary-hover)] focus:outline-none focus:ring-2 focus:ring-[var(--color-action-focus)] focus:ring-offset-2"
             type="submit"
           >
             {copy.submit}
@@ -107,7 +107,7 @@ export default async function SignInPage({ searchParams }: SignInPageProps) {
 
         <p className="mt-5 text-sm text-slate-600">
           {copy.signUpPrompt}{" "}
-          <Link className="font-semibold text-slate-950 underline" href="/sign-up">
+          <Link className="font-semibold text-[var(--color-accent)] underline" href="/sign-up">
             {copy.signUp}
           </Link>
         </p>

@@ -3,29 +3,29 @@ import "server-only";
 import { Prisma, type PrismaClient } from "@/generated/prisma/client";
 import { prisma } from "@/server/db/prisma";
 import {
-  assertCanChangeParameterShape,
+  assertCanChangeAttributeShape,
   assertCanDeleteChoiceOption,
-  assertCanDeleteParameter,
-  assertCanDetachCategoryParameter,
-  assertValueParameterIsEffectiveForCategory,
-  getEffectivePartCategoryParameters
-} from "@/server/parts/parameters";
+  assertCanDeleteAttribute,
+  assertCanDetachCategoryAttribute,
+  assertValueAttributeIsEffectiveForCategory,
+  getEffectivePartCategoryAttributes
+} from "@/server/parts/attributes";
 import {
   normalizeDictionaryName,
-  parseParameterValue,
-  type ParameterValueType
-} from "@/server/parts/parameterValues";
+  parseAttributeValue,
+  type AttributeValueType
+} from "@/server/parts/attributeValues";
 
 type PrismaTransaction = Omit<
   PrismaClient,
   "$connect" | "$disconnect" | "$on" | "$transaction" | "$extends"
 >;
 
-export type ParameterListItem = {
+export type AttributeListItem = {
   id: string;
   name: string;
   description: string | null;
-  type: ParameterValueType;
+  type: AttributeValueType;
   baseUnitSymbol: string | null;
   choiceOptions: Array<{
     id: string;
@@ -34,32 +34,32 @@ export type ParameterListItem = {
   }>;
 };
 
-export type ParameterDefaultValueInput =
+export type AttributeDefaultValueInput =
   | {
       rawValue: string;
     }
   | null;
 
-export type ParameterChoiceOptionInput = {
+export type AttributeChoiceOptionInput = {
   label: string;
   sortOrder: number;
 };
 
-export type ParameterChoiceOptionUpdateInput = ParameterChoiceOptionInput & {
+export type AttributeChoiceOptionUpdateInput = AttributeChoiceOptionInput & {
   id?: string;
 };
 
-export async function getWorkspaceParameters(workspaceId: string) {
-  return prisma.parameter.findMany({
+export async function getWorkspaceAttributes(workspaceId: string) {
+  return prisma.attribute.findMany({
     where: {
       workspaceId
     },
     orderBy: [{ name: "asc" }, { id: "asc" }],
-    select: parameterListSelect
+    select: attributeListSelect
   });
 }
 
-export async function createParameter({
+export async function createAttribute({
   workspaceId,
   name,
   description,
@@ -70,17 +70,17 @@ export async function createParameter({
   workspaceId: string;
   name: string;
   description?: string | null;
-  type: ParameterValueType;
+  type: AttributeValueType;
   baseUnitSymbol?: string | null;
-  choiceOptions?: ParameterChoiceOptionInput[];
+  choiceOptions?: AttributeChoiceOptionInput[];
 }) {
-  const normalizedName = normalizeParameterNameInput(name);
+  const normalizedName = normalizeAttributeNameInput(name);
   const normalizedBaseUnitSymbol = normalizeBaseUnitSymbol({ type, baseUnitSymbol });
   const normalizedChoiceOptions =
     type === "CHOICE" ? normalizeChoiceOptionInputs(choiceOptions) : [];
 
   return prisma.$transaction(async (tx) => {
-    const parameter = await tx.parameter.create({
+    const attribute = await tx.attribute.create({
       data: {
         workspaceId,
         name: name.trim(),
@@ -95,9 +95,9 @@ export async function createParameter({
     });
 
     if (normalizedChoiceOptions.length > 0) {
-      await tx.parameterChoiceOption.createMany({
+      await tx.attributeChoiceOption.createMany({
         data: normalizedChoiceOptions.map((option) => ({
-          parameterId: parameter.id,
+          attributeId: attribute.id,
           label: option.label,
           normalizedLabel: option.normalizedLabel,
           sortOrder: option.sortOrder
@@ -105,18 +105,18 @@ export async function createParameter({
       });
     }
 
-    return tx.parameter.findUniqueOrThrow({
+    return tx.attribute.findUniqueOrThrow({
       where: {
-        id: parameter.id
+        id: attribute.id
       },
-      select: parameterListSelect
+      select: attributeListSelect
     });
   });
 }
 
-export async function updateParameter({
+export async function updateAttribute({
   workspaceId,
-  parameterId,
+  attributeId,
   name,
   description,
   type,
@@ -124,16 +124,16 @@ export async function updateParameter({
   choiceOptions
 }: {
   workspaceId: string;
-  parameterId: string;
+  attributeId: string;
   name: string;
   description?: string | null;
-  type: ParameterValueType;
+  type: AttributeValueType;
   baseUnitSymbol?: string | null;
-  choiceOptions?: ParameterChoiceOptionUpdateInput[];
+  choiceOptions?: AttributeChoiceOptionUpdateInput[];
 }) {
-  const existingParameter = await prisma.parameter.findFirst({
+  const existingAttribute = await prisma.attribute.findFirst({
     where: {
-      id: parameterId,
+      id: attributeId,
       workspaceId
     },
     select: {
@@ -143,27 +143,27 @@ export async function updateParameter({
     }
   });
 
-  if (!existingParameter) {
-    throw new Error("parameter_not_found");
+  if (!existingAttribute) {
+    throw new Error("attribute_not_found");
   }
 
   const normalizedBaseUnitSymbol = normalizeBaseUnitSymbol({ type, baseUnitSymbol });
 
   if (
-    existingParameter.type !== type ||
-    existingParameter.baseUnitSymbol !== normalizedBaseUnitSymbol
+    existingAttribute.type !== type ||
+    existingAttribute.baseUnitSymbol !== normalizedBaseUnitSymbol
   ) {
-    await assertCanChangeParameterShape({ workspaceId, parameterId });
+    await assertCanChangeAttributeShape({ workspaceId, attributeId });
   }
 
   return prisma.$transaction(async (tx) => {
-    await tx.parameter.update({
+    await tx.attribute.update({
       where: {
-        id: parameterId
+        id: attributeId
       },
       data: {
         name: name.trim(),
-        normalizedName: normalizeParameterNameInput(name),
+        normalizedName: normalizeAttributeNameInput(name),
         description: normalizeOptionalText(description ?? null),
         type,
         baseUnitSymbol: normalizedBaseUnitSymbol
@@ -173,32 +173,32 @@ export async function updateParameter({
     if (type === "CHOICE" && choiceOptions) {
       await syncChoiceOptions({
         tx,
-        parameterId,
+        attributeId,
         choiceOptions
       });
     }
 
-    return tx.parameter.findUniqueOrThrow({
+    return tx.attribute.findUniqueOrThrow({
       where: {
-        id: parameterId
+        id: attributeId
       },
-      select: parameterListSelect
+      select: attributeListSelect
     });
   });
 }
 
-export async function deleteParameter({
+export async function deleteAttribute({
   workspaceId,
-  parameterId
+  attributeId
 }: {
   workspaceId: string;
-  parameterId: string;
+  attributeId: string;
 }) {
-  await assertCanDeleteParameter({ workspaceId, parameterId });
+  await assertCanDeleteAttribute({ workspaceId, attributeId });
 
-  await prisma.parameter.deleteMany({
+  await prisma.attribute.deleteMany({
     where: {
-      id: parameterId,
+      id: attributeId,
       workspaceId
     }
   });
@@ -206,20 +206,20 @@ export async function deleteParameter({
 
 export async function createChoiceOption({
   workspaceId,
-  parameterId,
+  attributeId,
   label,
   sortOrder
 }: {
   workspaceId: string;
-  parameterId: string;
+  attributeId: string;
   label: string;
   sortOrder: number;
 }) {
-  await assertChoiceParameter({ workspaceId, parameterId });
+  await assertChoiceAttribute({ workspaceId, attributeId });
 
-  return prisma.parameterChoiceOption.create({
+  return prisma.attributeChoiceOption.create({
     data: {
-      parameterId,
+      attributeId,
       label: normalizeChoiceLabelInput(label),
       normalizedLabel: normalizeDictionaryName(label),
       sortOrder
@@ -241,7 +241,7 @@ export async function updateChoiceOption({
 }) {
   const option = await getChoiceOptionInWorkspace({ workspaceId, optionId });
 
-  return prisma.parameterChoiceOption.update({
+  return prisma.attributeChoiceOption.update({
     where: {
       id: option.id
     },
@@ -264,48 +264,48 @@ export async function deleteChoiceOption({
   const option = await getChoiceOptionInWorkspace({ workspaceId, optionId });
 
   await assertCanDeleteChoiceOption({ optionId: option.id });
-  await prisma.parameterChoiceOption.delete({
+  await prisma.attributeChoiceOption.delete({
     where: {
       id: option.id
     }
   });
 }
 
-export async function attachOrOverrideCategoryParameter({
+export async function attachOrOverrideCategoryAttribute({
   workspaceId,
   categoryId,
-  parameterId,
+  attributeId,
   sortOrder,
   defaultValue,
   isPrimary
 }: {
   workspaceId: string;
   categoryId: string;
-  parameterId: string;
+  attributeId: string;
   sortOrder: number;
-  defaultValue: ParameterDefaultValueInput;
+  defaultValue: AttributeDefaultValueInput;
   isPrimary: boolean;
 }) {
-  const [category, parameter] = await Promise.all([
+  const [category, attribute] = await Promise.all([
     getCategoryInWorkspace({ workspaceId, categoryId }),
-    getParameterForDefaultParsing({ workspaceId, parameterId })
+    getAttributeForDefaultParsing({ workspaceId, attributeId })
   ]);
-  const defaultValueData = getCategoryParameterDefaultData({
-    parameter,
+  const defaultValueData = getCategoryAttributeDefaultData({
+    attribute,
     defaultValue
   });
 
-  return prisma.categoryParameter.upsert({
+  return prisma.categoryAttribute.upsert({
     where: {
-      categoryId_parameterId: {
+      categoryId_attributeId: {
         categoryId: category.id,
-        parameterId: parameter.id
+        attributeId: attribute.id
       }
     },
     create: {
       workspaceId,
       categoryId: category.id,
-      parameterId: parameter.id,
+      attributeId: attribute.id,
       sortOrder,
       isPrimary,
       ...defaultValueData
@@ -318,46 +318,46 @@ export async function attachOrOverrideCategoryParameter({
   });
 }
 
-export async function detachCategoryParameter({
+export async function detachCategoryAttribute({
   workspaceId,
   categoryId,
-  parameterId
+  attributeId
 }: {
   workspaceId: string;
   categoryId: string;
-  parameterId: string;
+  attributeId: string;
 }) {
-  await assertCanDetachCategoryParameter({
+  await assertCanDetachCategoryAttribute({
     workspaceId,
     categoryId,
-    parameterId
+    attributeId
   });
 
-  await prisma.categoryParameter.deleteMany({
+  await prisma.categoryAttribute.deleteMany({
     where: {
       workspaceId,
       categoryId,
-      parameterId
+      attributeId
     }
   });
 }
 
-export async function setCategoryValueParameter({
+export async function setCategoryValueAttribute({
   workspaceId,
   categoryId,
-  parameterId
+  attributeId
 }: {
   workspaceId: string;
   categoryId: string;
-  parameterId: string | null;
+  attributeId: string | null;
 }) {
   const category = await getCategoryInWorkspace({ workspaceId, categoryId });
 
-  if (parameterId) {
-    await assertValueParameterIsEffectiveForCategory({
+  if (attributeId) {
+    await assertValueAttributeIsEffectiveForCategory({
       workspaceId,
       categoryId: category.id,
-      parameterId
+      attributeId
     });
   }
 
@@ -366,12 +366,12 @@ export async function setCategoryValueParameter({
       id: category.id
     },
     data: {
-      valueParameterId: parameterId
+      valueAttributeId: attributeId
     }
   });
 }
 
-export async function getEffectiveCategoryParameterConfiguration({
+export async function getEffectiveCategoryAttributeConfiguration({
   workspaceId,
   categoryId
 }: {
@@ -380,15 +380,15 @@ export async function getEffectiveCategoryParameterConfiguration({
 }) {
   await getCategoryInWorkspace({ workspaceId, categoryId });
 
-  return getEffectivePartCategoryParameters({ workspaceId, categoryId });
+  return getEffectivePartCategoryAttributes({ workspaceId, categoryId });
 }
 
-function getCategoryParameterDefaultData({
-  parameter,
+function getCategoryAttributeDefaultData({
+  attribute,
   defaultValue
 }: {
-  parameter: Awaited<ReturnType<typeof getParameterForDefaultParsing>>;
-  defaultValue: ParameterDefaultValueInput;
+  attribute: Awaited<ReturnType<typeof getAttributeForDefaultParsing>>;
+  defaultValue: AttributeDefaultValueInput;
 }) {
   const emptyDefault = {
     defaultTextValue: null,
@@ -403,11 +403,11 @@ function getCategoryParameterDefaultData({
     return emptyDefault;
   }
 
-  const parsedValue = parseParameterValue({
-    type: parameter.type,
+  const parsedValue = parseAttributeValue({
+    type: attribute.type,
     rawValue: defaultValue.rawValue,
-    baseUnitSymbol: parameter.baseUnitSymbol,
-    choiceOptions: parameter.choiceOptions
+    baseUnitSymbol: attribute.baseUnitSymbol,
+    choiceOptions: attribute.choiceOptions
   });
 
   switch (parsedValue.type) {
@@ -444,16 +444,16 @@ function getCategoryParameterDefaultData({
   }
 }
 
-async function getParameterForDefaultParsing({
+async function getAttributeForDefaultParsing({
   workspaceId,
-  parameterId
+  attributeId
 }: {
   workspaceId: string;
-  parameterId: string;
+  attributeId: string;
 }) {
-  const parameter = await prisma.parameter.findFirst({
+  const attribute = await prisma.attribute.findFirst({
     where: {
-      id: parameterId,
+      id: attributeId,
       workspaceId
     },
     select: {
@@ -469,23 +469,23 @@ async function getParameterForDefaultParsing({
     }
   });
 
-  if (!parameter) {
-    throw new Error("parameter_not_found");
+  if (!attribute) {
+    throw new Error("attribute_not_found");
   }
 
-  return parameter;
+  return attribute;
 }
 
-async function assertChoiceParameter({
+async function assertChoiceAttribute({
   workspaceId,
-  parameterId
+  attributeId
 }: {
   workspaceId: string;
-  parameterId: string;
+  attributeId: string;
 }) {
-  const parameter = await prisma.parameter.findFirst({
+  const attribute = await prisma.attribute.findFirst({
     where: {
-      id: parameterId,
+      id: attributeId,
       workspaceId,
       type: "CHOICE"
     },
@@ -494,8 +494,8 @@ async function assertChoiceParameter({
     }
   });
 
-  if (!parameter) {
-    throw new Error("choice_parameter_not_found");
+  if (!attribute) {
+    throw new Error("choice_attribute_not_found");
   }
 }
 
@@ -506,10 +506,10 @@ async function getChoiceOptionInWorkspace({
   workspaceId: string;
   optionId: string;
 }) {
-  const option = await prisma.parameterChoiceOption.findFirst({
+  const option = await prisma.attributeChoiceOption.findFirst({
     where: {
       id: optionId,
-      parameter: {
+      attribute: {
         workspaceId
       }
     },
@@ -549,11 +549,11 @@ async function getCategoryInWorkspace({
   return category;
 }
 
-function normalizeParameterNameInput(name: string) {
+function normalizeAttributeNameInput(name: string) {
   const normalizedName = normalizeDictionaryName(name);
 
   if (!normalizedName) {
-    throw new Error("parameter_name_required");
+    throw new Error("attribute_name_required");
   }
 
   return normalizedName;
@@ -569,7 +569,7 @@ function normalizeChoiceLabelInput(label: string) {
   return normalizedLabel;
 }
 
-function normalizeChoiceOptionInputs(options: ParameterChoiceOptionInput[]) {
+function normalizeChoiceOptionInputs(options: AttributeChoiceOptionInput[]) {
   const normalizedOptions = options
     .map((option) => ({
       label: normalizeChoiceLabelInput(option.label),
@@ -592,17 +592,17 @@ function normalizeChoiceOptionInputs(options: ParameterChoiceOptionInput[]) {
 
 async function syncChoiceOptions({
   tx,
-  parameterId,
+  attributeId,
   choiceOptions
 }: {
   tx: PrismaTransaction;
-  parameterId: string;
-  choiceOptions: ParameterChoiceOptionUpdateInput[];
+  attributeId: string;
+  choiceOptions: AttributeChoiceOptionUpdateInput[];
 }) {
   const normalizedChoiceOptions = normalizeChoiceOptionInputs(choiceOptions);
-  const existingOptions = await tx.parameterChoiceOption.findMany({
+  const existingOptions = await tx.attributeChoiceOption.findMany({
     where: {
-      parameterId
+      attributeId
     },
     select: {
       id: true
@@ -631,7 +631,7 @@ async function syncChoiceOptions({
   }
 
   for (const deletedOptionId of deletedOptionIds) {
-    await tx.parameterChoiceOption.delete({
+    await tx.attributeChoiceOption.delete({
       where: {
         id: deletedOptionId
       }
@@ -642,7 +642,7 @@ async function syncChoiceOptions({
     const optionId = choiceOptions[index]?.id;
 
     if (optionId) {
-      await tx.parameterChoiceOption.update({
+      await tx.attributeChoiceOption.update({
         where: {
           id: optionId
         },
@@ -653,9 +653,9 @@ async function syncChoiceOptions({
         }
       });
     } else {
-      await tx.parameterChoiceOption.create({
+      await tx.attributeChoiceOption.create({
         data: {
-          parameterId,
+          attributeId,
           label: option.label,
           normalizedLabel: option.normalizedLabel,
           sortOrder: option.sortOrder
@@ -675,7 +675,7 @@ function normalizeBaseUnitSymbol({
   type,
   baseUnitSymbol
 }: {
-  type: ParameterValueType;
+  type: AttributeValueType;
   baseUnitSymbol?: string | null;
 }) {
   const normalizedBaseUnitSymbol = baseUnitSymbol?.trim() || null;
@@ -695,9 +695,9 @@ const choiceOptionSelect = {
   id: true,
   label: true,
   sortOrder: true
-} satisfies Prisma.ParameterChoiceOptionSelect;
+} satisfies Prisma.AttributeChoiceOptionSelect;
 
-const parameterListSelect = {
+const attributeListSelect = {
   id: true,
   name: true,
   description: true,
@@ -707,4 +707,4 @@ const parameterListSelect = {
     orderBy: [{ sortOrder: "asc" }, { label: "asc" }, { id: "asc" }],
     select: choiceOptionSelect
   }
-} satisfies Prisma.ParameterSelect;
+} satisfies Prisma.AttributeSelect;

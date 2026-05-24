@@ -53,7 +53,7 @@ export default async function WorkspacesPage({
       <div className="mx-auto flex min-h-screen w-full max-w-5xl flex-col px-6 py-6">
         <header className="flex min-h-14 items-center justify-between gap-4 border-b border-slate-200 pb-4">
           <div className="flex items-center gap-3">
-            <div className="grid h-9 w-9 place-items-center rounded-md bg-slate-950 text-sm font-semibold text-white">
+            <div className="grid h-9 w-9 place-items-center rounded-md bg-[var(--color-accent)] text-sm font-semibold text-white">
               {copy.appShortName}
             </div>
             <div>
@@ -106,7 +106,7 @@ export default async function WorkspacesPage({
                         </p>
                       </div>
                       <Link
-                        className="inline-flex min-h-10 items-center justify-center rounded-md border border-slate-950 bg-slate-950 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2"
+                        className="inline-flex min-h-9 items-center justify-center rounded-md border border-[var(--color-action-primary)] bg-[var(--color-action-primary)] px-3 py-1.5 text-sm font-semibold text-white transition hover:border-[var(--color-action-primary-hover)] hover:bg-[var(--color-action-primary-hover)] focus:outline-none focus:ring-2 focus:ring-[var(--color-action-focus)] focus:ring-offset-2"
                         href={`/w/${workspace.slug}/parts`}
                       >
                         {copy.open}
@@ -139,7 +139,7 @@ export default async function WorkspacesPage({
             </h2>
 
             {error ? (
-              <p className="mt-4 rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-800">
+              <p className="mt-4 rounded-md border border-[var(--color-error-border)] bg-[var(--color-error-soft)] px-3 py-2 text-sm text-[var(--color-error)]">
                 {error === "missing-name" ? copy.missingName : copy.unavailable}
               </p>
             ) : null}
@@ -156,7 +156,7 @@ export default async function WorkspacesPage({
                 />
               </label>
               <button
-                className="min-h-11 rounded-md border border-slate-950 bg-slate-950 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2"
+                className="min-h-10 rounded-md border border-[var(--color-action-primary)] bg-[var(--color-action-primary)] px-4 py-2 text-sm font-semibold text-white transition hover:border-[var(--color-action-primary-hover)] hover:bg-[var(--color-action-primary-hover)] focus:outline-none focus:ring-2 focus:ring-[var(--color-action-focus)] focus:ring-offset-2"
                 type="submit"
               >
                 {copy.create}

@@ -3,10 +3,10 @@ import { describe, test } from "node:test";
 
 import {
   normalizeDictionaryName,
-  parseParameterValue
-} from "../../src/server/parts/parameterValues";
+  parseAttributeValue
+} from "../../src/server/parts/attributeValues";
 
-describe("parameter value parsing", () => {
+describe("attribute value parsing", () => {
   test("normalizes dictionary names case-insensitively with collapsed whitespace", () => {
     assert.equal(normalizeDictionaryName("  Power   Rating  "), "power rating");
   });
@@ -14,7 +14,7 @@ describe("parameter value parsing", () => {
   test("normalizes resistance aliases to the same base value", () => {
     for (const rawValue of ["10 kohm", "10 k", "10kΩ", "10000 Ω"]) {
       assert.deepEqual(
-        parseParameterValue({
+        parseAttributeValue({
           type: "QUANTITY",
           rawValue,
           baseUnitSymbol: "Ω"
@@ -30,7 +30,7 @@ describe("parameter value parsing", () => {
 
   test("adds the base unit to quantity display when the input omits a unit", () => {
     assert.deepEqual(
-      parseParameterValue({
+      parseAttributeValue({
         type: "QUANTITY",
         rawValue: "10000",
         baseUnitSymbol: "Ω"
@@ -45,7 +45,7 @@ describe("parameter value parsing", () => {
 
   test("accepts decimal comma and displays decimal point", () => {
     assert.deepEqual(
-      parseParameterValue({
+      parseAttributeValue({
         type: "QUANTITY",
         rawValue: "4,7 kΩ",
         baseUnitSymbol: "Ω"
@@ -61,7 +61,7 @@ describe("parameter value parsing", () => {
   test("rejects unknown quantity units", () => {
     assert.throws(
       () =>
-        parseParameterValue({
+        parseAttributeValue({
           type: "QUANTITY",
           rawValue: "10 banana",
           baseUnitSymbol: "Ω"
@@ -72,7 +72,7 @@ describe("parameter value parsing", () => {
 
   test("stores choice values by option id", () => {
     assert.deepEqual(
-      parseParameterValue({
+      parseAttributeValue({
         type: "CHOICE",
         rawValue: " smd ",
         choiceOptions: [{ id: "option-smd", label: "SMD" }]

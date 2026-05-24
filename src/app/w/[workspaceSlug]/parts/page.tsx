@@ -10,7 +10,7 @@ import {
 import { getManufacturerSuggestionsForPartForm } from "@/server/organizations/organizations";
 import { getPartCategoriesForPartForm } from "@/server/parts/categories";
 import { getPartsList } from "@/server/parts/getParts";
-import { getEffectivePartCategoryParameters } from "@/server/parts/parameters";
+import { getEffectivePartCategoryAttributes } from "@/server/parts/attributes";
 
 export const dynamic = "force-dynamic";
 
@@ -22,18 +22,18 @@ const copy = {
   switchWorkspace: "Switch workspace",
   title: "Parts",
   detailsTab: "Details",
-  parametersTab: "Parameters",
+  attributesTab: "Attributes",
   partCategories: "Part categories",
-  parameters: "Parameters",
+  attributes: "Attributes",
   intro:
     "Real purchasable electronic parts tracked by manufacturer and catalog number.",
   catalogNumber: "Catalog number",
   value: "Value",
-  parameterValues: "Parameter values",
-  primaryParameters: "Primary parameters",
-  secondaryPrimaryParameters: "Secondary primary parameters",
-  primaryCategoryParameters: "Primary category parameters",
-  secondaryCategoryParameters: "Secondary category parameters",
+  attributeValues: "Attribute values",
+  primaryAttributes: "Primary attributes",
+  secondaryPrimaryAttributes: "Secondary primary attributes",
+  primaryCategoryAttributes: "Primary category attributes",
+  secondaryCategoryAttributes: "Secondary category attributes",
   categories: "Categories",
   primaryCategory: "Primary category",
   secondaryCategory: "Secondary category",
@@ -67,7 +67,7 @@ const copy = {
   duplicateCategories: "Primary and secondary categories must be different.",
   duplicatePart:
     "A part with this manufacturer and catalog number already exists.",
-  invalidParameterValue: "Enter valid parameter values for the selected category.",
+  invalidAttributeValue: "Enter valid attribute values for the selected category.",
   emptyTitle: "No parts yet",
   emptyBody: "Parts will appear here once they exist.",
   databaseUnavailable:
@@ -111,13 +111,13 @@ export default async function PartsPage({
         }).catch(() => [])
       ])
     : [[], []];
-  const categoryParametersByCategoryId = isDatabaseAvailable
+  const categoryAttributesByCategoryId = isDatabaseAvailable
     ? Object.fromEntries(
         await Promise.all(
           partCategories.map(async (category) => [
             category.id,
             category.isAssignable
-              ? await getEffectivePartCategoryParameters({
+              ? await getEffectivePartCategoryAttributes({
                   workspaceId: context.workspace.id,
                   categoryId: category.id
                 }).catch(() => [])
@@ -131,11 +131,11 @@ export default async function PartsPage({
   const partEditDialog = resolvedSearchParams?.partEditDialog;
 
   return (
-    <main className="min-h-screen bg-slate-100 text-slate-950">
-      <div className="flex min-h-screen">
-        <aside className="flex w-60 shrink-0 flex-col border-r border-slate-200 bg-white">
+    <main className="h-screen overflow-hidden bg-slate-100 text-slate-950">
+      <div className="flex h-full min-h-0">
+        <aside className="flex h-full w-60 shrink-0 flex-col border-r border-slate-200 bg-white">
           <div className="flex min-h-14 items-center gap-3 border-b border-slate-200 px-4">
-            <div className="grid h-8 w-8 place-items-center rounded-md bg-slate-950 text-sm font-semibold text-white">
+            <div className="grid h-8 w-8 place-items-center rounded-md bg-[var(--color-accent)] text-sm font-semibold text-white">
               {copy.appShortName}
             </div>
             <div className="min-w-0">
@@ -148,11 +148,11 @@ export default async function PartsPage({
             </div>
           </div>
           <nav
-            className="flex flex-1 flex-col gap-1 p-3"
+            className="flex min-h-0 flex-1 flex-col gap-1 overflow-auto p-3"
             aria-label="Main navigation"
           >
             <Link
-              className="flex min-h-10 items-center rounded-md bg-slate-100 px-3 text-sm font-semibold text-slate-950"
+              className="flex min-h-10 items-center rounded-md bg-[var(--color-accent-soft)] px-3 text-sm font-semibold text-slate-950"
               href={`/w/${workspaceSlug}/parts`}
               aria-current="page"
             >
@@ -166,9 +166,9 @@ export default async function PartsPage({
             </Link>
             <Link
               className="flex min-h-10 items-center rounded-md px-3 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
-              href={`/w/${workspaceSlug}/parameters`}
+              href={`/w/${workspaceSlug}/attributes`}
             >
-              {copy.parameters}
+              {copy.attributes}
             </Link>
           </nav>
           <div className="border-t border-slate-200 p-3">
@@ -192,7 +192,7 @@ export default async function PartsPage({
           </div>
         </aside>
 
-        <div className="flex min-w-0 flex-1 flex-col">
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
           <div className="flex min-h-0 flex-1 flex-col gap-4 p-6">
             <header className="flex items-end justify-between gap-2 border-b border-slate-200 pb-4">
               <div>
@@ -217,7 +217,7 @@ export default async function PartsPage({
               partDialogOpen={partDialogOpen}
               partEditDialog={partEditDialog}
               partCategories={partCategories}
-              categoryParametersByCategoryId={categoryParametersByCategoryId}
+              categoryAttributesByCategoryId={categoryAttributesByCategoryId}
               manufacturerSuggestions={manufacturerSuggestions}
               parts={parts}
               workspaceSlug={workspaceSlug}

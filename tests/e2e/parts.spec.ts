@@ -344,7 +344,7 @@ test.describe("parts list", () => {
     ).toBeVisible();
   });
 
-  test("manages parameter dictionary and category parameter configuration", async ({
+  test("manages attribute dictionary and category attribute configuration", async ({
     page
   }, testInfo) => {
     const suffix = testInfo.project.name;
@@ -362,38 +362,38 @@ test.describe("parts list", () => {
       page.getByRole("heading", { level: 1, name: "Workspaces" })
     ).toBeVisible();
     await page.getByRole("link", { name: "Open" }).click();
-    await page.getByRole("link", { name: "Parameters" }).click();
+    await page.getByRole("link", { name: "Attributes" }).click();
 
-    await expect(page).toHaveURL(/\/w\/default\/parameters$/);
-    await page.getByRole("button", { name: "Add parameter" }).click();
-    const addParameterDialog = page.getByRole("dialog", {
-      name: "Add parameter"
+    await expect(page).toHaveURL(/\/w\/default\/attributes$/);
+    await page.getByRole("button", { name: "Add attribute" }).click();
+    const addAttributeDialog = page.getByRole("dialog", {
+      name: "Add attribute"
     });
-    await expect(addParameterDialog).toBeVisible();
-    await addParameterDialog.getByLabel("Name").fill(resistanceName);
-    await addParameterDialog.getByLabel("Type").selectOption("QUANTITY");
-    await addParameterDialog.getByLabel("Base unit").fill("Ω");
-    await addParameterDialog
-      .getByRole("button", { name: "Create parameter" })
+    await expect(addAttributeDialog).toBeVisible();
+    await addAttributeDialog.getByLabel("Name").fill(resistanceName);
+    await addAttributeDialog.getByLabel("Type").selectOption("QUANTITY");
+    await addAttributeDialog.getByLabel("Base unit").fill("Ω");
+    await addAttributeDialog
+      .getByRole("button", { name: "Create attribute" })
       .click();
 
     await expect(page.getByRole("status")).toHaveText(
-      `Parameter created: ${resistanceName}.`
+      `Attribute created: ${resistanceName}.`
     );
     await expect(page.getByRole("row", { name: new RegExp(resistanceName) }))
       .toBeVisible();
 
-    await page.getByRole("button", { name: "Add parameter" }).click();
-    await expect(addParameterDialog).toBeVisible();
-    await expect(addParameterDialog.getByLabel("Name")).toHaveValue("");
-    await addParameterDialog.getByLabel("Name").fill(mountingName);
-    await addParameterDialog.getByLabel("Type").selectOption("CHOICE");
-    await addParameterDialog.getByPlaceholder("Option label").fill("SMD");
-    await addParameterDialog
-      .getByRole("button", { name: "Create parameter" })
+    await page.getByRole("button", { name: "Add attribute" }).click();
+    await expect(addAttributeDialog).toBeVisible();
+    await expect(addAttributeDialog.getByLabel("Name")).toHaveValue("");
+    await addAttributeDialog.getByLabel("Name").fill(mountingName);
+    await addAttributeDialog.getByLabel("Type").selectOption("CHOICE");
+    await addAttributeDialog.getByPlaceholder("Option label").fill("SMD");
+    await addAttributeDialog
+      .getByRole("button", { name: "Create attribute" })
       .click();
     await expect(page.getByRole("status")).toHaveText(
-      `Parameter created: ${mountingName}.`
+      `Attribute created: ${mountingName}.`
     );
     await expect(
       page.getByRole("row", { name: new RegExp(`${mountingName}.*SMD`) })
@@ -403,59 +403,59 @@ test.describe("parts list", () => {
       name: new RegExp(`${mountingName}.*SMD`)
     });
     await mountingRow.getByRole("button", { name: "Edit" }).click();
-    const editParameterDialog = page.getByRole("dialog", {
-      name: "Edit parameter"
+    const editAttributeDialog = page.getByRole("dialog", {
+      name: "Edit attribute"
     });
-    await expect(editParameterDialog).toBeVisible();
-    await editParameterDialog
+    await expect(editAttributeDialog).toBeVisible();
+    await editAttributeDialog
       .getByTestId("choice-option-draft-row")
       .first()
       .getByRole("button", { name: "Delete" })
       .click();
     await expect(page.getByText("Option deleted.")).toHaveCount(0);
-    await editParameterDialog.getByRole("button", { name: "Close" }).click();
-    await expect(editParameterDialog).toBeHidden();
+    await editAttributeDialog.getByRole("button", { name: "Close" }).click();
+    await expect(editAttributeDialog).toBeHidden();
     await expect(mountingRow).toBeVisible();
 
     await mountingRow.getByRole("button", { name: "Edit" }).click();
-    await expect(editParameterDialog).toBeVisible();
-    await editParameterDialog
+    await expect(editAttributeDialog).toBeVisible();
+    await editAttributeDialog
       .getByRole("button", { name: "Save changes" })
       .click();
     await expect(page.getByRole("status")).toHaveText(
-      `Parameter updated: ${mountingName}.`
+      `Attribute updated: ${mountingName}.`
     );
-    await expect(editParameterDialog).toBeHidden();
+    await expect(editAttributeDialog).toBeHidden();
 
-    await page.getByRole("button", { name: "Add parameter" }).click();
-    await expect(addParameterDialog).toBeVisible();
-    await addParameterDialog.getByLabel("Name").fill(polarizedName);
-    await addParameterDialog.getByLabel("Type").selectOption("BOOLEAN");
-    await addParameterDialog
-      .getByRole("button", { name: "Create parameter" })
+    await page.getByRole("button", { name: "Add attribute" }).click();
+    await expect(addAttributeDialog).toBeVisible();
+    await addAttributeDialog.getByLabel("Name").fill(polarizedName);
+    await addAttributeDialog.getByLabel("Type").selectOption("BOOLEAN");
+    await addAttributeDialog
+      .getByRole("button", { name: "Create attribute" })
       .click();
     await expect(page.getByRole("status")).toHaveText(
-      `Parameter created: ${polarizedName}.`
+      `Attribute created: ${polarizedName}.`
     );
     await expect(page.getByRole("row", { name: new RegExp(polarizedName) }))
       .toBeVisible();
 
-    await page.getByRole("button", { name: "Add parameter" }).click();
-    await expect(addParameterDialog).toBeVisible();
-    await addParameterDialog.getByLabel("Name").fill(overrideName);
-    await addParameterDialog.getByLabel("Type").selectOption("TEXT");
-    await addParameterDialog
-      .getByRole("button", { name: "Create parameter" })
+    await page.getByRole("button", { name: "Add attribute" }).click();
+    await expect(addAttributeDialog).toBeVisible();
+    await addAttributeDialog.getByLabel("Name").fill(overrideName);
+    await addAttributeDialog.getByLabel("Type").selectOption("TEXT");
+    await addAttributeDialog
+      .getByRole("button", { name: "Create attribute" })
       .click();
     await expect(page.getByRole("status")).toHaveText(
-      `Parameter created: ${overrideName}.`
+      `Attribute created: ${overrideName}.`
     );
     await expect(page.getByRole("row", { name: new RegExp(overrideName) }))
       .toBeVisible();
 
-    await attachTextParameterToCategory({
+    await attachTextAttributeToCategory({
       categoryName: "Passives",
-      parameterName: overrideName,
+      attributeName: overrideName,
       defaultValue: "Inherited marker",
       sortOrder: 90
     });
@@ -475,69 +475,69 @@ test.describe("parts list", () => {
     });
     await expect(editCategoryDialog).toBeVisible();
     await editCategoryDialog.getByLabel("Name").fill("Resistors configured");
-    await editCategoryDialog.getByRole("button", { name: "Parameters" }).click();
-    const categoryParameterAttachForm = editCategoryDialog.locator(
-      'form:has(select[name="parameterId"])'
+    await editCategoryDialog.getByRole("button", { name: "Attributes" }).click();
+    const categoryAttributeAttachForm = editCategoryDialog.locator(
+      'form:has(select[name="attributeId"])'
     );
-    await categoryParameterAttachForm
-      .locator('select[name="parameterId"]')
+    await categoryAttributeAttachForm
+      .locator('select[name="attributeId"]')
       .selectOption({
         label: mountingName
       });
     await expect(
-      categoryParameterAttachForm.locator('select[name="defaultValue"]')
+      categoryAttributeAttachForm.locator('select[name="defaultValue"]')
     ).toBeVisible();
-    await categoryParameterAttachForm
+    await categoryAttributeAttachForm
       .locator('select[name="defaultValue"]')
       .selectOption({
         label: "SMD"
       });
-    await categoryParameterAttachForm
+    await categoryAttributeAttachForm
       .getByRole("button", { name: "Attach" })
       .click();
     await expect(
       editCategoryDialog
-        .getByTestId("category-parameter-draft-row")
+        .getByTestId("category-attribute-draft-row")
         .filter({ hasText: mountingName })
     ).toBeVisible();
-    await categoryParameterAttachForm
-      .locator('select[name="parameterId"]')
+    await categoryAttributeAttachForm
+      .locator('select[name="attributeId"]')
       .selectOption({
         label: polarizedName
       });
     await expect(
-      categoryParameterAttachForm.locator('select[name="defaultValue"]')
+      categoryAttributeAttachForm.locator('select[name="defaultValue"]')
     ).toBeVisible();
-    await categoryParameterAttachForm
+    await categoryAttributeAttachForm
       .locator('select[name="defaultValue"]')
       .selectOption({
         label: "Yes"
       });
-    await categoryParameterAttachForm
+    await categoryAttributeAttachForm
       .getByRole("button", { name: "Attach" })
       .click();
     await expect(
       editCategoryDialog
-        .getByTestId("category-parameter-draft-row")
+        .getByTestId("category-attribute-draft-row")
         .filter({ hasText: polarizedName })
     ).toBeVisible();
-    await categoryParameterAttachForm
-      .locator('select[name="parameterId"]')
+    await categoryAttributeAttachForm
+      .locator('select[name="attributeId"]')
       .selectOption({
         label: resistanceName
       });
-    await categoryParameterAttachForm.getByLabel("Sort order").fill("10");
-    await categoryParameterAttachForm.getByLabel("Default value").fill("10 k");
-    await categoryParameterAttachForm
+    await categoryAttributeAttachForm.getByLabel("Sort order").fill("10");
+    await categoryAttributeAttachForm.getByLabel("Default value").fill("10 k");
+    await categoryAttributeAttachForm
       .getByRole("button", { name: "Attach" })
       .click();
     await expect(
       editCategoryDialog
-        .getByTestId("category-parameter-draft-row")
+        .getByTestId("category-attribute-draft-row")
         .filter({ hasText: resistanceName })
     ).toBeVisible();
     const overrideDraftRow = editCategoryDialog
-      .getByTestId("category-parameter-draft-row")
+      .getByTestId("category-attribute-draft-row")
       .filter({ hasText: overrideName });
     await expect(overrideDraftRow.filter({ hasText: "Inherited" }))
       .toBeVisible();
@@ -556,7 +556,7 @@ test.describe("parts list", () => {
     await expect(
       overrideDraftRow.getByLabel("Default value")
     ).toHaveValue("Inherited marker");
-    await editCategoryDialog.getByLabel("Value parameter").selectOption({
+    await editCategoryDialog.getByLabel("Value attribute").selectOption({
       label: resistanceName
     });
     await editCategoryDialog
@@ -663,14 +663,14 @@ test.describe("parts list", () => {
   });
 });
 
-async function attachTextParameterToCategory({
+async function attachTextAttributeToCategory({
   categoryName,
-  parameterName,
+  attributeName,
   defaultValue,
   sortOrder
 }: {
   categoryName: string;
-  parameterName: string;
+  attributeName: string;
   defaultValue: string;
   sortOrder: number;
 }) {
@@ -683,38 +683,38 @@ async function attachTextParameterToCategory({
     const result = await pool.query<{
       workspace_id: string;
       category_id: string;
-      parameter_id: string;
+      attribute_id: string;
     }>(
       `
         SELECT
           workspace.id AS workspace_id,
           category.id AS category_id,
-          parameter.id AS parameter_id
+          attribute.id AS attribute_id
         FROM "Workspace" workspace
         JOIN "PartCategory" category
           ON category."workspaceId" = workspace.id
           AND category.name = $1
-        JOIN "Parameter" parameter
-          ON parameter."workspaceId" = workspace.id
-          AND parameter.name = $2
+        JOIN "Attribute" attribute
+          ON attribute."workspaceId" = workspace.id
+          AND attribute.name = $2
         WHERE workspace.slug = 'default'
         LIMIT 1
       `,
-      [categoryName, parameterName]
+      [categoryName, attributeName]
     );
     const ids = result.rows[0];
 
     if (!ids) {
-      throw new Error("e2e_category_parameter_setup_failed");
+      throw new Error("e2e_category_attribute_setup_failed");
     }
 
     await pool.query(
       `
-        INSERT INTO "CategoryParameter" (
+        INSERT INTO "CategoryAttribute" (
           id,
           "workspaceId",
           "categoryId",
-          "parameterId",
+          "attributeId",
           "sortOrder",
           "defaultTextValue",
           "defaultDisplayValue",
@@ -732,7 +732,7 @@ async function attachTextParameterToCategory({
           now(),
           now()
         )
-        ON CONFLICT ("categoryId", "parameterId")
+        ON CONFLICT ("categoryId", "attributeId")
         DO UPDATE SET
           "sortOrder" = EXCLUDED."sortOrder",
           "defaultTextValue" = EXCLUDED."defaultTextValue",
@@ -742,7 +742,7 @@ async function attachTextParameterToCategory({
       [
         ids.workspace_id,
         ids.category_id,
-        ids.parameter_id,
+        ids.attribute_id,
         sortOrder,
         defaultValue
       ]

@@ -13,10 +13,10 @@ import {
 import { getPartCategories } from "@/server/parts/categories";
 import type { PartsListItem } from "@/server/parts/getParts";
 import {
-  getEffectivePartCategoryParameters,
-  type EffectiveCategoryParameter
-} from "@/server/parts/parameters";
-import { parseParameterValue } from "@/server/parts/parameterValues";
+  getEffectivePartCategoryAttributes,
+  type EffectiveCategoryAttribute
+} from "@/server/parts/attributes";
+import { parseAttributeValue } from "@/server/parts/attributeValues";
 
 export type PartMutationResult =
   | {
@@ -41,7 +41,7 @@ export async function createPart(
     formData,
     "secondaryCategoryId"
   );
-  const submittedParameterValues = getSubmittedParameterValues(formData);
+  const submittedAttributeValues = getSubmittedAttributeValues(formData);
   const partsPath = getPartsPath(workspaceSlug);
   let part: PartsListItem | null = null;
 
@@ -70,18 +70,18 @@ export async function createPart(
       });
 
       if (!formError) {
-        const effectiveParameters = await getEffectivePartParametersForCategories({
+        const effectiveAttributes = await getEffectivePartAttributesForCategories({
           workspaceId: context.workspace.id,
           primaryCategoryId,
           secondaryCategoryId
         });
-        const parameterValueWrites = tryGetPartParameterValueWrites({
-          effectiveParameters,
-          submittedValues: submittedParameterValues
+        const attributeValueWrites = tryGetPartAttributeValueWrites({
+          effectiveAttributes,
+          submittedValues: submittedAttributeValues
         });
 
-        if (!parameterValueWrites) {
-          formError = "invalid-parameter-value";
+        if (!attributeValueWrites) {
+          formError = "invalid-attribute-value";
         } else {
           const manufacturer = await ensureOrganizationWithRole({
             workspaceId: context.workspace.id,
@@ -104,11 +104,11 @@ export async function createPart(
                 }
               });
 
-              await syncPartParameterValues({
+              await syncPartAttributeValues({
                 tx,
                 workspaceId: context.workspace.id,
                 partId: nextPart.id,
-                parameterValueWrites
+                attributeValueWrites
               });
 
               return nextPart;
@@ -151,7 +151,7 @@ export async function updatePart(
     formData,
     "secondaryCategoryId"
   );
-  const submittedParameterValues = getSubmittedParameterValues(formData);
+  const submittedAttributeValues = getSubmittedAttributeValues(formData);
   const partsPath = getPartsPath(workspaceSlug);
   let part: PartsListItem | null = null;
 
@@ -180,18 +180,18 @@ export async function updatePart(
       });
 
       if (!formError) {
-        const effectiveParameters = await getEffectivePartParametersForCategories({
+        const effectiveAttributes = await getEffectivePartAttributesForCategories({
           workspaceId: context.workspace.id,
           primaryCategoryId,
           secondaryCategoryId
         });
-        const parameterValueWrites = tryGetPartParameterValueWrites({
-          effectiveParameters,
-          submittedValues: submittedParameterValues
+        const attributeValueWrites = tryGetPartAttributeValueWrites({
+          effectiveAttributes,
+          submittedValues: submittedAttributeValues
         });
 
-        if (!parameterValueWrites) {
-          formError = "invalid-parameter-value";
+        if (!attributeValueWrites) {
+          formError = "invalid-attribute-value";
         } else {
           const manufacturer = await ensureOrganizationWithRole({
             workspaceId: context.workspace.id,
@@ -215,11 +215,11 @@ export async function updatePart(
               });
 
               if (nextUpdateResult.count > 0) {
-                await syncPartParameterValues({
+                await syncPartAttributeValues({
                   tx,
                   workspaceId: context.workspace.id,
                   partId: id,
-                  parameterValueWrites
+                  attributeValueWrites
                 });
               }
 
@@ -272,15 +272,15 @@ function getOptionalFormValue(formData: FormData, name: string) {
   return value || null;
 }
 
-function getSubmittedParameterValues(formData: FormData) {
+function getSubmittedAttributeValues(formData: FormData) {
   const submittedValues = new Map<string, string>();
 
   for (const [name, value] of formData.entries()) {
-    if (!name.startsWith("parameterValue:") || typeof value !== "string") {
+    if (!name.startsWith("attributeValue:") || typeof value !== "string") {
       continue;
     }
 
-    submittedValues.set(name.slice("parameterValue:".length), value.trim());
+    submittedValues.set(name.slice("attributeValue:".length), value.trim());
   }
 
   return submittedValues;
@@ -343,7 +343,7 @@ async function validatePartCategoryAssignment({
   return null;
 }
 
-async function getEffectivePartParametersForCategories({
+async function getEffectivePartAttributesForCategories({
   workspaceId,
   primaryCategoryId,
   secondaryCategoryId
@@ -352,35 +352,35 @@ async function getEffectivePartParametersForCategories({
   primaryCategoryId: string | null;
   secondaryCategoryId: string | null;
 }) {
-  const [primaryParameters, secondaryParameters] = await Promise.all([
+  const [primaryAttributes, secondaryAttributes] = await Promise.all([
     primaryCategoryId
-      ? getEffectivePartCategoryParameters({
+      ? getEffectivePartCategoryAttributes({
           workspaceId,
           categoryId: primaryCategoryId
         })
       : [],
     secondaryCategoryId
-      ? getEffectivePartCategoryParameters({
+      ? getEffectivePartCategoryAttributes({
           workspaceId,
           categoryId: secondaryCategoryId
         })
       : []
   ]);
-  const primaryParameterIds = new Set(
-    primaryParameters.map((parameter) => parameter.parameter.id)
+  const primaryAttributeIds = new Set(
+    primaryAttributes.map((attribute) => attribute.attribute.id)
   );
 
   return [
-    ...primaryParameters,
-    ...secondaryParameters.filter(
-      (parameter) => !primaryParameterIds.has(parameter.parameter.id)
+    ...primaryAttributes,
+    ...secondaryAttributes.filter(
+      (attribute) => !primaryAttributeIds.has(attribute.attribute.id)
     )
   ];
 }
 
 function getPartWriteError(error: unknown) {
-  if (error instanceof Error && error.message === "invalid_parameter_value") {
-    return "invalid-parameter-value";
+  if (error instanceof Error && error.message === "invalid_attribute_value") {
+    return "invalid-attribute-value";
   }
 
   if (
@@ -409,27 +409,27 @@ function getFormErrorState(error: string): PartMutationResult {
   };
 }
 
-function tryGetPartParameterValueWrites({
-  effectiveParameters,
+function tryGetPartAttributeValueWrites({
+  effectiveAttributes,
   submittedValues
 }: {
-  effectiveParameters: EffectiveCategoryParameter[];
+  effectiveAttributes: EffectiveCategoryAttribute[];
   submittedValues: Map<string, string>;
 }) {
   try {
-    return effectiveParameters.map((effectiveParameter) => {
-      const rawValue = submittedValues.get(effectiveParameter.parameter.id) ?? "";
+    return effectiveAttributes.map((effectiveAttribute) => {
+      const rawValue = submittedValues.get(effectiveAttribute.attribute.id) ?? "";
 
       if (!rawValue) {
         return {
-          parameterId: effectiveParameter.parameter.id,
+          attributeId: effectiveAttribute.attribute.id,
           data: null
         };
       }
       return {
-        parameterId: effectiveParameter.parameter.id,
-        data: getPartParameterValueData({
-          effectiveParameter,
+        attributeId: effectiveAttribute.attribute.id,
+        data: getPartAttributeValueData({
+          effectiveAttribute,
           rawValue
         })
       };
@@ -439,11 +439,11 @@ function tryGetPartParameterValueWrites({
   }
 }
 
-function getPartParameterValueData({
-  effectiveParameter,
+function getPartAttributeValueData({
+  effectiveAttribute,
   rawValue
 }: {
-  effectiveParameter: EffectiveCategoryParameter;
+  effectiveAttribute: EffectiveCategoryAttribute;
   rawValue: string;
 }) {
   const emptyValue = {
@@ -454,11 +454,11 @@ function getPartParameterValueData({
     choiceOptionId: null,
     displayValue: null
   };
-  const parsedValue = parseParameterValue({
-    type: effectiveParameter.parameter.type,
+  const parsedValue = parseAttributeValue({
+    type: effectiveAttribute.attribute.type,
     rawValue,
-    baseUnitSymbol: effectiveParameter.parameter.baseUnitSymbol,
-    choiceOptions: effectiveParameter.parameter.choiceOptions
+    baseUnitSymbol: effectiveAttribute.attribute.baseUnitSymbol,
+    choiceOptions: effectiveAttribute.attribute.choiceOptions
   });
 
   switch (parsedValue.type) {
@@ -495,46 +495,46 @@ function getPartParameterValueData({
   }
 }
 
-async function syncPartParameterValues({
+async function syncPartAttributeValues({
   tx,
   workspaceId,
   partId,
-  parameterValueWrites
+  attributeValueWrites
 }: {
   tx: Prisma.TransactionClient;
   workspaceId: string;
   partId: string;
-  parameterValueWrites: Array<{
-    parameterId: string;
-    data: ReturnType<typeof getPartParameterValueData> | null;
+  attributeValueWrites: Array<{
+    attributeId: string;
+    data: ReturnType<typeof getPartAttributeValueData> | null;
   }>;
 }) {
-  for (const parameterValueWrite of parameterValueWrites) {
-    if (!parameterValueWrite.data) {
-      await tx.partParameterValue.deleteMany({
+  for (const attributeValueWrite of attributeValueWrites) {
+    if (!attributeValueWrite.data) {
+      await tx.partAttributeValue.deleteMany({
         where: {
           workspaceId,
           partId,
-          parameterId: parameterValueWrite.parameterId
+          attributeId: attributeValueWrite.attributeId
         }
       });
       continue;
     }
 
-    await tx.partParameterValue.upsert({
+    await tx.partAttributeValue.upsert({
       where: {
-        partId_parameterId: {
+        partId_attributeId: {
           partId,
-          parameterId: parameterValueWrite.parameterId
+          attributeId: attributeValueWrite.attributeId
         }
       },
       create: {
         workspaceId,
         partId,
-        parameterId: parameterValueWrite.parameterId,
-        ...parameterValueWrite.data
+        attributeId: attributeValueWrite.attributeId,
+        ...attributeValueWrite.data
       },
-      update: parameterValueWrite.data
+      update: attributeValueWrite.data
     });
   }
 }
@@ -562,10 +562,10 @@ async function getPartListItem({
         },
         primaryCategoryId: true,
         secondaryCategoryId: true,
-        parameterValues: {
-          orderBy: [{ parameter: { name: "asc" } }, { id: "asc" }],
+        attributeValues: {
+          orderBy: [{ attribute: { name: "asc" } }, { id: "asc" }],
           select: {
-            parameterId: true,
+            attributeId: true,
             displayValue: true
           }
         }
@@ -581,29 +581,29 @@ async function getPartListItem({
   const categoryPathsById = new Map(
     categories.map((category) => [category.id, category.path])
   );
-  const valueParameterId = part.primaryCategoryId
+  const valueAttributeId = part.primaryCategoryId
     ? (
-        await getEffectivePartCategoryParameters({
+        await getEffectivePartCategoryAttributes({
           workspaceId,
           categoryId: part.primaryCategoryId
         })
-      ).find((effectiveParameter) => effectiveParameter.isValue)?.parameter.id ??
+      ).find((effectiveAttribute) => effectiveAttribute.isValue)?.attribute.id ??
       null
     : null;
-  const parameterValues = part.parameterValues
-    .filter((parameterValue) => parameterValue.displayValue !== null)
-    .map((parameterValue) => ({
-      parameterId: parameterValue.parameterId,
-      displayValue: parameterValue.displayValue ?? ""
+  const attributeValues = part.attributeValues
+    .filter((attributeValue) => attributeValue.displayValue !== null)
+    .map((attributeValue) => ({
+      attributeId: attributeValue.attributeId,
+      displayValue: attributeValue.displayValue ?? ""
     }));
 
   return {
     id: part.id,
     catalogNumber: part.catalogNumber,
     manufacturerName: part.manufacturer.name,
-    valueDisplayValue: valueParameterId
-      ? parameterValues.find(
-          (parameterValue) => parameterValue.parameterId === valueParameterId
+    valueDisplayValue: valueAttributeId
+      ? attributeValues.find(
+          (attributeValue) => attributeValue.attributeId === valueAttributeId
         )?.displayValue ?? null
       : null,
     primaryCategoryId: part.primaryCategoryId,
@@ -614,6 +614,6 @@ async function getPartListItem({
     secondaryCategoryPath: part.secondaryCategoryId
       ? categoryPathsById.get(part.secondaryCategoryId) ?? null
       : null,
-    parameterValues
+    attributeValues
   };
 }

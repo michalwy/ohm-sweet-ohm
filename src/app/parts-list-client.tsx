@@ -19,7 +19,7 @@ import { createPart, updatePart } from "@/server/parts/createPart";
 import type { ManufacturerSuggestion } from "@/server/organizations/organizations";
 import type { PartCategoryListItem } from "@/server/parts/categories";
 import type { PartsListItem } from "@/server/parts/getParts";
-import type { EffectiveCategoryParameter } from "@/server/parts/parameters";
+import type { EffectiveCategoryAttribute } from "@/server/parts/attributes";
 import {
   getNextToastId,
   ToastNotice,
@@ -29,14 +29,15 @@ import {
 type Copy = {
   title: string;
   detailsTab: string;
-  parametersTab: string;
+  attributesTab: string;
   catalogNumber: string;
   value: string;
-  parameterValues: string;
-  primaryParameters: string;
-  secondaryPrimaryParameters: string;
-  primaryCategoryParameters: string;
-  secondaryCategoryParameters: string;
+  attributeValues: string;
+  attributes: string;
+  primaryAttributes: string;
+  secondaryPrimaryAttributes: string;
+  primaryCategoryAttributes: string;
+  secondaryCategoryAttributes: string;
   categories: string;
   primaryCategory: string;
   secondaryCategory: string;
@@ -68,7 +69,7 @@ type Copy = {
   secondaryWithoutPrimary: string;
   duplicateCategories: string;
   duplicatePart: string;
-  invalidParameterValue: string;
+  invalidAttributeValue: string;
   emptyTitle: string;
   emptyBody: string;
   databaseUnavailable: string;
@@ -78,7 +79,7 @@ type CategoryTreeItem = PartCategoryListItem & {
   children: CategoryTreeItem[];
 };
 
-type PartDialogTab = "details" | "parameters";
+type PartDialogTab = "details" | "attributes";
 
 type PartsListClientProps = {
   copy: Copy;
@@ -86,7 +87,7 @@ type PartsListClientProps = {
   partDialogOpen: boolean;
   partEditDialog?: string;
   partCategories: PartCategoryListItem[];
-  categoryParametersByCategoryId: Record<string, EffectiveCategoryParameter[]>;
+  categoryAttributesByCategoryId: Record<string, EffectiveCategoryAttribute[]>;
   manufacturerSuggestions: ManufacturerSuggestion[];
   parts: PartsListItem[];
   workspaceSlug: string;
@@ -98,7 +99,7 @@ export function PartsListClient({
   partDialogOpen,
   partEditDialog,
   partCategories,
-  categoryParametersByCategoryId,
+  categoryAttributesByCategoryId,
   manufacturerSuggestions,
   parts,
   workspaceSlug
@@ -116,28 +117,36 @@ export function PartsListClient({
   const [createSecondaryCategoryId, setCreateSecondaryCategoryId] =
     useState("");
   const [createActiveTab, setCreateActiveTab] = useState<PartDialogTab>("details");
+  const [createAttributeValues, setCreateAttributeValues] = useState<
+    Record<string, string>
+  >({});
   const [createFormResetKey, setCreateFormResetKey] = useState(0);
   const [editCatalogNumber, setEditCatalogNumber] = useState("");
   const [editPrimaryCategoryId, setEditPrimaryCategoryId] = useState("");
   const [editSecondaryCategoryId, setEditSecondaryCategoryId] = useState("");
   const [editActiveTab, setEditActiveTab] = useState<PartDialogTab>("details");
+  const [editAttributeValues, setEditAttributeValues] = useState<
+    Record<string, string>
+  >({});
   const [editingPart, setEditingPart] = useState<PartsListItem | null>(() =>
     currentParts.find((part) => part.id === partEditDialog) ?? null
   );
-  const createHasParametersTab =
-    getPartParameterGroups({
-      categoryParametersByCategoryId,
+  const createHasAttributesTab =
+    getPartAttributeGroups({
+      categoryAttributesByCategoryId,
       copy,
+      partCategories,
       selectedPrimaryCategoryId: createPrimaryCategoryId,
       selectedSecondaryCategoryId: createSecondaryCategoryId
-    }).parameters.length > 0;
-  const editHasParametersTab =
-    getPartParameterGroups({
-      categoryParametersByCategoryId,
+    }).attributes.length > 0;
+  const editHasAttributesTab =
+    getPartAttributeGroups({
+      categoryAttributesByCategoryId,
       copy,
+      partCategories,
       selectedPrimaryCategoryId: editPrimaryCategoryId,
       selectedSecondaryCategoryId: editSecondaryCategoryId
-    }).parameters.length > 0;
+    }).attributes.length > 0;
   const [createFormError, setCreateFormError] = useState<string | null>(null);
   const [updateFormError, setUpdateFormError] = useState<string | null>(null);
   const createPartMutation = useMutation({
@@ -159,6 +168,7 @@ export function PartsListClient({
       setCreatePrimaryCategoryId("");
       setCreateSecondaryCategoryId("");
       setCreateActiveTab("details");
+      setCreateAttributeValues({});
       setCreateFormResetKey((currentKey) => currentKey + 1);
       addToastMessage({
         id: getNextToastId(nextToastIdRef),
@@ -188,6 +198,7 @@ export function PartsListClient({
       addManufacturerSuggestion(result.part.manufacturerName);
       setEditingPart(result.part);
       setEditActiveTab("details");
+      setEditAttributeValues(getPartAttributeValueState(result.part));
       addToastMessage({
         id: getNextToastId(nextToastIdRef),
         message: getPartSuccessMessage(copy.updatedToast, result.part)
@@ -236,7 +247,7 @@ export function PartsListClient({
         cell: ({ row }) => (
           <div className="text-right">
             <button
-              className="min-h-9 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:border-slate-400 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400"
+              className="min-h-8 rounded-md border border-slate-300 bg-white px-2.5 py-1 text-sm font-medium text-slate-700 transition hover:border-slate-400 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400"
               disabled={!isDatabaseAvailable}
               type="button"
               onClick={() => openEditDialog(row.original)}
@@ -257,16 +268,16 @@ export function PartsListClient({
   });
 
   useEffect(() => {
-    if (!createHasParametersTab && createActiveTab === "parameters") {
+    if (!createHasAttributesTab && createActiveTab === "attributes") {
       setCreateActiveTab("details");
     }
-  }, [createActiveTab, createHasParametersTab]);
+  }, [createActiveTab, createHasAttributesTab]);
 
   useEffect(() => {
-    if (!editHasParametersTab && editActiveTab === "parameters") {
+    if (!editHasAttributesTab && editActiveTab === "attributes") {
       setEditActiveTab("details");
     }
-  }, [editActiveTab, editHasParametersTab]);
+  }, [editActiveTab, editHasAttributesTab]);
 
   useEffect(() => {
     if (partDialogOpen) {
@@ -292,6 +303,7 @@ export function PartsListClient({
       setEditCatalogNumber(part.catalogNumber);
       setEditPrimaryCategoryId(part.primaryCategoryId ?? "");
       setEditSecondaryCategoryId(part.secondaryCategoryId ?? "");
+      setEditAttributeValues(getPartAttributeValueState(part));
       setEditActiveTab("details");
       openDialog(editDialogRef.current);
     });
@@ -312,6 +324,7 @@ export function PartsListClient({
     setCreatePrimaryCategoryId("");
     setCreateSecondaryCategoryId("");
     setCreateActiveTab("details");
+    setCreateAttributeValues({});
     setCreateFormResetKey((currentKey) => currentKey + 1);
     setCreateFormError(null);
     openDialog(createDialogRef.current);
@@ -369,7 +382,7 @@ export function PartsListClient({
         </h2>
         <div className="flex items-center justify-end gap-3 border-b border-slate-200 bg-white px-4 py-3">
           <button
-            className="min-h-10 rounded-md border border-slate-950 bg-slate-950 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2 disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-100 disabled:text-slate-400"
+            className={primaryButtonClassName}
             disabled={!isDatabaseAvailable}
             type="button"
             onClick={openCreateDialog}
@@ -386,7 +399,7 @@ export function PartsListClient({
                     <th
                       key={header.id}
                       scope="col"
-                      className={`border-b border-slate-200 px-4 py-3 font-semibold text-slate-600 ${
+                      className={`border-b border-slate-200 px-3 py-2 font-semibold text-slate-600 ${
                         header.column.id === "actions" ? "w-28 text-right" : ""
                       }`}
                     >
@@ -411,8 +424,8 @@ export function PartsListClient({
                     {row.getVisibleCells().map((cell) => (
                       <td
                         key={cell.id}
-                        className={`border-b border-slate-100 px-4 py-3 text-slate-700 ${
-                          cell.column.id === "actions" ? "py-2" : ""
+                        className={`border-b border-slate-100 px-3 py-2 text-slate-700 ${
+                          cell.column.id === "actions" ? "py-1.5" : ""
                         }`}
                       >
                         {flexRender(
@@ -445,10 +458,10 @@ export function PartsListClient({
       <dialog
         ref={createDialogRef}
         aria-labelledby="add-part-dialog-title"
-        className="fixed inset-0 m-auto max-h-[calc(100vh-2rem)] w-[calc(100%-2rem)] max-w-2xl rounded-lg border border-slate-200 bg-white p-0 text-slate-950 shadow-2xl backdrop:bg-slate-950/40"
+        className="fixed inset-0 m-auto max-h-[calc(100vh-2rem)] w-[min(58rem,calc(100vw-3rem))] overflow-hidden rounded-lg border border-slate-200 bg-white p-0 text-slate-950 shadow-2xl backdrop:bg-slate-950/40"
       >
-        <div className="p-6">
-          <div className="mb-5 flex items-start justify-between gap-4 border-b border-slate-200 pb-5">
+        <div className="flex max-h-[calc(100vh-2rem)] min-h-0 flex-col">
+          <div className="flex items-start justify-between gap-4 border-b border-slate-200 px-5 py-4">
             <div>
               <h2
                 id="add-part-dialog-title"
@@ -462,77 +475,120 @@ export function PartsListClient({
             </div>
             <form method="dialog">
               <button
-                className="min-h-9 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:border-slate-400 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2"
+                aria-label={copy.close}
+                className="grid h-8 w-8 place-items-center rounded-md border border-transparent text-slate-500 transition hover:border-slate-200 hover:bg-slate-50 hover:text-slate-950 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2"
                 type="submit"
                 onClick={() => setCreateFormError(null)}
               >
-                {copy.close}
+                <CloseIcon />
               </button>
             </form>
           </div>
 
-          {createFormError ? (
-            <p className="mb-4 rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-800">
-              {createFormError === "missing-required-fields"
-                ? copy.missingRequiredFields
-                : getPartFormErrorMessage(copy, createFormError)}
-            </p>
-          ) : null}
-
-          <form className="grid gap-4" onSubmit={handleCreateSubmit}>
+          <form
+            className="flex min-h-0 flex-1 flex-col overflow-hidden"
+            onSubmit={handleCreateSubmit}
+          >
             <input name="workspaceSlug" type="hidden" value={workspaceSlug} />
-            <PartDialogTabs
-              activeTab={createActiveTab}
-              copy={copy}
-              showParametersTab={createHasParametersTab}
-              onTabChange={setCreateActiveTab}
+            <PartAttributeHiddenInputs
+              attributeValues={createAttributeValues}
+              categoryAttributesByCategoryId={categoryAttributesByCategoryId}
+              part={null}
+              partCategories={partCategories}
+              selectedPrimaryCategoryId={createPrimaryCategoryId}
+              selectedSecondaryCategoryId={createSecondaryCategoryId}
             />
-            <div className={createActiveTab === "details" ? "grid gap-4" : "hidden"}>
-              <PartDetailsFields
-                catalogNumber={createCatalogNumber}
-                catalogNumberInputId="create-catalog-number"
-                categoryTree={categoryTree}
+            <div className="shrink-0 border-b border-slate-200 px-5 pt-4">
+              {createFormError ? (
+                <p className="mb-3 rounded-md border border-[var(--color-error-border)] bg-[var(--color-error-soft)] px-3 py-2 text-sm text-[var(--color-error)]">
+                  {createFormError === "missing-required-fields"
+                    ? copy.missingRequiredFields
+                    : getPartFormErrorMessage(copy, createFormError)}
+                </p>
+              ) : null}
+              <PartDialogTabs
+                activeTab={createActiveTab}
                 copy={copy}
-                disabled={!isDatabaseAvailable}
-                formResetKey={createFormResetKey}
-                manufacturerInputId="create-manufacturer-name"
-                manufacturerSuggestions={currentManufacturerSuggestions}
-                partCategories={partCategories}
-                primaryCategoryId={createPrimaryCategoryId}
-                secondaryCategoryId={createSecondaryCategoryId}
-                onCatalogNumberChange={setCreateCatalogNumber}
-                onPrimaryCategoryChange={(categoryId) => {
-                  setCreatePrimaryCategoryId(categoryId);
-                  setCreateSecondaryCategoryId("");
-                }}
-                onSecondaryCategoryChange={setCreateSecondaryCategoryId}
-              />
-              <PartParameterSections
-                categoryParametersByCategoryId={categoryParametersByCategoryId}
-                copy={copy}
-                disabled={!isDatabaseAvailable}
-                part={null}
-                selectedPrimaryCategoryId={createPrimaryCategoryId}
-                selectedSecondaryCategoryId={createSecondaryCategoryId}
-                tab="details"
+                showAttributesTab={createHasAttributesTab}
+                onTabChange={setCreateActiveTab}
               />
             </div>
-            <div
-              className={createActiveTab === "parameters" ? "grid gap-4" : "hidden"}
-            >
-              <PartParameterSections
-                categoryParametersByCategoryId={categoryParametersByCategoryId}
-                copy={copy}
-                disabled={!isDatabaseAvailable}
-                part={null}
-                selectedPrimaryCategoryId={createPrimaryCategoryId}
-                selectedSecondaryCategoryId={createSecondaryCategoryId}
-                tab="parameters"
-              />
+            <div className="relative min-h-0 flex-1 overflow-hidden px-5 py-4">
+              <div
+                className={
+                  createActiveTab === "details"
+                    ? "grid min-h-0 gap-3 overflow-auto pr-1"
+                    : "invisible grid min-h-0 gap-3 overflow-auto pr-1"
+                }
+                aria-hidden={createActiveTab !== "details"}
+                inert={createActiveTab !== "details" ? true : undefined}
+              >
+                <PartDetailsFields
+                  catalogNumber={createCatalogNumber}
+                  catalogNumberInputId="create-catalog-number"
+                  categoryTree={categoryTree}
+                  copy={copy}
+                  disabled={!isDatabaseAvailable}
+                  formResetKey={createFormResetKey}
+                  manufacturerInputId="create-manufacturer-name"
+                  manufacturerSuggestions={currentManufacturerSuggestions}
+                  partCategories={partCategories}
+                  primaryCategoryId={createPrimaryCategoryId}
+                  secondaryCategoryId={createSecondaryCategoryId}
+                  onCatalogNumberChange={setCreateCatalogNumber}
+                  onPrimaryCategoryChange={(categoryId) => {
+                    setCreatePrimaryCategoryId(categoryId);
+                    setCreateSecondaryCategoryId("");
+                  }}
+                  onSecondaryCategoryChange={setCreateSecondaryCategoryId}
+                />
+                <PartAttributeSections
+                  categoryAttributesByCategoryId={categoryAttributesByCategoryId}
+                  partCategories={partCategories}
+                  copy={copy}
+                  disabled={!isDatabaseAvailable}
+                  part={null}
+                  selectedPrimaryCategoryId={createPrimaryCategoryId}
+                  selectedSecondaryCategoryId={createSecondaryCategoryId}
+                  tab="details"
+                  values={createAttributeValues}
+                  onValueChange={(attributeId, value) =>
+                    setCreateAttributeValues((currentValues) => ({
+                      ...currentValues,
+                      [attributeId]: value
+                    }))
+                  }
+                />
+              </div>
+              <div
+                className={
+                  createActiveTab === "attributes"
+                    ? "absolute inset-0 grid gap-3 overflow-auto px-5 py-4 pr-6"
+                    : "hidden"
+                }
+              >
+                <PartAttributeSections
+                  categoryAttributesByCategoryId={categoryAttributesByCategoryId}
+                  partCategories={partCategories}
+                  copy={copy}
+                  disabled={!isDatabaseAvailable}
+                  part={null}
+                  selectedPrimaryCategoryId={createPrimaryCategoryId}
+                  selectedSecondaryCategoryId={createSecondaryCategoryId}
+                  tab="attributes"
+                  values={createAttributeValues}
+                  onValueChange={(attributeId, value) =>
+                    setCreateAttributeValues((currentValues) => ({
+                      ...currentValues,
+                      [attributeId]: value
+                    }))
+                  }
+                />
+              </div>
             </div>
-            <div className="flex justify-end">
+            <div className="flex shrink-0 justify-end border-t border-slate-200 px-5 py-4">
               <button
-                className="min-h-11 rounded-md border border-slate-950 bg-slate-950 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2 disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-100 disabled:text-slate-400"
+                className={primaryButtonClassName}
                 type="submit"
                 disabled={!isDatabaseAvailable || createPartMutation.isPending}
               >
@@ -546,10 +602,10 @@ export function PartsListClient({
       <dialog
         ref={editDialogRef}
         aria-labelledby="edit-part-dialog-title"
-        className="fixed inset-0 m-auto max-h-[calc(100vh-2rem)] w-[calc(100%-2rem)] max-w-2xl rounded-lg border border-slate-200 bg-white p-0 text-slate-950 shadow-2xl backdrop:bg-slate-950/40"
+        className="fixed inset-0 m-auto max-h-[calc(100vh-2rem)] w-[min(58rem,calc(100vw-3rem))] overflow-hidden rounded-lg border border-slate-200 bg-white p-0 text-slate-950 shadow-2xl backdrop:bg-slate-950/40"
       >
-        <div className="p-6">
-          <div className="mb-5 flex items-start justify-between gap-4 border-b border-slate-200 pb-5">
+        <div className="flex max-h-[calc(100vh-2rem)] min-h-0 flex-col">
+          <div className="flex items-start justify-between gap-4 border-b border-slate-200 px-5 py-4">
             <div>
               <h2
                 id="edit-part-dialog-title"
@@ -563,83 +619,126 @@ export function PartsListClient({
             </div>
             <form method="dialog">
               <button
-                className="min-h-9 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:border-slate-400 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2"
+                aria-label={copy.close}
+                className="grid h-8 w-8 place-items-center rounded-md border border-transparent text-slate-500 transition hover:border-slate-200 hover:bg-slate-50 hover:text-slate-950 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2"
                 type="submit"
                 onClick={() => setUpdateFormError(null)}
               >
-                {copy.close}
+                <CloseIcon />
               </button>
             </form>
           </div>
 
-          {updateFormError ? (
-            <p className="mb-4 rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-800">
-              {updateFormError === "missing-required-fields"
-                ? copy.missingRequiredFields
-                : getPartFormErrorMessage(copy, updateFormError)}
-            </p>
-          ) : null}
-
           {editingPart ? (
-            <form className="grid gap-4" onSubmit={handleUpdateSubmit}>
+            <form
+              className="flex min-h-0 flex-1 flex-col overflow-hidden"
+              onSubmit={handleUpdateSubmit}
+            >
               <input name="workspaceSlug" type="hidden" value={workspaceSlug} />
               <input name="id" type="hidden" value={editingPart.id} />
-              <PartDialogTabs
-                activeTab={editActiveTab}
-                copy={copy}
-                showParametersTab={editHasParametersTab}
-                onTabChange={setEditActiveTab}
+              <PartAttributeHiddenInputs
+                attributeValues={editAttributeValues}
+                categoryAttributesByCategoryId={categoryAttributesByCategoryId}
+                part={editingPart}
+                partCategories={partCategories}
+                selectedPrimaryCategoryId={editPrimaryCategoryId}
+                selectedSecondaryCategoryId={editSecondaryCategoryId}
               />
-              <div className={editActiveTab === "details" ? "grid gap-4" : "hidden"}>
-                <PartDetailsFields
-                  catalogNumber={editCatalogNumber}
-                  catalogNumberInputId="edit-catalog-number"
-                  categoryTree={categoryTree}
+              <div className="shrink-0 border-b border-slate-200 px-5 pt-4">
+                {updateFormError ? (
+                  <p className="mb-3 rounded-md border border-[var(--color-error-border)] bg-[var(--color-error-soft)] px-3 py-2 text-sm text-[var(--color-error)]">
+                    {updateFormError === "missing-required-fields"
+                      ? copy.missingRequiredFields
+                      : getPartFormErrorMessage(copy, updateFormError)}
+                  </p>
+                ) : null}
+                <PartDialogTabs
+                  activeTab={editActiveTab}
                   copy={copy}
-                  defaultManufacturerName={editingPart.manufacturerName}
-                  disabled={!isDatabaseAvailable}
-                  formResetKey={`${editingPart.id}-${editingPart.manufacturerName}`}
-                  manufacturerInputId="edit-manufacturer-name"
-                  manufacturerSuggestions={currentManufacturerSuggestions}
-                  partCategories={partCategories}
-                  primaryCategoryId={editPrimaryCategoryId}
-                  secondaryCategoryId={editSecondaryCategoryId}
-                  onCatalogNumberChange={setEditCatalogNumber}
-                  onPrimaryCategoryChange={(categoryId) => {
-                    setEditPrimaryCategoryId(categoryId);
+                  showAttributesTab={editHasAttributesTab}
+                  onTabChange={setEditActiveTab}
+                />
+              </div>
+              <div className="relative min-h-0 flex-1 overflow-hidden px-5 py-4">
+                <div
+                  className={
+                    editActiveTab === "details"
+                      ? "grid min-h-0 gap-3 overflow-auto pr-1"
+                      : "invisible grid min-h-0 gap-3 overflow-auto pr-1"
+                  }
+                  aria-hidden={editActiveTab !== "details"}
+                  inert={editActiveTab !== "details" ? true : undefined}
+                >
+                  <PartDetailsFields
+                    catalogNumber={editCatalogNumber}
+                    catalogNumberInputId="edit-catalog-number"
+                    categoryTree={categoryTree}
+                    copy={copy}
+                    defaultManufacturerName={editingPart.manufacturerName}
+                    disabled={!isDatabaseAvailable}
+                    formResetKey={`${editingPart.id}-${editingPart.manufacturerName}`}
+                    manufacturerInputId="edit-manufacturer-name"
+                    manufacturerSuggestions={currentManufacturerSuggestions}
+                    partCategories={partCategories}
+                    primaryCategoryId={editPrimaryCategoryId}
+                    secondaryCategoryId={editSecondaryCategoryId}
+                    onCatalogNumberChange={setEditCatalogNumber}
+                    onPrimaryCategoryChange={(categoryId) => {
+                      setEditPrimaryCategoryId(categoryId);
 
-                    if (!categoryId || editSecondaryCategoryId === categoryId) {
-                      setEditSecondaryCategoryId("");
+                      if (!categoryId || editSecondaryCategoryId === categoryId) {
+                        setEditSecondaryCategoryId("");
+                      }
+                    }}
+                    onSecondaryCategoryChange={setEditSecondaryCategoryId}
+                  />
+                  <PartAttributeSections
+                    categoryAttributesByCategoryId={categoryAttributesByCategoryId}
+                    partCategories={partCategories}
+                    copy={copy}
+                    disabled={!isDatabaseAvailable}
+                    part={editingPart}
+                    selectedPrimaryCategoryId={editPrimaryCategoryId}
+                    selectedSecondaryCategoryId={editSecondaryCategoryId}
+                    tab="details"
+                    values={editAttributeValues}
+                    onValueChange={(attributeId, value) =>
+                      setEditAttributeValues((currentValues) => ({
+                        ...currentValues,
+                        [attributeId]: value
+                      }))
                     }
-                  }}
-                  onSecondaryCategoryChange={setEditSecondaryCategoryId}
-                />
-                <PartParameterSections
-                  categoryParametersByCategoryId={categoryParametersByCategoryId}
-                  copy={copy}
-                  disabled={!isDatabaseAvailable}
-                  part={editingPart}
-                  selectedPrimaryCategoryId={editPrimaryCategoryId}
-                  selectedSecondaryCategoryId={editSecondaryCategoryId}
-                  tab="details"
-                />
+                  />
+                </div>
+                <div
+                  className={
+                    editActiveTab === "attributes"
+                      ? "absolute inset-0 grid gap-3 overflow-auto px-5 py-4 pr-6"
+                      : "hidden"
+                  }
+                >
+                  <PartAttributeSections
+                    categoryAttributesByCategoryId={categoryAttributesByCategoryId}
+                    partCategories={partCategories}
+                    copy={copy}
+                    disabled={!isDatabaseAvailable}
+                    part={editingPart}
+                    selectedPrimaryCategoryId={editPrimaryCategoryId}
+                    selectedSecondaryCategoryId={editSecondaryCategoryId}
+                    tab="attributes"
+                    values={editAttributeValues}
+                    onValueChange={(attributeId, value) =>
+                      setEditAttributeValues((currentValues) => ({
+                        ...currentValues,
+                        [attributeId]: value
+                      }))
+                    }
+                  />
+                </div>
               </div>
-              <div
-                className={editActiveTab === "parameters" ? "grid gap-4" : "hidden"}
-              >
-                <PartParameterSections
-                  categoryParametersByCategoryId={categoryParametersByCategoryId}
-                  copy={copy}
-                  disabled={!isDatabaseAvailable}
-                  part={editingPart}
-                  selectedPrimaryCategoryId={editPrimaryCategoryId}
-                  selectedSecondaryCategoryId={editSecondaryCategoryId}
-                  tab="parameters"
-                />
-              </div>
-              <div className="flex justify-end">
+              <div className="flex shrink-0 justify-end border-t border-slate-200 px-5 py-4">
                 <button
-                  className="min-h-11 rounded-md border border-slate-950 bg-slate-950 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2 disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-100 disabled:text-slate-400"
+                  className={primaryButtonClassName}
                   type="submit"
                   disabled={!isDatabaseAvailable || updatePartMutation.isPending}
                 >
@@ -674,8 +773,35 @@ function closeDialog(dialog: HTMLDialogElement | null) {
   dialog.close();
 }
 
+function CloseIcon() {
+  return (
+    <svg
+      aria-hidden="true"
+      className="h-4 w-4"
+      fill="none"
+      viewBox="0 0 16 16"
+    >
+      <path
+        d="M4 4l8 8M12 4l-8 8"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeWidth="1.75"
+      />
+    </svg>
+  );
+}
+
 function getPartSuccessMessage(actionLabel: string, part: PartsListItem) {
   return `${actionLabel}: ${part.manufacturerName} ${part.catalogNumber}.`;
+}
+
+function getPartAttributeValueState(part: PartsListItem) {
+  return Object.fromEntries(
+    part.attributeValues.map((attributeValue) => [
+      attributeValue.attributeId,
+      attributeValue.displayValue
+    ])
+  );
 }
 
 function sortParts(parts: PartsListItem[]) {
@@ -713,8 +839,8 @@ function getPartFormErrorMessage(copy: Copy, error: string) {
     return copy.duplicateCategories;
   }
 
-  if (error === "invalid-parameter-value") {
-    return copy.invalidParameterValue;
+  if (error === "invalid-attribute-value") {
+    return copy.invalidAttributeValue;
   }
 
   return copy.databaseUnavailable;
@@ -854,7 +980,7 @@ function ManufacturerAutocomplete({
                     aria-selected={index === activeIndex}
                     className={`min-h-9 w-full rounded-md px-3 py-1.5 text-left text-sm transition focus:outline-none focus:ring-2 focus:ring-slate-300 ${
                       index === activeIndex
-                        ? "bg-cyan-100 font-semibold text-slate-950"
+                        ? "bg-[var(--color-accent-soft)] font-semibold text-slate-950"
                         : "text-slate-700 hover:bg-slate-50"
                     }`}
                     role="option"
@@ -952,12 +1078,12 @@ function normalizeManufacturerSearchText(value: string) {
 function PartDialogTabs({
   activeTab,
   copy,
-  showParametersTab,
+  showAttributesTab,
   onTabChange
 }: {
   activeTab: PartDialogTab;
   copy: Copy;
-  showParametersTab: boolean;
+  showAttributesTab: boolean;
   onTabChange: (tab: PartDialogTab) => void;
 }) {
   return (
@@ -965,7 +1091,7 @@ function PartDialogTabs({
       <button
         className={`min-h-10 border-b-2 px-3 text-sm font-medium ${
           activeTab === "details"
-            ? "border-slate-950 text-slate-950"
+            ? "border-[var(--color-accent)] text-slate-950"
             : "border-transparent text-slate-500 hover:text-slate-800"
         }`}
         type="button"
@@ -973,17 +1099,17 @@ function PartDialogTabs({
       >
         {copy.detailsTab}
       </button>
-      {showParametersTab ? (
+      {showAttributesTab ? (
         <button
           className={`min-h-10 border-b-2 px-3 text-sm font-medium ${
-            activeTab === "parameters"
-              ? "border-slate-950 text-slate-950"
+            activeTab === "attributes"
+              ? "border-[var(--color-accent)] text-slate-950"
               : "border-transparent text-slate-500 hover:text-slate-800"
           }`}
           type="button"
-          onClick={() => onTabChange("parameters")}
+          onClick={() => onTabChange("attributes")}
         >
-          {copy.parametersTab}
+          {copy.attributesTab}
         </button>
       ) : null}
     </div>
@@ -1024,89 +1150,100 @@ function PartDetailsFields({
   onSecondaryCategoryChange: (categoryId: string) => void;
 }) {
   return (
-    <>
-      <label
-        className="grid gap-2 text-sm font-medium text-slate-700"
-        htmlFor={catalogNumberInputId}
-      >
-        {copy.catalogNumber}
-        <input
-          className="min-h-11 rounded-md border border-slate-300 bg-white px-3 py-2 font-mono text-base text-slate-950 outline-none transition placeholder:text-slate-400 hover:border-slate-400 focus:border-slate-500 focus:ring-2 focus:ring-slate-200 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400"
-          id={catalogNumberInputId}
-          name="catalogNumber"
-          placeholder={copy.catalogNumberPlaceholder}
-          type="text"
-          value={catalogNumber}
+    <div className="grid gap-3">
+      <div className="grid grid-cols-2 gap-3">
+        <label
+          className="grid gap-2 text-sm font-medium text-slate-700"
+          htmlFor={catalogNumberInputId}
+        >
+          {copy.catalogNumber}
+          <input
+            className="min-h-10 rounded-md border border-slate-300 bg-white px-3 py-1.5 font-mono text-sm text-slate-950 outline-none transition placeholder:text-slate-400 hover:border-slate-400 focus:border-slate-500 focus:ring-2 focus:ring-slate-200 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400"
+            id={catalogNumberInputId}
+            name="catalogNumber"
+            placeholder={copy.catalogNumberPlaceholder}
+            type="text"
+            value={catalogNumber}
+            disabled={disabled}
+            onChange={(event) => onCatalogNumberChange(event.target.value)}
+          />
+        </label>
+        <ManufacturerAutocomplete
+          key={`manufacturer-${formResetKey}`}
+          copy={copy}
+          defaultValue={defaultManufacturerName}
           disabled={disabled}
-          onChange={(event) => onCatalogNumberChange(event.target.value)}
+          inputId={manufacturerInputId}
+          name="manufacturerName"
+          placeholder={copy.manufacturerPlaceholder}
+          suggestions={manufacturerSuggestions}
         />
-      </label>
-      <ManufacturerAutocomplete
-        key={`manufacturer-${formResetKey}`}
-        copy={copy}
-        defaultValue={defaultManufacturerName}
-        disabled={disabled}
-        inputId={manufacturerInputId}
-        name="manufacturerName"
-        placeholder={copy.manufacturerPlaceholder}
-        suggestions={manufacturerSuggestions}
-      />
-      <CategoryTreeSelect
-        categories={partCategories}
-        categoryTree={categoryTree}
-        copy={copy}
-        disabled={disabled}
-        label={copy.primaryCategory}
-        name="primaryCategoryId"
-        noSelectionLabel={copy.noCategory}
-        selectedId={primaryCategoryId}
-        onSelectedIdChange={onPrimaryCategoryChange}
-      />
-      <CategoryTreeSelect
-        key={`secondary-${formResetKey}-${primaryCategoryId}`}
-        categories={partCategories}
-        categoryTree={categoryTree}
-        copy={copy}
-        disabled={disabled || !primaryCategoryId}
-        excludedCategoryId={primaryCategoryId}
-        label={copy.secondaryCategory}
-        name="secondaryCategoryId"
-        noSelectionLabel={copy.noSecondaryCategory}
-        selectedId={secondaryCategoryId}
-        onSelectedIdChange={onSecondaryCategoryChange}
-      />
-    </>
+      </div>
+      <div className="grid grid-cols-2 gap-3">
+        <CategoryTreeSelect
+          categories={partCategories}
+          categoryTree={categoryTree}
+          copy={copy}
+          disabled={disabled}
+          label={copy.primaryCategory}
+          name="primaryCategoryId"
+          noSelectionLabel={copy.noCategory}
+          selectedId={primaryCategoryId}
+          onSelectedIdChange={onPrimaryCategoryChange}
+        />
+        <CategoryTreeSelect
+          key={`secondary-${formResetKey}-${primaryCategoryId}`}
+          categories={partCategories}
+          categoryTree={categoryTree}
+          copy={copy}
+          disabled={disabled || !primaryCategoryId}
+          excludedCategoryId={primaryCategoryId}
+          label={copy.secondaryCategory}
+          name="secondaryCategoryId"
+          noSelectionLabel={copy.noSecondaryCategory}
+          selectedId={secondaryCategoryId}
+          onSelectedIdChange={onSecondaryCategoryChange}
+        />
+      </div>
+    </div>
   );
 }
 
-function PartParameterSections({
-  categoryParametersByCategoryId,
+function PartAttributeSections({
+  categoryAttributesByCategoryId,
   copy,
   disabled,
+  values,
   part,
+  partCategories,
   selectedPrimaryCategoryId,
   selectedSecondaryCategoryId,
-  tab
+  tab,
+  onValueChange
 }: {
-  categoryParametersByCategoryId: Record<string, EffectiveCategoryParameter[]>;
+  categoryAttributesByCategoryId: Record<string, EffectiveCategoryAttribute[]>;
   copy: Copy;
   disabled: boolean;
+  values: Record<string, string>;
   part: PartsListItem | null;
+  partCategories: PartCategoryListItem[];
   selectedPrimaryCategoryId: string;
   selectedSecondaryCategoryId: string;
   tab: PartDialogTab;
+  onValueChange: (attributeId: string, value: string) => void;
 }) {
-  const groups = getPartParameterGroups({
-    categoryParametersByCategoryId,
+  const groups = getPartAttributeGroups({
+    categoryAttributesByCategoryId,
     copy,
+    partCategories,
     selectedPrimaryCategoryId,
     selectedSecondaryCategoryId
   });
-  const sections = tab === "details" ? groups.details : groups.parameters;
-  const existingValuesByParameterId = new Map(
-    (part?.parameterValues ?? []).map((parameterValue) => [
-      parameterValue.parameterId,
-      parameterValue.displayValue
+  const sections = tab === "details" ? groups.details : groups.attributes;
+  const existingValuesByAttributeId = new Map(
+    (part?.attributeValues ?? []).map((attributeValue) => [
+      attributeValue.attributeId,
+      attributeValue.displayValue
     ])
   );
 
@@ -1115,154 +1252,274 @@ function PartParameterSections({
   }
 
   return (
-    <div className="grid gap-4">
+    <div className="grid gap-3">
       {sections.map((section) => (
-        <fieldset
-          key={section.id}
-          className="grid gap-3 rounded-md border border-slate-200 p-4"
-        >
-          <legend className="px-1 text-sm font-semibold text-slate-700">
+        <section key={section.id}>
+          <h3 className="mb-2 text-sm font-semibold text-slate-700">
             {section.title}
-          </legend>
-          {section.parameters.map((effectiveParameter) => (
-            <PartParameterField
-              key={effectiveParameter.parameter.id}
-              disabled={disabled}
-              effectiveParameter={effectiveParameter}
-              value={
-                existingValuesByParameterId.get(effectiveParameter.parameter.id) ??
-                effectiveParameter.defaultValue?.displayValue ??
-                ""
-              }
-            />
-          ))}
-        </fieldset>
+          </h3>
+          <div className="divide-y divide-slate-100 rounded-md border border-slate-200">
+            {section.attributes.map((effectiveAttribute) => (
+              <PartAttributeField
+                key={effectiveAttribute.attribute.id}
+                compact
+                disabled={disabled}
+                effectiveAttribute={effectiveAttribute}
+                value={getAttributeInputValue({
+                  effectiveAttribute,
+                  existingValuesByAttributeId,
+                  values
+                })}
+                onValueChange={onValueChange}
+              />
+            ))}
+          </div>
+        </section>
       ))}
     </div>
   );
 }
 
-function getPartParameterGroups({
-  categoryParametersByCategoryId,
-  copy,
+function PartAttributeHiddenInputs({
+  attributeValues,
+  categoryAttributesByCategoryId,
+  part,
+  partCategories,
   selectedPrimaryCategoryId,
   selectedSecondaryCategoryId
 }: {
-  categoryParametersByCategoryId: Record<string, EffectiveCategoryParameter[]>;
-  copy: Copy;
+  attributeValues: Record<string, string>;
+  categoryAttributesByCategoryId: Record<string, EffectiveCategoryAttribute[]>;
+  part: PartsListItem | null;
+  partCategories: PartCategoryListItem[];
   selectedPrimaryCategoryId: string;
   selectedSecondaryCategoryId: string;
 }) {
-  const primaryParameters = selectedPrimaryCategoryId
-    ? categoryParametersByCategoryId[selectedPrimaryCategoryId] ?? []
-    : [];
-  const primaryParameterIds = new Set(
-    primaryParameters.map((parameter) => parameter.parameter.id)
+  const groups = getPartAttributeGroups({
+    categoryAttributesByCategoryId,
+    copy: null,
+    partCategories,
+    selectedPrimaryCategoryId,
+    selectedSecondaryCategoryId
+  });
+  const existingValuesByAttributeId = new Map(
+    (part?.attributeValues ?? []).map((attributeValue) => [
+      attributeValue.attributeId,
+      attributeValue.displayValue
+    ])
   );
-  const secondaryParameters = selectedSecondaryCategoryId
-    ? (categoryParametersByCategoryId[selectedSecondaryCategoryId] ?? []).filter(
-        (parameter) => !primaryParameterIds.has(parameter.parameter.id)
+  const effectiveAttributesById = new Map<string, EffectiveCategoryAttribute>();
+
+  for (const section of [...groups.details, ...groups.attributes]) {
+    for (const effectiveAttribute of section.attributes) {
+      effectiveAttributesById.set(
+        effectiveAttribute.attribute.id,
+        effectiveAttribute
+      );
+    }
+  }
+
+  return (
+    <>
+      {[...effectiveAttributesById.values()].map((effectiveAttribute) => (
+        <input
+          key={effectiveAttribute.attribute.id}
+          name={`attributeValue:${effectiveAttribute.attribute.id}`}
+          type="hidden"
+          value={getAttributeInputValue({
+            effectiveAttribute,
+            existingValuesByAttributeId,
+            values: attributeValues
+          })}
+        />
+      ))}
+    </>
+  );
+}
+
+function getAttributeInputValue({
+  effectiveAttribute,
+  existingValuesByAttributeId,
+  values
+}: {
+  effectiveAttribute: EffectiveCategoryAttribute;
+  existingValuesByAttributeId: Map<string, string>;
+  values: Record<string, string>;
+}) {
+  const attributeId = effectiveAttribute.attribute.id;
+
+  return (
+    values[attributeId] ??
+    existingValuesByAttributeId.get(attributeId) ??
+    effectiveAttribute.defaultValue?.displayValue ??
+    ""
+  );
+}
+
+function getPartAttributeGroups({
+  categoryAttributesByCategoryId,
+  copy,
+  partCategories,
+  selectedPrimaryCategoryId,
+  selectedSecondaryCategoryId
+}: {
+  categoryAttributesByCategoryId: Record<string, EffectiveCategoryAttribute[]>;
+  copy: Pick<Copy, "attributes" | "value"> | null;
+  partCategories: PartCategoryListItem[];
+  selectedPrimaryCategoryId: string;
+  selectedSecondaryCategoryId: string;
+}) {
+  const primaryAttributes = selectedPrimaryCategoryId
+    ? categoryAttributesByCategoryId[selectedPrimaryCategoryId] ?? []
+    : [];
+  const primaryAttributeIds = new Set(
+    primaryAttributes.map((attribute) => attribute.attribute.id)
+  );
+  const secondaryAttributes = selectedSecondaryCategoryId
+    ? (categoryAttributesByCategoryId[selectedSecondaryCategoryId] ?? []).filter(
+        (attribute) => !primaryAttributeIds.has(attribute.attribute.id)
       )
     : [];
-  const valueParameter = primaryParameters.find((parameter) => parameter.isValue);
-  const valueParameterId = valueParameter?.parameter.id ?? null;
-  const primaryPrimaryParameters = primaryParameters.filter(
-    (parameter) => parameter.isPrimary && parameter.parameter.id !== valueParameterId
+  const valueAttribute = primaryAttributes.find((attribute) => attribute.isValue);
+  const valueAttributeId = valueAttribute?.attribute.id ?? null;
+  const primaryPrimaryAttributes = primaryAttributes.filter(
+    (attribute) => attribute.isPrimary && attribute.attribute.id !== valueAttributeId
   );
-  const secondaryPrimaryParameters = secondaryParameters.filter(
-    (parameter) => parameter.isPrimary
+  const secondaryPrimaryAttributes = secondaryAttributes.filter(
+    (attribute) => attribute.isPrimary
   );
-  const primaryOtherParameters = primaryParameters.filter(
-    (parameter) =>
-      parameter.parameter.id !== valueParameterId && !parameter.isPrimary
+  const primaryOtherAttributes = primaryAttributes.filter(
+    (attribute) =>
+      attribute.attribute.id !== valueAttributeId && !attribute.isPrimary
   );
-  const secondaryOtherParameters = secondaryParameters.filter(
-    (parameter) => !parameter.isPrimary
+  const secondaryOtherAttributes = secondaryAttributes.filter(
+    (attribute) => !attribute.isPrimary
   );
 
   return {
-    details: compactParameterSections([
+    details: compactAttributeSections([
       {
         id: "value",
-        title: copy.value,
-        parameters: valueParameter ? [valueParameter] : []
+        title: copy?.value ?? "",
+        attributes: valueAttribute ? [valueAttribute] : []
       },
       {
-        id: "primary-primary",
-        title: copy.primaryParameters,
-        parameters: primaryPrimaryParameters
-      },
-      {
-        id: "secondary-primary",
-        title: copy.secondaryPrimaryParameters,
-        parameters: secondaryPrimaryParameters
+        id: "primary",
+        title: copy?.attributes ?? "",
+        attributes: [...primaryPrimaryAttributes, ...secondaryPrimaryAttributes]
       }
     ]),
-    parameters: compactParameterSections([
+    attributes: compactAttributeSections([
       {
-        id: "primary-other",
-        title: copy.primaryCategoryParameters,
-        parameters: primaryOtherParameters
+        id: "primary-all",
+        title: getCategoryAttributeSectionTitle({
+          categoryId: selectedPrimaryCategoryId,
+          partCategories
+        }),
+        attributes: [
+          ...(valueAttribute ? [valueAttribute] : []),
+          ...primaryPrimaryAttributes,
+          ...primaryOtherAttributes
+        ]
       },
       {
-        id: "secondary-other",
-        title: copy.secondaryCategoryParameters,
-        parameters: secondaryOtherParameters
+        id: "secondary-all",
+        title: getCategoryAttributeSectionTitle({
+          categoryId: selectedSecondaryCategoryId,
+          partCategories
+        }),
+        attributes: [...secondaryPrimaryAttributes, ...secondaryOtherAttributes]
       }
     ])
   };
 }
 
-function compactParameterSections(
+function compactAttributeSections(
   sections: Array<{
     id: string;
     title: string;
-    parameters: EffectiveCategoryParameter[];
+    attributes: EffectiveCategoryAttribute[];
   }>
 ) {
-  return sections.filter((section) => section.parameters.length > 0);
+  return sections.filter((section) => section.attributes.length > 0);
 }
 
-function PartParameterField({
-  disabled,
-  effectiveParameter,
-  value
+function getCategoryAttributeSectionTitle({
+  categoryId,
+  partCategories
 }: {
-  disabled: boolean;
-  effectiveParameter: EffectiveCategoryParameter;
-  value: string;
+  categoryId: string;
+  partCategories: PartCategoryListItem[];
 }) {
-  const parameter = effectiveParameter.parameter;
-  const inputName = `parameterValue:${parameter.id}`;
-  const descriptionId = `${parameter.id}-description`;
-  const commonClassName =
-    "min-h-11 rounded-md border border-slate-300 bg-white px-3 py-2 text-base text-slate-950 outline-none transition placeholder:text-slate-400 hover:border-slate-400 focus:border-slate-500 focus:ring-2 focus:ring-slate-200 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400";
+  const category = partCategories.find((item) => item.id === categoryId);
+
+  return category?.path ?? "";
+}
+
+function PartAttributeField({
+  compact = false,
+  disabled,
+  effectiveAttribute,
+  value,
+  onValueChange
+}: {
+  compact?: boolean;
+  disabled: boolean;
+  effectiveAttribute: EffectiveCategoryAttribute;
+  value: string;
+  onValueChange: (attributeId: string, value: string) => void;
+}) {
+  const attribute = effectiveAttribute.attribute;
+  const descriptionId = `${attribute.id}-description`;
+  const commonClassName = compact
+    ? "min-h-8 rounded-md border border-slate-300 bg-white px-2.5 py-1 text-sm text-slate-950 outline-none transition placeholder:text-slate-400 hover:border-slate-400 focus:border-slate-500 focus:ring-2 focus:ring-slate-200 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400"
+    : "min-h-10 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-950 outline-none transition placeholder:text-slate-400 hover:border-slate-400 focus:border-slate-500 focus:ring-2 focus:ring-slate-200 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400";
 
   return (
-    <label className="grid gap-2 text-sm font-medium text-slate-700">
-      {parameter.name}
-      {parameter.type === "BOOLEAN" ? (
+    <label
+      className={
+        compact
+          ? "grid grid-cols-[minmax(10rem,16rem)_minmax(12rem,1fr)] items-center gap-3 px-3 py-2 text-sm font-medium text-slate-700"
+          : "grid gap-1.5 p-3 text-sm font-medium text-slate-700"
+      }
+    >
+      <span className="min-w-0">
+        <span className="block truncate">{attribute.name}</span>
+        {compact && attribute.description ? (
+          <span
+            id={descriptionId}
+            className="mt-0.5 block truncate text-xs font-normal text-slate-500"
+          >
+            {attribute.description}
+          </span>
+        ) : null}
+      </span>
+      {attribute.type === "BOOLEAN" ? (
         <select
-          aria-describedby={parameter.description ? descriptionId : undefined}
+          aria-describedby={attribute.description ? descriptionId : undefined}
           className={commonClassName}
-          defaultValue={value}
           disabled={disabled}
-          name={inputName}
+          value={value}
+          onChange={(event) =>
+            onValueChange(attribute.id, event.currentTarget.value)
+          }
         >
           <option value="">-</option>
           <option value="Yes">Yes</option>
           <option value="No">No</option>
         </select>
-      ) : parameter.type === "CHOICE" ? (
+      ) : attribute.type === "CHOICE" ? (
         <select
-          aria-describedby={parameter.description ? descriptionId : undefined}
+          aria-describedby={attribute.description ? descriptionId : undefined}
           className={commonClassName}
-          defaultValue={value}
           disabled={disabled}
-          name={inputName}
+          value={value}
+          onChange={(event) =>
+            onValueChange(attribute.id, event.currentTarget.value)
+          }
         >
           <option value="">-</option>
-          {parameter.choiceOptions.map((choiceOption) => (
+          {attribute.choiceOptions.map((choiceOption) => (
             <option key={choiceOption.id} value={choiceOption.label}>
               {choiceOption.label}
             </option>
@@ -1270,17 +1527,22 @@ function PartParameterField({
         </select>
       ) : (
         <input
-          aria-describedby={parameter.description ? descriptionId : undefined}
+          aria-describedby={attribute.description ? descriptionId : undefined}
           className={commonClassName}
-          defaultValue={value}
           disabled={disabled}
-          name={inputName}
-          type={parameter.type === "NUMBER" ? "number" : "text"}
+          type={attribute.type === "NUMBER" ? "number" : "text"}
+          value={value}
+          onChange={(event) =>
+            onValueChange(attribute.id, event.currentTarget.value)
+          }
         />
       )}
-      {parameter.description ? (
-        <span id={descriptionId} className="text-xs font-normal text-slate-500">
-          {parameter.description}
+      {!compact && attribute.description ? (
+        <span
+          id={descriptionId}
+          className="text-xs font-normal text-slate-500"
+        >
+          {attribute.description}
         </span>
       ) : null}
     </label>
@@ -1604,7 +1866,7 @@ function CategoryTreeSelect({
                     aria-selected={currentSelectedId === ""}
                     className={`mb-1 grid min-h-9 w-full grid-cols-[1.75rem_1fr] items-center rounded-md px-2 py-1.5 text-left text-sm transition focus:outline-none focus:ring-2 focus:ring-slate-300 ${
                       activeCategoryId === ""
-                        ? "bg-cyan-100 font-semibold text-slate-950 hover:bg-cyan-100"
+                        ? "bg-[var(--color-accent-soft)] font-semibold text-slate-950 hover:bg-[var(--color-accent-soft)]"
                         : "text-slate-700 hover:bg-slate-50"
                     }`}
                     role="option"
@@ -1674,7 +1936,7 @@ function CategoryTreeSelectNode({
   const isSelected = selectedId === category.id;
   const isActive = activeCategoryId === category.id;
   const activeClassName = isSelectable
-    ? "bg-cyan-100 font-semibold text-slate-950 hover:bg-cyan-100"
+    ? "bg-[var(--color-accent-soft)] font-semibold text-slate-950 hover:bg-[var(--color-accent-soft)]"
     : "bg-white font-medium text-slate-800 ring-2 ring-inset ring-slate-400";
   const toggleLabel = isExpanded
     ? `${copy.collapseCategory} ${category.name}`
@@ -1906,6 +2168,9 @@ function getVisibleCategoryOptions(
 
   return visibleCategories;
 }
+
+const primaryButtonClassName =
+  "min-h-9 rounded-md border border-[var(--color-action-primary)] bg-[var(--color-action-primary)] px-3 py-1.5 text-sm font-semibold text-white transition hover:border-[var(--color-action-primary-hover)] hover:bg-[var(--color-action-primary-hover)] focus:outline-none focus:ring-2 focus:ring-[var(--color-action-focus)] focus:ring-offset-2 disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-100 disabled:text-slate-400";
 
 function PartCategoriesSummary({
   copy,

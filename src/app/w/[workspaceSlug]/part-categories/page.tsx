@@ -12,8 +12,8 @@ import {
   getPartCategoriesForManagement,
   type PartCategoryListItem
 } from "@/server/parts/categories";
-import { getWorkspaceParameters } from "@/server/parts/parameterMutations";
-import type { ParameterListItem } from "@/server/parts/parameterMutations";
+import { getWorkspaceAttributes } from "@/server/parts/attributeMutations";
+import type { AttributeListItem } from "@/server/parts/attributeMutations";
 
 export const dynamic = "force-dynamic";
 
@@ -23,35 +23,35 @@ const copy = {
   signOut: "Sign out",
   switchWorkspace: "Switch workspace",
   parts: "Parts",
-  parameters: "Parameters",
+  attributes: "Attributes",
   title: "Part categories",
   intro:
     "Manage the category tree used to organize real purchasable electronic parts.",
   addRootCategory: "Add root category",
   addChild: "Add child",
   edit: "Edit",
-  configureParameters: "Configure parameters",
-  categoryParameters: "Category parameters",
+  configureAttributes: "Configure attributes",
+  categoryAttributes: "Category attributes",
   detailsTab: "Details",
-  parametersTab: "Parameters",
-  createCategoryBeforeParameters:
-    "Create the category before assigning parameters.",
-  parameter: "Parameter",
+  attributesTab: "Attributes",
+  createCategoryBeforeAttributes:
+    "Create the category before assigning attributes.",
+  attribute: "Attribute",
   sortOrder: "Sort order",
   defaultValue: "Default value",
-  valueParameter: "Value parameter",
-  primaryParameter: "Primary parameter",
+  valueAttribute: "Value attribute",
+  primaryAttribute: "Primary attribute",
   inherited: "Inherited",
   local: "Local",
-  attachParameter: "Attach",
-  saveParameterConfig: "Save configuration",
-  detachParameter: "Detach",
-  noValueParameter: "No local value",
-  noParameters: "No parameters configured",
+  attachAttribute: "Attach",
+  saveAttributeConfig: "Save configuration",
+  detachAttribute: "Detach",
+  noValueAttribute: "No local value",
+  noAttributes: "No attributes configured",
   selectCategory: "Select a category",
-  parameterConfigUpdatedToast: "Category parameter configuration updated",
-  parameterConfigDeletedToast: "Category parameter configuration removed",
-  valueParameterUpdatedToast: "Value parameter updated",
+  attributeConfigUpdatedToast: "Category attribute configuration updated",
+  attributeConfigDeletedToast: "Category attribute configuration removed",
+  valueAttributeUpdatedToast: "Value attribute updated",
   expandCategory: "Expand",
   collapseCategory: "Collapse",
   actions: "Actions",
@@ -76,8 +76,8 @@ const copy = {
   categoryNotFound: "This category is no longer available.",
   categoryTreeCycle: "Choose a parent outside this category branch.",
   permissionDenied: "You do not have permission to manage categories.",
-  invalidParameterDefaultValue:
-    "Choose a valid default value for each category parameter.",
+  invalidAttributeDefaultValue:
+    "Choose a valid default value for each category attribute.",
   emptyTitle: "No categories yet",
   emptyBody: "Create a root category to start organizing the parts tree.",
   databaseUnavailable:
@@ -113,12 +113,12 @@ export default async function PartCategoriesPage({
 
   let isDatabaseAvailable = true;
   let categories: PartCategoryListItem[] = [];
-  let parameters: ParameterListItem[] = [];
+  let attributes: AttributeListItem[] = [];
 
   try {
-    [categories, parameters] = await Promise.all([
+    [categories, attributes] = await Promise.all([
       getPartCategoriesForManagement(context),
-      getWorkspaceParameters(context.workspace.id)
+      getWorkspaceAttributes(context.workspace.id)
     ]);
   } catch {
     isDatabaseAvailable = false;
@@ -136,11 +136,11 @@ export default async function PartCategoriesPage({
   const categoryEditDialog = resolvedSearchParams?.categoryEditDialog;
 
   return (
-    <main className="min-h-screen bg-slate-100 text-slate-950">
-      <div className="flex min-h-screen">
-        <aside className="flex w-60 shrink-0 flex-col border-r border-slate-200 bg-white">
+    <main className="h-screen overflow-hidden bg-slate-100 text-slate-950">
+      <div className="flex h-full min-h-0">
+        <aside className="flex h-full w-60 shrink-0 flex-col border-r border-slate-200 bg-white">
           <div className="flex min-h-14 items-center gap-3 border-b border-slate-200 px-4">
-            <div className="grid h-8 w-8 place-items-center rounded-md bg-slate-950 text-sm font-semibold text-white">
+            <div className="grid h-8 w-8 place-items-center rounded-md bg-[var(--color-accent)] text-sm font-semibold text-white">
               {copy.appShortName}
             </div>
             <div className="min-w-0">
@@ -153,7 +153,7 @@ export default async function PartCategoriesPage({
             </div>
           </div>
           <nav
-            className="flex flex-1 flex-col gap-1 p-3"
+            className="flex min-h-0 flex-1 flex-col gap-1 overflow-auto p-3"
             aria-label="Main navigation"
           >
             <Link
@@ -163,7 +163,7 @@ export default async function PartCategoriesPage({
               {copy.parts}
             </Link>
             <Link
-              className="flex min-h-10 items-center rounded-md bg-slate-100 px-3 text-sm font-semibold text-slate-950"
+              className="flex min-h-10 items-center rounded-md bg-[var(--color-accent-soft)] px-3 text-sm font-semibold text-slate-950"
               href={`/w/${workspaceSlug}/part-categories`}
               aria-current="page"
             >
@@ -171,9 +171,9 @@ export default async function PartCategoriesPage({
             </Link>
             <Link
               className="flex min-h-10 items-center rounded-md px-3 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
-              href={`/w/${workspaceSlug}/parameters`}
+              href={`/w/${workspaceSlug}/attributes`}
             >
-              {copy.parameters}
+              {copy.attributes}
             </Link>
           </nav>
           <div className="border-t border-slate-200 p-3">
@@ -197,7 +197,7 @@ export default async function PartCategoriesPage({
           </div>
         </aside>
 
-        <div className="flex min-w-0 flex-1 flex-col">
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
           <div className="flex min-h-0 flex-1 flex-col gap-4 p-6">
             <header className="flex items-end justify-between gap-2 border-b border-slate-200 pb-4">
               <div>
@@ -223,7 +223,7 @@ export default async function PartCategoriesPage({
               canWriteCategories={canWriteCategories}
               copy={copy}
               isDatabaseAvailable={isDatabaseAvailable}
-              parameters={parameters}
+              attributes={attributes}
               workspaceSlug={workspaceSlug}
             />
           </div>

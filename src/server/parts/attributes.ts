@@ -1,15 +1,15 @@
 import "server-only";
 
 import { prisma } from "@/server/db/prisma";
-import { resolveEffectiveCategoryParameters } from "@/server/parts/parameterInheritance";
-import type { ParameterValueType } from "@/server/parts/parameterValues";
+import { resolveEffectiveCategoryAttributes } from "@/server/parts/attributeInheritance";
+import type { AttributeValueType } from "@/server/parts/attributeValues";
 
-export type EffectiveCategoryParameter = {
-  parameter: {
+export type EffectiveCategoryAttribute = {
+  attribute: {
     id: string;
     name: string;
     description: string | null;
-    type: ParameterValueType;
+    type: AttributeValueType;
     baseUnitSymbol: string | null;
     choiceOptions: Array<{
       id: string;
@@ -19,13 +19,13 @@ export type EffectiveCategoryParameter = {
   };
   sourceCategoryId: string;
   sortOrder: number;
-  defaultValue: EffectiveParameterDefaultValue | null;
+  defaultValue: EffectiveAttributeDefaultValue | null;
   isValue: boolean;
   isPrimary: boolean;
-  inheritedParameter: EffectiveCategoryParameter | null;
+  inheritedAttribute: EffectiveCategoryAttribute | null;
 };
 
-export type EffectiveParameterDefaultValue = {
+export type EffectiveAttributeDefaultValue = {
   textValue: string | null;
   numberValue: string | null;
   quantityBaseValue: string | null;
@@ -36,10 +36,10 @@ export type EffectiveParameterDefaultValue = {
 
 type CategoryChainItem = {
   id: string;
-  valueParameterId: string | null;
+  valueAttributeId: string | null;
 };
 
-export async function getEffectivePartCategoryParameters({
+export async function getEffectivePartCategoryAttributes({
   workspaceId,
   categoryId
 }: {
@@ -48,7 +48,7 @@ export async function getEffectivePartCategoryParameters({
 }) {
   const categoryChain = await getCategoryChain({ workspaceId, categoryId });
   const categoryIds = categoryChain.map((category) => category.id);
-  const categoryParameters = await prisma.categoryParameter.findMany({
+  const categoryAttributes = await prisma.categoryAttribute.findMany({
     where: {
       workspaceId,
       categoryId: {
@@ -58,7 +58,7 @@ export async function getEffectivePartCategoryParameters({
     orderBy: [{ sortOrder: "asc" }, { id: "asc" }],
     select: {
       categoryId: true,
-      parameterId: true,
+      attributeId: true,
       sortOrder: true,
       isPrimary: true,
       defaultTextValue: true,
@@ -67,7 +67,7 @@ export async function getEffectivePartCategoryParameters({
       defaultBooleanValue: true,
       defaultChoiceOptionId: true,
       defaultDisplayValue: true,
-      parameter: {
+      attribute: {
         select: {
           id: true,
           name: true,
@@ -86,68 +86,68 @@ export async function getEffectivePartCategoryParameters({
       }
     }
   });
-  return resolveEffectiveCategoryParameters({
+  return resolveEffectiveCategoryAttributes({
     categoryChain,
-    categoryParameters: categoryParameters.map((categoryParameter) => ({
-      categoryId: categoryParameter.categoryId,
-      parameterId: categoryParameter.parameterId,
-      sortOrder: categoryParameter.sortOrder,
-      isPrimary: categoryParameter.isPrimary,
-      defaultValue: getDefaultValue(categoryParameter),
-      parameter: {
-        id: categoryParameter.parameter.id,
-        name: categoryParameter.parameter.name,
-        description: categoryParameter.parameter.description,
-        type: categoryParameter.parameter.type,
-        baseUnitSymbol: categoryParameter.parameter.baseUnitSymbol,
-        choiceOptions: categoryParameter.parameter.choiceOptions
+    categoryAttributes: categoryAttributes.map((categoryAttribute) => ({
+      categoryId: categoryAttribute.categoryId,
+      attributeId: categoryAttribute.attributeId,
+      sortOrder: categoryAttribute.sortOrder,
+      isPrimary: categoryAttribute.isPrimary,
+      defaultValue: getDefaultValue(categoryAttribute),
+      attribute: {
+        id: categoryAttribute.attribute.id,
+        name: categoryAttribute.attribute.name,
+        description: categoryAttribute.attribute.description,
+        type: categoryAttribute.attribute.type,
+        baseUnitSymbol: categoryAttribute.attribute.baseUnitSymbol,
+        choiceOptions: categoryAttribute.attribute.choiceOptions
       }
     }))
   });
 }
 
-export async function assertValueParameterIsEffectiveForCategory({
+export async function assertValueAttributeIsEffectiveForCategory({
   workspaceId,
   categoryId,
-  parameterId
+  attributeId
 }: {
   workspaceId: string;
   categoryId: string;
-  parameterId: string | null;
+  attributeId: string | null;
 }) {
-  if (!parameterId) {
+  if (!attributeId) {
     return;
   }
 
-  const effectiveParameters = await getEffectivePartCategoryParameters({
+  const effectiveAttributes = await getEffectivePartCategoryAttributes({
     workspaceId,
     categoryId
   });
-  const isEffective = effectiveParameters.some(
-    (effectiveParameter) => effectiveParameter.parameter.id === parameterId
+  const isEffective = effectiveAttributes.some(
+    (effectiveAttribute) => effectiveAttribute.attribute.id === attributeId
   );
 
   if (!isEffective) {
-    throw new Error("primary_parameter_not_effective");
+    throw new Error("primary_attribute_not_effective");
   }
 }
 
-export async function assertCanChangeParameterShape({
+export async function assertCanChangeAttributeShape({
   workspaceId,
-  parameterId
+  attributeId
 }: {
   workspaceId: string;
-  parameterId: string;
+  attributeId: string;
 }) {
-  const partValueCount = await prisma.partParameterValue.count({
+  const partValueCount = await prisma.partAttributeValue.count({
     where: {
       workspaceId,
-      parameterId
+      attributeId
     }
   });
 
   if (partValueCount > 0) {
-    throw new Error("parameter_shape_in_use");
+    throw new Error("attribute_shape_in_use");
   }
 }
 
@@ -157,12 +157,12 @@ export async function assertCanDeleteChoiceOption({
   optionId: string;
 }) {
   const [partValueCount, defaultValueCount] = await Promise.all([
-    prisma.partParameterValue.count({
+    prisma.partAttributeValue.count({
       where: {
         choiceOptionId: optionId
       }
     }),
-    prisma.categoryParameter.count({
+    prisma.categoryAttribute.count({
       where: {
         defaultChoiceOptionId: optionId
       }
@@ -174,34 +174,34 @@ export async function assertCanDeleteChoiceOption({
   }
 }
 
-export async function assertCanDeleteParameter({
+export async function assertCanDeleteAttribute({
   workspaceId,
-  parameterId
+  attributeId
 }: {
   workspaceId: string;
-  parameterId: string;
+  attributeId: string;
 }) {
   const [
     categoryAttachmentCount,
     valueCategoryCount,
     partValueCount
   ] = await Promise.all([
-    prisma.categoryParameter.count({
+    prisma.categoryAttribute.count({
       where: {
         workspaceId,
-        parameterId
+        attributeId
       }
     }),
     prisma.partCategory.count({
       where: {
         workspaceId,
-        valueParameterId: parameterId
+        valueAttributeId: attributeId
       }
     }),
-    prisma.partParameterValue.count({
+    prisma.partAttributeValue.count({
       where: {
         workspaceId,
-        parameterId
+        attributeId
       }
     })
   ]);
@@ -211,20 +211,20 @@ export async function assertCanDeleteParameter({
     valueCategoryCount > 0 ||
     partValueCount > 0
   ) {
-    throw new Error("parameter_in_use");
+    throw new Error("attribute_in_use");
   }
 }
 
-export async function assertCanDetachCategoryParameter({
+export async function assertCanDetachCategoryAttribute({
   workspaceId,
   categoryId,
-  parameterId: _parameterId
+  attributeId: _attributeId
 }: {
   workspaceId: string;
   categoryId: string;
-  parameterId: string;
+  attributeId: string;
 }) {
-  void _parameterId;
+  void _attributeId;
 
   const category = await prisma.partCategory.findFirst({
     where: {
@@ -260,7 +260,7 @@ async function getCategoryChain({
       ancestor: {
         select: {
           id: true,
-          valueParameterId: true
+          valueAttributeId: true
         }
       }
     }
@@ -273,7 +273,7 @@ async function getCategoryChain({
   return closures.map((closure) => closure.ancestor);
 }
 
-function getDefaultValue(categoryParameter: {
+function getDefaultValue(categoryAttribute: {
   defaultTextValue: string | null;
   defaultNumberValue: unknown;
   defaultQuantityBaseValue: unknown;
@@ -282,29 +282,29 @@ function getDefaultValue(categoryParameter: {
   defaultDisplayValue: string | null;
 }) {
   const hasDefaultValue =
-    categoryParameter.defaultTextValue !== null ||
-    categoryParameter.defaultNumberValue !== null ||
-    categoryParameter.defaultQuantityBaseValue !== null ||
-    categoryParameter.defaultBooleanValue !== null ||
-    categoryParameter.defaultChoiceOptionId !== null ||
-    categoryParameter.defaultDisplayValue !== null;
+    categoryAttribute.defaultTextValue !== null ||
+    categoryAttribute.defaultNumberValue !== null ||
+    categoryAttribute.defaultQuantityBaseValue !== null ||
+    categoryAttribute.defaultBooleanValue !== null ||
+    categoryAttribute.defaultChoiceOptionId !== null ||
+    categoryAttribute.defaultDisplayValue !== null;
 
   if (!hasDefaultValue) {
     return null;
   }
 
   return {
-    textValue: categoryParameter.defaultTextValue,
+    textValue: categoryAttribute.defaultTextValue,
     numberValue:
-      categoryParameter.defaultNumberValue === null
+      categoryAttribute.defaultNumberValue === null
         ? null
-        : String(categoryParameter.defaultNumberValue),
+        : String(categoryAttribute.defaultNumberValue),
     quantityBaseValue:
-      categoryParameter.defaultQuantityBaseValue === null
+      categoryAttribute.defaultQuantityBaseValue === null
         ? null
-        : String(categoryParameter.defaultQuantityBaseValue),
-    booleanValue: categoryParameter.defaultBooleanValue,
-    choiceOptionId: categoryParameter.defaultChoiceOptionId,
-    displayValue: categoryParameter.defaultDisplayValue
+        : String(categoryAttribute.defaultQuantityBaseValue),
+    booleanValue: categoryAttribute.defaultBooleanValue,
+    choiceOptionId: categoryAttribute.defaultChoiceOptionId,
+    displayValue: categoryAttribute.defaultDisplayValue
   };
 }

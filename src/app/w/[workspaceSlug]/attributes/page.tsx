@@ -1,15 +1,15 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 
-import { ParametersClient } from "@/app/parameters-client";
+import { AttributesClient } from "@/app/attributes-client";
 import { hasWorkspacePermission } from "@/server/access-control/authorize";
 import { signOut } from "@/server/auth/actions";
 import {
   getCurrentSession,
   getCurrentWorkspaceContextBySlug
 } from "@/server/auth/currentContext";
-import { getWorkspaceParameters } from "@/server/parts/parameterMutations";
-import type { ParameterListItem } from "@/server/parts/parameterMutations";
+import { getWorkspaceAttributes } from "@/server/parts/attributeMutations";
+import type { AttributeListItem } from "@/server/parts/attributeMutations";
 
 export const dynamic = "force-dynamic";
 
@@ -20,26 +20,26 @@ const copy = {
   switchWorkspace: "Switch workspace",
   parts: "Parts",
   partCategories: "Part categories",
-  title: "Parameters",
+  title: "Attributes",
   intro:
-    "Manage the workspace dictionary of typed parameters used by part categories.",
-  addParameter: "Add parameter",
+    "Manage the workspace dictionary of typed attributes used by part categories.",
+  addAttribute: "Add attribute",
   edit: "Edit",
   delete: "Delete",
   close: "Close",
-  createParameter: "Create parameter",
+  createAttribute: "Create attribute",
   saveChanges: "Save changes",
   addOption: "Add option",
   deleteOption: "Delete",
-  newParameterTitle: "Add parameter",
-  editParameterTitle: "Edit parameter",
+  newAttributeTitle: "Add attribute",
+  editAttributeTitle: "Edit attribute",
   name: "Name",
   description: "Description",
   type: "Type",
   baseUnit: "Base unit",
   options: "Options",
   noOptions: "No options",
-  noParameters: "No parameters yet",
+  noAttributes: "No attributes yet",
   text: "Text",
   number: "Number",
   quantity: "Quantity",
@@ -47,21 +47,21 @@ const copy = {
   choice: "Choice",
   optionLabel: "Option label",
   sortOrder: "Sort order",
-  createdToast: "Parameter created",
-  updatedToast: "Parameter updated",
-  deletedToast: "Parameter deleted",
-  invalidInput: "Check the parameter fields and try again.",
+  createdToast: "Attribute created",
+  updatedToast: "Attribute updated",
+  deletedToast: "Attribute deleted",
+  invalidInput: "Check the attribute fields and try again.",
   databaseUnavailable:
-    "Database is not available, so the parameter dictionary is shown empty for now."
+    "Database is not available, so the attribute dictionary is shown empty for now."
 };
 
-type ParametersPageProps = {
+type AttributesPageProps = {
   params: Promise<{
     workspaceSlug: string;
   }>;
 };
 
-export default async function ParametersPage({ params }: ParametersPageProps) {
+export default async function AttributesPage({ params }: AttributesPageProps) {
   const { workspaceSlug } = await params;
   const session = await getCurrentSession();
 
@@ -76,28 +76,28 @@ export default async function ParametersPage({ params }: ParametersPageProps) {
   }
 
   let isDatabaseAvailable = true;
-  let parameters: ParameterListItem[] = [];
+  let attributes: AttributeListItem[] = [];
 
   try {
-    parameters = await getWorkspaceParameters(context.workspace.id);
+    attributes = await getWorkspaceAttributes(context.workspace.id);
   } catch {
     isDatabaseAvailable = false;
   }
 
-  const canWriteParameters = isDatabaseAvailable
+  const canWriteAttributes = isDatabaseAvailable
     ? await hasWorkspacePermission({
         userId: context.user.id,
         workspaceId: context.workspace.id,
-        permission: "parameters:write"
+        permission: "attributes:write"
       }).catch(() => false)
     : false;
 
   return (
-    <main className="min-h-screen bg-slate-100 text-slate-950">
-      <div className="flex min-h-screen">
-        <aside className="flex w-60 shrink-0 flex-col border-r border-slate-200 bg-white">
+    <main className="h-screen overflow-hidden bg-slate-100 text-slate-950">
+      <div className="flex h-full min-h-0">
+        <aside className="flex h-full w-60 shrink-0 flex-col border-r border-slate-200 bg-white">
           <div className="flex min-h-14 items-center gap-3 border-b border-slate-200 px-4">
-            <div className="grid h-8 w-8 place-items-center rounded-md bg-slate-950 text-sm font-semibold text-white">
+            <div className="grid h-8 w-8 place-items-center rounded-md bg-[var(--color-accent)] text-sm font-semibold text-white">
               {copy.appShortName}
             </div>
             <div className="min-w-0">
@@ -110,7 +110,7 @@ export default async function ParametersPage({ params }: ParametersPageProps) {
             </div>
           </div>
           <nav
-            className="flex flex-1 flex-col gap-1 p-3"
+            className="flex min-h-0 flex-1 flex-col gap-1 overflow-auto p-3"
             aria-label="Main navigation"
           >
             <Link
@@ -127,8 +127,8 @@ export default async function ParametersPage({ params }: ParametersPageProps) {
             </Link>
             <Link
               aria-current="page"
-              className="flex min-h-10 items-center rounded-md bg-slate-100 px-3 text-sm font-semibold text-slate-950"
-              href={`/w/${workspaceSlug}/parameters`}
+              className="flex min-h-10 items-center rounded-md bg-[var(--color-accent-soft)] px-3 text-sm font-semibold text-slate-950"
+              href={`/w/${workspaceSlug}/attributes`}
             >
               {copy.title}
             </Link>
@@ -154,7 +154,7 @@ export default async function ParametersPage({ params }: ParametersPageProps) {
           </div>
         </aside>
 
-        <div className="flex min-w-0 flex-1 flex-col">
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
           <div className="flex min-h-0 flex-1 flex-col gap-4 p-6">
             <header className="flex items-end justify-between gap-2 border-b border-slate-200 pb-4">
               <div>
@@ -173,11 +173,11 @@ export default async function ParametersPage({ params }: ParametersPageProps) {
               </p>
             ) : null}
 
-            <ParametersClient
-              canWriteParameters={canWriteParameters}
+            <AttributesClient
+              canWriteAttributes={canWriteAttributes}
               copy={copy}
               isDatabaseAvailable={isDatabaseAvailable}
-              parameters={parameters}
+              attributes={attributes}
               workspaceSlug={workspaceSlug}
             />
           </div>

@@ -21,7 +21,7 @@ model Part {
   manufacturer      Organization         @relation("PartManufacturer", fields: [manufacturerId], references: [id], onDelete: Restrict)
   primaryCategory   PartCategory?        @relation("PartPrimaryCategory", fields: [primaryCategoryId], references: [id], onDelete: SetNull)
   secondaryCategory PartCategory?        @relation("PartSecondaryCategory", fields: [secondaryCategoryId], references: [id], onDelete: SetNull)
-  parameterValues   PartParameterValue[]
+  attributeValues   PartAttributeValue[]
 
   @@unique([workspaceId, manufacturerId, catalogNumber])
   @@index([workspaceId, catalogNumber])
@@ -30,7 +30,7 @@ model Part {
   @@index([workspaceId, secondaryCategoryId])
 }
 
-enum ParameterType {
+enum AttributeType {
   TEXT
   NUMBER
   QUANTITY
@@ -38,44 +38,44 @@ enum ParameterType {
   CHOICE
 }
 
-model Parameter {
+model Attribute {
   id             String        @id @default(cuid())
   workspaceId    String
   name           String
   normalizedName String
   description    String?
-  type           ParameterType
+  type           AttributeType
   baseUnitSymbol String?
   createdAt      DateTime      @default(now())
   updatedAt      DateTime      @updatedAt
 
   workspace            Workspace               @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  choiceOptions        ParameterChoiceOption[]
-  categoryParameters   CategoryParameter[]
-  partValues           PartParameterValue[]
-  valueForCategories   PartCategory[]          @relation("PartCategoryValueParameter")
+  choiceOptions        AttributeChoiceOption[]
+  categoryAttributes   CategoryAttribute[]
+  partValues           PartAttributeValue[]
+  valueForCategories   PartCategory[]          @relation("PartCategoryValueAttribute")
 
   @@unique([workspaceId, normalizedName])
   @@index([workspaceId, name])
   @@index([workspaceId, type])
 }
 
-model ParameterChoiceOption {
+model AttributeChoiceOption {
   id              String   @id @default(cuid())
-  parameterId     String
+  attributeId     String
   label           String
   normalizedLabel String
   sortOrder       Int      @default(0)
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
-  parameter                      Parameter            @relation(fields: [parameterId], references: [id], onDelete: Cascade)
-  categoryParameterDefaultValues CategoryParameter[]  @relation("CategoryParameterDefaultChoiceOption")
-  partParameterValues            PartParameterValue[] @relation("PartParameterValueChoiceOption")
+  attribute                      Attribute            @relation(fields: [attributeId], references: [id], onDelete: Cascade)
+  categoryAttributeDefaultValues CategoryAttribute[]  @relation("CategoryAttributeDefaultChoiceOption")
+  partAttributeValues            PartAttributeValue[] @relation("PartAttributeValueChoiceOption")
 
-  @@unique([parameterId, normalizedLabel])
-  @@index([parameterId, sortOrder])
-  @@index([parameterId, label])
+  @@unique([attributeId, normalizedLabel])
+  @@index([attributeId, sortOrder])
+  @@index([attributeId, label])
 }
 
 model Organization {
@@ -109,7 +109,7 @@ model PartCategory {
   id                 String   @id @default(cuid())
   workspaceId        String
   parentId           String?
-  valueParameterId   String?
+  valueAttributeId   String?
   name               String
   isAssignable       Boolean  @default(true)
   createdAt          DateTime @default(now())
@@ -118,8 +118,8 @@ model PartCategory {
   workspace          Workspace             @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   parent             PartCategory?         @relation("PartCategoryTree", fields: [parentId], references: [id], onDelete: Restrict)
   children           PartCategory[]        @relation("PartCategoryTree")
-  valueParameter     Parameter?            @relation("PartCategoryValueParameter", fields: [valueParameterId], references: [id], onDelete: Restrict)
-  categoryParameters CategoryParameter[]
+  valueAttribute     Attribute?            @relation("PartCategoryValueAttribute", fields: [valueAttributeId], references: [id], onDelete: Restrict)
+  categoryAttributes CategoryAttribute[]
   primaryParts       Part[]                @relation("PartPrimaryCategory")
   secondaryParts     Part[]                @relation("PartSecondaryCategory")
   ancestorClosures   PartCategoryClosure[] @relation("PartCategoryClosureAncestor")
@@ -127,15 +127,15 @@ model PartCategory {
 
   @@index([workspaceId])
   @@index([workspaceId, parentId])
-  @@index([workspaceId, valueParameterId])
+  @@index([workspaceId, valueAttributeId])
   @@index([workspaceId, name])
 }
 
-model CategoryParameter {
+model CategoryAttribute {
   id                       String   @id @default(cuid())
   workspaceId              String
   categoryId               String
-  parameterId              String
+  attributeId              String
   sortOrder                Int      @default(0)
   defaultTextValue         String?
   defaultNumberValue       Decimal?
@@ -149,20 +149,20 @@ model CategoryParameter {
 
   workspace           Workspace              @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   category            PartCategory           @relation(fields: [categoryId], references: [id], onDelete: Cascade)
-  parameter           Parameter              @relation(fields: [parameterId], references: [id], onDelete: Restrict)
-  defaultChoiceOption ParameterChoiceOption? @relation("CategoryParameterDefaultChoiceOption", fields: [defaultChoiceOptionId], references: [id], onDelete: Restrict)
+  attribute           Attribute              @relation(fields: [attributeId], references: [id], onDelete: Restrict)
+  defaultChoiceOption AttributeChoiceOption? @relation("CategoryAttributeDefaultChoiceOption", fields: [defaultChoiceOptionId], references: [id], onDelete: Restrict)
 
-  @@unique([categoryId, parameterId])
+  @@unique([categoryId, attributeId])
   @@index([workspaceId, categoryId])
-  @@index([workspaceId, parameterId])
-  @@index([parameterId])
+  @@index([workspaceId, attributeId])
+  @@index([attributeId])
 }
 
-model PartParameterValue {
+model PartAttributeValue {
   id                String   @id @default(cuid())
   workspaceId       String
   partId            String
-  parameterId       String
+  attributeId       String
   textValue         String?
   numberValue       Decimal?
   quantityBaseValue Decimal?
@@ -174,13 +174,13 @@ model PartParameterValue {
 
   workspace    Workspace              @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   part         Part                   @relation(fields: [partId], references: [id], onDelete: Cascade)
-  parameter    Parameter              @relation(fields: [parameterId], references: [id], onDelete: Restrict)
-  choiceOption ParameterChoiceOption? @relation("PartParameterValueChoiceOption", fields: [choiceOptionId], references: [id], onDelete: Restrict)
+  attribute    Attribute              @relation(fields: [attributeId], references: [id], onDelete: Restrict)
+  choiceOption AttributeChoiceOption? @relation("PartAttributeValueChoiceOption", fields: [choiceOptionId], references: [id], onDelete: Restrict)
 
-  @@unique([partId, parameterId])
+  @@unique([partId, attributeId])
   @@index([workspaceId, partId])
-  @@index([workspaceId, parameterId])
-  @@index([parameterId])
+  @@index([workspaceId, attributeId])
+  @@index([attributeId])
   @@index([choiceOptionId])
 }
 
@@ -271,9 +271,9 @@ model Workspace {
   organizations        Organization[]
   partCategories       PartCategory[]
   partCategoryClosures PartCategoryClosure[]
-  parameters           Parameter[]
-  categoryParameters   CategoryParameter[]
-  partParameterValues  PartParameterValue[]
+  attributes           Attribute[]
+  categoryAttributes   CategoryAttribute[]
+  partAttributeValues  PartAttributeValue[]
   roles                Role[]
 }
 

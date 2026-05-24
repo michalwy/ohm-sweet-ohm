@@ -16,11 +16,11 @@ import {
 } from "@/server/parts/categoryActions";
 import type { PartCategoryListItem } from "@/server/parts/categories";
 import {
-  getEffectiveCategoryParametersForWorkspace,
-  saveCategoryParameterConfigurationForWorkspace
-} from "@/server/parts/parameterActions";
-import type { ParameterListItem } from "@/server/parts/parameterMutations";
-import type { EffectiveCategoryParameter } from "@/server/parts/parameters";
+  getEffectiveCategoryAttributesForWorkspace,
+  saveCategoryAttributeConfigurationForWorkspace
+} from "@/server/parts/attributeActions";
+import type { AttributeListItem } from "@/server/parts/attributeMutations";
+import type { EffectiveCategoryAttribute } from "@/server/parts/attributes";
 import {
   getNextToastId,
   ToastNotice,
@@ -32,23 +32,23 @@ type Copy = {
   addRootCategory: string;
   addChild: string;
   edit: string;
-  configureParameters: string;
-  categoryParameters: string;
+  configureAttributes: string;
+  categoryAttributes: string;
   detailsTab: string;
-  parametersTab: string;
-  createCategoryBeforeParameters: string;
-  parameter: string;
+  attributesTab: string;
+  createCategoryBeforeAttributes: string;
+  attribute: string;
   sortOrder: string;
   defaultValue: string;
-  valueParameter: string;
-  primaryParameter: string;
+  valueAttribute: string;
+  primaryAttribute: string;
   inherited: string;
   local: string;
-  attachParameter: string;
-  saveParameterConfig: string;
-  detachParameter: string;
-  noValueParameter: string;
-  noParameters: string;
+  attachAttribute: string;
+  saveAttributeConfig: string;
+  detachAttribute: string;
+  noValueAttribute: string;
+  noAttributes: string;
   selectCategory: string;
   expandCategory: string;
   collapseCategory: string;
@@ -69,15 +69,15 @@ type Copy = {
   close: string;
   createdToast: string;
   updatedToast: string;
-  parameterConfigUpdatedToast: string;
-  parameterConfigDeletedToast: string;
-  valueParameterUpdatedToast: string;
+  attributeConfigUpdatedToast: string;
+  attributeConfigDeletedToast: string;
+  valueAttributeUpdatedToast: string;
   missingRequiredFields: string;
   invalidParentCategory: string;
   categoryNotFound: string;
   categoryTreeCycle: string;
   permissionDenied: string;
-  invalidParameterDefaultValue: string;
+  invalidAttributeDefaultValue: string;
   emptyTitle: string;
   emptyBody: string;
   databaseUnavailable: string;
@@ -88,12 +88,12 @@ type CategoryTreeItem = PartCategoryListItem & {
 };
 
 type CategoryDialogMode = "create" | "edit";
-type CategoryDialogTab = "details" | "parameters";
+type CategoryDialogTab = "details" | "attributes";
 
 type CategoryDialogSubmitInput = {
   formData: FormData;
-  parameterDrafts: CategoryParameterDraft[];
-  valueParameterId: string;
+  attributeDrafts: CategoryAttributeDraft[];
+  valueAttributeId: string;
 };
 
 type PartCategoriesClientProps = {
@@ -103,7 +103,7 @@ type PartCategoriesClientProps = {
   copy: Copy;
   isDatabaseAvailable: boolean;
   canWriteCategories: boolean;
-  parameters: ParameterListItem[];
+  attributes: AttributeListItem[];
   workspaceSlug: string;
 };
 
@@ -114,7 +114,7 @@ export function PartCategoriesClient({
   copy,
   isDatabaseAvailable,
   canWriteCategories,
-  parameters,
+  attributes,
   workspaceSlug
 }: PartCategoriesClientProps) {
   const categoryDialogRef = useRef<HTMLDialogElement>(null);
@@ -130,9 +130,9 @@ export function PartCategoriesClient({
       currentCategories.find((category) => category.id === categoryEditDialog) ??
       null
     );
-  const [createCategoryParameterDrafts, setCreateCategoryParameterDrafts] =
-    useState<CategoryParameterDraft[]>([]);
-  const [createCategoryValueParameterId, setCreateCategoryValueParameterId] =
+  const [createCategoryAttributeDrafts, setCreateCategoryAttributeDrafts] =
+    useState<CategoryAttributeDraft[]>([]);
+  const [createCategoryValueAttributeId, setCreateCategoryValueAttributeId] =
     useState("");
   const [createFormResetKey, setCreateFormResetKey] = useState(0);
   const [categoryFormError, setCategoryFormError] = useState<string | null>(null);
@@ -163,15 +163,15 @@ export function PartCategoriesClient({
       }
 
       if (
-        variables.parameterDrafts.length > 0 ||
-        variables.valueParameterId
+        variables.attributeDrafts.length > 0 ||
+        variables.valueAttributeId
       ) {
-        const configResult = await saveCategoryParameterConfigurationForWorkspace({
+        const configResult = await saveCategoryAttributeConfigurationForWorkspace({
           workspaceSlug,
           categoryId: result.category.id,
-          valueParameterId: variables.valueParameterId || null,
-          parameters: getLocalCategoryParameterInputs(
-            variables.parameterDrafts,
+          valueAttributeId: variables.valueAttributeId || null,
+          attributes: getLocalCategoryAttributeInputs(
+            variables.attributeDrafts,
             result.category.id
           )
         });
@@ -180,7 +180,7 @@ export function PartCategoriesClient({
           setCurrentCategories(result.categories);
           setEditingCategory(result.category);
           setCategoryDialogMode("edit");
-          setActiveCategoryDialogTab("parameters");
+          setActiveCategoryDialogTab("attributes");
           setCategoryFormError(configResult.error);
           return;
         }
@@ -196,8 +196,8 @@ export function PartCategoriesClient({
         });
       }
       setCreateParentId("");
-      setCreateCategoryParameterDrafts([]);
-      setCreateCategoryValueParameterId("");
+      setCreateCategoryAttributeDrafts([]);
+      setCreateCategoryValueAttributeId("");
       setCreateFormResetKey((currentKey) => currentKey + 1);
       setCategoryFormError(null);
       addToastMessage({
@@ -234,12 +234,12 @@ export function PartCategoriesClient({
         return;
       }
 
-      const configResult = await saveCategoryParameterConfigurationForWorkspace({
+      const configResult = await saveCategoryAttributeConfigurationForWorkspace({
         workspaceSlug,
         categoryId: result.category.id,
-        valueParameterId: variables.valueParameterId || null,
-        parameters: getLocalCategoryParameterInputs(
-          variables.parameterDrafts,
+        valueAttributeId: variables.valueAttributeId || null,
+        attributes: getLocalCategoryAttributeInputs(
+          variables.attributeDrafts,
           result.category.id
         )
       });
@@ -247,7 +247,7 @@ export function PartCategoriesClient({
       if (!configResult.ok) {
         setCurrentCategories(result.categories);
         setEditingCategory(result.category);
-        setActiveCategoryDialogTab("parameters");
+        setActiveCategoryDialogTab("attributes");
         setCategoryFormError(configResult.error);
         return;
       }
@@ -297,8 +297,8 @@ export function PartCategoriesClient({
   function openCreateDialog(parentId: string | null) {
     setCreateParentId(parentId ?? "");
     setEditingCategory(null);
-    setCreateCategoryParameterDrafts([]);
-    setCreateCategoryValueParameterId("");
+    setCreateCategoryAttributeDrafts([]);
+    setCreateCategoryValueAttributeId("");
     setCategoryDialogMode("create");
     setActiveCategoryDialogTab("details");
     setCreateFormResetKey((currentKey) => currentKey + 1);
@@ -324,29 +324,29 @@ export function PartCategoriesClient({
 
   function handleCreateSubmit(
     event: FormEvent<HTMLFormElement>,
-    parameterDrafts: CategoryParameterDraft[],
-    valueParameterId: string
+    attributeDrafts: CategoryAttributeDraft[],
+    valueAttributeId: string
   ) {
     event.preventDefault();
     setCategoryFormError(null);
     createCategoryMutation.mutate({
       formData: new FormData(event.currentTarget),
-      parameterDrafts,
-      valueParameterId
+      attributeDrafts,
+      valueAttributeId
     });
   }
 
   function handleUpdateSubmit(
     event: FormEvent<HTMLFormElement>,
-    parameterDrafts: CategoryParameterDraft[],
-    valueParameterId: string
+    attributeDrafts: CategoryAttributeDraft[],
+    valueAttributeId: string
   ) {
     event.preventDefault();
     setCategoryFormError(null);
     updateCategoryMutation.mutate({
       formData: new FormData(event.currentTarget),
-      parameterDrafts,
-      valueParameterId
+      attributeDrafts,
+      valueAttributeId
     });
   }
 
@@ -354,8 +354,8 @@ export function PartCategoriesClient({
     closeDialog(categoryDialogRef.current);
     setCategoryDialogMode(null);
     setEditingCategory(null);
-    setCreateCategoryParameterDrafts([]);
-    setCreateCategoryValueParameterId("");
+    setCreateCategoryAttributeDrafts([]);
+    setCreateCategoryValueAttributeId("");
     setCategoryFormError(null);
     setActiveCategoryDialogTab("details");
   }
@@ -381,7 +381,7 @@ export function PartCategoriesClient({
         </h2>
         <div className="flex items-center justify-end gap-3 border-b border-slate-200 bg-white px-4 py-3">
           <button
-            className="min-h-10 rounded-md border border-slate-950 bg-slate-950 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2 disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-100 disabled:text-slate-400"
+            className={primaryButtonClassName}
             disabled={!isDatabaseAvailable || !canWriteCategories}
             type="button"
             onClick={() => openCreateDialog(null)}
@@ -392,7 +392,7 @@ export function PartCategoriesClient({
         <div className="min-h-0 flex-1 overflow-auto px-4 py-4">
           <div className="mb-4 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-slate-500">
             <span className="inline-flex items-center gap-2">
-              <span className="h-3 w-3 rounded-sm border border-cyan-200 bg-cyan-50" />
+              <span className="h-3 w-3 rounded-sm border border-slate-400 bg-white" />
               {copy.assignable}
             </span>
             <span className="inline-flex items-center gap-2">
@@ -451,7 +451,7 @@ export function PartCategoriesClient({
       <dialog
         ref={categoryDialogRef}
         aria-labelledby="category-dialog-title"
-        className="fixed inset-0 m-auto max-h-[calc(100vh-2rem)] w-[calc(100%-2rem)] max-w-4xl rounded-lg border border-slate-200 bg-white p-0 text-slate-950 shadow-2xl backdrop:bg-slate-950/40"
+        className="fixed inset-0 m-auto h-[min(44rem,calc(100vh-2rem))] w-[min(56rem,calc(100vw-3rem))] rounded-lg border border-slate-200 bg-white p-0 text-slate-950 shadow-2xl backdrop:bg-slate-950/40"
         onClose={() => {
           setCategoryDialogMode(null);
           setEditingCategory(null);
@@ -475,15 +475,15 @@ export function PartCategoriesClient({
                 : updateCategoryMutation.isPending
             }
             mode={categoryDialogMode}
-            parameters={parameters}
-            createParameterDrafts={createCategoryParameterDrafts}
-            createValueParameterId={createCategoryValueParameterId}
+            attributes={attributes}
+            createAttributeDrafts={createCategoryAttributeDrafts}
+            createValueAttributeId={createCategoryValueAttributeId}
             category={editingCategory}
             workspaceSlug={workspaceSlug}
             onCreateSubmit={handleCreateSubmit}
             onParentIdChange={setCreateParentId}
-            onCreateParameterDraftsChange={setCreateCategoryParameterDrafts}
-            onCreateValueParameterIdChange={setCreateCategoryValueParameterId}
+            onCreateAttributeDraftsChange={setCreateCategoryAttributeDrafts}
+            onCreateValueAttributeIdChange={setCreateCategoryValueAttributeId}
             onTabChange={setActiveCategoryDialogTab}
             onUpdateSubmit={handleUpdateSubmit}
           />
@@ -504,14 +504,14 @@ function CategoryDialogContent({
   isDatabaseAvailable,
   isPending,
   mode,
-  parameters,
-  createParameterDrafts,
-  createValueParameterId,
+  attributes,
+  createAttributeDrafts,
+  createValueAttributeId,
   workspaceSlug,
   onCreateSubmit,
   onParentIdChange,
-  onCreateParameterDraftsChange,
-  onCreateValueParameterIdChange,
+  onCreateAttributeDraftsChange,
+  onCreateValueAttributeIdChange,
   onTabChange,
   onUpdateSubmit
 }: {
@@ -525,93 +525,93 @@ function CategoryDialogContent({
   isDatabaseAvailable: boolean;
   isPending: boolean;
   mode: CategoryDialogMode;
-  parameters: ParameterListItem[];
-  createParameterDrafts: CategoryParameterDraft[];
-  createValueParameterId: string;
+  attributes: AttributeListItem[];
+  createAttributeDrafts: CategoryAttributeDraft[];
+  createValueAttributeId: string;
   workspaceSlug: string;
   onCreateSubmit: (
     event: FormEvent<HTMLFormElement>,
-    parameterDrafts: CategoryParameterDraft[],
-    valueParameterId: string
+    attributeDrafts: CategoryAttributeDraft[],
+    valueAttributeId: string
   ) => void;
   onParentIdChange: (parentId: string) => void;
-  onCreateParameterDraftsChange: (drafts: CategoryParameterDraft[]) => void;
-  onCreateValueParameterIdChange: (parameterId: string) => void;
+  onCreateAttributeDraftsChange: (drafts: CategoryAttributeDraft[]) => void;
+  onCreateValueAttributeIdChange: (attributeId: string) => void;
   onTabChange: (tab: CategoryDialogTab) => void;
   onUpdateSubmit: (
     event: FormEvent<HTMLFormElement>,
-    parameterDrafts: CategoryParameterDraft[],
-    valueParameterId: string
+    attributeDrafts: CategoryAttributeDraft[],
+    valueAttributeId: string
   ) => void;
 }) {
   const title = mode === "create" ? copy.newCategoryTitle : copy.editCategoryTitle;
   const body = mode === "create" ? copy.newCategoryBody : copy.editCategoryBody;
   const formId = "category-details-form";
-  const [editParameterDrafts, setEditParameterDrafts] = useState<
-    CategoryParameterDraft[]
+  const [editAttributeDrafts, setEditAttributeDrafts] = useState<
+    CategoryAttributeDraft[]
   >([]);
-  const [editValueParameterId, setEditValueParameterId] = useState("");
-  const editParameterDraftsRef = useRef<CategoryParameterDraft[]>([]);
-  const editValueParameterIdRef = useRef("");
-  const [editParametersError, setEditParametersError] = useState<string | null>(
+  const [editValueAttributeId, setEditValueAttributeId] = useState("");
+  const editAttributeDraftsRef = useRef<CategoryAttributeDraft[]>([]);
+  const editValueAttributeIdRef = useRef("");
+  const [editAttributesError, setEditAttributesError] = useState<string | null>(
     null
   );
-  const [editParametersLoaded, setEditParametersLoaded] = useState(
+  const [editAttributesLoaded, setEditAttributesLoaded] = useState(
     mode === "create"
   );
-  const loadEffectiveParametersMutation = useMutation({
-    mutationFn: getEffectiveCategoryParametersForWorkspace,
+  const loadEffectiveAttributesMutation = useMutation({
+    mutationFn: getEffectiveCategoryAttributesForWorkspace,
     onSuccess: (result, variables) => {
       if (!result.ok) {
-        setEditParametersError(result.error);
-        setEditParametersLoaded(false);
+        setEditAttributesError(result.error);
+        setEditAttributesLoaded(false);
         return;
       }
 
       setEditDrafts(
-        result.data.map((parameter) =>
-          toCategoryParameterDraft(parameter, variables.categoryId)
+        result.data.map((attribute) =>
+          toCategoryAttributeDraft(attribute, variables.categoryId)
         )
       );
-      setEditValueParameter(
-        result.data.find((parameter) => parameter.isValue)?.parameter.id ?? ""
+      setEditValueAttribute(
+        result.data.find((attribute) => attribute.isValue)?.attribute.id ?? ""
       );
-      setEditParametersError(null);
-      setEditParametersLoaded(true);
+      setEditAttributesError(null);
+      setEditAttributesLoaded(true);
     },
     onError: () => {
-      setEditParametersError("database-unavailable");
-      setEditParametersLoaded(false);
+      setEditAttributesError("database-unavailable");
+      setEditAttributesLoaded(false);
     }
   });
-  const activeParameterDrafts =
-    mode === "create" ? createParameterDrafts : editParameterDrafts;
-  const activeValueParameterId =
-    mode === "create" ? createValueParameterId : editValueParameterId;
-  const displayedError = error ?? editParametersError;
-  const areParameterControlsEnabled = mode === "create" || editParametersLoaded;
+  const activeAttributeDrafts =
+    mode === "create" ? createAttributeDrafts : editAttributeDrafts;
+  const activeValueAttributeId =
+    mode === "create" ? createValueAttributeId : editValueAttributeId;
+  const displayedError = error ?? editAttributesError;
+  const areAttributeControlsEnabled = mode === "create" || editAttributesLoaded;
   const isSaveDisabled =
     !isDatabaseAvailable ||
     !canWriteCategories ||
     isPending ||
-    (mode === "edit" && !editParametersLoaded);
+    (mode === "edit" && !editAttributesLoaded);
 
   useEffect(() => {
     if (mode !== "edit" || !category) {
       return;
     }
 
-    loadEffectiveParametersMutation.mutate({
+    loadEffectiveAttributesMutation.mutate({
       workspaceSlug,
       categoryId: category.id
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [category?.id, mode, workspaceSlug]);
 
-  function setActiveParameterDrafts(update: CategoryParameterDraftUpdate) {
+  function setActiveAttributeDrafts(update: CategoryAttributeDraftUpdate) {
     if (mode === "create") {
-      onCreateParameterDraftsChange(
-        typeof update === "function" ? update(createParameterDrafts) : update
+      onCreateAttributeDraftsChange(
+        typeof update === "function" ? update(createAttributeDrafts) : update
       );
       return;
     }
@@ -619,56 +619,56 @@ function CategoryDialogContent({
     setEditDrafts(update);
   }
 
-  function setActiveValueParameterId(parameterId: string) {
+  function setActiveValueAttributeId(attributeId: string) {
     if (mode === "create") {
-      onCreateValueParameterIdChange(parameterId);
+      onCreateValueAttributeIdChange(attributeId);
       return;
     }
 
-    setEditValueParameter(parameterId);
+    setEditValueAttribute(attributeId);
   }
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     if (mode === "create") {
-      onCreateSubmit(event, createParameterDrafts, createValueParameterId);
+      onCreateSubmit(event, createAttributeDrafts, createValueAttributeId);
       return;
     }
 
     onUpdateSubmit(
       event,
-      editParameterDraftsRef.current,
-      editValueParameterIdRef.current
+      editAttributeDraftsRef.current,
+      editValueAttributeIdRef.current
     );
   }
 
-  function setEditDrafts(update: CategoryParameterDraftUpdate) {
+  function setEditDrafts(update: CategoryAttributeDraftUpdate) {
     const nextDrafts =
       typeof update === "function"
-        ? update(editParameterDraftsRef.current)
+        ? update(editAttributeDraftsRef.current)
         : update;
 
-    editParameterDraftsRef.current = nextDrafts;
-    setEditParameterDrafts(nextDrafts);
+    editAttributeDraftsRef.current = nextDrafts;
+    setEditAttributeDrafts(nextDrafts);
   }
 
-  function setEditValueParameter(parameterId: string) {
-    editValueParameterIdRef.current = parameterId;
-    setEditValueParameterId(parameterId);
+  function setEditValueAttribute(attributeId: string) {
+    editValueAttributeIdRef.current = attributeId;
+    setEditValueAttributeId(attributeId);
   }
 
   return (
-    <div className="p-6">
+    <div className="flex h-full min-h-0 flex-col">
       <DialogHeader
         body={body}
         closeLabel={copy.close}
         title={title}
         titleId="category-dialog-title"
       />
-      <div className="mb-5 flex gap-2 border-b border-slate-200">
+      <div className="flex gap-2 border-b border-slate-200 px-5">
         <button
           className={`min-h-10 border-b-2 px-3 text-sm font-medium ${
             activeTab === "details"
-              ? "border-slate-950 text-slate-950"
+              ? "border-[var(--color-accent)] text-slate-950"
               : "border-transparent text-slate-500 hover:text-slate-800"
           }`}
           type="button"
@@ -678,61 +678,63 @@ function CategoryDialogContent({
         </button>
         <button
           className={`min-h-10 border-b-2 px-3 text-sm font-medium ${
-            activeTab === "parameters"
-              ? "border-slate-950 text-slate-950"
+            activeTab === "attributes"
+              ? "border-[var(--color-accent)] text-slate-950"
               : "border-transparent text-slate-500 hover:text-slate-800"
           }`}
           type="button"
-          onClick={() => onTabChange("parameters")}
+          onClick={() => onTabChange("attributes")}
         >
-          {copy.parametersTab}
+          {copy.attributesTab}
         </button>
       </div>
-      {displayedError ? (
-        <p className="mb-4 rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-800">
-          {getCategoryErrorMessage(copy, displayedError)}
-        </p>
-      ) : null}
-      <form
-        key={`${mode}-${category?.id ?? "new"}`}
-        className={activeTab === "details" ? "grid gap-4" : "hidden"}
-        id={formId}
-        onSubmit={handleSubmit}
-      >
-        <input name="workspaceSlug" type="hidden" value={workspaceSlug} />
-        {mode === "edit" && category ? (
-          <input name="id" type="hidden" value={category.id} />
+      <div className="min-h-0 flex-1 overflow-auto px-5 py-4">
+        {displayedError ? (
+          <p className="mb-3 rounded-md border border-[var(--color-error-border)] bg-[var(--color-error-soft)] px-3 py-2 text-sm text-[var(--color-error)]">
+            {getCategoryErrorMessage(copy, displayedError)}
+          </p>
         ) : null}
-        <CategoryFormFields
-          categories={categories}
-          copy={copy}
-          defaultIsAssignable={category?.isAssignable ?? true}
-          excludedCategoryId={category?.id}
-          isDatabaseAvailable={isDatabaseAvailable}
-          nameDefaultValue={category?.name ?? ""}
-          parentId={mode === "create" ? createParentId : category?.parentId ?? ""}
-          setParentId={mode === "create" ? onParentIdChange : undefined}
-        />
-      </form>
-      {activeTab === "parameters" && areParameterControlsEnabled ? (
-        <CategoryParametersDraftEditor
-          canWriteCategories={canWriteCategories}
-          categoryId={category?.id ?? ""}
-          copy={copy}
-          drafts={activeParameterDrafts}
-          isDatabaseAvailable={isDatabaseAvailable && areParameterControlsEnabled}
-          parameters={parameters}
-          valueParameterId={activeValueParameterId}
-          onDraftsChange={setActiveParameterDrafts}
-          onValueParameterIdChange={setActiveValueParameterId}
-        />
-      ) : null}
-      {activeTab === "parameters" && !areParameterControlsEnabled ? (
-        <p className="text-sm text-slate-500">Loading parameters...</p>
-      ) : null}
-      <div className="mt-5 flex justify-end border-t border-slate-200 pt-5">
+        <form
+          key={`${mode}-${category?.id ?? "new"}`}
+          className={activeTab === "details" ? "grid gap-3" : "hidden"}
+          id={formId}
+          onSubmit={handleSubmit}
+        >
+          <input name="workspaceSlug" type="hidden" value={workspaceSlug} />
+          {mode === "edit" && category ? (
+            <input name="id" type="hidden" value={category.id} />
+          ) : null}
+          <CategoryFormFields
+            categories={categories}
+            copy={copy}
+            defaultIsAssignable={category?.isAssignable ?? true}
+            excludedCategoryId={category?.id}
+            isDatabaseAvailable={isDatabaseAvailable}
+            nameDefaultValue={category?.name ?? ""}
+            parentId={mode === "create" ? createParentId : category?.parentId ?? ""}
+            setParentId={mode === "create" ? onParentIdChange : undefined}
+          />
+        </form>
+        {activeTab === "attributes" && areAttributeControlsEnabled ? (
+          <CategoryAttributesDraftEditor
+            canWriteCategories={canWriteCategories}
+            categoryId={category?.id ?? ""}
+            copy={copy}
+            drafts={activeAttributeDrafts}
+            isDatabaseAvailable={isDatabaseAvailable && areAttributeControlsEnabled}
+            attributes={attributes}
+            valueAttributeId={activeValueAttributeId}
+            onDraftsChange={setActiveAttributeDrafts}
+            onValueAttributeIdChange={setActiveValueAttributeId}
+          />
+        ) : null}
+        {activeTab === "attributes" && !areAttributeControlsEnabled ? (
+          <p className="text-sm text-slate-500">Loading attributes...</p>
+        ) : null}
+      </div>
+      <div className="flex justify-end border-t border-slate-200 px-5 py-4">
         <button
-          className="min-h-11 rounded-md border border-slate-950 bg-slate-950 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2 disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-100 disabled:text-slate-400"
+          className={primaryButtonClassName}
           disabled={isSaveDisabled}
           form={formId}
           type="submit"
@@ -744,53 +746,53 @@ function CategoryDialogContent({
   );
 }
 
-type CategoryParameterDraft = {
-  parameter: ParameterListItem;
+type CategoryAttributeDraft = {
+  attribute: AttributeListItem;
   sourceCategoryId: string;
   isLocal: boolean;
   sortOrder: number;
   defaultValue: string;
   isPrimary: boolean;
-  inheritedDraft: CategoryParameterDraft | null;
+  inheritedDraft: CategoryAttributeDraft | null;
 };
 
-type CategoryParameterDraftUpdate = SetStateAction<CategoryParameterDraft[]>;
+type CategoryAttributeDraftUpdate = SetStateAction<CategoryAttributeDraft[]>;
 
-function CategoryParametersDraftEditor({
+function CategoryAttributesDraftEditor({
   canWriteCategories,
   categoryId,
   copy,
   drafts,
   isDatabaseAvailable,
-  parameters,
-  valueParameterId,
+  attributes,
+  valueAttributeId,
   onDraftsChange,
-  onValueParameterIdChange
+  onValueAttributeIdChange
 }: {
   canWriteCategories: boolean;
   categoryId: string;
   copy: Copy;
-  drafts: CategoryParameterDraft[];
+  drafts: CategoryAttributeDraft[];
   isDatabaseAvailable: boolean;
-  parameters: ParameterListItem[];
-  valueParameterId: string;
-  onDraftsChange: (update: CategoryParameterDraftUpdate) => void;
-  onValueParameterIdChange: (parameterId: string) => void;
+  attributes: AttributeListItem[];
+  valueAttributeId: string;
+  onDraftsChange: (update: CategoryAttributeDraftUpdate) => void;
+  onValueAttributeIdChange: (attributeId: string) => void;
 }) {
-  const availableParameters = parameters.filter(
-    (parameter) =>
-      !drafts.some((draft) => draft.parameter.id === parameter.id)
+  const availableAttributes = attributes.filter(
+    (attribute) =>
+      !drafts.some((draft) => draft.attribute.id === attribute.id)
   );
 
   function updateDraft(
-    parameterId: string,
+    attributeId: string,
     patch: Partial<
-      Pick<CategoryParameterDraft, "sortOrder" | "defaultValue" | "isPrimary">
+      Pick<CategoryAttributeDraft, "sortOrder" | "defaultValue" | "isPrimary">
     >
   ) {
     onDraftsChange((currentDrafts) =>
       currentDrafts.map((draft) => {
-        if (draft.parameter.id !== parameterId) {
+        if (draft.attribute.id !== attributeId) {
           return draft;
         }
 
@@ -809,21 +811,21 @@ function CategoryParametersDraftEditor({
     );
   }
 
-  function handleAddParameter(event: FormEvent<HTMLFormElement>) {
+  function handleAddAttribute(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const formData = new FormData(event.currentTarget);
-    const parameter = parameters.find(
-      (item) => item.id === getFormValue(formData, "parameterId")
+    const attribute = attributes.find(
+      (item) => item.id === getFormValue(formData, "attributeId")
     );
 
-    if (!parameter) {
+    if (!attribute) {
       return;
     }
 
     onDraftsChange((currentDrafts) => [
       ...currentDrafts,
       {
-        parameter,
+        attribute,
         sourceCategoryId: "",
         isLocal: true,
         sortOrder: Number(getFormValue(formData, "sortOrder") || "0"),
@@ -835,10 +837,10 @@ function CategoryParametersDraftEditor({
     event.currentTarget.reset();
   }
 
-  function removeDraft(parameterId: string) {
+  function removeDraft(attributeId: string) {
     onDraftsChange((currentDrafts) =>
       currentDrafts.flatMap((draft) => {
-        if (draft.parameter.id !== parameterId) {
+        if (draft.attribute.id !== attributeId) {
           return [draft];
         }
 
@@ -847,35 +849,35 @@ function CategoryParametersDraftEditor({
     );
 
     const removedDraft = drafts.find(
-      (draft) => draft.parameter.id === parameterId
+      (draft) => draft.attribute.id === attributeId
     );
 
-    if (valueParameterId === parameterId && !removedDraft?.inheritedDraft) {
-      onValueParameterIdChange("");
+    if (valueAttributeId === attributeId && !removedDraft?.inheritedDraft) {
+      onValueAttributeIdChange("");
     }
   }
 
   return (
     <div className="grid gap-3">
       <label className="grid max-w-sm gap-2 text-sm font-medium text-slate-700">
-        {copy.valueParameter}
+        {copy.valueAttribute}
         <select
-          className={categoryParameterInputClassName}
+          className={categoryAttributeInputClassName}
           disabled={!isDatabaseAvailable || !canWriteCategories}
-          value={valueParameterId}
+          value={valueAttributeId}
           onChange={(event) =>
-            onValueParameterIdChange(event.currentTarget.value)
+            onValueAttributeIdChange(event.currentTarget.value)
           }
         >
-          <option value="">{copy.noValueParameter}</option>
+          <option value="">{copy.noValueAttribute}</option>
           {drafts.map((draft) => (
-            <option key={draft.parameter.id} value={draft.parameter.id}>
-              {draft.parameter.name}
+            <option key={draft.attribute.id} value={draft.attribute.id}>
+              {draft.attribute.name}
             </option>
           ))}
         </select>
       </label>
-      <CategoryParameterDraftList
+      <CategoryAttributeDraftList
         canWriteCategories={canWriteCategories}
         categoryId={categoryId}
         copy={copy}
@@ -884,18 +886,18 @@ function CategoryParametersDraftEditor({
         onRemove={removeDraft}
         onUpdate={updateDraft}
       />
-      <CategoryParameterAttachForm
-        availableParameters={availableParameters}
+      <CategoryAttributeAttachForm
+        availableAttributes={availableAttributes}
         canWriteCategories={canWriteCategories}
         copy={copy}
         isDatabaseAvailable={isDatabaseAvailable}
-        onSubmit={handleAddParameter}
+        onSubmit={handleAddAttribute}
       />
     </div>
   );
 }
 
-function CategoryParameterDraftList({
+function CategoryAttributeDraftList({
   canWriteCategories,
   categoryId,
   copy,
@@ -907,38 +909,38 @@ function CategoryParameterDraftList({
   canWriteCategories: boolean;
   categoryId: string;
   copy: Copy;
-  drafts: CategoryParameterDraft[];
+  drafts: CategoryAttributeDraft[];
   isDatabaseAvailable: boolean;
-  onRemove: (parameterId: string) => void;
+  onRemove: (attributeId: string) => void;
   onUpdate: (
-    parameterId: string,
+    attributeId: string,
     patch: Partial<
-      Pick<CategoryParameterDraft, "sortOrder" | "defaultValue" | "isPrimary">
+      Pick<CategoryAttributeDraft, "sortOrder" | "defaultValue" | "isPrimary">
     >
   ) => void;
 }) {
   if (drafts.length === 0) {
-    return <p className="text-sm text-slate-500">{copy.noParameters}</p>;
+    return <p className="text-sm text-slate-500">{copy.noAttributes}</p>;
   }
 
   return (
     <div className="grid gap-1.5">
       <div className="grid grid-cols-[minmax(0,1fr)_5.5rem_minmax(7rem,10rem)_5.5rem_7rem] gap-2 px-1 text-xs font-medium text-slate-500">
-        <span>{copy.parameter}</span>
+        <span>{copy.attribute}</span>
         <span>{copy.sortOrder}</span>
         <span>{copy.defaultValue}</span>
-        <span>{copy.primaryParameter}</span>
-        <span className="sr-only">{copy.detachParameter}</span>
+        <span>{copy.primaryAttribute}</span>
+        <span className="sr-only">{copy.detachAttribute}</span>
       </div>
       {drafts.map((draft) => (
         <div
-          key={draft.parameter.id}
+          key={draft.attribute.id}
           className="grid grid-cols-[minmax(0,1fr)_5.5rem_minmax(7rem,10rem)_5.5rem_7rem] items-center gap-2 rounded-md border border-slate-200 bg-white px-2 py-1.5"
-          data-testid="category-parameter-draft-row"
+          data-testid="category-attribute-draft-row"
         >
           <div className="min-w-0">
             <p className="truncate text-sm font-semibold text-slate-950">
-              {draft.parameter.name}
+              {draft.attribute.name}
             </p>
             <p className="text-xs text-slate-500">
               {draft.sourceCategoryId === categoryId || draft.isLocal
@@ -948,48 +950,48 @@ function CategoryParameterDraftList({
           </div>
           <input
             aria-label={copy.sortOrder}
-            className={categoryParameterInputClassName}
+            className={categoryAttributeInputClassName}
             type="number"
             value={draft.sortOrder}
             onChange={(event) =>
-              onUpdate(draft.parameter.id, {
+              onUpdate(draft.attribute.id, {
                 sortOrder: Number(event.currentTarget.value || "0")
               })
             }
           />
-          <CategoryParameterDefaultValueControl
+          <CategoryAttributeDefaultValueControl
             copy={copy}
-            parameter={draft.parameter}
+            attribute={draft.attribute}
             value={draft.defaultValue}
             onChange={(defaultValue) =>
-              onUpdate(draft.parameter.id, { defaultValue })
+              onUpdate(draft.attribute.id, { defaultValue })
             }
           />
           <label className="flex items-center justify-center">
-            <span className="sr-only">{copy.primaryParameter}</span>
+            <span className="sr-only">{copy.primaryAttribute}</span>
             <input
               checked={draft.isPrimary}
               className="h-4 w-4 rounded border-slate-300 text-slate-950 focus:ring-slate-400 disabled:cursor-not-allowed"
               disabled={!isDatabaseAvailable || !canWriteCategories}
               type="checkbox"
               onChange={(event) =>
-                onUpdate(draft.parameter.id, {
+                onUpdate(draft.attribute.id, {
                   isPrimary: event.currentTarget.checked
                 })
               }
             />
           </label>
           <button
-            className="min-h-9 min-w-28 whitespace-nowrap rounded-md border border-rose-200 bg-white px-2.5 py-1.5 text-sm font-medium text-rose-700 transition hover:border-rose-300 hover:bg-rose-50 focus:outline-none focus:ring-2 focus:ring-rose-200 focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400"
+            className="min-h-9 min-w-28 whitespace-nowrap rounded-md border border-[var(--color-error-border)] bg-white px-2.5 py-1.5 text-sm font-medium text-[var(--color-error)] transition hover:bg-[var(--color-error-soft)] focus:outline-none focus:ring-2 focus:ring-[var(--color-error-border)] focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400"
             disabled={
               !isDatabaseAvailable ||
               !canWriteCategories ||
               (!draft.isLocal && draft.sourceCategoryId !== categoryId)
             }
             type="button"
-            onClick={() => onRemove(draft.parameter.id)}
+            onClick={() => onRemove(draft.attribute.id)}
           >
-            {copy.detachParameter}
+            {copy.detachAttribute}
           </button>
         </div>
       ))}
@@ -997,25 +999,25 @@ function CategoryParameterDraftList({
   );
 }
 
-function CategoryParameterAttachForm({
-  availableParameters,
+function CategoryAttributeAttachForm({
+  availableAttributes,
   canWriteCategories,
   copy,
   isDatabaseAvailable,
   onSubmit
 }: {
-  availableParameters: ParameterListItem[];
+  availableAttributes: AttributeListItem[];
   canWriteCategories: boolean;
   copy: Copy;
   isDatabaseAvailable: boolean;
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
 }) {
-  const [selectedParameterId, setSelectedParameterId] = useState(
-    availableParameters[0]?.id ?? ""
+  const [selectedAttributeId, setSelectedAttributeId] = useState(
+    availableAttributes[0]?.id ?? ""
   );
-  const selectedParameter =
-    availableParameters.find((parameter) => parameter.id === selectedParameterId) ??
-    availableParameters[0] ??
+  const selectedAttribute =
+    availableAttributes.find((attribute) => attribute.id === selectedAttributeId) ??
+    availableAttributes[0] ??
     null;
 
   return (
@@ -1024,17 +1026,17 @@ function CategoryParameterAttachForm({
       onSubmit={onSubmit}
     >
       <label className="grid gap-1 text-xs font-medium text-slate-600">
-        {copy.parameter}
+        {copy.attribute}
         <select
-          className={categoryParameterInputClassName}
-          name="parameterId"
+          className={categoryAttributeInputClassName}
+          name="attributeId"
           required
-          value={selectedParameter?.id ?? ""}
-          onChange={(event) => setSelectedParameterId(event.currentTarget.value)}
+          value={selectedAttribute?.id ?? ""}
+          onChange={(event) => setSelectedAttributeId(event.currentTarget.value)}
         >
-          {availableParameters.map((parameter) => (
-            <option key={parameter.id} value={parameter.id}>
-              {parameter.name}
+          {availableAttributes.map((attribute) => (
+            <option key={attribute.id} value={attribute.id}>
+              {attribute.name}
             </option>
           ))}
         </select>
@@ -1042,58 +1044,58 @@ function CategoryParameterAttachForm({
       <label className="grid gap-1 text-xs font-medium text-slate-600">
         {copy.sortOrder}
         <input
-          className={categoryParameterInputClassName}
+          className={categoryAttributeInputClassName}
           name="sortOrder"
           type="number"
         />
       </label>
       <label className="grid gap-1 text-xs font-medium text-slate-600">
         {copy.defaultValue}
-        <CategoryParameterDefaultValueControl
+        <CategoryAttributeDefaultValueControl
           copy={copy}
           name="defaultValue"
-          parameter={selectedParameter}
+          attribute={selectedAttribute}
         />
       </label>
       <button
-        className="min-h-9 min-w-28 whitespace-nowrap rounded-md border border-slate-950 bg-slate-950 px-3 py-1.5 text-sm font-semibold text-white transition hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2 disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-100 disabled:text-slate-400"
+        className={primaryButtonClassName}
         disabled={
           !isDatabaseAvailable ||
           !canWriteCategories ||
-          availableParameters.length === 0
+          availableAttributes.length === 0
         }
         type="submit"
       >
-        {copy.attachParameter}
+        {copy.attachAttribute}
       </button>
     </form>
   );
 }
 
-function CategoryParameterDefaultValueControl({
+function CategoryAttributeDefaultValueControl({
   copy,
   name,
-  parameter,
+  attribute,
   value,
   onChange
 }: {
   copy: Copy;
   name?: string;
-  parameter: ParameterListItem | null;
+  attribute: AttributeListItem | null;
   value?: string;
   onChange?: (defaultValue: string) => void;
 }) {
-  if (parameter?.type === "CHOICE") {
+  if (attribute?.type === "CHOICE") {
     return (
       <select
         aria-label={copy.defaultValue}
-        className={categoryParameterInputClassName}
+        className={categoryAttributeInputClassName}
         name={name}
         value={value}
         onChange={(event) => onChange?.(event.currentTarget.value)}
       >
         <option value="" />
-        {parameter.choiceOptions.map((option) => (
+        {attribute.choiceOptions.map((option) => (
           <option key={option.id} value={option.label}>
             {option.label}
           </option>
@@ -1102,11 +1104,11 @@ function CategoryParameterDefaultValueControl({
     );
   }
 
-  if (parameter?.type === "BOOLEAN") {
+  if (attribute?.type === "BOOLEAN") {
     return (
       <select
         aria-label={copy.defaultValue}
-        className={categoryParameterInputClassName}
+        className={categoryAttributeInputClassName}
         name={name}
         value={value}
         onChange={(event) => onChange?.(event.currentTarget.value)}
@@ -1121,7 +1123,7 @@ function CategoryParameterDefaultValueControl({
   return (
     <input
       aria-label={copy.defaultValue}
-      className={categoryParameterInputClassName}
+      className={categoryAttributeInputClassName}
       name={name}
       value={value}
       onChange={(event) => onChange?.(event.currentTarget.value)}
@@ -1129,33 +1131,33 @@ function CategoryParameterDefaultValueControl({
   );
 }
 
-function getLocalCategoryParameterInputs(
-  drafts: CategoryParameterDraft[],
+function getLocalCategoryAttributeInputs(
+  drafts: CategoryAttributeDraft[],
   categoryId: string
 ) {
   return drafts
     .filter((draft) => draft.isLocal || draft.sourceCategoryId === categoryId)
     .map((draft) => ({
-      parameterId: draft.parameter.id,
+      attributeId: draft.attribute.id,
       sortOrder: draft.sortOrder,
       defaultValue: draft.defaultValue ? { rawValue: draft.defaultValue } : null,
       isPrimary: draft.isPrimary
     }));
 }
 
-function toCategoryParameterDraft(
-  effectiveParameter: EffectiveCategoryParameter,
+function toCategoryAttributeDraft(
+  effectiveAttribute: EffectiveCategoryAttribute,
   categoryId: string
-): CategoryParameterDraft {
+): CategoryAttributeDraft {
   return {
-    parameter: effectiveParameter.parameter,
-    sourceCategoryId: effectiveParameter.sourceCategoryId,
-    isLocal: effectiveParameter.sourceCategoryId === categoryId,
-    sortOrder: effectiveParameter.sortOrder,
-    defaultValue: effectiveParameter.defaultValue?.displayValue ?? "",
-    isPrimary: effectiveParameter.isPrimary,
-    inheritedDraft: effectiveParameter.inheritedParameter
-      ? toCategoryParameterDraft(effectiveParameter.inheritedParameter, categoryId)
+    attribute: effectiveAttribute.attribute,
+    sourceCategoryId: effectiveAttribute.sourceCategoryId,
+    isLocal: effectiveAttribute.sourceCategoryId === categoryId,
+    sortOrder: effectiveAttribute.sortOrder,
+    defaultValue: effectiveAttribute.defaultValue?.displayValue ?? "",
+    isPrimary: effectiveAttribute.isPrimary,
+    inheritedDraft: effectiveAttribute.inheritedAttribute
+      ? toCategoryAttributeDraft(effectiveAttribute.inheritedAttribute, categoryId)
       : null
   };
 }
@@ -1193,7 +1195,7 @@ function CategoryNode({
         data-testid="part-category-node"
         className={`grid min-h-12 grid-cols-[auto_1fr_auto] items-center gap-3 rounded-md border-l-4 px-3 py-2 ${
           category.isAssignable
-            ? "border-cyan-300 bg-cyan-50/60 text-slate-950"
+            ? "border-slate-400 bg-white text-slate-950"
             : "border-slate-300 bg-slate-50 text-slate-600"
         }`}
         style={{ marginLeft: `${level * 1.25}rem` }}
@@ -1352,7 +1354,7 @@ function CategoryFormFields({
               type="radio"
               value="assignable"
             />
-            <span className="grid min-h-11 cursor-pointer place-items-center rounded-md border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 transition peer-checked:border-cyan-400 peer-checked:bg-cyan-50 peer-focus:ring-2 peer-focus:ring-cyan-100 peer-disabled:cursor-not-allowed peer-disabled:bg-slate-50 peer-disabled:text-slate-400">
+            <span className="grid min-h-10 cursor-pointer place-items-center rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 transition peer-checked:border-[var(--color-accent-border)] peer-checked:bg-[var(--color-accent-soft)] peer-focus:ring-2 peer-focus:ring-[var(--color-action-focus)] peer-disabled:cursor-not-allowed peer-disabled:bg-slate-50 peer-disabled:text-slate-400">
               {copy.assignable}
             </span>
           </label>
@@ -1374,7 +1376,7 @@ function DialogHeader({
   titleId: string;
 }) {
   return (
-    <div className="mb-5 flex items-start justify-between gap-4 border-b border-slate-200 pb-5">
+    <div className="flex items-start justify-between gap-4 border-b border-slate-200 px-5 py-4">
       <div>
         <h2 id={titleId} className="text-lg font-semibold text-slate-950">
           {title}
@@ -1383,13 +1385,32 @@ function DialogHeader({
       </div>
       <form method="dialog">
         <button
-          className="min-h-9 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:border-slate-400 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2"
+          aria-label={closeLabel}
+          className={iconButtonClassName}
           type="submit"
         >
-          {closeLabel}
+          <CloseIcon />
         </button>
       </form>
     </div>
+  );
+}
+
+function CloseIcon() {
+  return (
+    <svg
+      aria-hidden="true"
+      className="h-4 w-4"
+      fill="none"
+      viewBox="0 0 16 16"
+    >
+      <path
+        d="M4 4l8 8M12 4l-8 8"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeWidth="1.75"
+      />
+    </svg>
   );
 }
 
@@ -1591,14 +1612,18 @@ function getCategoryErrorMessage(copy: Copy, error: string) {
     error === "invalid-quantity-prefix" ||
     error === "invalid-quantity-unit" ||
     error === "invalid-boolean-value" ||
-    error === "parameter-value-required" ||
+    error === "attribute-value-required" ||
     error === "quantity-unit-required"
   ) {
-    return copy.invalidParameterDefaultValue;
+    return copy.invalidAttributeDefaultValue;
   }
 
   return copy.databaseUnavailable;
 }
 
-const categoryParameterInputClassName =
+const categoryAttributeInputClassName =
   "min-h-9 min-w-0 rounded-md border border-slate-300 bg-white px-2.5 py-1.5 text-sm text-slate-950 outline-none transition placeholder:text-slate-400 hover:border-slate-400 focus:border-slate-500 focus:ring-2 focus:ring-slate-200 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400";
+const primaryButtonClassName =
+  "min-h-9 rounded-md border border-[var(--color-action-primary)] bg-[var(--color-action-primary)] px-3 py-1.5 text-sm font-semibold text-white transition hover:border-[var(--color-action-primary-hover)] hover:bg-[var(--color-action-primary-hover)] focus:outline-none focus:ring-2 focus:ring-[var(--color-action-focus)] focus:ring-offset-2 disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-100 disabled:text-slate-400";
+const iconButtonClassName =
+  "grid h-8 w-8 place-items-center rounded-md border border-transparent text-slate-500 transition hover:border-slate-200 hover:bg-slate-50 hover:text-slate-950 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2";

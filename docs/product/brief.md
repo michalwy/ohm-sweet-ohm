@@ -21,7 +21,7 @@ Parts currently represent real purchasable electronic parts and are tracked by m
 ## Open Questions
 
 - What is the first workflow OSO should support?
-- Should parts later include optional descriptive fields such as category, package, parameters, datasheets, or vendor links?
+- Should parts later include optional descriptive fields such as category, package, attributes, datasheets, or vendor links?
 - Should the app optimize for a single-user home lab first, or prepare for multi-user/team usage from the beginning?
 - Should OSO support offline-first usage?
 - Which deployment targets matter first?
