@@ -8,7 +8,7 @@ Accepted
 
 OhmSweetOhm parts currently represent real purchasable electronic parts identified by manufacturer name and catalog number. Parts need optional category assignment so a home electronics workshop can organize parts without requiring a complete taxonomy up front.
 
-Category behavior must support a tree. Some categories are only for organizing that tree, for example `Passives`, and cannot be assigned directly to parts. Future category filtering should include all descendants: filtering by `Passives` should include parts assigned to `Passives / Capacitors`, `Passives / Resistors`, and other nested categories.
+Category behavior must support a tree. Some categories are only for organizing that tree, for example `Passives`, and cannot be assigned directly to parts. Future category filtering should include all descendants: filtering by `Passives` should include parts assigned to `Passives » Capacitors`, `Passives » Resistors`, and other nested categories.
 
 ## Decision
 

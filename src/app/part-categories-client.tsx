@@ -589,6 +589,26 @@ function CategoryDialogContent({
       setEditAttributesLoaded(false);
     }
   });
+  const loadCreateParentAttributesMutation = useMutation({
+    mutationFn: getEffectiveCategoryAttributesForWorkspace,
+    onSuccess: (result) => {
+      if (!result.ok) {
+        setEditAttributesError(result.error);
+        return;
+      }
+
+      onCreateAttributeDraftsChange(
+        result.data.map((attribute) => toCategoryAttributeDraft(attribute, ""))
+      );
+      onCreateValueAttributeIdChange(
+        result.data.find((attribute) => attribute.isValue)?.attribute.id ?? ""
+      );
+      setEditAttributesError(null);
+    },
+    onError: () => {
+      setEditAttributesError("database-unavailable");
+    }
+  });
   const activeAttributeDrafts =
     mode === "create" ? createAttributeDrafts : editAttributeDrafts;
   const activeValueAttributeId =
@@ -612,6 +632,24 @@ function CategoryDialogContent({
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [category?.id, mode, workspaceSlug]);
+
+  useEffect(() => {
+    if (mode !== "create") {
+      return;
+    }
+
+    if (!createParentId) {
+      onCreateAttributeDraftsChange([]);
+      onCreateValueAttributeIdChange("");
+      return;
+    }
+
+    loadCreateParentAttributesMutation.mutate({
+      workspaceSlug,
+      categoryId: createParentId
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [createParentId, mode, workspaceSlug]);
 
   useLayoutEffect(() => {
     if (activeTab !== "details") {

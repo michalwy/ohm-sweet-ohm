@@ -41,7 +41,7 @@ The category's value attribute is stored as nullable `PartCategory.valueAttribut
 Categories remain a single-parent tree. Effective attributes are computed dynamically from the ancestor chain:
 
 - A child inherits all attribute attachments from its parent.
-- With multiple levels such as `A / B / C`, `B` inherits from `A`, and `C` inherits from the effective set of `B`.
+- With multiple levels such as `A » B » C`, `B` inherits from `A`, and `C` inherits from the effective set of `B`.
 - Adding an attribute to `A` later makes it effective for `B` and `C` automatically.
 - A child can attach the same dictionary attribute to override category-level configuration such as `sortOrder` or `defaultValue`.
 - A child override can also override `isPrimary`.

@@ -64,13 +64,13 @@ test.describe("parts list", () => {
     ).toBeVisible();
     await expect(page).toHaveURL(/\/w\/default\/parts$/);
     const seededPartRow = page.getByRole("row", {
-      name: /NE555P.*Texas Instruments/
+      name: /Texas Instruments.*NE555P/
     });
     await expect(seededPartRow).toBeVisible();
     await expect(seededPartRow).toContainText("NE555P");
     await expect(seededPartRow).toContainText("Texas Instruments");
     await expect(seededPartRow).toContainText(
-      "Semiconductors / Integrated circuits"
+      "Semiconductors » Integrated circuits"
     );
 
     await page.getByRole("button", { name: "Add part" }).click();
@@ -92,7 +92,7 @@ test.describe("parts list", () => {
     await page.getByPlaceholder("Search categories").fill("integrated");
     await expect(
       addPartDialog.getByRole("button", {
-        name: /Primary category.*Semiconductors \/ Integrated circuits/
+        name: /Primary category.*Semiconductors » Integrated circuits/
       })
     ).toBeVisible();
     await page.keyboard.press("Escape");
@@ -100,7 +100,7 @@ test.describe("parts list", () => {
     await page.getByPlaceholder("Search categories").fill("resistors");
     await expect(
       addPartDialog.getByRole("button", {
-        name: /Secondary category.*Passives \/ Resistors/
+        name: /Secondary category.*Passives » Resistors/
       })
     ).toBeVisible();
     await page.keyboard.press("Enter");
@@ -111,15 +111,15 @@ test.describe("parts list", () => {
     );
     await expect(page).toHaveURL(/\/w\/default\/parts$/);
     const createdPartRow = page.getByRole("row", {
-      name: new RegExp(`${catalogNumber}.*Microchip Technology`)
+      name: new RegExp(`Microchip Technology.*${catalogNumber}`)
     });
 
     await expect(createdPartRow).toBeVisible();
     await expect(createdPartRow).toContainText("Microchip Technology");
     await expect(createdPartRow).toContainText(
-      "Semiconductors / Integrated circuits"
+      "Semiconductors » Integrated circuits"
     );
-    await expect(createdPartRow).toContainText("Passives / Resistors");
+    await expect(createdPartRow).toContainText("Passives » Resistors");
 
     await page.getByRole("button", { name: "Add part" }).click();
     await expect(addPartDialog).toBeVisible();
@@ -194,14 +194,14 @@ test.describe("parts list", () => {
     await page.keyboard.press("Enter");
     await expect(
       editPartDialog.getByRole("button", {
-        name: /Primary category.*Passives \/ Capacitors/
+        name: /Primary category.*Passives » Capacitors/
       })
     ).toBeVisible();
     await editPartDialog.getByLabel("Secondary category").click();
     await page.getByPlaceholder("Search categories").fill("resistors");
     await expect(
       editPartDialog.getByRole("button", {
-        name: /Secondary category.*Passives \/ Resistors/
+        name: /Secondary category.*Passives » Resistors/
       })
     ).toBeVisible();
     await page.keyboard.press("Escape");
@@ -212,11 +212,11 @@ test.describe("parts list", () => {
     );
     await expect(page).toHaveURL(/\/w\/default\/parts$/);
     const updatedPartRow = page.getByRole("row", {
-      name: new RegExp(`${updatedCatalogNumber}.*${updatedManufacturer}`)
+      name: new RegExp(`${updatedManufacturer}.*${updatedCatalogNumber}`)
     });
     await expect(updatedPartRow).toBeVisible();
-    await expect(updatedPartRow).toContainText("Passives / Capacitors");
-    await expect(updatedPartRow).toContainText("Passives / Resistors");
+    await expect(updatedPartRow).toContainText("Passives » Capacitors");
+    await expect(updatedPartRow).toContainText("Passives » Resistors");
   });
 
   test("manages the part category tree without delete actions", async ({
@@ -304,7 +304,7 @@ test.describe("parts list", () => {
     await expect(
       page
         .locator("p")
-        .filter({ hasText: new RegExp(`^${categoryName} / ${childName}$`) })
+        .filter({ hasText: new RegExp(`^${categoryName} » ${childName}$`) })
         .first()
     ).toBeVisible();
 
@@ -338,7 +338,7 @@ test.describe("parts list", () => {
       page
         .locator("p")
         .filter({
-          hasText: new RegExp(`^${categoryName} / ${updatedChildName}$`)
+          hasText: new RegExp(`^${categoryName} » ${updatedChildName}$`)
         })
         .first()
     ).toBeVisible();
@@ -463,6 +463,28 @@ test.describe("parts list", () => {
     await page.getByRole("link", { name: "Part categories" }).click();
     await expect(page).toHaveURL(/\/w\/default\/part-categories$/);
 
+    const passivesCategoryNode = page
+      .getByTestId("part-category-node")
+      .filter({
+        has: page.locator("p").filter({ hasText: /^Passives$/ })
+      })
+      .first();
+    await passivesCategoryNode.getByRole("button", { name: "Add child" }).click();
+    const addCategoryDialog = page.getByRole("dialog", {
+      name: "Add category"
+    });
+    await expect(addCategoryDialog).toBeVisible();
+    await addCategoryDialog.getByRole("button", { name: "Attributes" }).click();
+    const inheritedNewChildDraft = addCategoryDialog
+      .getByTestId("category-attribute-draft-row")
+      .filter({ hasText: overrideName });
+    await expect(inheritedNewChildDraft.filter({ hasText: "Inherited" }))
+      .toBeVisible();
+    await expect(
+      inheritedNewChildDraft.getByLabel("Default value")
+    ).toHaveValue("Inherited marker");
+    await addCategoryDialog.getByRole("button", { name: "Close" }).click();
+
     const resistorCategoryNode = page
       .getByTestId("part-category-node")
       .filter({
@@ -580,21 +602,24 @@ test.describe("parts list", () => {
     await addPartDialog.getByLabel("Primary category").click();
     await page.getByPlaceholder("Search categories").fill("configured");
     const configuredCategoryOption = addPartDialog.getByRole("button", {
-      name: /Primary category.*Passives \/ Resistors configured/
+      name: /Primary category.*Passives » Resistors configured/
     });
     await expect(configuredCategoryOption).toBeVisible();
     await page.keyboard.press("Enter");
     await expect(addPartDialog.getByLabel(resistanceName)).toHaveValue("10 kΩ");
+    await addPartDialog.getByRole("button", { name: "Attributes" }).click();
+    await addPartDialog.getByRole("button", { name: "Details" }).click();
+    await expect(addPartDialog.getByLabel("Manufacturer")).toHaveValue("Yageo");
     await addPartDialog.getByLabel(resistanceName).fill("4,7 kΩ");
     await addPartDialog.getByRole("button", { name: "Create part" }).click();
     await expect(page.getByRole("status")).toHaveText(
       `Part created: Yageo RC0603-${suffix}.`
     );
     const resistorRow = page.getByRole("row", {
-      name: new RegExp(`RC0603-${suffix}.*4.7 kΩ.*Yageo`)
+      name: new RegExp(`Yageo.*RC0603-${suffix}.*4.7 kΩ`)
     });
     await expect(resistorRow).toBeVisible();
-    await expect(resistorRow).toContainText("Passives / Resistors configured");
+    await expect(resistorRow).toContainText("Passives » Resistors configured");
 
     await resistorRow.getByRole("button", { name: "Edit" }).click();
     const editPartDialog = page.getByRole("dialog", { name: "Edit part" });
@@ -602,7 +627,7 @@ test.describe("parts list", () => {
     await editPartDialog.getByLabel("Primary category").click();
     await page.getByPlaceholder("Search categories").fill("diodes");
     const diodesCategoryOption = editPartDialog.getByRole("button", {
-      name: /Primary category.*Semiconductors \/ Diodes/
+      name: /Primary category.*Semiconductors » Diodes/
     });
     await expect(diodesCategoryOption).toBeVisible();
     await page.keyboard.press("Enter");
@@ -611,9 +636,9 @@ test.describe("parts list", () => {
       `Part updated: Yageo RC0603-${suffix}.`
     );
     const updatedResistorRow = page.getByRole("row", {
-      name: new RegExp(`RC0603-${suffix}.*Yageo`)
+      name: new RegExp(`Yageo.*RC0603-${suffix}`)
     });
-    await expect(updatedResistorRow).toContainText("Semiconductors / Diodes");
+    await expect(updatedResistorRow).toContainText("Semiconductors » Diodes");
     await expect(updatedResistorRow).not.toContainText("4.7 kΩ");
 
     await updatedResistorRow.getByRole("button", { name: "Edit" }).click();
@@ -621,7 +646,7 @@ test.describe("parts list", () => {
     await editPartDialog.getByLabel("Primary category").click();
     await page.getByPlaceholder("Search categories").fill("configured");
     const restoredCategoryOption = editPartDialog.getByRole("button", {
-      name: /Primary category.*Passives \/ Resistors configured/
+      name: /Primary category.*Passives » Resistors configured/
     });
     await expect(restoredCategoryOption).toBeVisible();
     await page.keyboard.press("Enter");

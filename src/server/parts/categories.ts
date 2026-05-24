@@ -7,6 +7,8 @@ import {
 import { prisma } from "@/server/db/prisma";
 import type { PrismaClient } from "@/generated/prisma/client";
 
+export const PART_CATEGORY_PATH_SEPARATOR = " » ";
+
 export type PartCategoryListItem = {
   id: string;
   parentId: string | null;
@@ -126,7 +128,9 @@ export function buildPartCategoryPaths(
     }
 
     const parentPath = getPath(category.parentId, new Set(seen).add(categoryId));
-    const path = parentPath ? `${parentPath} / ${category.name}` : category.name;
+    const path = parentPath
+      ? `${parentPath}${PART_CATEGORY_PATH_SEPARATOR}${category.name}`
+      : category.name;
 
     pathsById.set(categoryId, path);
     return path;
