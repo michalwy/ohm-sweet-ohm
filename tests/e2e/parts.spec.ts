@@ -47,6 +47,8 @@ test.describe("parts list", () => {
   }, testInfo) => {
     const catalogNumber = `ATMEGA328P-PU-${testInfo.project.name}`;
     const updatedCatalogNumber = `${catalogNumber}-A`;
+    const description = "8-bit microcontroller for breadboard builds";
+    const updatedDescription = "Updated DIP microcontroller note";
     const updatedManufacturer = "Microchip";
 
     await page.goto("/");
@@ -77,6 +79,7 @@ test.describe("parts list", () => {
     const addPartDialog = page.getByRole("dialog", { name: "Add part" });
     await expect(addPartDialog).toBeVisible();
     await addPartDialog.getByLabel("Catalog number").fill(catalogNumber);
+    await addPartDialog.getByLabel("Description").fill(description);
     const createManufacturerInput = addPartDialog.getByLabel("Manufacturer");
     await createManufacturerInput.fill("tex");
     await expect(page.getByRole("option", { name: "Texas Instruments" }))
@@ -116,6 +119,7 @@ test.describe("parts list", () => {
 
     await expect(createdPartRow).toBeVisible();
     await expect(createdPartRow).toContainText("Microchip Technology");
+    await expect(createdPartRow).toContainText(description);
     await expect(createdPartRow).toContainText(
       "Semiconductors » Integrated circuits"
     );
@@ -149,6 +153,9 @@ test.describe("parts list", () => {
     await expect(editPartDialog.getByLabel("Manufacturer")).toHaveValue(
       "Microchip Technology"
     );
+    await expect(editPartDialog.getByLabel("Description")).toHaveValue(
+      description
+    );
     await editPartDialog.getByLabel("Catalog number").fill("NE555P");
     await editPartDialog.getByLabel("Manufacturer").fill("Texas Instruments");
     await editPartDialog.getByRole("button", { name: "Save changes" }).click();
@@ -164,6 +171,7 @@ test.describe("parts list", () => {
       "Texas Instruments"
     );
     await editPartDialog.getByLabel("Catalog number").fill(updatedCatalogNumber);
+    await editPartDialog.getByLabel("Description").fill(updatedDescription);
     const editManufacturerInput = editPartDialog.getByLabel("Manufacturer");
     await editManufacturerInput.fill("dio");
     await page.keyboard.press("Enter");
@@ -215,6 +223,7 @@ test.describe("parts list", () => {
       name: new RegExp(`${updatedManufacturer}.*${updatedCatalogNumber}`)
     });
     await expect(updatedPartRow).toBeVisible();
+    await expect(updatedPartRow).toContainText(updatedDescription);
     await expect(updatedPartRow).toContainText("Passives » Capacitors");
     await expect(updatedPartRow).toContainText("Passives » Resistors");
   });

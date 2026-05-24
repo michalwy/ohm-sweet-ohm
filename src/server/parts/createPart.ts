@@ -35,6 +35,7 @@ export async function createPart(
 ): Promise<PartMutationResult> {
   const workspaceSlug = getRequiredFormValue(formData, "workspaceSlug");
   const catalogNumber = getRequiredFormValue(formData, "catalogNumber");
+  const description = getOptionalFormValue(formData, "description");
   const manufacturerName = getRequiredFormValue(formData, "manufacturerName");
   const primaryCategoryId = getOptionalFormValue(formData, "primaryCategoryId");
   const secondaryCategoryId = getOptionalFormValue(
@@ -95,6 +96,7 @@ export async function createPart(
                 data: {
                   workspaceId: context.workspace.id,
                   catalogNumber,
+                  description,
                   manufacturerId: manufacturer.id,
                   primaryCategoryId,
                   secondaryCategoryId
@@ -145,6 +147,7 @@ export async function updatePart(
   const workspaceSlug = getRequiredFormValue(formData, "workspaceSlug");
   const id = getRequiredFormValue(formData, "id");
   const catalogNumber = getRequiredFormValue(formData, "catalogNumber");
+  const description = getOptionalFormValue(formData, "description");
   const manufacturerName = getRequiredFormValue(formData, "manufacturerName");
   const primaryCategoryId = getOptionalFormValue(formData, "primaryCategoryId");
   const secondaryCategoryId = getOptionalFormValue(
@@ -208,6 +211,7 @@ export async function updatePart(
                 },
                 data: {
                   catalogNumber,
+                  description,
                   manufacturerId: manufacturer.id,
                   primaryCategoryId,
                   secondaryCategoryId
@@ -555,6 +559,7 @@ async function getPartListItem({
       select: {
         id: true,
         catalogNumber: true,
+        description: true,
         manufacturer: {
           select: {
             name: true
@@ -600,6 +605,7 @@ async function getPartListItem({
   return {
     id: part.id,
     catalogNumber: part.catalogNumber,
+    description: part.description,
     manufacturerName: part.manufacturer.name,
     valueDisplayValue: valueAttributeId
       ? attributeValues.find(

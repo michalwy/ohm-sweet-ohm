@@ -31,6 +31,7 @@ type Copy = {
   detailsTab: string;
   attributesTab: string;
   catalogNumber: string;
+  description: string;
   value: string;
   attributeValues: string;
   attributes: string;
@@ -51,6 +52,7 @@ type Copy = {
   editPartTitle: string;
   editPartBody: string;
   catalogNumberPlaceholder: string;
+  descriptionPlaceholder: string;
   manufacturerPlaceholder: string;
   categoryPlaceholder: string;
   searchCategories: string;
@@ -115,6 +117,7 @@ export function PartsListClient({
     useState(manufacturerSuggestions);
   const [toastMessages, setToastMessages] = useState<ToastMessage[]>([]);
   const [createCatalogNumber, setCreateCatalogNumber] = useState("");
+  const [createDescription, setCreateDescription] = useState("");
   const [createManufacturerName, setCreateManufacturerName] = useState("");
   const [createPrimaryCategoryId, setCreatePrimaryCategoryId] = useState("");
   const [createSecondaryCategoryId, setCreateSecondaryCategoryId] =
@@ -127,6 +130,9 @@ export function PartsListClient({
   >({});
   const [createFormResetKey, setCreateFormResetKey] = useState(0);
   const [editCatalogNumber, setEditCatalogNumber] = useState("");
+  const [editDescription, setEditDescription] = useState(
+    currentParts.find((part) => part.id === partEditDialog)?.description ?? ""
+  );
   const [editManufacturerName, setEditManufacturerName] = useState(
     currentParts.find((part) => part.id === partEditDialog)?.manufacturerName ??
       ""
@@ -176,6 +182,7 @@ export function PartsListClient({
       );
       addManufacturerSuggestion(result.part.manufacturerName);
       setCreateCatalogNumber("");
+      setCreateDescription("");
       setCreateManufacturerName("");
       setCreatePrimaryCategoryId("");
       setCreateSecondaryCategoryId("");
@@ -209,6 +216,7 @@ export function PartsListClient({
       );
       addManufacturerSuggestion(result.part.manufacturerName);
       setEditingPart(result.part);
+      setEditDescription(result.part.description ?? "");
       setEditManufacturerName(result.part.manufacturerName);
       setEditActiveTab("details");
       setEditAttributeValues(getPartAttributeValueState(result.part));
@@ -241,6 +249,18 @@ export function PartsListClient({
         cell: ({ getValue }) => (
           <span className="font-mono text-slate-950">{getValue()}</span>
         )
+      }),
+      columnHelper.accessor("description", {
+        header: copy.description,
+        cell: ({ getValue }) => {
+          const value = getValue();
+
+          return value ? (
+            <span className="text-slate-700">{value}</span>
+          ) : (
+            <span className="text-slate-400">-</span>
+          );
+        }
       }),
       columnHelper.accessor("valueDisplayValue", {
         header: copy.value,
@@ -336,6 +356,7 @@ export function PartsListClient({
     window.requestAnimationFrame(() => {
       setEditingPart(part);
       setEditCatalogNumber(part.catalogNumber);
+      setEditDescription(part.description ?? "");
       setEditManufacturerName(part.manufacturerName);
       setEditPrimaryCategoryId(part.primaryCategoryId ?? "");
       setEditSecondaryCategoryId(part.secondaryCategoryId ?? "");
@@ -348,6 +369,7 @@ export function PartsListClient({
   function openEditDialog(part: PartsListItem) {
     setEditingPart(part);
     setEditCatalogNumber(part.catalogNumber);
+    setEditDescription(part.description ?? "");
     setEditManufacturerName(part.manufacturerName);
     setEditPrimaryCategoryId(part.primaryCategoryId ?? "");
     setEditSecondaryCategoryId(part.secondaryCategoryId ?? "");
@@ -358,6 +380,7 @@ export function PartsListClient({
 
   function openCreateDialog() {
     setCreateCatalogNumber("");
+    setCreateDescription("");
     setCreateManufacturerName("");
     setCreatePrimaryCategoryId("");
     setCreateSecondaryCategoryId("");
@@ -566,6 +589,8 @@ export function PartsListClient({
                     categoryTree={categoryTree}
                     copy={copy}
                     disabled={!isDatabaseAvailable}
+                    description={createDescription}
+                    descriptionInputId="create-description"
                     formResetKey={createFormResetKey}
                     manufacturerInputId="create-manufacturer-name"
                     manufacturerName={createManufacturerName}
@@ -574,6 +599,7 @@ export function PartsListClient({
                     primaryCategoryId={createPrimaryCategoryId}
                     secondaryCategoryId={createSecondaryCategoryId}
                     onCatalogNumberChange={setCreateCatalogNumber}
+                    onDescriptionChange={setCreateDescription}
                     onManufacturerNameChange={setCreateManufacturerName}
                     onPrimaryCategoryChange={(categoryId) => {
                       setCreatePrimaryCategoryId(categoryId);
@@ -714,6 +740,8 @@ export function PartsListClient({
                       categoryTree={categoryTree}
                       copy={copy}
                       disabled={!isDatabaseAvailable}
+                      description={editDescription}
+                      descriptionInputId="edit-description"
                       formResetKey={`${editingPart.id}-${editingPart.manufacturerName}`}
                       manufacturerInputId="edit-manufacturer-name"
                       manufacturerName={editManufacturerName}
@@ -722,6 +750,7 @@ export function PartsListClient({
                       primaryCategoryId={editPrimaryCategoryId}
                       secondaryCategoryId={editSecondaryCategoryId}
                       onCatalogNumberChange={setEditCatalogNumber}
+                      onDescriptionChange={setEditDescription}
                       onManufacturerNameChange={setEditManufacturerName}
                       onPrimaryCategoryChange={(categoryId) => {
                         setEditPrimaryCategoryId(categoryId);
@@ -1194,6 +1223,8 @@ function PartDetailsFields({
   categoryTree,
   copy,
   disabled,
+  description,
+  descriptionInputId,
   formResetKey,
   manufacturerInputId,
   manufacturerName,
@@ -1202,6 +1233,7 @@ function PartDetailsFields({
   primaryCategoryId,
   secondaryCategoryId,
   onCatalogNumberChange,
+  onDescriptionChange,
   onManufacturerNameChange,
   onPrimaryCategoryChange,
   onSecondaryCategoryChange
@@ -1211,6 +1243,8 @@ function PartDetailsFields({
   categoryTree: CategoryTreeItem[];
   copy: Copy;
   disabled: boolean;
+  description: string;
+  descriptionInputId: string;
   formResetKey: number | string;
   manufacturerInputId: string;
   manufacturerName: string;
@@ -1219,6 +1253,7 @@ function PartDetailsFields({
   primaryCategoryId: string;
   secondaryCategoryId: string;
   onCatalogNumberChange: (catalogNumber: string) => void;
+  onDescriptionChange: (description: string) => void;
   onManufacturerNameChange: (manufacturerName: string) => void;
   onPrimaryCategoryChange: (categoryId: string) => void;
   onSecondaryCategoryChange: (categoryId: string) => void;
@@ -1254,6 +1289,21 @@ function PartDetailsFields({
           onValueChange={onManufacturerNameChange}
         />
       </div>
+      <label
+        className="grid gap-2 text-sm font-medium text-slate-700"
+        htmlFor={descriptionInputId}
+      >
+        {copy.description}
+        <textarea
+          className="min-h-20 resize-y rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-950 outline-none transition placeholder:text-slate-400 hover:border-slate-400 focus:border-slate-500 focus:ring-2 focus:ring-slate-200 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400"
+          id={descriptionInputId}
+          name="description"
+          placeholder={copy.descriptionPlaceholder}
+          value={description}
+          disabled={disabled}
+          onChange={(event) => onDescriptionChange(event.target.value)}
+        />
+      </label>
       <div className="grid grid-cols-2 gap-3">
         <CategoryTreeSelect
           categories={partCategories}

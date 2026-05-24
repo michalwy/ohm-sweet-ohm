@@ -8,6 +8,7 @@ import { getEffectivePartCategoryAttributes } from "@/server/parts/attributes";
 export type PartsListItem = {
   id: string;
   catalogNumber: string;
+  description: string | null;
   manufacturerName: string;
   valueDisplayValue: string | null;
   primaryCategoryId: string | null;
@@ -55,6 +56,7 @@ export async function getPartsList(
         select: {
           id: true,
           catalogNumber: true,
+          description: true,
           manufacturer: {
             select: {
               name: true
@@ -101,6 +103,7 @@ export async function getPartsList(
         return {
           id: part.id,
           catalogNumber: part.catalogNumber,
+          description: part.description,
           manufacturerName: part.manufacturer.name,
           valueDisplayValue: valueAttributeId
             ? attributeValues.find(

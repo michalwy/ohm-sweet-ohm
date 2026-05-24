@@ -11,6 +11,7 @@ model Part {
   id                  String   @id @default(cuid())
   workspaceId         String
   catalogNumber       String
+  description         String?
   manufacturerId      String
   primaryCategoryId   String?
   secondaryCategoryId String?

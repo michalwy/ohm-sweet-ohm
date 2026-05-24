@@ -28,6 +28,7 @@ const copy = {
   intro:
     "Real purchasable electronic parts tracked by manufacturer and catalog number.",
   catalogNumber: "Catalog number",
+  description: "Description",
   value: "Value",
   attributeValues: "Attribute values",
   primaryAttributes: "Primary attributes",
@@ -45,8 +46,9 @@ const copy = {
   newPartTitle: "Add part",
   newPartBody: "Create a real purchasable electronic part.",
   editPartTitle: "Edit part",
-  editPartBody: "Update this part's manufacturer and catalog number.",
+  editPartBody: "Update this part's details.",
   catalogNumberPlaceholder: "NE555P",
+  descriptionPlaceholder: "Timer IC in DIP-8 package",
   manufacturerPlaceholder: "Texas Instruments",
   categoryPlaceholder: "Choose a category",
   searchCategories: "Search categories",
