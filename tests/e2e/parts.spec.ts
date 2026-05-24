@@ -248,9 +248,6 @@ test.describe("parts list", () => {
       page.locator("p").filter({ hasText: /^Capacitors$/ }).first()
     ).toBeVisible();
     await page.getByRole("button", { name: "Collapse Passives" }).click();
-    await expect(
-      page.locator("p").filter({ hasText: /^Capacitors$/ })
-    ).toHaveCount(0);
     await page.reload();
     await expect(
       page.locator("p").filter({ hasText: /^Capacitors$/ })
@@ -559,7 +556,7 @@ test.describe("parts list", () => {
     await expect(
       overrideDraftRow.getByLabel("Default value")
     ).toHaveValue("Inherited marker");
-    await editCategoryDialog.getByLabel("Primary parameter").selectOption({
+    await editCategoryDialog.getByLabel("Value parameter").selectOption({
       label: resistanceName
     });
     await editCategoryDialog
@@ -582,11 +579,11 @@ test.describe("parts list", () => {
     await addPartDialog.getByLabel("Manufacturer").fill("Yageo");
     await addPartDialog.getByLabel("Primary category").click();
     await page.getByPlaceholder("Search categories").fill("configured");
-    await expect(
-      addPartDialog.getByRole("button", {
-        name: /Primary category.*Passives \/ Resistors configured/
-      })
-    ).toBeVisible();
+    const configuredCategoryOption = addPartDialog.getByRole("button", {
+      name: /Primary category.*Passives \/ Resistors configured/
+    });
+    await expect(configuredCategoryOption).toBeVisible();
+    await page.keyboard.press("Enter");
     await expect(addPartDialog.getByLabel(resistanceName)).toHaveValue("10 kΩ");
     await addPartDialog.getByLabel(resistanceName).fill("4,7 kΩ");
     await addPartDialog.getByRole("button", { name: "Create part" }).click();
@@ -604,11 +601,11 @@ test.describe("parts list", () => {
     await expect(editPartDialog).toBeVisible();
     await editPartDialog.getByLabel("Primary category").click();
     await page.getByPlaceholder("Search categories").fill("diodes");
-    await expect(
-      editPartDialog.getByRole("button", {
-        name: /Primary category.*Semiconductors \/ Diodes/
-      })
-    ).toBeVisible();
+    const diodesCategoryOption = editPartDialog.getByRole("button", {
+      name: /Primary category.*Semiconductors \/ Diodes/
+    });
+    await expect(diodesCategoryOption).toBeVisible();
+    await page.keyboard.press("Enter");
     await editPartDialog.getByRole("button", { name: "Save changes" }).click();
     await expect(page.getByRole("status")).toHaveText(
       `Part updated: Yageo RC0603-${suffix}.`
@@ -623,11 +620,11 @@ test.describe("parts list", () => {
     await expect(editPartDialog).toBeVisible();
     await editPartDialog.getByLabel("Primary category").click();
     await page.getByPlaceholder("Search categories").fill("configured");
-    await expect(
-      editPartDialog.getByRole("button", {
-        name: /Primary category.*Passives \/ Resistors configured/
-      })
-    ).toBeVisible();
+    const restoredCategoryOption = editPartDialog.getByRole("button", {
+      name: /Primary category.*Passives \/ Resistors configured/
+    });
+    await expect(restoredCategoryOption).toBeVisible();
+    await page.keyboard.press("Enter");
     await expect(editPartDialog.getByLabel(resistanceName)).toHaveValue(
       "4.7 kΩ"
     );

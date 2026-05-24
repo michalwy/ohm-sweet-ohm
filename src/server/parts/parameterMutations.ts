@@ -7,7 +7,7 @@ import {
   assertCanDeleteChoiceOption,
   assertCanDeleteParameter,
   assertCanDetachCategoryParameter,
-  assertPrimaryParameterIsEffectiveForCategory,
+  assertValueParameterIsEffectiveForCategory,
   getEffectivePartCategoryParameters
 } from "@/server/parts/parameters";
 import {
@@ -276,13 +276,15 @@ export async function attachOrOverrideCategoryParameter({
   categoryId,
   parameterId,
   sortOrder,
-  defaultValue
+  defaultValue,
+  isPrimary
 }: {
   workspaceId: string;
   categoryId: string;
   parameterId: string;
   sortOrder: number;
   defaultValue: ParameterDefaultValueInput;
+  isPrimary: boolean;
 }) {
   const [category, parameter] = await Promise.all([
     getCategoryInWorkspace({ workspaceId, categoryId }),
@@ -305,10 +307,12 @@ export async function attachOrOverrideCategoryParameter({
       categoryId: category.id,
       parameterId: parameter.id,
       sortOrder,
+      isPrimary,
       ...defaultValueData
     },
     update: {
       sortOrder,
+      isPrimary,
       ...defaultValueData
     }
   });
@@ -338,7 +342,7 @@ export async function detachCategoryParameter({
   });
 }
 
-export async function setCategoryPrimaryParameter({
+export async function setCategoryValueParameter({
   workspaceId,
   categoryId,
   parameterId
@@ -350,7 +354,7 @@ export async function setCategoryPrimaryParameter({
   const category = await getCategoryInWorkspace({ workspaceId, categoryId });
 
   if (parameterId) {
-    await assertPrimaryParameterIsEffectiveForCategory({
+    await assertValueParameterIsEffectiveForCategory({
       workspaceId,
       categoryId: category.id,
       parameterId
@@ -362,7 +366,7 @@ export async function setCategoryPrimaryParameter({
       id: category.id
     },
     data: {
-      primaryParameterId: parameterId
+      valueParameterId: parameterId
     }
   });
 }

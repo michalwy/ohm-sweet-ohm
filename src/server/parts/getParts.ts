@@ -76,8 +76,8 @@ export async function getPartsList(
     const categoryPathsById = new Map(
       categories.map((category) => [category.id, category.path])
     );
-    const primaryParameterIdsByCategoryId =
-      await getPrimaryParameterIdsByCategoryId({
+    const valueParameterIdsByCategoryId =
+      await getValueParameterIdsByCategoryId({
         workspaceId: context.workspace.id,
         categoryIds: parts
           .map((part) => part.primaryCategoryId)
@@ -94,18 +94,18 @@ export async function getPartsList(
             parameterId: parameterValue.parameterId,
             displayValue: parameterValue.displayValue ?? ""
           }));
-        const primaryParameterId = part.primaryCategoryId
-          ? primaryParameterIdsByCategoryId.get(part.primaryCategoryId) ?? null
+        const valueParameterId = part.primaryCategoryId
+          ? valueParameterIdsByCategoryId.get(part.primaryCategoryId) ?? null
           : null;
 
         return {
           id: part.id,
           catalogNumber: part.catalogNumber,
           manufacturerName: part.manufacturer.name,
-          valueDisplayValue: primaryParameterId
+          valueDisplayValue: valueParameterId
             ? parameterValues.find(
                 (parameterValue) =>
-                  parameterValue.parameterId === primaryParameterId
+                  parameterValue.parameterId === valueParameterId
               )?.displayValue ?? null
             : null,
           primaryCategoryId: part.primaryCategoryId,
@@ -129,7 +129,7 @@ export async function getPartsList(
   }
 }
 
-async function getPrimaryParameterIdsByCategoryId({
+async function getValueParameterIdsByCategoryId({
   workspaceId,
   categoryIds
 }: {
@@ -143,11 +143,11 @@ async function getPrimaryParameterIdsByCategoryId({
         workspaceId,
         categoryId
       });
-      const primaryParameter = effectiveParameters.find(
-        (effectiveParameter) => effectiveParameter.isPrimary
+      const valueParameter = effectiveParameters.find(
+        (effectiveParameter) => effectiveParameter.isValue
       );
 
-      return [categoryId, primaryParameter?.parameter.id ?? null] as const;
+      return [categoryId, valueParameter?.parameter.id ?? null] as const;
     })
   );
 

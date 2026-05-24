@@ -70,12 +70,11 @@ export async function createPart(
       });
 
       if (!formError) {
-        const effectiveParameters = primaryCategoryId
-          ? await getEffectivePartCategoryParameters({
-              workspaceId: context.workspace.id,
-              categoryId: primaryCategoryId
-            })
-          : [];
+        const effectiveParameters = await getEffectivePartParametersForCategories({
+          workspaceId: context.workspace.id,
+          primaryCategoryId,
+          secondaryCategoryId
+        });
         const parameterValueWrites = tryGetPartParameterValueWrites({
           effectiveParameters,
           submittedValues: submittedParameterValues
@@ -181,12 +180,11 @@ export async function updatePart(
       });
 
       if (!formError) {
-        const effectiveParameters = primaryCategoryId
-          ? await getEffectivePartCategoryParameters({
-              workspaceId: context.workspace.id,
-              categoryId: primaryCategoryId
-            })
-          : [];
+        const effectiveParameters = await getEffectivePartParametersForCategories({
+          workspaceId: context.workspace.id,
+          primaryCategoryId,
+          secondaryCategoryId
+        });
         const parameterValueWrites = tryGetPartParameterValueWrites({
           effectiveParameters,
           submittedValues: submittedParameterValues
@@ -343,6 +341,41 @@ async function validatePartCategoryAssignment({
   }
 
   return null;
+}
+
+async function getEffectivePartParametersForCategories({
+  workspaceId,
+  primaryCategoryId,
+  secondaryCategoryId
+}: {
+  workspaceId: string;
+  primaryCategoryId: string | null;
+  secondaryCategoryId: string | null;
+}) {
+  const [primaryParameters, secondaryParameters] = await Promise.all([
+    primaryCategoryId
+      ? getEffectivePartCategoryParameters({
+          workspaceId,
+          categoryId: primaryCategoryId
+        })
+      : [],
+    secondaryCategoryId
+      ? getEffectivePartCategoryParameters({
+          workspaceId,
+          categoryId: secondaryCategoryId
+        })
+      : []
+  ]);
+  const primaryParameterIds = new Set(
+    primaryParameters.map((parameter) => parameter.parameter.id)
+  );
+
+  return [
+    ...primaryParameters,
+    ...secondaryParameters.filter(
+      (parameter) => !primaryParameterIds.has(parameter.parameter.id)
+    )
+  ];
 }
 
 function getPartWriteError(error: unknown) {
@@ -548,13 +581,13 @@ async function getPartListItem({
   const categoryPathsById = new Map(
     categories.map((category) => [category.id, category.path])
   );
-  const primaryParameterId = part.primaryCategoryId
+  const valueParameterId = part.primaryCategoryId
     ? (
         await getEffectivePartCategoryParameters({
           workspaceId,
           categoryId: part.primaryCategoryId
         })
-      ).find((effectiveParameter) => effectiveParameter.isPrimary)?.parameter.id ??
+      ).find((effectiveParameter) => effectiveParameter.isValue)?.parameter.id ??
       null
     : null;
   const parameterValues = part.parameterValues
@@ -568,9 +601,9 @@ async function getPartListItem({
     id: part.id,
     catalogNumber: part.catalogNumber,
     manufacturerName: part.manufacturer.name,
-    valueDisplayValue: primaryParameterId
+    valueDisplayValue: valueParameterId
       ? parameterValues.find(
-          (parameterValue) => parameterValue.parameterId === primaryParameterId
+          (parameterValue) => parameterValue.parameterId === valueParameterId
         )?.displayValue ?? null
       : null,
     primaryCategoryId: part.primaryCategoryId,

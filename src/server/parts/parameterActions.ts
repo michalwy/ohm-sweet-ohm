@@ -13,7 +13,7 @@ import {
   detachCategoryParameter,
   getEffectiveCategoryParameterConfiguration,
   getWorkspaceParameters,
-  setCategoryPrimaryParameter,
+  setCategoryValueParameter,
   updateChoiceOption,
   updateParameter,
   type ParameterChoiceOptionInput,
@@ -230,6 +230,7 @@ export async function attachCategoryParameterForWorkspace(input: {
   parameterId: string;
   sortOrder: number;
   defaultValue: ParameterDefaultValueInput;
+  isPrimary?: boolean;
 }): Promise<ParameterActionResult<null>> {
   try {
     const context = await getAuthorizedParameterContext({
@@ -242,7 +243,8 @@ export async function attachCategoryParameterForWorkspace(input: {
       categoryId: input.categoryId,
       parameterId: input.parameterId,
       sortOrder: input.sortOrder,
-      defaultValue: input.defaultValue
+      defaultValue: input.defaultValue,
+      isPrimary: input.isPrimary ?? false
     });
     revalidatePath(getWorkspacePath(input.workspaceSlug));
     return getSuccessState(null);
@@ -274,7 +276,7 @@ export async function detachCategoryParameterForWorkspace(input: {
   }
 }
 
-export async function setCategoryPrimaryParameterForWorkspace(input: {
+export async function setCategoryValueParameterForWorkspace(input: {
   workspaceSlug: string;
   categoryId: string;
   parameterId: string | null;
@@ -285,7 +287,7 @@ export async function setCategoryPrimaryParameterForWorkspace(input: {
       permission: "parameters:write"
     });
 
-    await setCategoryPrimaryParameter({
+    await setCategoryValueParameter({
       workspaceId: context.workspace.id,
       categoryId: input.categoryId,
       parameterId: input.parameterId
@@ -300,11 +302,12 @@ export async function setCategoryPrimaryParameterForWorkspace(input: {
 export async function saveCategoryParameterConfigurationForWorkspace(input: {
   workspaceSlug: string;
   categoryId: string;
-  primaryParameterId: string | null;
+  valueParameterId: string | null;
   parameters: Array<{
     parameterId: string;
     sortOrder: number;
     defaultValue: ParameterDefaultValueInput;
+    isPrimary: boolean;
   }>;
 }): Promise<ParameterActionResult<EffectiveCategoryParameter[]>> {
   try {
@@ -329,7 +332,7 @@ export async function saveCategoryParameterConfigurationForWorkspace(input: {
       input.parameters.map((parameter) => parameter.parameterId)
     );
 
-    await setCategoryPrimaryParameter({
+    await setCategoryValueParameter({
       workspaceId: context.workspace.id,
       categoryId: input.categoryId,
       parameterId: null
@@ -341,7 +344,8 @@ export async function saveCategoryParameterConfigurationForWorkspace(input: {
         categoryId: input.categoryId,
         parameterId: parameter.parameterId,
         sortOrder: parameter.sortOrder,
-        defaultValue: parameter.defaultValue
+        defaultValue: parameter.defaultValue,
+        isPrimary: parameter.isPrimary
       });
     }
 
@@ -355,10 +359,10 @@ export async function saveCategoryParameterConfigurationForWorkspace(input: {
       }
     }
 
-    await setCategoryPrimaryParameter({
+    await setCategoryValueParameter({
       workspaceId: context.workspace.id,
       categoryId: input.categoryId,
-      parameterId: input.primaryParameterId
+      parameterId: input.valueParameterId
     });
 
     const effectiveParameters = await getEffectiveCategoryParameterConfiguration({

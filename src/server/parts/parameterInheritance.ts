@@ -7,12 +7,13 @@ import type { ParameterValueType } from "./parameterValues";
 export type CategoryParameterInheritanceInput = {
   categoryChain: Array<{
     id: string;
-    primaryParameterId: string | null;
+    valueParameterId: string | null;
   }>;
   categoryParameters: Array<{
     categoryId: string;
     parameterId: string;
     sortOrder: number;
+    isPrimary: boolean;
     defaultValue: EffectiveParameterDefaultValue | null;
     parameter: {
       id: string;
@@ -55,18 +56,19 @@ export function resolveEffectiveCategoryParameters({
         sourceCategoryId: category.id,
         sortOrder: categoryParameter.sortOrder,
         defaultValue: categoryParameter.defaultValue,
-        isPrimary: false,
+        isValue: false,
+        isPrimary: categoryParameter.isPrimary,
         inheritedParameter
       });
     }
   }
 
-  const primaryParameterId = getEffectivePrimaryParameterId(categoryChain);
+  const valueParameterId = getEffectiveValueParameterId(categoryChain);
 
   return [...effectiveByParameterId.values()]
     .map((effectiveParameter) => ({
       ...effectiveParameter,
-      isPrimary: effectiveParameter.parameter.id === primaryParameterId
+      isValue: effectiveParameter.parameter.id === valueParameterId
     }))
     .sort((left, right) => {
       const sortOrderDifference = left.sortOrder - right.sortOrder;
@@ -81,14 +83,14 @@ export function resolveEffectiveCategoryParameters({
     });
 }
 
-export function getEffectivePrimaryParameterId(
+export function getEffectiveValueParameterId(
   categoryChain: Array<{
-    primaryParameterId: string | null;
+    valueParameterId: string | null;
   }>
 ) {
   for (const category of [...categoryChain].reverse()) {
-    if (category.primaryParameterId) {
-      return category.primaryParameterId;
+    if (category.valueParameterId) {
+      return category.valueParameterId;
     }
   }
 

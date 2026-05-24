@@ -40,13 +40,14 @@ type Copy = {
   parameter: string;
   sortOrder: string;
   defaultValue: string;
+  valueParameter: string;
   primaryParameter: string;
   inherited: string;
   local: string;
   attachParameter: string;
   saveParameterConfig: string;
   detachParameter: string;
-  noPrimaryParameter: string;
+  noValueParameter: string;
   noParameters: string;
   selectCategory: string;
   expandCategory: string;
@@ -70,7 +71,7 @@ type Copy = {
   updatedToast: string;
   parameterConfigUpdatedToast: string;
   parameterConfigDeletedToast: string;
-  primaryParameterUpdatedToast: string;
+  valueParameterUpdatedToast: string;
   missingRequiredFields: string;
   invalidParentCategory: string;
   categoryNotFound: string;
@@ -92,7 +93,7 @@ type CategoryDialogTab = "details" | "parameters";
 type CategoryDialogSubmitInput = {
   formData: FormData;
   parameterDrafts: CategoryParameterDraft[];
-  primaryParameterId: string;
+  valueParameterId: string;
 };
 
 type PartCategoriesClientProps = {
@@ -131,7 +132,7 @@ export function PartCategoriesClient({
     );
   const [createCategoryParameterDrafts, setCreateCategoryParameterDrafts] =
     useState<CategoryParameterDraft[]>([]);
-  const [createCategoryPrimaryParameterId, setCreateCategoryPrimaryParameterId] =
+  const [createCategoryValueParameterId, setCreateCategoryValueParameterId] =
     useState("");
   const [createFormResetKey, setCreateFormResetKey] = useState(0);
   const [categoryFormError, setCategoryFormError] = useState<string | null>(null);
@@ -163,12 +164,12 @@ export function PartCategoriesClient({
 
       if (
         variables.parameterDrafts.length > 0 ||
-        variables.primaryParameterId
+        variables.valueParameterId
       ) {
         const configResult = await saveCategoryParameterConfigurationForWorkspace({
           workspaceSlug,
           categoryId: result.category.id,
-          primaryParameterId: variables.primaryParameterId || null,
+          valueParameterId: variables.valueParameterId || null,
           parameters: getLocalCategoryParameterInputs(
             variables.parameterDrafts,
             result.category.id
@@ -196,7 +197,7 @@ export function PartCategoriesClient({
       }
       setCreateParentId("");
       setCreateCategoryParameterDrafts([]);
-      setCreateCategoryPrimaryParameterId("");
+      setCreateCategoryValueParameterId("");
       setCreateFormResetKey((currentKey) => currentKey + 1);
       setCategoryFormError(null);
       addToastMessage({
@@ -236,7 +237,7 @@ export function PartCategoriesClient({
       const configResult = await saveCategoryParameterConfigurationForWorkspace({
         workspaceSlug,
         categoryId: result.category.id,
-        primaryParameterId: variables.primaryParameterId || null,
+        valueParameterId: variables.valueParameterId || null,
         parameters: getLocalCategoryParameterInputs(
           variables.parameterDrafts,
           result.category.id
@@ -297,7 +298,7 @@ export function PartCategoriesClient({
     setCreateParentId(parentId ?? "");
     setEditingCategory(null);
     setCreateCategoryParameterDrafts([]);
-    setCreateCategoryPrimaryParameterId("");
+    setCreateCategoryValueParameterId("");
     setCategoryDialogMode("create");
     setActiveCategoryDialogTab("details");
     setCreateFormResetKey((currentKey) => currentKey + 1);
@@ -324,28 +325,28 @@ export function PartCategoriesClient({
   function handleCreateSubmit(
     event: FormEvent<HTMLFormElement>,
     parameterDrafts: CategoryParameterDraft[],
-    primaryParameterId: string
+    valueParameterId: string
   ) {
     event.preventDefault();
     setCategoryFormError(null);
     createCategoryMutation.mutate({
       formData: new FormData(event.currentTarget),
       parameterDrafts,
-      primaryParameterId
+      valueParameterId
     });
   }
 
   function handleUpdateSubmit(
     event: FormEvent<HTMLFormElement>,
     parameterDrafts: CategoryParameterDraft[],
-    primaryParameterId: string
+    valueParameterId: string
   ) {
     event.preventDefault();
     setCategoryFormError(null);
     updateCategoryMutation.mutate({
       formData: new FormData(event.currentTarget),
       parameterDrafts,
-      primaryParameterId
+      valueParameterId
     });
   }
 
@@ -354,7 +355,7 @@ export function PartCategoriesClient({
     setCategoryDialogMode(null);
     setEditingCategory(null);
     setCreateCategoryParameterDrafts([]);
-    setCreateCategoryPrimaryParameterId("");
+    setCreateCategoryValueParameterId("");
     setCategoryFormError(null);
     setActiveCategoryDialogTab("details");
   }
@@ -476,13 +477,13 @@ export function PartCategoriesClient({
             mode={categoryDialogMode}
             parameters={parameters}
             createParameterDrafts={createCategoryParameterDrafts}
-            createPrimaryParameterId={createCategoryPrimaryParameterId}
+            createValueParameterId={createCategoryValueParameterId}
             category={editingCategory}
             workspaceSlug={workspaceSlug}
             onCreateSubmit={handleCreateSubmit}
             onParentIdChange={setCreateParentId}
             onCreateParameterDraftsChange={setCreateCategoryParameterDrafts}
-            onCreatePrimaryParameterIdChange={setCreateCategoryPrimaryParameterId}
+            onCreateValueParameterIdChange={setCreateCategoryValueParameterId}
             onTabChange={setActiveCategoryDialogTab}
             onUpdateSubmit={handleUpdateSubmit}
           />
@@ -505,12 +506,12 @@ function CategoryDialogContent({
   mode,
   parameters,
   createParameterDrafts,
-  createPrimaryParameterId,
+  createValueParameterId,
   workspaceSlug,
   onCreateSubmit,
   onParentIdChange,
   onCreateParameterDraftsChange,
-  onCreatePrimaryParameterIdChange,
+  onCreateValueParameterIdChange,
   onTabChange,
   onUpdateSubmit
 }: {
@@ -526,21 +527,21 @@ function CategoryDialogContent({
   mode: CategoryDialogMode;
   parameters: ParameterListItem[];
   createParameterDrafts: CategoryParameterDraft[];
-  createPrimaryParameterId: string;
+  createValueParameterId: string;
   workspaceSlug: string;
   onCreateSubmit: (
     event: FormEvent<HTMLFormElement>,
     parameterDrafts: CategoryParameterDraft[],
-    primaryParameterId: string
+    valueParameterId: string
   ) => void;
   onParentIdChange: (parentId: string) => void;
   onCreateParameterDraftsChange: (drafts: CategoryParameterDraft[]) => void;
-  onCreatePrimaryParameterIdChange: (parameterId: string) => void;
+  onCreateValueParameterIdChange: (parameterId: string) => void;
   onTabChange: (tab: CategoryDialogTab) => void;
   onUpdateSubmit: (
     event: FormEvent<HTMLFormElement>,
     parameterDrafts: CategoryParameterDraft[],
-    primaryParameterId: string
+    valueParameterId: string
   ) => void;
 }) {
   const title = mode === "create" ? copy.newCategoryTitle : copy.editCategoryTitle;
@@ -549,9 +550,9 @@ function CategoryDialogContent({
   const [editParameterDrafts, setEditParameterDrafts] = useState<
     CategoryParameterDraft[]
   >([]);
-  const [editPrimaryParameterId, setEditPrimaryParameterId] = useState("");
+  const [editValueParameterId, setEditValueParameterId] = useState("");
   const editParameterDraftsRef = useRef<CategoryParameterDraft[]>([]);
-  const editPrimaryParameterIdRef = useRef("");
+  const editValueParameterIdRef = useRef("");
   const [editParametersError, setEditParametersError] = useState<string | null>(
     null
   );
@@ -572,8 +573,8 @@ function CategoryDialogContent({
           toCategoryParameterDraft(parameter, variables.categoryId)
         )
       );
-      setEditPrimaryParameter(
-        result.data.find((parameter) => parameter.isPrimary)?.parameter.id ?? ""
+      setEditValueParameter(
+        result.data.find((parameter) => parameter.isValue)?.parameter.id ?? ""
       );
       setEditParametersError(null);
       setEditParametersLoaded(true);
@@ -585,8 +586,8 @@ function CategoryDialogContent({
   });
   const activeParameterDrafts =
     mode === "create" ? createParameterDrafts : editParameterDrafts;
-  const activePrimaryParameterId =
-    mode === "create" ? createPrimaryParameterId : editPrimaryParameterId;
+  const activeValueParameterId =
+    mode === "create" ? createValueParameterId : editValueParameterId;
   const displayedError = error ?? editParametersError;
   const areParameterControlsEnabled = mode === "create" || editParametersLoaded;
   const isSaveDisabled =
@@ -618,25 +619,25 @@ function CategoryDialogContent({
     setEditDrafts(update);
   }
 
-  function setActivePrimaryParameterId(parameterId: string) {
+  function setActiveValueParameterId(parameterId: string) {
     if (mode === "create") {
-      onCreatePrimaryParameterIdChange(parameterId);
+      onCreateValueParameterIdChange(parameterId);
       return;
     }
 
-    setEditPrimaryParameter(parameterId);
+    setEditValueParameter(parameterId);
   }
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     if (mode === "create") {
-      onCreateSubmit(event, createParameterDrafts, createPrimaryParameterId);
+      onCreateSubmit(event, createParameterDrafts, createValueParameterId);
       return;
     }
 
     onUpdateSubmit(
       event,
       editParameterDraftsRef.current,
-      editPrimaryParameterIdRef.current
+      editValueParameterIdRef.current
     );
   }
 
@@ -650,9 +651,9 @@ function CategoryDialogContent({
     setEditParameterDrafts(nextDrafts);
   }
 
-  function setEditPrimaryParameter(parameterId: string) {
-    editPrimaryParameterIdRef.current = parameterId;
-    setEditPrimaryParameterId(parameterId);
+  function setEditValueParameter(parameterId: string) {
+    editValueParameterIdRef.current = parameterId;
+    setEditValueParameterId(parameterId);
   }
 
   return (
@@ -721,9 +722,9 @@ function CategoryDialogContent({
           drafts={activeParameterDrafts}
           isDatabaseAvailable={isDatabaseAvailable && areParameterControlsEnabled}
           parameters={parameters}
-          primaryParameterId={activePrimaryParameterId}
+          valueParameterId={activeValueParameterId}
           onDraftsChange={setActiveParameterDrafts}
-          onPrimaryParameterIdChange={setActivePrimaryParameterId}
+          onValueParameterIdChange={setActiveValueParameterId}
         />
       ) : null}
       {activeTab === "parameters" && !areParameterControlsEnabled ? (
@@ -749,6 +750,7 @@ type CategoryParameterDraft = {
   isLocal: boolean;
   sortOrder: number;
   defaultValue: string;
+  isPrimary: boolean;
   inheritedDraft: CategoryParameterDraft | null;
 };
 
@@ -761,9 +763,9 @@ function CategoryParametersDraftEditor({
   drafts,
   isDatabaseAvailable,
   parameters,
-  primaryParameterId,
+  valueParameterId,
   onDraftsChange,
-  onPrimaryParameterIdChange
+  onValueParameterIdChange
 }: {
   canWriteCategories: boolean;
   categoryId: string;
@@ -771,9 +773,9 @@ function CategoryParametersDraftEditor({
   drafts: CategoryParameterDraft[];
   isDatabaseAvailable: boolean;
   parameters: ParameterListItem[];
-  primaryParameterId: string;
+  valueParameterId: string;
   onDraftsChange: (update: CategoryParameterDraftUpdate) => void;
-  onPrimaryParameterIdChange: (parameterId: string) => void;
+  onValueParameterIdChange: (parameterId: string) => void;
 }) {
   const availableParameters = parameters.filter(
     (parameter) =>
@@ -782,7 +784,9 @@ function CategoryParametersDraftEditor({
 
   function updateDraft(
     parameterId: string,
-    patch: Partial<Pick<CategoryParameterDraft, "sortOrder" | "defaultValue">>
+    patch: Partial<
+      Pick<CategoryParameterDraft, "sortOrder" | "defaultValue" | "isPrimary">
+    >
   ) {
     onDraftsChange((currentDrafts) =>
       currentDrafts.map((draft) => {
@@ -824,6 +828,7 @@ function CategoryParametersDraftEditor({
         isLocal: true,
         sortOrder: Number(getFormValue(formData, "sortOrder") || "0"),
         defaultValue: getFormValue(formData, "defaultValue"),
+        isPrimary: false,
         inheritedDraft: null
       }
     ]);
@@ -845,24 +850,24 @@ function CategoryParametersDraftEditor({
       (draft) => draft.parameter.id === parameterId
     );
 
-    if (primaryParameterId === parameterId && !removedDraft?.inheritedDraft) {
-      onPrimaryParameterIdChange("");
+    if (valueParameterId === parameterId && !removedDraft?.inheritedDraft) {
+      onValueParameterIdChange("");
     }
   }
 
   return (
     <div className="grid gap-3">
       <label className="grid max-w-sm gap-2 text-sm font-medium text-slate-700">
-        {copy.primaryParameter}
+        {copy.valueParameter}
         <select
           className={categoryParameterInputClassName}
           disabled={!isDatabaseAvailable || !canWriteCategories}
-          value={primaryParameterId}
+          value={valueParameterId}
           onChange={(event) =>
-            onPrimaryParameterIdChange(event.currentTarget.value)
+            onValueParameterIdChange(event.currentTarget.value)
           }
         >
-          <option value="">{copy.noPrimaryParameter}</option>
+          <option value="">{copy.noValueParameter}</option>
           {drafts.map((draft) => (
             <option key={draft.parameter.id} value={draft.parameter.id}>
               {draft.parameter.name}
@@ -907,7 +912,9 @@ function CategoryParameterDraftList({
   onRemove: (parameterId: string) => void;
   onUpdate: (
     parameterId: string,
-    patch: Partial<Pick<CategoryParameterDraft, "sortOrder" | "defaultValue">>
+    patch: Partial<
+      Pick<CategoryParameterDraft, "sortOrder" | "defaultValue" | "isPrimary">
+    >
   ) => void;
 }) {
   if (drafts.length === 0) {
@@ -916,16 +923,17 @@ function CategoryParameterDraftList({
 
   return (
     <div className="grid gap-1.5">
-        <div className="grid grid-cols-[minmax(0,1fr)_5.5rem_minmax(7rem,10rem)_7rem] gap-2 px-1 text-xs font-medium text-slate-500">
+      <div className="grid grid-cols-[minmax(0,1fr)_5.5rem_minmax(7rem,10rem)_5.5rem_7rem] gap-2 px-1 text-xs font-medium text-slate-500">
         <span>{copy.parameter}</span>
         <span>{copy.sortOrder}</span>
         <span>{copy.defaultValue}</span>
+        <span>{copy.primaryParameter}</span>
         <span className="sr-only">{copy.detachParameter}</span>
       </div>
       {drafts.map((draft) => (
         <div
           key={draft.parameter.id}
-          className="grid grid-cols-[minmax(0,1fr)_5.5rem_minmax(7rem,10rem)_7rem] items-center gap-2 rounded-md border border-slate-200 bg-white px-2 py-1.5"
+          className="grid grid-cols-[minmax(0,1fr)_5.5rem_minmax(7rem,10rem)_5.5rem_7rem] items-center gap-2 rounded-md border border-slate-200 bg-white px-2 py-1.5"
           data-testid="category-parameter-draft-row"
         >
           <div className="min-w-0">
@@ -957,6 +965,20 @@ function CategoryParameterDraftList({
               onUpdate(draft.parameter.id, { defaultValue })
             }
           />
+          <label className="flex items-center justify-center">
+            <span className="sr-only">{copy.primaryParameter}</span>
+            <input
+              checked={draft.isPrimary}
+              className="h-4 w-4 rounded border-slate-300 text-slate-950 focus:ring-slate-400 disabled:cursor-not-allowed"
+              disabled={!isDatabaseAvailable || !canWriteCategories}
+              type="checkbox"
+              onChange={(event) =>
+                onUpdate(draft.parameter.id, {
+                  isPrimary: event.currentTarget.checked
+                })
+              }
+            />
+          </label>
           <button
             className="min-h-9 min-w-28 whitespace-nowrap rounded-md border border-rose-200 bg-white px-2.5 py-1.5 text-sm font-medium text-rose-700 transition hover:border-rose-300 hover:bg-rose-50 focus:outline-none focus:ring-2 focus:ring-rose-200 focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400"
             disabled={
@@ -1116,7 +1138,8 @@ function getLocalCategoryParameterInputs(
     .map((draft) => ({
       parameterId: draft.parameter.id,
       sortOrder: draft.sortOrder,
-      defaultValue: draft.defaultValue ? { rawValue: draft.defaultValue } : null
+      defaultValue: draft.defaultValue ? { rawValue: draft.defaultValue } : null,
+      isPrimary: draft.isPrimary
     }));
 }
 
@@ -1130,6 +1153,7 @@ function toCategoryParameterDraft(
     isLocal: effectiveParameter.sourceCategoryId === categoryId,
     sortOrder: effectiveParameter.sortOrder,
     defaultValue: effectiveParameter.defaultValue?.displayValue ?? "",
+    isPrimary: effectiveParameter.isPrimary,
     inheritedDraft: effectiveParameter.inheritedParameter
       ? toCategoryParameterDraft(effectiveParameter.inheritedParameter, categoryId)
       : null

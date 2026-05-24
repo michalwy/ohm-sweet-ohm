@@ -28,9 +28,15 @@ import {
 
 type Copy = {
   title: string;
+  detailsTab: string;
+  parametersTab: string;
   catalogNumber: string;
   value: string;
   parameterValues: string;
+  primaryParameters: string;
+  secondaryPrimaryParameters: string;
+  primaryCategoryParameters: string;
+  secondaryCategoryParameters: string;
   categories: string;
   primaryCategory: string;
   secondaryCategory: string;
@@ -72,6 +78,8 @@ type CategoryTreeItem = PartCategoryListItem & {
   children: CategoryTreeItem[];
 };
 
+type PartDialogTab = "details" | "parameters";
+
 type PartsListClientProps = {
   copy: Copy;
   isDatabaseAvailable: boolean;
@@ -107,13 +115,29 @@ export function PartsListClient({
   const [createPrimaryCategoryId, setCreatePrimaryCategoryId] = useState("");
   const [createSecondaryCategoryId, setCreateSecondaryCategoryId] =
     useState("");
+  const [createActiveTab, setCreateActiveTab] = useState<PartDialogTab>("details");
   const [createFormResetKey, setCreateFormResetKey] = useState(0);
   const [editCatalogNumber, setEditCatalogNumber] = useState("");
   const [editPrimaryCategoryId, setEditPrimaryCategoryId] = useState("");
   const [editSecondaryCategoryId, setEditSecondaryCategoryId] = useState("");
+  const [editActiveTab, setEditActiveTab] = useState<PartDialogTab>("details");
   const [editingPart, setEditingPart] = useState<PartsListItem | null>(() =>
     currentParts.find((part) => part.id === partEditDialog) ?? null
   );
+  const createHasParametersTab =
+    getPartParameterGroups({
+      categoryParametersByCategoryId,
+      copy,
+      selectedPrimaryCategoryId: createPrimaryCategoryId,
+      selectedSecondaryCategoryId: createSecondaryCategoryId
+    }).parameters.length > 0;
+  const editHasParametersTab =
+    getPartParameterGroups({
+      categoryParametersByCategoryId,
+      copy,
+      selectedPrimaryCategoryId: editPrimaryCategoryId,
+      selectedSecondaryCategoryId: editSecondaryCategoryId
+    }).parameters.length > 0;
   const [createFormError, setCreateFormError] = useState<string | null>(null);
   const [updateFormError, setUpdateFormError] = useState<string | null>(null);
   const createPartMutation = useMutation({
@@ -134,6 +158,7 @@ export function PartsListClient({
       setCreateCatalogNumber("");
       setCreatePrimaryCategoryId("");
       setCreateSecondaryCategoryId("");
+      setCreateActiveTab("details");
       setCreateFormResetKey((currentKey) => currentKey + 1);
       addToastMessage({
         id: getNextToastId(nextToastIdRef),
@@ -162,6 +187,7 @@ export function PartsListClient({
       );
       addManufacturerSuggestion(result.part.manufacturerName);
       setEditingPart(result.part);
+      setEditActiveTab("details");
       addToastMessage({
         id: getNextToastId(nextToastIdRef),
         message: getPartSuccessMessage(copy.updatedToast, result.part)
@@ -231,6 +257,18 @@ export function PartsListClient({
   });
 
   useEffect(() => {
+    if (!createHasParametersTab && createActiveTab === "parameters") {
+      setCreateActiveTab("details");
+    }
+  }, [createActiveTab, createHasParametersTab]);
+
+  useEffect(() => {
+    if (!editHasParametersTab && editActiveTab === "parameters") {
+      setEditActiveTab("details");
+    }
+  }, [editActiveTab, editHasParametersTab]);
+
+  useEffect(() => {
     if (partDialogOpen) {
       openDialog(createDialogRef.current);
     }
@@ -254,6 +292,7 @@ export function PartsListClient({
       setEditCatalogNumber(part.catalogNumber);
       setEditPrimaryCategoryId(part.primaryCategoryId ?? "");
       setEditSecondaryCategoryId(part.secondaryCategoryId ?? "");
+      setEditActiveTab("details");
       openDialog(editDialogRef.current);
     });
   }, [partEditDialog, currentParts]);
@@ -263,6 +302,7 @@ export function PartsListClient({
     setEditCatalogNumber(part.catalogNumber);
     setEditPrimaryCategoryId(part.primaryCategoryId ?? "");
     setEditSecondaryCategoryId(part.secondaryCategoryId ?? "");
+    setEditActiveTab("details");
     setUpdateFormError(null);
     window.requestAnimationFrame(() => openDialog(editDialogRef.current));
   }
@@ -271,6 +311,7 @@ export function PartsListClient({
     setCreateCatalogNumber("");
     setCreatePrimaryCategoryId("");
     setCreateSecondaryCategoryId("");
+    setCreateActiveTab("details");
     setCreateFormResetKey((currentKey) => currentKey + 1);
     setCreateFormError(null);
     openDialog(createDialogRef.current);
@@ -440,62 +481,55 @@ export function PartsListClient({
 
           <form className="grid gap-4" onSubmit={handleCreateSubmit}>
             <input name="workspaceSlug" type="hidden" value={workspaceSlug} />
-            <label className="grid gap-2 text-sm font-medium text-slate-700">
-              {copy.catalogNumber}
-              <input
-                className="min-h-11 rounded-md border border-slate-300 bg-white px-3 py-2 font-mono text-base text-slate-950 outline-none transition placeholder:text-slate-400 hover:border-slate-400 focus:border-slate-500 focus:ring-2 focus:ring-slate-200 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400"
-                name="catalogNumber"
-                placeholder={copy.catalogNumberPlaceholder}
-                required
-                type="text"
-                value={createCatalogNumber}
+            <PartDialogTabs
+              activeTab={createActiveTab}
+              copy={copy}
+              showParametersTab={createHasParametersTab}
+              onTabChange={setCreateActiveTab}
+            />
+            <div className={createActiveTab === "details" ? "grid gap-4" : "hidden"}>
+              <PartDetailsFields
+                catalogNumber={createCatalogNumber}
+                catalogNumberInputId="create-catalog-number"
+                categoryTree={categoryTree}
+                copy={copy}
                 disabled={!isDatabaseAvailable}
-                onChange={(event) => setCreateCatalogNumber(event.target.value)}
+                formResetKey={createFormResetKey}
+                manufacturerInputId="create-manufacturer-name"
+                manufacturerSuggestions={currentManufacturerSuggestions}
+                partCategories={partCategories}
+                primaryCategoryId={createPrimaryCategoryId}
+                secondaryCategoryId={createSecondaryCategoryId}
+                onCatalogNumberChange={setCreateCatalogNumber}
+                onPrimaryCategoryChange={(categoryId) => {
+                  setCreatePrimaryCategoryId(categoryId);
+                  setCreateSecondaryCategoryId("");
+                }}
+                onSecondaryCategoryChange={setCreateSecondaryCategoryId}
               />
-            </label>
-            <ManufacturerAutocomplete
-              key={`create-manufacturer-${createFormResetKey}`}
-              copy={copy}
-              disabled={!isDatabaseAvailable}
-              inputId="create-manufacturer-name"
-              name="manufacturerName"
-              placeholder={copy.manufacturerPlaceholder}
-              suggestions={currentManufacturerSuggestions}
-            />
-            <CategoryTreeSelect
-              categories={partCategories}
-              categoryTree={categoryTree}
-              copy={copy}
-              disabled={!isDatabaseAvailable}
-              label={copy.primaryCategory}
-              name="primaryCategoryId"
-              noSelectionLabel={copy.noCategory}
-              selectedId={createPrimaryCategoryId}
-              onSelectedIdChange={(categoryId) => {
-                setCreatePrimaryCategoryId(categoryId);
-                setCreateSecondaryCategoryId("");
-              }}
-            />
-            <CategoryTreeSelect
-              categories={partCategories}
-              categoryTree={categoryTree}
-              copy={copy}
-              disabled={!isDatabaseAvailable || !createPrimaryCategoryId}
-              excludedCategoryId={createPrimaryCategoryId}
-              label={copy.secondaryCategory}
-              name="secondaryCategoryId"
-              noSelectionLabel={copy.noSecondaryCategory}
-              selectedId={createSecondaryCategoryId}
-              onSelectedIdChange={setCreateSecondaryCategoryId}
-            />
-            <PartParameterFields
-              key={`create-parameters-${createPrimaryCategoryId}-${createFormResetKey}`}
-              categoryParametersByCategoryId={categoryParametersByCategoryId}
-              copy={copy}
-              disabled={!isDatabaseAvailable}
-              part={null}
-              selectedPrimaryCategoryId={createPrimaryCategoryId}
-            />
+              <PartParameterSections
+                categoryParametersByCategoryId={categoryParametersByCategoryId}
+                copy={copy}
+                disabled={!isDatabaseAvailable}
+                part={null}
+                selectedPrimaryCategoryId={createPrimaryCategoryId}
+                selectedSecondaryCategoryId={createSecondaryCategoryId}
+                tab="details"
+              />
+            </div>
+            <div
+              className={createActiveTab === "parameters" ? "grid gap-4" : "hidden"}
+            >
+              <PartParameterSections
+                categoryParametersByCategoryId={categoryParametersByCategoryId}
+                copy={copy}
+                disabled={!isDatabaseAvailable}
+                part={null}
+                selectedPrimaryCategoryId={createPrimaryCategoryId}
+                selectedSecondaryCategoryId={createSecondaryCategoryId}
+                tab="parameters"
+              />
+            </div>
             <div className="flex justify-end">
               <button
                 className="min-h-11 rounded-md border border-slate-950 bg-slate-950 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2 disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-100 disabled:text-slate-400"
@@ -550,67 +584,59 @@ export function PartsListClient({
             <form className="grid gap-4" onSubmit={handleUpdateSubmit}>
               <input name="workspaceSlug" type="hidden" value={workspaceSlug} />
               <input name="id" type="hidden" value={editingPart.id} />
-              <label className="grid gap-2 text-sm font-medium text-slate-700">
-                {copy.catalogNumber}
-                <input
-                  className="min-h-11 rounded-md border border-slate-300 bg-white px-3 py-2 font-mono text-base text-slate-950 outline-none transition placeholder:text-slate-400 hover:border-slate-400 focus:border-slate-500 focus:ring-2 focus:ring-slate-200 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400"
-                  name="catalogNumber"
-                  placeholder={copy.catalogNumberPlaceholder}
-                  required
-                  type="text"
-                  value={editCatalogNumber}
+              <PartDialogTabs
+                activeTab={editActiveTab}
+                copy={copy}
+                showParametersTab={editHasParametersTab}
+                onTabChange={setEditActiveTab}
+              />
+              <div className={editActiveTab === "details" ? "grid gap-4" : "hidden"}>
+                <PartDetailsFields
+                  catalogNumber={editCatalogNumber}
+                  catalogNumberInputId="edit-catalog-number"
+                  categoryTree={categoryTree}
+                  copy={copy}
+                  defaultManufacturerName={editingPart.manufacturerName}
                   disabled={!isDatabaseAvailable}
-                  onChange={(event) => setEditCatalogNumber(event.target.value)}
-                />
-              </label>
-              <ManufacturerAutocomplete
-                key={`${editingPart.id}-${editingPart.manufacturerName}`}
-                copy={copy}
-                defaultValue={editingPart.manufacturerName}
-                disabled={!isDatabaseAvailable}
-                inputId="edit-manufacturer-name"
-                name="manufacturerName"
-                placeholder={copy.manufacturerPlaceholder}
-                suggestions={currentManufacturerSuggestions}
-              />
-              <CategoryTreeSelect
-                categories={partCategories}
-                categoryTree={categoryTree}
-                copy={copy}
-                disabled={!isDatabaseAvailable}
-                label={copy.primaryCategory}
-                name="primaryCategoryId"
-                noSelectionLabel={copy.noCategory}
-                selectedId={editPrimaryCategoryId}
-                onSelectedIdChange={(categoryId) => {
-                  setEditPrimaryCategoryId(categoryId);
+                  formResetKey={`${editingPart.id}-${editingPart.manufacturerName}`}
+                  manufacturerInputId="edit-manufacturer-name"
+                  manufacturerSuggestions={currentManufacturerSuggestions}
+                  partCategories={partCategories}
+                  primaryCategoryId={editPrimaryCategoryId}
+                  secondaryCategoryId={editSecondaryCategoryId}
+                  onCatalogNumberChange={setEditCatalogNumber}
+                  onPrimaryCategoryChange={(categoryId) => {
+                    setEditPrimaryCategoryId(categoryId);
 
-                  if (!categoryId || editSecondaryCategoryId === categoryId) {
-                    setEditSecondaryCategoryId("");
-                  }
-                }}
-              />
-              <CategoryTreeSelect
-                key={`${editingPart.id}-${editPrimaryCategoryId}`}
-                categories={partCategories}
-                categoryTree={categoryTree}
-                copy={copy}
-                disabled={!isDatabaseAvailable || !editPrimaryCategoryId}
-                excludedCategoryId={editPrimaryCategoryId}
-                label={copy.secondaryCategory}
-                name="secondaryCategoryId"
-                noSelectionLabel={copy.noSecondaryCategory}
-                selectedId={editSecondaryCategoryId}
-                onSelectedIdChange={setEditSecondaryCategoryId}
-              />
-              <PartParameterFields
-                key={`edit-parameters-${editingPart.id}-${editPrimaryCategoryId}`}
-                categoryParametersByCategoryId={categoryParametersByCategoryId}
-                copy={copy}
-                disabled={!isDatabaseAvailable}
-                part={editingPart}
-                selectedPrimaryCategoryId={editPrimaryCategoryId}
-              />
+                    if (!categoryId || editSecondaryCategoryId === categoryId) {
+                      setEditSecondaryCategoryId("");
+                    }
+                  }}
+                  onSecondaryCategoryChange={setEditSecondaryCategoryId}
+                />
+                <PartParameterSections
+                  categoryParametersByCategoryId={categoryParametersByCategoryId}
+                  copy={copy}
+                  disabled={!isDatabaseAvailable}
+                  part={editingPart}
+                  selectedPrimaryCategoryId={editPrimaryCategoryId}
+                  selectedSecondaryCategoryId={editSecondaryCategoryId}
+                  tab="details"
+                />
+              </div>
+              <div
+                className={editActiveTab === "parameters" ? "grid gap-4" : "hidden"}
+              >
+                <PartParameterSections
+                  categoryParametersByCategoryId={categoryParametersByCategoryId}
+                  copy={copy}
+                  disabled={!isDatabaseAvailable}
+                  part={editingPart}
+                  selectedPrimaryCategoryId={editPrimaryCategoryId}
+                  selectedSecondaryCategoryId={editSecondaryCategoryId}
+                  tab="parameters"
+                />
+              </div>
               <div className="flex justify-end">
                 <button
                   className="min-h-11 rounded-md border border-slate-950 bg-slate-950 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2 disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-100 disabled:text-slate-400"
@@ -798,7 +824,6 @@ function ManufacturerAutocomplete({
         disabled={disabled}
         name={name}
         placeholder={placeholder}
-        required
         role="combobox"
         type="text"
         value={value}
@@ -924,22 +949,160 @@ function normalizeManufacturerSearchText(value: string) {
   return value.trim().replace(/\s+/g, " ").toLocaleLowerCase("en");
 }
 
-function PartParameterFields({
+function PartDialogTabs({
+  activeTab,
+  copy,
+  showParametersTab,
+  onTabChange
+}: {
+  activeTab: PartDialogTab;
+  copy: Copy;
+  showParametersTab: boolean;
+  onTabChange: (tab: PartDialogTab) => void;
+}) {
+  return (
+    <div className="flex gap-2 border-b border-slate-200">
+      <button
+        className={`min-h-10 border-b-2 px-3 text-sm font-medium ${
+          activeTab === "details"
+            ? "border-slate-950 text-slate-950"
+            : "border-transparent text-slate-500 hover:text-slate-800"
+        }`}
+        type="button"
+        onClick={() => onTabChange("details")}
+      >
+        {copy.detailsTab}
+      </button>
+      {showParametersTab ? (
+        <button
+          className={`min-h-10 border-b-2 px-3 text-sm font-medium ${
+            activeTab === "parameters"
+              ? "border-slate-950 text-slate-950"
+              : "border-transparent text-slate-500 hover:text-slate-800"
+          }`}
+          type="button"
+          onClick={() => onTabChange("parameters")}
+        >
+          {copy.parametersTab}
+        </button>
+      ) : null}
+    </div>
+  );
+}
+
+function PartDetailsFields({
+  catalogNumber,
+  catalogNumberInputId,
+  categoryTree,
+  copy,
+  defaultManufacturerName,
+  disabled,
+  formResetKey,
+  manufacturerInputId,
+  manufacturerSuggestions,
+  partCategories,
+  primaryCategoryId,
+  secondaryCategoryId,
+  onCatalogNumberChange,
+  onPrimaryCategoryChange,
+  onSecondaryCategoryChange
+}: {
+  catalogNumber: string;
+  catalogNumberInputId: string;
+  categoryTree: CategoryTreeItem[];
+  copy: Copy;
+  defaultManufacturerName?: string;
+  disabled: boolean;
+  formResetKey: number | string;
+  manufacturerInputId: string;
+  manufacturerSuggestions: ManufacturerSuggestion[];
+  partCategories: PartCategoryListItem[];
+  primaryCategoryId: string;
+  secondaryCategoryId: string;
+  onCatalogNumberChange: (catalogNumber: string) => void;
+  onPrimaryCategoryChange: (categoryId: string) => void;
+  onSecondaryCategoryChange: (categoryId: string) => void;
+}) {
+  return (
+    <>
+      <label
+        className="grid gap-2 text-sm font-medium text-slate-700"
+        htmlFor={catalogNumberInputId}
+      >
+        {copy.catalogNumber}
+        <input
+          className="min-h-11 rounded-md border border-slate-300 bg-white px-3 py-2 font-mono text-base text-slate-950 outline-none transition placeholder:text-slate-400 hover:border-slate-400 focus:border-slate-500 focus:ring-2 focus:ring-slate-200 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400"
+          id={catalogNumberInputId}
+          name="catalogNumber"
+          placeholder={copy.catalogNumberPlaceholder}
+          type="text"
+          value={catalogNumber}
+          disabled={disabled}
+          onChange={(event) => onCatalogNumberChange(event.target.value)}
+        />
+      </label>
+      <ManufacturerAutocomplete
+        key={`manufacturer-${formResetKey}`}
+        copy={copy}
+        defaultValue={defaultManufacturerName}
+        disabled={disabled}
+        inputId={manufacturerInputId}
+        name="manufacturerName"
+        placeholder={copy.manufacturerPlaceholder}
+        suggestions={manufacturerSuggestions}
+      />
+      <CategoryTreeSelect
+        categories={partCategories}
+        categoryTree={categoryTree}
+        copy={copy}
+        disabled={disabled}
+        label={copy.primaryCategory}
+        name="primaryCategoryId"
+        noSelectionLabel={copy.noCategory}
+        selectedId={primaryCategoryId}
+        onSelectedIdChange={onPrimaryCategoryChange}
+      />
+      <CategoryTreeSelect
+        key={`secondary-${formResetKey}-${primaryCategoryId}`}
+        categories={partCategories}
+        categoryTree={categoryTree}
+        copy={copy}
+        disabled={disabled || !primaryCategoryId}
+        excludedCategoryId={primaryCategoryId}
+        label={copy.secondaryCategory}
+        name="secondaryCategoryId"
+        noSelectionLabel={copy.noSecondaryCategory}
+        selectedId={secondaryCategoryId}
+        onSelectedIdChange={onSecondaryCategoryChange}
+      />
+    </>
+  );
+}
+
+function PartParameterSections({
   categoryParametersByCategoryId,
   copy,
   disabled,
   part,
-  selectedPrimaryCategoryId
+  selectedPrimaryCategoryId,
+  selectedSecondaryCategoryId,
+  tab
 }: {
   categoryParametersByCategoryId: Record<string, EffectiveCategoryParameter[]>;
   copy: Copy;
   disabled: boolean;
   part: PartsListItem | null;
   selectedPrimaryCategoryId: string;
+  selectedSecondaryCategoryId: string;
+  tab: PartDialogTab;
 }) {
-  const effectiveParameters = selectedPrimaryCategoryId
-    ? categoryParametersByCategoryId[selectedPrimaryCategoryId] ?? []
-    : [];
+  const groups = getPartParameterGroups({
+    categoryParametersByCategoryId,
+    copy,
+    selectedPrimaryCategoryId,
+    selectedSecondaryCategoryId
+  });
+  const sections = tab === "details" ? groups.details : groups.parameters;
   const existingValuesByParameterId = new Map(
     (part?.parameterValues ?? []).map((parameterValue) => [
       parameterValue.parameterId,
@@ -947,29 +1110,117 @@ function PartParameterFields({
     ])
   );
 
-  if (effectiveParameters.length === 0) {
+  if (sections.length === 0) {
     return null;
   }
 
   return (
-    <fieldset className="grid gap-3 rounded-md border border-slate-200 p-4">
-      <legend className="px-1 text-sm font-semibold text-slate-700">
-        {copy.parameterValues}
-      </legend>
-      {effectiveParameters.map((effectiveParameter) => (
-        <PartParameterField
-          key={effectiveParameter.parameter.id}
-          disabled={disabled}
-          effectiveParameter={effectiveParameter}
-          value={
-            existingValuesByParameterId.get(effectiveParameter.parameter.id) ??
-            effectiveParameter.defaultValue?.displayValue ??
-            ""
-          }
-        />
+    <div className="grid gap-4">
+      {sections.map((section) => (
+        <fieldset
+          key={section.id}
+          className="grid gap-3 rounded-md border border-slate-200 p-4"
+        >
+          <legend className="px-1 text-sm font-semibold text-slate-700">
+            {section.title}
+          </legend>
+          {section.parameters.map((effectiveParameter) => (
+            <PartParameterField
+              key={effectiveParameter.parameter.id}
+              disabled={disabled}
+              effectiveParameter={effectiveParameter}
+              value={
+                existingValuesByParameterId.get(effectiveParameter.parameter.id) ??
+                effectiveParameter.defaultValue?.displayValue ??
+                ""
+              }
+            />
+          ))}
+        </fieldset>
       ))}
-    </fieldset>
+    </div>
   );
+}
+
+function getPartParameterGroups({
+  categoryParametersByCategoryId,
+  copy,
+  selectedPrimaryCategoryId,
+  selectedSecondaryCategoryId
+}: {
+  categoryParametersByCategoryId: Record<string, EffectiveCategoryParameter[]>;
+  copy: Copy;
+  selectedPrimaryCategoryId: string;
+  selectedSecondaryCategoryId: string;
+}) {
+  const primaryParameters = selectedPrimaryCategoryId
+    ? categoryParametersByCategoryId[selectedPrimaryCategoryId] ?? []
+    : [];
+  const primaryParameterIds = new Set(
+    primaryParameters.map((parameter) => parameter.parameter.id)
+  );
+  const secondaryParameters = selectedSecondaryCategoryId
+    ? (categoryParametersByCategoryId[selectedSecondaryCategoryId] ?? []).filter(
+        (parameter) => !primaryParameterIds.has(parameter.parameter.id)
+      )
+    : [];
+  const valueParameter = primaryParameters.find((parameter) => parameter.isValue);
+  const valueParameterId = valueParameter?.parameter.id ?? null;
+  const primaryPrimaryParameters = primaryParameters.filter(
+    (parameter) => parameter.isPrimary && parameter.parameter.id !== valueParameterId
+  );
+  const secondaryPrimaryParameters = secondaryParameters.filter(
+    (parameter) => parameter.isPrimary
+  );
+  const primaryOtherParameters = primaryParameters.filter(
+    (parameter) =>
+      parameter.parameter.id !== valueParameterId && !parameter.isPrimary
+  );
+  const secondaryOtherParameters = secondaryParameters.filter(
+    (parameter) => !parameter.isPrimary
+  );
+
+  return {
+    details: compactParameterSections([
+      {
+        id: "value",
+        title: copy.value,
+        parameters: valueParameter ? [valueParameter] : []
+      },
+      {
+        id: "primary-primary",
+        title: copy.primaryParameters,
+        parameters: primaryPrimaryParameters
+      },
+      {
+        id: "secondary-primary",
+        title: copy.secondaryPrimaryParameters,
+        parameters: secondaryPrimaryParameters
+      }
+    ]),
+    parameters: compactParameterSections([
+      {
+        id: "primary-other",
+        title: copy.primaryCategoryParameters,
+        parameters: primaryOtherParameters
+      },
+      {
+        id: "secondary-other",
+        title: copy.secondaryCategoryParameters,
+        parameters: secondaryOtherParameters
+      }
+    ])
+  };
+}
+
+function compactParameterSections(
+  sections: Array<{
+    id: string;
+    title: string;
+    parameters: EffectiveCategoryParameter[];
+  }>
+) {
+  return sections.filter((section) => section.parameters.length > 0);
 }
 
 function PartParameterField({

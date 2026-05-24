@@ -20,6 +20,7 @@ export type EffectiveCategoryParameter = {
   sourceCategoryId: string;
   sortOrder: number;
   defaultValue: EffectiveParameterDefaultValue | null;
+  isValue: boolean;
   isPrimary: boolean;
   inheritedParameter: EffectiveCategoryParameter | null;
 };
@@ -35,7 +36,7 @@ export type EffectiveParameterDefaultValue = {
 
 type CategoryChainItem = {
   id: string;
-  primaryParameterId: string | null;
+  valueParameterId: string | null;
 };
 
 export async function getEffectivePartCategoryParameters({
@@ -59,6 +60,7 @@ export async function getEffectivePartCategoryParameters({
       categoryId: true,
       parameterId: true,
       sortOrder: true,
+      isPrimary: true,
       defaultTextValue: true,
       defaultNumberValue: true,
       defaultQuantityBaseValue: true,
@@ -90,6 +92,7 @@ export async function getEffectivePartCategoryParameters({
       categoryId: categoryParameter.categoryId,
       parameterId: categoryParameter.parameterId,
       sortOrder: categoryParameter.sortOrder,
+      isPrimary: categoryParameter.isPrimary,
       defaultValue: getDefaultValue(categoryParameter),
       parameter: {
         id: categoryParameter.parameter.id,
@@ -103,7 +106,7 @@ export async function getEffectivePartCategoryParameters({
   });
 }
 
-export async function assertPrimaryParameterIsEffectiveForCategory({
+export async function assertValueParameterIsEffectiveForCategory({
   workspaceId,
   categoryId,
   parameterId
@@ -180,7 +183,7 @@ export async function assertCanDeleteParameter({
 }) {
   const [
     categoryAttachmentCount,
-    primaryCategoryCount,
+    valueCategoryCount,
     partValueCount
   ] = await Promise.all([
     prisma.categoryParameter.count({
@@ -192,7 +195,7 @@ export async function assertCanDeleteParameter({
     prisma.partCategory.count({
       where: {
         workspaceId,
-        primaryParameterId: parameterId
+        valueParameterId: parameterId
       }
     }),
     prisma.partParameterValue.count({
@@ -205,7 +208,7 @@ export async function assertCanDeleteParameter({
 
   if (
     categoryAttachmentCount > 0 ||
-    primaryCategoryCount > 0 ||
+    valueCategoryCount > 0 ||
     partValueCount > 0
   ) {
     throw new Error("parameter_in_use");
@@ -257,7 +260,7 @@ async function getCategoryChain({
       ancestor: {
         select: {
           id: true,
-          primaryParameterId: true
+          valueParameterId: true
         }
       }
     }

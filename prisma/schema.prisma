@@ -53,7 +53,7 @@ model Parameter {
   choiceOptions        ParameterChoiceOption[]
   categoryParameters   CategoryParameter[]
   partValues           PartParameterValue[]
-  primaryForCategories PartCategory[]          @relation("PartCategoryPrimaryParameter")
+  valueForCategories   PartCategory[]          @relation("PartCategoryValueParameter")
 
   @@unique([workspaceId, normalizedName])
   @@index([workspaceId, name])
@@ -109,7 +109,7 @@ model PartCategory {
   id                 String   @id @default(cuid())
   workspaceId        String
   parentId           String?
-  primaryParameterId String?
+  valueParameterId   String?
   name               String
   isAssignable       Boolean  @default(true)
   createdAt          DateTime @default(now())
@@ -118,7 +118,7 @@ model PartCategory {
   workspace          Workspace             @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   parent             PartCategory?         @relation("PartCategoryTree", fields: [parentId], references: [id], onDelete: Restrict)
   children           PartCategory[]        @relation("PartCategoryTree")
-  primaryParameter   Parameter?            @relation("PartCategoryPrimaryParameter", fields: [primaryParameterId], references: [id], onDelete: Restrict)
+  valueParameter     Parameter?            @relation("PartCategoryValueParameter", fields: [valueParameterId], references: [id], onDelete: Restrict)
   categoryParameters CategoryParameter[]
   primaryParts       Part[]                @relation("PartPrimaryCategory")
   secondaryParts     Part[]                @relation("PartSecondaryCategory")
@@ -127,7 +127,7 @@ model PartCategory {
 
   @@index([workspaceId])
   @@index([workspaceId, parentId])
-  @@index([workspaceId, primaryParameterId])
+  @@index([workspaceId, valueParameterId])
   @@index([workspaceId, name])
 }
 
@@ -143,6 +143,7 @@ model CategoryParameter {
   defaultBooleanValue      Boolean?
   defaultChoiceOptionId    String?
   defaultDisplayValue      String?
+  isPrimary                Boolean  @default(false)
   createdAt                DateTime @default(now())
   updatedAt                DateTime @updatedAt
 
