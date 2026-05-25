@@ -42,6 +42,14 @@ const copy = {
   noSecondaryCategory: "No secondary category",
   manufacturer: "Manufacturer",
   noMatchingManufacturers: "No matching manufacturers",
+  searchParts: "Search parts",
+  searchPartsPlaceholder: "Search catalog, manufacturer, category, value",
+  filterByCategory: "Filter by category",
+  allCategories: "All categories",
+  filterByManufacturer: "Filter by manufacturer",
+  allManufacturers: "All manufacturers",
+  clearFilters: "Clear filters",
+  filteredPartsSummary: "{visible} of {total} parts",
   actions: "Actions",
   newPartTitle: "Add part",
   newPartBody: "Create a real purchasable electronic part.",
@@ -77,6 +85,8 @@ const copy = {
   invalidAttributeValue: "Enter valid attribute values for the selected category.",
   emptyTitle: "No parts yet",
   emptyBody: "Parts will appear here once they exist.",
+  noMatchingPartsTitle: "No matching parts",
+  noMatchingPartsBody: "Adjust the search or filters to show more parts.",
   databaseUnavailable:
     "Database is not available, so the list is shown empty for now."
 };

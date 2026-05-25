@@ -74,6 +74,42 @@ test.describe("parts list", () => {
     await expect(seededPartRow).toContainText(
       "Semiconductors » Integrated circuits"
     );
+    await expect(page.getByText("2 of 2 parts")).toBeVisible();
+    await page.getByLabel("Search parts").fill("missing part");
+    await expect(page.getByText("No matching parts")).toBeVisible();
+    await expect(page.getByText("0 of 2 parts")).toBeVisible();
+    await page.getByRole("button", { name: "Clear filters" }).click();
+    await expect(seededPartRow).toBeVisible();
+    await page.getByLabel("Search parts").fill("integrated circuits");
+    await expect(seededPartRow).toBeVisible();
+    await expect(page.getByText("1 of 2 parts")).toBeVisible();
+    await page.getByRole("button", { name: "Clear filters" }).click();
+    await page.getByRole("button", {
+      name: /Filter by category.*All categories/
+    }).click();
+    await page.locator('button[role="option"]').filter({
+      hasText: /^Semiconductors$/
+    }).click();
+    await expect(page.getByText("2 of 2 parts")).toBeVisible();
+    await page.getByRole("button", {
+      name: /Filter by category.*Semiconductors/
+    }).click();
+    await page.getByRole("button", { name: "Expand Semiconductors" }).click();
+    await page.locator('button[role="option"]').filter({
+      hasText: /^Integrated circuits$/
+    }).click();
+    await expect(seededPartRow).toBeVisible();
+    await expect(page.getByText("1 of 2 parts")).toBeVisible();
+    await page.getByLabel("Filter by manufacturer").fill("tex");
+    await expect(
+      page.locator('button[role="option"]').filter({
+        hasText: /^Texas Instruments$/
+      })
+    ).toBeVisible();
+    await page.keyboard.press("Enter");
+    await expect(seededPartRow).toBeVisible();
+    await expect(page.getByText("1 of 2 parts")).toBeVisible();
+    await page.getByRole("button", { name: "Clear filters" }).click();
 
     await page.getByRole("button", { name: "Add part" }).click();
     const addPartDialog = page.getByRole("dialog", { name: "Add part" });
@@ -82,16 +118,21 @@ test.describe("parts list", () => {
     await addPartDialog.getByLabel("Description").fill(description);
     const createManufacturerInput = addPartDialog.getByLabel("Manufacturer");
     await createManufacturerInput.fill("tex");
-    await expect(page.getByRole("option", { name: "Texas Instruments" }))
-      .toBeVisible();
+    await expect(
+      page.locator('button[role="option"]').filter({
+        hasText: /^Texas Instruments$/
+      })
+    ).toBeVisible();
     await page.keyboard.press("Enter");
     await expect(createManufacturerInput).toHaveValue("Texas Instruments");
     await createManufacturerInput.fill("Microchip Technology");
     await addPartDialog.getByLabel("Primary category").click();
-    await expect(page.getByRole("option", { name: /^Passives$/ })).toBeVisible();
-    await expect(page.getByRole("option", { name: /Capacitors/ })).toHaveCount(
-      0
-    );
+    await expect(
+      page.locator('button[role="option"]').filter({ hasText: /^Passives$/ })
+    ).toBeVisible();
+    await expect(
+      page.locator('button[role="option"]').filter({ hasText: /Capacitors/ })
+    ).toHaveCount(0);
     await page.getByPlaceholder("Search categories").fill("integrated");
     await expect(
       addPartDialog.getByRole("button", {
@@ -180,24 +221,32 @@ test.describe("parts list", () => {
     await page.keyboard.press("Escape");
     await editPartDialog.getByLabel("Primary category").click();
     await expect(
-      page.getByRole("option", { name: /Integrated circuits/ })
+      page
+        .locator('button[role="option"]')
+        .filter({ hasText: /Integrated circuits/ })
     ).toBeVisible();
-    await expect(page.getByRole("option", { name: /Capacitors/ })).toHaveCount(
-      0
-    );
+    await expect(
+      page.locator('button[role="option"]').filter({ hasText: /Capacitors/ })
+    ).toHaveCount(0);
     await page.keyboard.press("ArrowUp");
     await page.keyboard.press("ArrowUp");
     await page.keyboard.press("Enter");
     await expect(
-      page.getByRole("option", { name: /Integrated circuits/ })
+      page
+        .locator('button[role="option"]')
+        .filter({ hasText: /Integrated circuits/ })
     ).toHaveCount(0);
     await page.keyboard.press("ArrowRight");
     await expect(
-      page.getByRole("option", { name: /Integrated circuits/ })
+      page
+        .locator('button[role="option"]')
+        .filter({ hasText: /Integrated circuits/ })
     ).toBeVisible();
     await page.keyboard.press("ArrowUp");
     await page.keyboard.press("ArrowRight");
-    await expect(page.getByRole("option", { name: /Capacitors/ })).toBeVisible();
+    await expect(
+      page.locator('button[role="option"]').filter({ hasText: /Capacitors/ })
+    ).toBeVisible();
     await page.keyboard.press("ArrowDown");
     await page.keyboard.press("Enter");
     await expect(
@@ -490,7 +539,7 @@ test.describe("parts list", () => {
     await expect(page.getByRole("status")).toHaveText(
       `Attribute created: ${disposableName}.`
     );
-    let disposableRow = page.getByRole("row", {
+    const disposableRow = page.getByRole("row", {
       name: new RegExp(disposableName)
     });
     await expect(disposableRow).toBeVisible();

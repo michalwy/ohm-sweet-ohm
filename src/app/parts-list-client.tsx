@@ -54,6 +54,14 @@ type Copy = {
   noSecondaryCategory: string;
   manufacturer: string;
   noMatchingManufacturers: string;
+  searchParts: string;
+  searchPartsPlaceholder: string;
+  filterByCategory: string;
+  allCategories: string;
+  filterByManufacturer: string;
+  allManufacturers: string;
+  clearFilters: string;
+  filteredPartsSummary: string;
   actions: string;
   newPartTitle: string;
   newPartBody: string;
@@ -87,6 +95,8 @@ type Copy = {
   invalidAttributeValue: string;
   emptyTitle: string;
   emptyBody: string;
+  noMatchingPartsTitle: string;
+  noMatchingPartsBody: string;
   databaseUnavailable: string;
 };
 
@@ -126,6 +136,9 @@ export function PartsListClient({
   const nextToastIdRef = useRef(0);
   const categoryTree = buildCategoryTree(partCategories);
   const [currentParts, setCurrentParts] = useState(() => sortParts(parts));
+  const [searchQuery, setSearchQuery] = useState("");
+  const [categoryFilterId, setCategoryFilterId] = useState("");
+  const [manufacturerFilter, setManufacturerFilter] = useState("");
   const [currentManufacturerSuggestions, setCurrentManufacturerSuggestions] =
     useState(manufacturerSuggestions);
   const [toastMessages, setToastMessages] = useState<ToastMessage[]>([]);
@@ -181,6 +194,41 @@ export function PartsListClient({
     }).attributes.length > 0;
   const [createFormError, setCreateFormError] = useState<string | null>(null);
   const [updateFormError, setUpdateFormError] = useState<string | null>(null);
+  const categoryFilterIds = useMemo(
+    () => getCategoryFilterIds(partCategories, categoryFilterId),
+    [categoryFilterId, partCategories]
+  );
+  const manufacturerFilterOptions = useMemo(
+    () =>
+      [...new Set(currentParts.map((part) => part.manufacturerName))].sort(
+        (left, right) =>
+          left.localeCompare(right, "en", { sensitivity: "base" })
+      ),
+    [currentParts]
+  );
+  const filteredParts = useMemo(
+    () =>
+      currentParts.filter((part) =>
+        partMatchesFilters({
+          categoryFilterId,
+          categoryFilterIds,
+          manufacturerFilter,
+          part,
+          searchQuery
+        })
+      ),
+    [
+      categoryFilterId,
+      categoryFilterIds,
+      currentParts,
+      manufacturerFilter,
+      searchQuery
+    ]
+  );
+  const hasActiveFilters =
+    Boolean(searchQuery.trim()) ||
+    Boolean(categoryFilterId) ||
+    Boolean(manufacturerFilter);
   const createPartMutation = useMutation({
     mutationFn: createPart,
     onError: () => {
@@ -340,7 +388,7 @@ export function PartsListClient({
   // TanStack Table intentionally returns dynamic helpers that React Compiler cannot memoize.
   // eslint-disable-next-line react-hooks/incompatible-library
   const partsTable = useReactTable({
-    data: currentParts,
+    data: filteredParts,
     columns,
     getCoreRowModel: getCoreRowModel()
   });
@@ -506,15 +554,78 @@ export function PartsListClient({
         <h2 id="parts-heading" className="sr-only">
           {copy.title}
         </h2>
-        <div className="flex items-center justify-end gap-3 border-b border-slate-200 bg-white px-4 py-3">
-          <button
-            className={primaryButtonClassName}
+        <div className="flex items-end gap-3 border-b border-slate-200 bg-white px-4 py-3">
+          <label className="grid min-w-72 gap-1.5 text-sm font-medium text-slate-700">
+            {copy.searchParts}
+            <input
+              className="min-h-9 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-950 outline-none transition placeholder:text-slate-400 hover:border-slate-400 focus:border-slate-500 focus:ring-2 focus:ring-slate-200"
+              placeholder={copy.searchPartsPlaceholder}
+              type="search"
+              value={searchQuery}
+              onChange={(event) => setSearchQuery(event.currentTarget.value)}
+            />
+          </label>
+          <div className="min-w-56">
+            <CategoryTreeSelect
+              allowOrganizationalCategories
+              buttonClassName={compactCategorySelectButtonClassName}
+              categories={partCategories}
+              categoryTree={categoryTree}
+              copy={copy}
+              disabled={!isDatabaseAvailable}
+              label={copy.filterByCategory}
+              name="categoryFilterId"
+              noSelectionLabel={copy.allCategories}
+              selectedId={categoryFilterId}
+              onSelectedIdChange={setCategoryFilterId}
+            />
+          </div>
+          <ManufacturerAutocomplete
+            compact
+            copy={copy}
             disabled={!isDatabaseAvailable}
-            type="button"
-            onClick={openCreateDialog}
-          >
-            {copy.addPart}
-          </button>
+            inputId="manufacturer-filter"
+            label={copy.filterByManufacturer}
+            name="manufacturerFilter"
+            placeholder={copy.allManufacturers}
+            suggestions={manufacturerFilterOptions.map((manufacturerName) => ({
+              id: manufacturerName,
+              name: manufacturerName
+            }))}
+            value={manufacturerFilter}
+            onValueChange={setManufacturerFilter}
+          />
+          <div className="flex min-h-9 items-center gap-3 pb-0.5">
+            <p className="min-w-28 text-sm text-slate-500">
+              {formatFilteredPartsSummary(copy, {
+                total: currentParts.length,
+                visible: filteredParts.length
+              })}
+            </p>
+            {hasActiveFilters ? (
+              <button
+                className="min-h-9 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:border-slate-400 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2"
+                type="button"
+                onClick={() => {
+                  setSearchQuery("");
+                  setCategoryFilterId("");
+                  setManufacturerFilter("");
+                }}
+              >
+                {copy.clearFilters}
+              </button>
+            ) : null}
+          </div>
+          <div className="ml-auto pb-0.5">
+            <button
+              className={primaryButtonClassName}
+              disabled={!isDatabaseAvailable}
+              type="button"
+              onClick={openCreateDialog}
+            >
+              {copy.addPart}
+            </button>
+          </div>
         </div>
         <div className="min-h-0 flex-1 overflow-auto">
           <table className="min-w-full border-separate border-spacing-0 text-left text-sm">
@@ -564,12 +675,16 @@ export function PartsListClient({
                 ))
               ) : (
                 <tr>
-                  <td className="px-4 py-10" colSpan={5}>
+                  <td className="px-4 py-10" colSpan={6}>
                     <p className="text-base font-medium text-slate-950">
-                      {copy.emptyTitle}
+                      {hasActiveFilters
+                        ? copy.noMatchingPartsTitle
+                        : copy.emptyTitle}
                     </p>
                     <p className="mt-2 max-w-xl text-sm leading-6 text-slate-500">
-                      {copy.emptyBody}
+                      {hasActiveFilters
+                        ? copy.noMatchingPartsBody
+                        : copy.emptyBody}
                     </p>
                   </td>
                 </tr>
@@ -926,6 +1041,107 @@ function sortParts(parts: PartsListItem[]) {
   });
 }
 
+function partMatchesFilters({
+  categoryFilterId,
+  categoryFilterIds,
+  manufacturerFilter,
+  part,
+  searchQuery
+}: {
+  categoryFilterId: string;
+  categoryFilterIds: Set<string>;
+  manufacturerFilter: string;
+  part: PartsListItem;
+  searchQuery: string;
+}) {
+  if (
+    categoryFilterId &&
+    (!part.primaryCategoryId || !categoryFilterIds.has(part.primaryCategoryId)) &&
+    (!part.secondaryCategoryId ||
+      !categoryFilterIds.has(part.secondaryCategoryId))
+  ) {
+    return false;
+  }
+
+  if (
+    manufacturerFilter &&
+    !normalizeManufacturerSearchText(part.manufacturerName).includes(
+      normalizeManufacturerSearchText(manufacturerFilter)
+    )
+  ) {
+    return false;
+  }
+
+  const normalizedQuery = normalizePartsSearchText(searchQuery);
+
+  if (!normalizedQuery) {
+    return true;
+  }
+
+  return getPartSearchText(part).includes(normalizedQuery);
+}
+
+function getPartSearchText(part: PartsListItem) {
+  return normalizePartsSearchText(
+    [
+      part.catalogNumber,
+      part.manufacturerName,
+      part.description,
+      part.primaryCategoryPath,
+      part.secondaryCategoryPath,
+      part.valueDisplayValue,
+      ...part.attributeValues.map((attributeValue) => attributeValue.displayValue)
+    ]
+      .filter(Boolean)
+      .join(" ")
+  );
+}
+
+function normalizePartsSearchText(value: string) {
+  return value.trim().replace(/\s+/g, " ").toLocaleLowerCase("en");
+}
+
+function formatFilteredPartsSummary(
+  copy: Pick<Copy, "filteredPartsSummary">,
+  counts: { total: number; visible: number }
+) {
+  return copy.filteredPartsSummary
+    .replace("{visible}", counts.visible.toLocaleString("en"))
+    .replace("{total}", counts.total.toLocaleString("en"));
+}
+
+function getCategoryFilterIds(
+  categories: PartCategoryListItem[],
+  categoryId: string
+) {
+  const filterIds = new Set<string>();
+
+  if (!categoryId) {
+    return filterIds;
+  }
+
+  filterIds.add(categoryId);
+
+  let changed = true;
+
+  while (changed) {
+    changed = false;
+
+    for (const category of categories) {
+      if (
+        category.parentId &&
+        filterIds.has(category.parentId) &&
+        !filterIds.has(category.id)
+      ) {
+        filterIds.add(category.id);
+        changed = true;
+      }
+    }
+  }
+
+  return filterIds;
+}
+
 function getPartFormErrorMessage(copy: Copy, error: string) {
   if (error === "duplicate-part") {
     return copy.duplicatePart;
@@ -951,18 +1167,22 @@ function getPartFormErrorMessage(copy: Copy, error: string) {
 }
 
 function ManufacturerAutocomplete({
+  compact = false,
   copy,
   disabled,
   inputId,
+  label = copy.manufacturer,
   name,
   placeholder,
   suggestions,
   value,
   onValueChange
 }: {
+  compact?: boolean;
   copy: Copy;
   disabled: boolean;
   inputId: string;
+  label?: string;
   name: string;
   placeholder: string;
   suggestions: ManufacturerSuggestion[];
@@ -1038,8 +1258,12 @@ function ManufacturerAutocomplete({
   }
 
   return (
-    <div className="relative grid gap-2 text-sm font-medium text-slate-700">
-      <label htmlFor={inputId}>{copy.manufacturer}</label>
+    <div
+      className={`relative grid text-sm font-medium text-slate-700 ${
+        compact ? "min-w-52 gap-1.5" : "gap-2"
+      }`}
+    >
+      <label htmlFor={inputId}>{label}</label>
       <input
         id={inputId}
         aria-activedescendant={
@@ -1051,7 +1275,9 @@ function ManufacturerAutocomplete({
         aria-controls={listboxId}
         aria-expanded={isOpen}
         autoComplete="off"
-        className="min-h-11 rounded-md border border-slate-300 bg-white px-3 py-2 text-base text-slate-950 outline-none transition placeholder:text-slate-400 hover:border-slate-400 focus:border-slate-500 focus:ring-2 focus:ring-slate-200 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400"
+        className={`rounded-md border border-slate-300 bg-white px-3 text-slate-950 outline-none transition placeholder:text-slate-400 hover:border-slate-400 focus:border-slate-500 focus:ring-2 focus:ring-slate-200 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400 ${
+          compact ? "min-h-9 py-1.5 text-sm" : "min-h-11 py-2 text-base"
+        }`}
         disabled={disabled}
         name={name}
         placeholder={placeholder}
@@ -1679,6 +1905,8 @@ function PartAttributeField({
 }
 
 function CategoryTreeSelect({
+  allowOrganizationalCategories = false,
+  buttonClassName = defaultCategorySelectButtonClassName,
   categories,
   categoryTree,
   copy,
@@ -1690,6 +1918,8 @@ function CategoryTreeSelect({
   selectedId,
   onSelectedIdChange
 }: {
+  allowOrganizationalCategories?: boolean;
+  buttonClassName?: string;
   categories: PartCategoryListItem[];
   categoryTree: CategoryTreeItem[];
   copy: Copy;
@@ -1815,7 +2045,8 @@ function CategoryTreeSelect({
 
     const firstMatchingCategory = findFirstAssignableCategory(
       filterCategoryTree(categoryTree, normalizedQuery),
-      excludedCategoryId
+      excludedCategoryId,
+      allowOrganizationalCategories
     );
 
     if (!firstMatchingCategory) {
@@ -1862,7 +2093,13 @@ function CategoryTreeSelect({
       return;
     }
 
-    if (activeCategory.isAssignable && activeCategory.id !== excludedCategoryId) {
+    if (
+      isCategorySelectable({
+        allowOrganizationalCategories,
+        category: activeCategory,
+        excludedCategoryId
+      })
+    ) {
       setSelectedCategory(activeCategory.id);
       return;
     }
@@ -1946,7 +2183,7 @@ function CategoryTreeSelect({
         aria-label={`${label} ${
           currentSelectedCategory?.path ?? noSelectionLabel
         }`}
-        className="grid min-h-11 grid-cols-[1fr_auto] items-center gap-3 rounded-md border border-slate-300 bg-white px-3 py-2 text-left text-base text-slate-950 outline-none transition hover:border-slate-400 focus:border-slate-500 focus:ring-2 focus:ring-slate-200 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400"
+        className={buttonClassName}
         disabled={disabled}
         type="button"
         onClick={() => (isOpen ? setIsOpen(false) : openSelect())}
@@ -2011,6 +2248,9 @@ function CategoryTreeSelect({
                         <CategoryTreeSelectNode
                           key={category.id}
                           category={category}
+                          allowOrganizationalCategories={
+                            allowOrganizationalCategories
+                          }
                           copy={copy}
                           excludedCategoryId={excludedCategoryId}
                           expandedCategoryIds={effectiveExpandedCategoryIds}
@@ -2038,6 +2278,7 @@ function CategoryTreeSelect({
 }
 
 function CategoryTreeSelectNode({
+  allowOrganizationalCategories,
   category,
   copy,
   excludedCategoryId,
@@ -2048,6 +2289,7 @@ function CategoryTreeSelectNode({
   onSelect,
   onToggleExpanded
 }: {
+  allowOrganizationalCategories: boolean;
   category: CategoryTreeItem;
   copy: Copy;
   excludedCategoryId?: string;
@@ -2060,8 +2302,11 @@ function CategoryTreeSelectNode({
 }) {
   const hasChildren = category.children.length > 0;
   const isExpanded = expandedCategoryIds.has(category.id);
-  const isSelectable =
-    category.isAssignable && category.id !== excludedCategoryId;
+  const isSelectable = isCategorySelectable({
+    allowOrganizationalCategories,
+    category,
+    excludedCategoryId
+  });
   const isSelected = selectedId === category.id;
   const isActive = activeCategoryId === category.id;
   const activeClassName = isSelectable
@@ -2121,6 +2366,7 @@ function CategoryTreeSelectNode({
           {category.children.map((child) => (
             <CategoryTreeSelectNode
               key={child.id}
+              allowOrganizationalCategories={allowOrganizationalCategories}
               category={child}
               copy={copy}
               excludedCategoryId={excludedCategoryId}
@@ -2259,16 +2505,24 @@ function filterCategoryTree(
 
 function findFirstAssignableCategory(
   categories: CategoryTreeItem[],
-  excludedCategoryId?: string
+  excludedCategoryId: string | undefined,
+  allowOrganizationalCategories: boolean
 ): CategoryTreeItem | null {
   for (const category of categories) {
-    if (category.isAssignable && category.id !== excludedCategoryId) {
+    if (
+      isCategorySelectable({
+        allowOrganizationalCategories,
+        category,
+        excludedCategoryId
+      })
+    ) {
       return category;
     }
 
     const matchingChild = findFirstAssignableCategory(
       category.children,
-      excludedCategoryId
+      excludedCategoryId,
+      allowOrganizationalCategories
     );
 
     if (matchingChild) {
@@ -2277,6 +2531,21 @@ function findFirstAssignableCategory(
   }
 
   return null;
+}
+
+function isCategorySelectable({
+  allowOrganizationalCategories,
+  category,
+  excludedCategoryId
+}: {
+  allowOrganizationalCategories: boolean;
+  category: CategoryTreeItem;
+  excludedCategoryId?: string;
+}) {
+  return (
+    category.id !== excludedCategoryId &&
+    (allowOrganizationalCategories || category.isAssignable)
+  );
 }
 
 function getVisibleCategoryOptions(
@@ -2300,6 +2569,10 @@ function getVisibleCategoryOptions(
 
 const primaryButtonClassName =
   "min-h-9 rounded-md border border-[var(--color-action-primary)] bg-[var(--color-action-primary)] px-3 py-1.5 text-sm font-semibold text-white transition hover:border-[var(--color-action-primary-hover)] hover:bg-[var(--color-action-primary-hover)] focus:outline-none focus:ring-2 focus:ring-[var(--color-action-focus)] focus:ring-offset-2 disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-100 disabled:text-slate-400";
+const defaultCategorySelectButtonClassName =
+  "grid min-h-11 grid-cols-[1fr_auto] items-center gap-3 rounded-md border border-slate-300 bg-white px-3 py-2 text-left text-base text-slate-950 outline-none transition hover:border-slate-400 focus:border-slate-500 focus:ring-2 focus:ring-slate-200 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400";
+const compactCategorySelectButtonClassName =
+  "grid min-h-9 grid-cols-[1fr_auto] items-center gap-3 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-left text-sm text-slate-950 outline-none transition hover:border-slate-400 focus:border-slate-500 focus:ring-2 focus:ring-slate-200 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400";
 
 function PartCategoriesSummary({
   copy,
