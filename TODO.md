@@ -3,11 +3,8 @@
 Keep this list focused on product and implementation work that has been explicitly requested but not yet completed. Do not treat these items as finalized requirements when they say assumptions are still TBD.
 
 - [ ] List configuration: visible columns, column order, sorting, and column widths.
-- [ ] Clean up dialog error messages: review copy and visual treatment, including avoiding layout shifts or scrollbars when an error appears.
 - [ ] Quick category creation from a path-like name, for example `Passives / Capacitors / Audio / Electrolytic`. The system should check whether each category level exists, create missing levels, mark the final category as assignable, and mark intermediate categories as organizational.
 - [ ] Global attributes attached to all root categories.
-- [ ] When adding a new root category, select the organizational option by default.
-- [ ] Dialog focus behavior: when any dialog opens, focus should move to the first field.
 - [ ] Category dialog parent selector should use the same tree control used elsewhere.
 - [ ] When the parts list is filtered by category, adding a new part should preselect the same category if that filtered category is assignable.
 - [ ] Review user-facing text, for example whether "real purchasable parts" sounds right and whether the part dialog should mention more than catalog number and manufacturer.

@@ -420,8 +420,11 @@ test.describe("parts list", () => {
     });
     await expect(addCategoryDialog).toBeVisible();
     await expect(addCategoryDialog.getByLabel("Name")).toBeFocused();
+    await expect(
+      addCategoryDialog
+        .locator('input[name="type"][value="organizational"]')
+    ).toBeChecked();
     await addCategoryDialog.getByLabel("Name").fill(categoryName);
-    await addCategoryDialog.getByText("Organizational", { exact: true }).click();
     await addCategoryDialog
       .getByRole("button", { name: "Create category" })
       .click();

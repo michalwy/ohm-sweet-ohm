@@ -883,14 +883,18 @@ function CategoryDialogContent({
             <CategoryFormFields
               categories={categories}
               copy={copy}
-              defaultIsAssignable={category?.isAssignable ?? true}
+              defaultIsAssignable={
+                mode === "create"
+                  ? createParentId !== ""
+                  : category?.isAssignable ?? true
+              }
               excludedCategoryId={category?.id}
-            isDatabaseAvailable={isDatabaseAvailable}
-            nameDefaultValue={category?.name ?? ""}
-            parentId={mode === "create" ? createParentId : category?.parentId ?? ""}
-            errors={errors}
-            setParentId={mode === "create" ? onParentIdChange : undefined}
-          />
+              isDatabaseAvailable={isDatabaseAvailable}
+              nameDefaultValue={category?.name ?? ""}
+              parentId={mode === "create" ? createParentId : category?.parentId ?? ""}
+              errors={errors}
+              setParentId={mode === "create" ? onParentIdChange : undefined}
+            />
           </form>
         </div>
         <div
