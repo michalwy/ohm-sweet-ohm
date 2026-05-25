@@ -85,6 +85,7 @@ Do not use multiple roles to invent product behavior. Product decisions still re
 
 - Treat OSO as a desktop-only application. Do not add mobile layouts, responsive mobile breakpoints, mobile navigation patterns, or mobile-specific fallbacks unless a future product decision explicitly reverses this.
 - Use modal dialogs for list actions such as adding, editing, and similar focused workflows.
+- Build modal dialogs with the shared `src/app/dialog-shell.tsx` primitives. Do not duplicate dialog header, close button, viewport constraint, or default-tab height behavior in feature components; extend the shared shell first when a dialog needs a new common capability.
 - Treat tabs inside dialogs as visual grouping only. A dialog must have one logical save action that persists values from all tabs and then closes the dialog when the save succeeds.
 - For all current and future dialogs, let the dialog height be determined by the primary/default tab content. The dialog may be constrained by the viewport; if content would exceed the viewport, only the dialog body should scroll while the header and footer remain fixed. Switching tabs must not change the dialog height.
 - Prefer in-place editing on lists for fields where inline edits are practical and clear.

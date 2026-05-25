@@ -16,6 +16,7 @@ import {
   ToastNotice,
   type ToastMessage
 } from "@/app/toast-notice";
+import { DialogBody, DialogFooter, DialogShell } from "@/app/dialog-shell";
 
 type Copy = {
   title: string;
@@ -299,10 +300,15 @@ export function AttributesClient({
 
       <ToastNotice messages={toastMessages} onDismiss={dismissToastMessage} />
 
-      <dialog
+      <DialogShell
         ref={attributeDialogRef}
-        aria-labelledby="attribute-dialog-title"
-        className="fixed inset-0 m-auto max-h-[calc(100vh-2rem)] w-[min(48rem,calc(100vw-3rem))] overflow-hidden rounded-lg border border-slate-200 bg-white p-0 text-slate-950 shadow-2xl backdrop:bg-slate-950/40"
+        closeLabel={copy.close}
+        title={
+          attributeDialogMode === "create"
+            ? copy.newAttributeTitle
+            : copy.editAttributeTitle
+        }
+        titleId="attribute-dialog-title"
         onClose={() => {
           setAttributeDialogMode(null);
           setEditingAttribute(null);
@@ -338,7 +344,7 @@ export function AttributesClient({
             }
           />
         ) : null}
-      </dialog>
+      </DialogShell>
     </>
   );
 }
@@ -373,8 +379,6 @@ function AttributeDialogContent({
       ? getChoiceOptionDrafts(attribute.choiceOptions)
       : [{ draftId: 0, label: "", sortOrder: 0 }]
   );
-  const title =
-    mode === "create" ? copy.newAttributeTitle : copy.editAttributeTitle;
   const submitLabel =
     mode === "create" ? copy.createAttribute : copy.saveChanges;
   const shouldShowOptions = type === "CHOICE";
@@ -408,24 +412,7 @@ function AttributeDialogContent({
   }
 
   return (
-    <div className="flex max-h-[calc(100vh-2rem)] min-h-0 flex-col">
-      <div className="flex items-start justify-between gap-4 border-b border-slate-200 px-5 py-4">
-        <h2
-          id="attribute-dialog-title"
-          className="text-lg font-semibold text-slate-950"
-        >
-          {title}
-        </h2>
-        <form method="dialog">
-          <button
-            aria-label={copy.close}
-            className={iconButtonClassName}
-            type="submit"
-          >
-            <CloseIcon />
-          </button>
-        </form>
-      </div>
+    <>
       <form
         className="flex min-h-0 flex-1 flex-col overflow-hidden"
         id={formId}
@@ -434,7 +421,7 @@ function AttributeDialogContent({
           onSubmit(new FormData(event.currentTarget));
         }}
       >
-        <div className="min-h-0 flex-1 overflow-auto px-5 py-4">
+        <DialogBody className="flex-1">
           {error ? (
             <p className="mb-3 rounded-md border border-[var(--color-error-border)] bg-[var(--color-error-soft)] px-3 py-2 text-sm text-[var(--color-error)]">
               {getErrorMessage(copy, error)}
@@ -503,12 +490,12 @@ function AttributeDialogContent({
               />
             ) : null}
           </div>
-        </div>
-        <div
+        </DialogBody>
+        <DialogFooter
           className={
             mode === "edit"
-              ? "flex shrink-0 items-center justify-between border-t border-slate-200 px-5 py-4"
-              : "flex shrink-0 justify-end border-t border-slate-200 px-5 py-4"
+              ? "items-center justify-between"
+              : "justify-end"
           }
         >
           {mode === "edit" && onDelete ? (
@@ -527,9 +514,9 @@ function AttributeDialogContent({
           >
             {submitLabel}
           </button>
-        </div>
+        </DialogFooter>
       </form>
-    </div>
+    </>
   );
 }
 
@@ -717,24 +704,6 @@ function closeDialog(dialog: HTMLDialogElement | null) {
   dialog.close();
 }
 
-function CloseIcon() {
-  return (
-    <svg
-      aria-hidden="true"
-      className="h-4 w-4"
-      fill="none"
-      viewBox="0 0 16 16"
-    >
-      <path
-        d="M4 4l8 8M12 4l-8 8"
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeWidth="1.75"
-      />
-    </svg>
-  );
-}
-
 function getAttributeSuccessMessage(actionLabel: string, attributeName: string) {
   return `${actionLabel}: ${attributeName}.`;
 }
@@ -760,8 +729,6 @@ const inputClassName =
   "min-h-10 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-950 outline-none transition placeholder:text-slate-400 hover:border-slate-400 focus:border-slate-500 focus:ring-2 focus:ring-slate-200 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400";
 const primaryButtonClassName =
   "min-h-9 rounded-md border border-[var(--color-action-primary)] bg-[var(--color-action-primary)] px-3 py-1.5 text-sm font-semibold text-white transition hover:border-[var(--color-action-primary-hover)] hover:bg-[var(--color-action-primary-hover)] focus:outline-none focus:ring-2 focus:ring-[var(--color-action-focus)] focus:ring-offset-2 disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-100 disabled:text-slate-400";
-const iconButtonClassName =
-  "grid h-8 w-8 place-items-center rounded-md border border-transparent text-slate-500 transition hover:border-slate-200 hover:bg-slate-50 hover:text-slate-950 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2";
 const compactInputClassName =
   "min-h-9 min-w-0 rounded-md border border-slate-300 bg-white px-2.5 py-1.5 text-sm text-slate-950 outline-none transition placeholder:text-slate-400 hover:border-slate-400 focus:border-slate-500 focus:ring-2 focus:ring-slate-200 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400";
 const compactSecondaryButtonClassName =

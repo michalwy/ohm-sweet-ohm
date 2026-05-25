@@ -27,6 +27,13 @@ import {
   ToastNotice,
   type ToastMessage
 } from "@/app/toast-notice";
+import {
+  DialogBody,
+  DialogFooter,
+  DialogShell,
+  getDialogBodyHeightStyle,
+  observeDialogContentHeight
+} from "@/app/dialog-shell";
 
 type Copy = {
   title: string;
@@ -449,10 +456,21 @@ export function PartCategoriesClient({
 
       <ToastNotice messages={toastMessages} onDismiss={dismissToastMessage} />
 
-      <dialog
+      <DialogShell
         ref={categoryDialogRef}
-        aria-labelledby="category-dialog-title"
-        className="fixed inset-0 m-auto max-h-[calc(100vh-2rem)] w-[min(56rem,calc(100vw-3rem))] overflow-hidden rounded-lg border border-slate-200 bg-white p-0 text-slate-950 shadow-2xl backdrop:bg-slate-950/40"
+        closeLabel={copy.close}
+        description={
+          categoryDialogMode === "create"
+            ? copy.newCategoryBody
+            : copy.editCategoryBody
+        }
+        title={
+          categoryDialogMode === "create"
+            ? copy.newCategoryTitle
+            : copy.editCategoryTitle
+        }
+        titleId="category-dialog-title"
+        widthClassName="w-[min(56rem,calc(100vw-3rem))]"
         onClose={() => {
           setCategoryDialogMode(null);
           setEditingCategory(null);
@@ -489,7 +507,7 @@ export function PartCategoriesClient({
             onUpdateSubmit={handleUpdateSubmit}
           />
         ) : null}
-      </dialog>
+      </DialogShell>
     </>
   );
 }
@@ -545,8 +563,6 @@ function CategoryDialogContent({
     valueAttributeId: string
   ) => void;
 }) {
-  const title = mode === "create" ? copy.newCategoryTitle : copy.editCategoryTitle;
-  const body = mode === "create" ? copy.newCategoryBody : copy.editCategoryBody;
   const formId = "category-details-form";
   const [editAttributeDrafts, setEditAttributeDrafts] = useState<
     CategoryAttributeDraft[]
@@ -656,7 +672,7 @@ function CategoryDialogContent({
       return undefined;
     }
 
-    return observeElementContentHeight(
+    return observeDialogContentHeight(
       detailsContentRef.current,
       setDetailsContentHeight
     );
@@ -711,13 +727,7 @@ function CategoryDialogContent({
   }
 
   return (
-    <div className="flex max-h-[calc(100vh-2rem)] min-h-0 flex-col">
-      <DialogHeader
-        body={body}
-        closeLabel={copy.close}
-        title={title}
-        titleId="category-dialog-title"
-      />
+    <>
       <div className="shrink-0 border-b border-slate-200 px-5">
         <div className="flex gap-2">
           <button
@@ -744,8 +754,8 @@ function CategoryDialogContent({
           </button>
         </div>
       </div>
-      <div
-        className="min-h-0 flex-[0_1_auto] overflow-auto px-5 py-4"
+      <DialogBody
+        className="flex-[0_1_auto]"
         style={getDialogBodyHeightStyle(detailsContentHeight)}
       >
         {displayedError ? (
@@ -804,8 +814,8 @@ function CategoryDialogContent({
             <p className="text-sm text-slate-500">Loading attributes...</p>
           )}
         </div>
-      </div>
-      <div className="flex shrink-0 justify-end border-t border-slate-200 px-5 py-4">
+      </DialogBody>
+      <DialogFooter>
         <button
           className={primaryButtonClassName}
           disabled={isSaveDisabled}
@@ -814,8 +824,8 @@ function CategoryDialogContent({
         >
           {mode === "create" ? copy.createCategory : copy.saveChanges}
         </button>
-      </div>
-    </div>
+      </DialogFooter>
+    </>
   );
 }
 
@@ -1437,56 +1447,6 @@ function CategoryFormFields({
   );
 }
 
-function DialogHeader({
-  body,
-  closeLabel,
-  title,
-  titleId
-}: {
-  body: string;
-  closeLabel: string;
-  title: string;
-  titleId: string;
-}) {
-  return (
-    <div className="flex items-start justify-between gap-4 border-b border-slate-200 px-5 py-4">
-      <div>
-        <h2 id={titleId} className="text-lg font-semibold text-slate-950">
-          {title}
-        </h2>
-        <p className="mt-1 text-sm leading-6 text-slate-500">{body}</p>
-      </div>
-      <form method="dialog">
-        <button
-          aria-label={closeLabel}
-          className={iconButtonClassName}
-          type="submit"
-        >
-          <CloseIcon />
-        </button>
-      </form>
-    </div>
-  );
-}
-
-function CloseIcon() {
-  return (
-    <svg
-      aria-hidden="true"
-      className="h-4 w-4"
-      fill="none"
-      viewBox="0 0 16 16"
-    >
-      <path
-        d="M4 4l8 8M12 4l-8 8"
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeWidth="1.75"
-      />
-    </svg>
-  );
-}
-
 function buildCategoryTree(categories: PartCategoryListItem[]) {
   const nodesById = new Map<string, CategoryTreeItem>();
 
@@ -1644,33 +1604,6 @@ function closeDialog(dialog: HTMLDialogElement | null) {
   dialog.close();
 }
 
-function observeElementContentHeight(
-  element: HTMLElement | null,
-  onHeightChange: (height: number) => void
-) {
-  if (!element) {
-    return undefined;
-  }
-
-  function updateHeight() {
-    onHeightChange(Math.ceil(element?.scrollHeight ?? 0));
-  }
-
-  updateHeight();
-
-  const resizeObserver = new ResizeObserver(updateHeight);
-
-  resizeObserver.observe(element);
-
-  return () => resizeObserver.disconnect();
-}
-
-function getDialogBodyHeightStyle(contentHeight: number | null) {
-  return contentHeight
-    ? { height: `${contentHeight + dialogBodyVerticalPadding}px` }
-    : undefined;
-}
-
 function getCategorySuccessMessage(
   actionLabel: string,
   category: PartCategoryListItem
@@ -1725,6 +1658,3 @@ const categoryAttributeInputClassName =
   "min-h-9 min-w-0 rounded-md border border-slate-300 bg-white px-2.5 py-1.5 text-sm text-slate-950 outline-none transition placeholder:text-slate-400 hover:border-slate-400 focus:border-slate-500 focus:ring-2 focus:ring-slate-200 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400";
 const primaryButtonClassName =
   "min-h-9 rounded-md border border-[var(--color-action-primary)] bg-[var(--color-action-primary)] px-3 py-1.5 text-sm font-semibold text-white transition hover:border-[var(--color-action-primary-hover)] hover:bg-[var(--color-action-primary-hover)] focus:outline-none focus:ring-2 focus:ring-[var(--color-action-focus)] focus:ring-offset-2 disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-100 disabled:text-slate-400";
-const iconButtonClassName =
-  "grid h-8 w-8 place-items-center rounded-md border border-transparent text-slate-500 transition hover:border-slate-200 hover:bg-slate-50 hover:text-slate-950 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2";
-const dialogBodyVerticalPadding = 32;

@@ -25,6 +25,13 @@ import {
   ToastNotice,
   type ToastMessage
 } from "@/app/toast-notice";
+import {
+  DialogBody,
+  DialogFooter,
+  DialogShell,
+  getDialogBodyHeightStyle,
+  observeDialogContentHeight
+} from "@/app/dialog-shell";
 
 type Copy = {
   title: string;
@@ -317,7 +324,7 @@ export function PartsListClient({
       return undefined;
     }
 
-    return observeElementContentHeight(
+    return observeDialogContentHeight(
       createDetailsContentRef.current,
       setCreateDetailsContentHeight
     );
@@ -328,7 +335,7 @@ export function PartsListClient({
       return undefined;
     }
 
-    return observeElementContentHeight(
+    return observeDialogContentHeight(
       editDetailsContentRef.current,
       setEditDetailsContentHeight
     );
@@ -516,36 +523,15 @@ export function PartsListClient({
 
       <ToastNotice messages={toastMessages} onDismiss={dismissToastMessage} />
 
-      <dialog
+      <DialogShell
         ref={createDialogRef}
-        aria-labelledby="add-part-dialog-title"
-        className="fixed inset-0 m-auto max-h-[calc(100vh-2rem)] w-[min(58rem,calc(100vw-3rem))] overflow-hidden rounded-lg border border-slate-200 bg-white p-0 text-slate-950 shadow-2xl backdrop:bg-slate-950/40"
+        closeLabel={copy.close}
+        description={copy.newPartBody}
+        title={copy.newPartTitle}
+        titleId="add-part-dialog-title"
+        widthClassName="w-[min(58rem,calc(100vw-3rem))]"
+        onCloseClick={() => setCreateFormError(null)}
       >
-        <div className="flex max-h-[calc(100vh-2rem)] min-h-0 flex-col">
-          <div className="flex items-start justify-between gap-4 border-b border-slate-200 px-5 py-4">
-            <div>
-              <h2
-                id="add-part-dialog-title"
-                className="text-lg font-semibold text-slate-950"
-              >
-                {copy.newPartTitle}
-              </h2>
-              <p className="mt-1 text-sm leading-6 text-slate-500">
-                {copy.newPartBody}
-              </p>
-            </div>
-            <form method="dialog">
-              <button
-                aria-label={copy.close}
-                className="grid h-8 w-8 place-items-center rounded-md border border-transparent text-slate-500 transition hover:border-slate-200 hover:bg-slate-50 hover:text-slate-950 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2"
-                type="submit"
-                onClick={() => setCreateFormError(null)}
-              >
-                <CloseIcon />
-              </button>
-            </form>
-          </div>
-
           <form
             className="flex min-h-0 flex-1 flex-col overflow-hidden"
             onSubmit={handleCreateSubmit}
@@ -574,8 +560,8 @@ export function PartsListClient({
                 onTabChange={setCreateActiveTab}
               />
             </div>
-            <div
-              className="min-h-0 flex-[0_1_auto] overflow-auto px-5 py-4"
+            <DialogBody
+              className="flex-[0_1_auto]"
               style={getDialogBodyHeightStyle(createDetailsContentHeight)}
             >
               {createActiveTab === "details" ? (
@@ -651,8 +637,8 @@ export function PartsListClient({
                   />
                 </div>
               ) : null}
-            </div>
-            <div className="flex shrink-0 justify-end border-t border-slate-200 px-5 py-4">
+            </DialogBody>
+            <DialogFooter>
               <button
                 className={primaryButtonClassName}
                 type="submit"
@@ -660,41 +646,19 @@ export function PartsListClient({
               >
                 {copy.createPart}
               </button>
-            </div>
+            </DialogFooter>
           </form>
-        </div>
-      </dialog>
+      </DialogShell>
 
-      <dialog
+      <DialogShell
         ref={editDialogRef}
-        aria-labelledby="edit-part-dialog-title"
-        className="fixed inset-0 m-auto max-h-[calc(100vh-2rem)] w-[min(58rem,calc(100vw-3rem))] overflow-hidden rounded-lg border border-slate-200 bg-white p-0 text-slate-950 shadow-2xl backdrop:bg-slate-950/40"
+        closeLabel={copy.close}
+        description={copy.editPartBody}
+        title={copy.editPartTitle}
+        titleId="edit-part-dialog-title"
+        widthClassName="w-[min(58rem,calc(100vw-3rem))]"
+        onCloseClick={() => setUpdateFormError(null)}
       >
-        <div className="flex max-h-[calc(100vh-2rem)] min-h-0 flex-col">
-          <div className="flex items-start justify-between gap-4 border-b border-slate-200 px-5 py-4">
-            <div>
-              <h2
-                id="edit-part-dialog-title"
-                className="text-lg font-semibold text-slate-950"
-              >
-                {copy.editPartTitle}
-              </h2>
-              <p className="mt-1 text-sm leading-6 text-slate-500">
-                {copy.editPartBody}
-              </p>
-            </div>
-            <form method="dialog">
-              <button
-                aria-label={copy.close}
-                className="grid h-8 w-8 place-items-center rounded-md border border-transparent text-slate-500 transition hover:border-slate-200 hover:bg-slate-50 hover:text-slate-950 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2"
-                type="submit"
-                onClick={() => setUpdateFormError(null)}
-              >
-                <CloseIcon />
-              </button>
-            </form>
-          </div>
-
           {editingPart ? (
             <form
               className="flex min-h-0 flex-1 flex-col overflow-hidden"
@@ -725,8 +689,8 @@ export function PartsListClient({
                   onTabChange={setEditActiveTab}
                 />
               </div>
-              <div
-                className="min-h-0 flex-[0_1_auto] overflow-auto px-5 py-4"
+              <DialogBody
+                className="flex-[0_1_auto]"
                 style={getDialogBodyHeightStyle(editDetailsContentHeight)}
               >
                 {editActiveTab === "details" ? (
@@ -808,8 +772,8 @@ export function PartsListClient({
                     />
                   </div>
                 ) : null}
-              </div>
-              <div className="flex shrink-0 justify-end border-t border-slate-200 px-5 py-4">
+              </DialogBody>
+              <DialogFooter>
                 <button
                   className={primaryButtonClassName}
                   type="submit"
@@ -817,11 +781,10 @@ export function PartsListClient({
                 >
                   {copy.saveChanges}
                 </button>
-              </div>
+              </DialogFooter>
             </form>
           ) : null}
-        </div>
-      </dialog>
+      </DialogShell>
     </>
   );
 }
@@ -844,51 +807,6 @@ function closeDialog(dialog: HTMLDialogElement | null) {
   }
 
   dialog.close();
-}
-
-function observeElementContentHeight(
-  element: HTMLElement | null,
-  onHeightChange: (height: number) => void
-) {
-  if (!element) {
-    return undefined;
-  }
-
-  function updateHeight() {
-    onHeightChange(Math.ceil(element?.scrollHeight ?? 0));
-  }
-
-  updateHeight();
-
-  const resizeObserver = new ResizeObserver(updateHeight);
-
-  resizeObserver.observe(element);
-
-  return () => resizeObserver.disconnect();
-}
-
-function getDialogBodyHeightStyle(contentHeight: number | null) {
-  return contentHeight
-    ? { height: `${contentHeight + dialogBodyVerticalPadding}px` }
-    : undefined;
-}
-
-function CloseIcon() {
-  return (
-    <svg
-      aria-hidden="true"
-      className="h-4 w-4"
-      fill="none"
-      viewBox="0 0 16 16"
-    >
-      <path
-        d="M4 4l8 8M12 4l-8 8"
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeWidth="1.75"
-      />
-    </svg>
-  );
 }
 
 function getPartSuccessMessage(actionLabel: string, part: PartsListItem) {
@@ -2296,7 +2214,6 @@ function getVisibleCategoryOptions(
 
 const primaryButtonClassName =
   "min-h-9 rounded-md border border-[var(--color-action-primary)] bg-[var(--color-action-primary)] px-3 py-1.5 text-sm font-semibold text-white transition hover:border-[var(--color-action-primary-hover)] hover:bg-[var(--color-action-primary-hover)] focus:outline-none focus:ring-2 focus:ring-[var(--color-action-focus)] focus:ring-offset-2 disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-100 disabled:text-slate-400";
-const dialogBodyVerticalPadding = 32;
 
 function PartCategoriesSummary({
   copy,
