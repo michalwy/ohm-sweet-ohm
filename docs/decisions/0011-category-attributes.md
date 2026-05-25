@@ -4,6 +4,8 @@
 
 Accepted
 
+Superseded in part by [0012. Global Root Category Attributes](0012-global-root-category-attributes.md) for workspace-level global attachments inherited by root categories.
+
 ## Context
 
 Part categories need to describe which typed properties are available for parts assigned to that category. A resistor category may expose `Resistance` and `Power Rating`; a capacitor category may expose `Capacitance` and `Rated Voltage`. Part rows also need a short **Value** column driven by the category's value attribute.

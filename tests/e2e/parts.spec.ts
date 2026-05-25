@@ -731,6 +731,25 @@ test.describe("parts list", () => {
 
     await page.getByRole("link", { name: "Part categories" }).click();
     await expect(page).toHaveURL(/\/w\/default\/part-categories$/);
+    await page.getByRole("button", { name: "Global attributes" }).click();
+    const globalAttributesDialog = page.getByRole("dialog", {
+      name: "Global attributes"
+    });
+    await expect(globalAttributesDialog).toBeVisible();
+    await globalAttributesDialog
+      .locator('select[name="attributeId"]')
+      .selectOption({
+        label: resistanceName
+      });
+    await globalAttributesDialog
+      .getByRole("button", { name: "Attach" })
+      .click();
+    await globalAttributesDialog
+      .getByRole("button", { name: "Save global attributes" })
+      .click();
+    await expect(page.getByRole("status")).toHaveText(
+      "Category attribute configuration updated"
+    );
 
     const passivesCategoryNode = page
       .getByTestId("part-category-node")
@@ -738,6 +757,19 @@ test.describe("parts list", () => {
         has: page.locator("p").filter({ hasText: /^Passives$/ })
       })
       .first();
+    await passivesCategoryNode.getByRole("button", { name: "Edit" }).click();
+    const editPassivesDialog = page.getByRole("dialog", {
+      name: "Edit category"
+    });
+    await expect(editPassivesDialog).toBeVisible();
+    await editPassivesDialog.getByRole("button", { name: "Attributes" }).click();
+    const inheritedGlobalDraft = editPassivesDialog
+      .getByTestId("category-attribute-draft-row")
+      .filter({ hasText: resistanceName });
+    await expect(inheritedGlobalDraft.filter({ hasText: "Inherited" }))
+      .toBeVisible();
+    await editPassivesDialog.getByRole("button", { name: "Close" }).click();
+
     await passivesCategoryNode.getByRole("button", { name: "Add child" }).click();
     const addCategoryDialog = page.getByRole("dialog", {
       name: "Add category"
@@ -812,21 +844,14 @@ test.describe("parts list", () => {
         .getByTestId("category-attribute-draft-row")
         .filter({ hasText: polarizedName })
     ).toBeVisible();
-    await categoryAttributeAttachForm
-      .locator('select[name="attributeId"]')
-      .selectOption({
-        label: resistanceName
-      });
-    await categoryAttributeAttachForm.getByLabel("Sort order").fill("10");
-    await categoryAttributeAttachForm.getByLabel("Default value").fill("10 k");
-    await categoryAttributeAttachForm
-      .getByRole("button", { name: "Attach" })
-      .click();
-    await expect(
-      editCategoryDialog
-        .getByTestId("category-attribute-draft-row")
-        .filter({ hasText: resistanceName })
-    ).toBeVisible();
+    const resistanceDraftRow = editCategoryDialog
+      .getByTestId("category-attribute-draft-row")
+      .filter({ hasText: resistanceName });
+    await expect(resistanceDraftRow.filter({ hasText: "Inherited" }))
+      .toBeVisible();
+    await resistanceDraftRow.getByLabel("Sort order").fill("10");
+    await resistanceDraftRow.getByLabel("Default value").fill("10 k");
+    await expect(resistanceDraftRow.filter({ hasText: "Local" })).toBeVisible();
     const overrideDraftRow = editCategoryDialog
       .getByTestId("category-attribute-draft-row")
       .filter({ hasText: overrideName });

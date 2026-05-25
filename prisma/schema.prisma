@@ -53,6 +53,7 @@ model Attribute {
   workspace            Workspace               @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   choiceOptions        AttributeChoiceOption[]
   categoryAttributes   CategoryAttribute[]
+  workspaceAttributes  WorkspaceAttribute[]
   partValues           PartAttributeValue[]
   valueForCategories   PartCategory[]          @relation("PartCategoryValueAttribute")
 
@@ -72,6 +73,7 @@ model AttributeChoiceOption {
 
   attribute                      Attribute            @relation(fields: [attributeId], references: [id], onDelete: Cascade)
   categoryAttributeDefaultValues CategoryAttribute[]  @relation("CategoryAttributeDefaultChoiceOption")
+  workspaceAttributeDefaultValues WorkspaceAttribute[] @relation("WorkspaceAttributeDefaultChoiceOption")
   partAttributeValues            PartAttributeValue[] @relation("PartAttributeValueChoiceOption")
 
   @@unique([attributeId, normalizedLabel])
@@ -155,6 +157,30 @@ model CategoryAttribute {
 
   @@unique([categoryId, attributeId])
   @@index([workspaceId, categoryId])
+  @@index([workspaceId, attributeId])
+  @@index([attributeId])
+}
+
+model WorkspaceAttribute {
+  id                       String   @id @default(cuid())
+  workspaceId              String
+  attributeId              String
+  sortOrder                Int      @default(0)
+  defaultTextValue         String?
+  defaultNumberValue       Decimal?
+  defaultQuantityBaseValue Decimal?
+  defaultBooleanValue      Boolean?
+  defaultChoiceOptionId    String?
+  defaultDisplayValue      String?
+  isPrimary                Boolean  @default(false)
+  createdAt                DateTime @default(now())
+  updatedAt                DateTime @updatedAt
+
+  workspace           Workspace              @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  attribute           Attribute              @relation(fields: [attributeId], references: [id], onDelete: Restrict)
+  defaultChoiceOption AttributeChoiceOption? @relation("WorkspaceAttributeDefaultChoiceOption", fields: [defaultChoiceOptionId], references: [id], onDelete: Restrict)
+
+  @@unique([workspaceId, attributeId])
   @@index([workspaceId, attributeId])
   @@index([attributeId])
 }
@@ -274,6 +300,7 @@ model Workspace {
   partCategoryClosures PartCategoryClosure[]
   attributes           Attribute[]
   categoryAttributes   CategoryAttribute[]
+  workspaceAttributes  WorkspaceAttribute[]
   partAttributeValues  PartAttributeValue[]
   roles                Role[]
 }

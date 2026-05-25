@@ -1,6 +1,7 @@
 import "server-only";
 
 import { prisma } from "@/server/db/prisma";
+import { WORKSPACE_ATTRIBUTE_SOURCE_ID } from "@/lib/part-attribute-sources";
 import { resolveEffectiveCategoryAttributes } from "@/server/parts/attributeInheritance";
 import type { AttributeValueType } from "@/server/parts/attributeValues";
 
@@ -48,16 +49,134 @@ export async function getEffectivePartCategoryAttributes({
 }) {
   const categoryChain = await getCategoryChain({ workspaceId, categoryId });
   const categoryIds = categoryChain.map((category) => category.id);
-  const categoryAttributes = await prisma.categoryAttribute.findMany({
-    where: {
-      workspaceId,
-      categoryId: {
-        in: categoryIds
+  const [categoryAttributes, workspaceAttributes] = await Promise.all([
+    prisma.categoryAttribute.findMany({
+      where: {
+        workspaceId,
+        categoryId: {
+          in: categoryIds
+        }
+      },
+      orderBy: [{ sortOrder: "asc" }, { id: "asc" }],
+      select: {
+        categoryId: true,
+        attributeId: true,
+        sortOrder: true,
+        isPrimary: true,
+        defaultTextValue: true,
+        defaultNumberValue: true,
+        defaultQuantityBaseValue: true,
+        defaultBooleanValue: true,
+        defaultChoiceOptionId: true,
+        defaultDisplayValue: true,
+        attribute: {
+          select: {
+            id: true,
+            name: true,
+            description: true,
+            type: true,
+            baseUnitSymbol: true,
+            choiceOptions: {
+              orderBy: [{ sortOrder: "asc" }, { label: "asc" }, { id: "asc" }],
+              select: {
+                id: true,
+                label: true,
+                sortOrder: true
+              }
+            }
+          }
+        }
       }
+    }),
+    prisma.workspaceAttribute.findMany({
+      where: {
+        workspaceId
+      },
+      orderBy: [{ sortOrder: "asc" }, { id: "asc" }],
+      select: {
+        attributeId: true,
+        sortOrder: true,
+        isPrimary: true,
+        defaultTextValue: true,
+        defaultNumberValue: true,
+        defaultQuantityBaseValue: true,
+        defaultBooleanValue: true,
+        defaultChoiceOptionId: true,
+        defaultDisplayValue: true,
+        attribute: {
+          select: {
+            id: true,
+            name: true,
+            description: true,
+            type: true,
+            baseUnitSymbol: true,
+            choiceOptions: {
+              orderBy: [{ sortOrder: "asc" }, { label: "asc" }, { id: "asc" }],
+              select: {
+                id: true,
+                label: true,
+                sortOrder: true
+              }
+            }
+          }
+        }
+      }
+    })
+  ]);
+
+  const effectiveCategoryChain = [
+    { id: WORKSPACE_ATTRIBUTE_SOURCE_ID, valueAttributeId: null },
+    ...categoryChain
+  ];
+
+  return resolveEffectiveCategoryAttributes({
+    categoryChain: effectiveCategoryChain,
+    categoryAttributes: [
+      ...workspaceAttributes.map((workspaceAttribute) => ({
+        categoryId: WORKSPACE_ATTRIBUTE_SOURCE_ID,
+        attributeId: workspaceAttribute.attributeId,
+        sortOrder: workspaceAttribute.sortOrder,
+        isPrimary: workspaceAttribute.isPrimary,
+        defaultValue: getDefaultValue(workspaceAttribute),
+        attribute: {
+          id: workspaceAttribute.attribute.id,
+          name: workspaceAttribute.attribute.name,
+          description: workspaceAttribute.attribute.description,
+          type: workspaceAttribute.attribute.type,
+          baseUnitSymbol: workspaceAttribute.attribute.baseUnitSymbol,
+          choiceOptions: workspaceAttribute.attribute.choiceOptions
+        }
+      })),
+      ...categoryAttributes.map((categoryAttribute) => ({
+        categoryId: categoryAttribute.categoryId,
+        attributeId: categoryAttribute.attributeId,
+        sortOrder: categoryAttribute.sortOrder,
+        isPrimary: categoryAttribute.isPrimary,
+        defaultValue: getDefaultValue(categoryAttribute),
+        attribute: {
+          id: categoryAttribute.attribute.id,
+          name: categoryAttribute.attribute.name,
+          description: categoryAttribute.attribute.description,
+          type: categoryAttribute.attribute.type,
+          baseUnitSymbol: categoryAttribute.attribute.baseUnitSymbol,
+          choiceOptions: categoryAttribute.attribute.choiceOptions
+        }
+      }))
+    ]
+  });
+}
+
+export async function getEffectiveWorkspaceAttributes({
+  workspaceId
+}: {
+  workspaceId: string;
+}) {
+  const workspaceAttributes = await prisma.workspaceAttribute.findMany({
+    where: {
+      workspaceId
     },
     orderBy: [{ sortOrder: "asc" }, { id: "asc" }],
     select: {
-      categoryId: true,
       attributeId: true,
       sortOrder: true,
       isPrimary: true,
@@ -86,21 +205,22 @@ export async function getEffectivePartCategoryAttributes({
       }
     }
   });
+
   return resolveEffectiveCategoryAttributes({
-    categoryChain,
-    categoryAttributes: categoryAttributes.map((categoryAttribute) => ({
-      categoryId: categoryAttribute.categoryId,
-      attributeId: categoryAttribute.attributeId,
-      sortOrder: categoryAttribute.sortOrder,
-      isPrimary: categoryAttribute.isPrimary,
-      defaultValue: getDefaultValue(categoryAttribute),
+    categoryChain: [{ id: WORKSPACE_ATTRIBUTE_SOURCE_ID, valueAttributeId: null }],
+    categoryAttributes: workspaceAttributes.map((workspaceAttribute) => ({
+      categoryId: WORKSPACE_ATTRIBUTE_SOURCE_ID,
+      attributeId: workspaceAttribute.attributeId,
+      sortOrder: workspaceAttribute.sortOrder,
+      isPrimary: workspaceAttribute.isPrimary,
+      defaultValue: getDefaultValue(workspaceAttribute),
       attribute: {
-        id: categoryAttribute.attribute.id,
-        name: categoryAttribute.attribute.name,
-        description: categoryAttribute.attribute.description,
-        type: categoryAttribute.attribute.type,
-        baseUnitSymbol: categoryAttribute.attribute.baseUnitSymbol,
-        choiceOptions: categoryAttribute.attribute.choiceOptions
+        id: workspaceAttribute.attribute.id,
+        name: workspaceAttribute.attribute.name,
+        description: workspaceAttribute.attribute.description,
+        type: workspaceAttribute.attribute.type,
+        baseUnitSymbol: workspaceAttribute.attribute.baseUnitSymbol,
+        choiceOptions: workspaceAttribute.attribute.choiceOptions
       }
     }))
   });
@@ -156,7 +276,11 @@ export async function assertCanDeleteChoiceOption({
 }: {
   optionId: string;
 }) {
-  const [partValueCount, defaultValueCount] = await Promise.all([
+  const [
+    partValueCount,
+    categoryDefaultValueCount,
+    workspaceDefaultValueCount
+  ] = await Promise.all([
     prisma.partAttributeValue.count({
       where: {
         choiceOptionId: optionId
@@ -166,10 +290,19 @@ export async function assertCanDeleteChoiceOption({
       where: {
         defaultChoiceOptionId: optionId
       }
+    }),
+    prisma.workspaceAttribute.count({
+      where: {
+        defaultChoiceOptionId: optionId
+      }
     })
   ]);
 
-  if (partValueCount > 0 || defaultValueCount > 0) {
+  if (
+    partValueCount > 0 ||
+    categoryDefaultValueCount > 0 ||
+    workspaceDefaultValueCount > 0
+  ) {
     throw new Error("choice_option_in_use");
   }
 }
@@ -183,10 +316,17 @@ export async function assertCanDeleteAttribute({
 }) {
   const [
     categoryAttachmentCount,
+    workspaceAttachmentCount,
     valueCategoryCount,
     partValueCount
   ] = await Promise.all([
     prisma.categoryAttribute.count({
+      where: {
+        workspaceId,
+        attributeId
+      }
+    }),
+    prisma.workspaceAttribute.count({
       where: {
         workspaceId,
         attributeId
@@ -208,6 +348,7 @@ export async function assertCanDeleteAttribute({
 
   if (
     categoryAttachmentCount > 0 ||
+    workspaceAttachmentCount > 0 ||
     valueCategoryCount > 0 ||
     partValueCount > 0
   ) {

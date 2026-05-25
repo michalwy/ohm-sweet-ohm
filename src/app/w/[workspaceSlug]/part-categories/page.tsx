@@ -45,6 +45,11 @@ const copy = {
   inherited: "Inherited",
   local: "Local",
   attachAttribute: "Attach",
+  globalAttributes: "Global attributes",
+  globalAttributesTitle: "Global attributes",
+  globalAttributesBody:
+    "Manage attributes inherited by all root categories in this workspace.",
+  saveGlobalAttributes: "Save global attributes",
   saveAttributeConfig: "Save configuration",
   detachAttribute: "Detach",
   noValueAttribute: "No local value",

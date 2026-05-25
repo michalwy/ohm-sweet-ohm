@@ -6,12 +6,15 @@ import { authorizeWorkspacePermission } from "@/server/access-control/authorize"
 import { getCurrentWorkspaceContextBySlug } from "@/server/auth/currentContext";
 import {
   attachOrOverrideCategoryAttribute,
+  attachOrOverrideWorkspaceAttribute,
   createChoiceOption,
   createAttribute,
   deleteChoiceOption,
   deleteAttribute,
   detachCategoryAttribute,
+  detachWorkspaceAttribute,
   getEffectiveCategoryAttributeConfiguration,
+  getEffectiveWorkspaceAttributeConfiguration,
   getWorkspaceAttributePage,
   getWorkspaceAttributes,
   setCategoryValueAttribute,
@@ -249,6 +252,25 @@ export async function getEffectiveCategoryAttributesForWorkspace(input: {
   }
 }
 
+export async function getEffectiveWorkspaceAttributesForWorkspace(input: {
+  workspaceSlug: string;
+}): Promise<AttributeActionResult<EffectiveCategoryAttribute[]>> {
+  try {
+    const context = await getAuthorizedAttributeContext({
+      workspaceSlug: input.workspaceSlug,
+      permission: "attributes:read"
+    });
+
+    return getSuccessState(
+      await getEffectiveWorkspaceAttributeConfiguration({
+        workspaceId: context.workspace.id
+      })
+    );
+  } catch (error) {
+    return getErrorState(getAttributeActionError(error));
+  }
+}
+
 export async function attachCategoryAttributeForWorkspace(input: {
   workspaceSlug: string;
   categoryId: string;
@@ -393,6 +415,63 @@ export async function saveCategoryAttributeConfigurationForWorkspace(input: {
     const effectiveAttributes = await getEffectiveCategoryAttributeConfiguration({
       workspaceId: context.workspace.id,
       categoryId: input.categoryId
+    });
+
+    revalidatePath(getWorkspacePath(input.workspaceSlug));
+    return getSuccessState(effectiveAttributes);
+  } catch (error) {
+    return getErrorState(getAttributeActionError(error));
+  }
+}
+
+export async function saveWorkspaceAttributeConfigurationForWorkspace(input: {
+  workspaceSlug: string;
+  attributes: Array<{
+    attributeId: string;
+    sortOrder: number;
+    defaultValue: AttributeDefaultValueInput;
+    isPrimary: boolean;
+  }>;
+}): Promise<AttributeActionResult<EffectiveCategoryAttribute[]>> {
+  try {
+    const context = await getAuthorizedAttributeContext({
+      workspaceSlug: input.workspaceSlug,
+      permission: "attributes:write"
+    });
+    const existingEffectiveAttributes =
+      await getEffectiveWorkspaceAttributeConfiguration({
+        workspaceId: context.workspace.id
+      });
+    const existingWorkspaceAttributeIds = new Set(
+      existingEffectiveAttributes.map(
+        (effectiveAttribute) => effectiveAttribute.attribute.id
+      )
+    );
+    const nextWorkspaceAttributeIds = new Set(
+      input.attributes.map((attribute) => attribute.attributeId)
+    );
+
+    for (const attribute of input.attributes) {
+      await attachOrOverrideWorkspaceAttribute({
+        workspaceId: context.workspace.id,
+        attributeId: attribute.attributeId,
+        sortOrder: attribute.sortOrder,
+        defaultValue: attribute.defaultValue,
+        isPrimary: attribute.isPrimary
+      });
+    }
+
+    for (const attributeId of existingWorkspaceAttributeIds) {
+      if (!nextWorkspaceAttributeIds.has(attributeId)) {
+        await detachWorkspaceAttribute({
+          workspaceId: context.workspace.id,
+          attributeId
+        });
+      }
+    }
+
+    const effectiveAttributes = await getEffectiveWorkspaceAttributeConfiguration({
+      workspaceId: context.workspace.id
     });
 
     revalidatePath(getWorkspacePath(input.workspaceSlug));

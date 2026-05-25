@@ -13,6 +13,7 @@ import {
   assertCanDeleteChoiceOption,
   assertCanDeleteAttribute,
   assertCanDetachCategoryAttribute,
+  getEffectiveWorkspaceAttributes,
   assertValueAttributeIsEffectiveForCategory,
   getEffectivePartCategoryAttributes
 } from "@/server/parts/attributes";
@@ -458,6 +459,70 @@ export async function getEffectiveCategoryAttributeConfiguration({
   await getCategoryInWorkspace({ workspaceId, categoryId });
 
   return getEffectivePartCategoryAttributes({ workspaceId, categoryId });
+}
+
+export async function attachOrOverrideWorkspaceAttribute({
+  workspaceId,
+  attributeId,
+  sortOrder,
+  defaultValue,
+  isPrimary
+}: {
+  workspaceId: string;
+  attributeId: string;
+  sortOrder: number;
+  defaultValue: AttributeDefaultValueInput;
+  isPrimary: boolean;
+}) {
+  const attribute = await getAttributeForDefaultParsing({ workspaceId, attributeId });
+  const defaultValueData = getCategoryAttributeDefaultData({
+    attribute,
+    defaultValue
+  });
+
+  return prisma.workspaceAttribute.upsert({
+    where: {
+      workspaceId_attributeId: {
+        workspaceId,
+        attributeId: attribute.id
+      }
+    },
+    create: {
+      workspaceId,
+      attributeId: attribute.id,
+      sortOrder,
+      isPrimary,
+      ...defaultValueData
+    },
+    update: {
+      sortOrder,
+      isPrimary,
+      ...defaultValueData
+    }
+  });
+}
+
+export async function detachWorkspaceAttribute({
+  workspaceId,
+  attributeId
+}: {
+  workspaceId: string;
+  attributeId: string;
+}) {
+  await prisma.workspaceAttribute.deleteMany({
+    where: {
+      workspaceId,
+      attributeId
+    }
+  });
+}
+
+export async function getEffectiveWorkspaceAttributeConfiguration({
+  workspaceId
+}: {
+  workspaceId: string;
+}) {
+  return getEffectiveWorkspaceAttributes({ workspaceId });
 }
 
 function getCategoryAttributeDefaultData({

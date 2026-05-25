@@ -22,10 +22,13 @@ import {
 import type { PartCategoryListItem } from "@/server/parts/categories";
 import {
   getEffectiveCategoryAttributesForWorkspace,
-  saveCategoryAttributeConfigurationForWorkspace
+  getEffectiveWorkspaceAttributesForWorkspace,
+  saveCategoryAttributeConfigurationForWorkspace,
+  saveWorkspaceAttributeConfigurationForWorkspace
 } from "@/server/parts/attributeActions";
 import type { AttributeListItem } from "@/server/parts/attributeMutations";
 import type { EffectiveCategoryAttribute } from "@/server/parts/attributes";
+import { WORKSPACE_ATTRIBUTE_SOURCE_ID } from "@/lib/part-attribute-sources";
 import {
   getNextToastId,
   ToastNotice,
@@ -64,6 +67,10 @@ type Copy = {
   inherited: string;
   local: string;
   attachAttribute: string;
+  globalAttributes: string;
+  globalAttributesTitle: string;
+  globalAttributesBody: string;
+  saveGlobalAttributes: string;
   saveAttributeConfig: string;
   detachAttribute: string;
   noValueAttribute: string;
@@ -147,6 +154,7 @@ export function PartCategoriesClient({
   workspaceSlug
 }: PartCategoriesClientProps) {
   const categoryDialogRef = useRef<HTMLDialogElement>(null);
+  const globalAttributesDialogRef = useRef<HTMLDialogElement>(null);
   const nextToastIdRef = useRef(0);
   const [currentCategories, setCurrentCategories] = useState(categories);
   const [categoryDialogMode, setCategoryDialogMode] =
@@ -166,6 +174,12 @@ export function PartCategoriesClient({
   const [createCategoryValueAttributeId, setCreateCategoryValueAttributeId] =
     useState("");
   const [createFormResetKey, setCreateFormResetKey] = useState(0);
+  const [isGlobalAttributesDialogOpen, setIsGlobalAttributesDialogOpen] =
+    useState(false);
+  const [globalAttributeDrafts, setGlobalAttributeDrafts] = useState<
+    CategoryAttributeDraft[]
+  >([]);
+  const [globalFieldError, setGlobalFieldError] = useState<string | null>(null);
   const [categoryFieldErrors, setCategoryFieldErrors] =
     useState<CategoryFormErrors>({});
   const [toastMessages, setToastMessages] = useState<ToastMessage[]>([]);
@@ -329,6 +343,50 @@ export function PartCategoriesClient({
       closeCategoryDialog();
     }
   });
+  const loadGlobalAttributesMutation = useMutation({
+    mutationFn: getEffectiveWorkspaceAttributesForWorkspace,
+    onSuccess: (result) => {
+      if (!result.ok) {
+        setGlobalFieldError(getCategoryErrorMessage(copy, result.error));
+        return;
+      }
+
+      setGlobalAttributeDrafts(
+        result.data.map((attribute) =>
+          toCategoryAttributeDraft(attribute, WORKSPACE_ATTRIBUTE_SOURCE_ID)
+        )
+      );
+      setGlobalFieldError(null);
+    },
+    onError: () => {
+      setGlobalFieldError(getCategoryErrorMessage(copy, "database-unavailable"));
+    }
+  });
+  const saveGlobalAttributesMutation = useMutation({
+    mutationFn: saveWorkspaceAttributeConfigurationForWorkspace,
+    onSuccess: (result) => {
+      if (!result.ok) {
+        setGlobalFieldError(getCategoryErrorMessage(copy, result.error));
+        return;
+      }
+
+      setGlobalAttributeDrafts(
+        result.data.map((attribute) =>
+          toCategoryAttributeDraft(attribute, WORKSPACE_ATTRIBUTE_SOURCE_ID)
+        )
+      );
+      setGlobalFieldError(null);
+      closeDialog(globalAttributesDialogRef.current);
+      setIsGlobalAttributesDialogOpen(false);
+      addToastMessage({
+        id: getNextToastId(nextToastIdRef),
+        message: copy.attributeConfigUpdatedToast
+      });
+    },
+    onError: () => {
+      setGlobalFieldError(getCategoryErrorMessage(copy, "database-unavailable"));
+    }
+  });
 
   useEffect(() => {
     if (categoryDialogOpen) {
@@ -467,6 +525,30 @@ export function PartCategoriesClient({
     setToastMessages((currentMessages) => [...currentMessages, toast]);
   }
 
+  function openGlobalAttributesDialog() {
+    setGlobalFieldError(null);
+    loadGlobalAttributesMutation.mutate({
+      workspaceSlug
+    });
+    setIsGlobalAttributesDialogOpen(true);
+    window.requestAnimationFrame(() => openDialog(globalAttributesDialogRef.current));
+  }
+
+  function closeGlobalAttributesDialog() {
+    setIsGlobalAttributesDialogOpen(false);
+    setGlobalFieldError(null);
+  }
+
+  function saveGlobalAttributes() {
+    saveGlobalAttributesMutation.mutate({
+      workspaceSlug,
+      attributes: getLocalCategoryAttributeInputs(
+        globalAttributeDrafts,
+        WORKSPACE_ATTRIBUTE_SOURCE_ID
+      )
+    });
+  }
+
   function dismissToastMessage(toastId: number) {
     setToastMessages((currentMessages) =>
       currentMessages.filter((toast) => toast.id !== toastId)
@@ -483,6 +565,14 @@ export function PartCategoriesClient({
           {copy.title}
         </h2>
         <div className="flex items-center justify-end gap-3 border-b border-slate-200 bg-white px-4 py-3">
+          <button
+            className="min-h-9 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:border-slate-400 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400"
+            disabled={!isDatabaseAvailable || !canWriteCategories}
+            type="button"
+            onClick={openGlobalAttributesDialog}
+          >
+            {copy.globalAttributes}
+          </button>
           <button
             className={primaryButtonClassName}
             disabled={!isDatabaseAvailable || !canWriteCategories}
@@ -619,6 +709,54 @@ export function PartCategoriesClient({
         onCancel={() => setCategoryPendingDelete(null)}
         onConfirm={confirmDeleteCategory}
       />
+      <DialogShell
+        ref={globalAttributesDialogRef}
+        closeLabel={copy.close}
+        description={copy.globalAttributesBody}
+        title={copy.globalAttributesTitle}
+        titleId="global-attributes-dialog-title"
+        widthClassName="w-[min(56rem,calc(100vw-3rem))]"
+        onClose={closeGlobalAttributesDialog}
+      >
+        {isGlobalAttributesDialogOpen ? (
+          <>
+            <DialogBody>
+              <div className="grid gap-3 pr-1">
+                <CategoryAttributesDraftEditor
+                  canWriteCategories={canWriteCategories}
+                  categoryId={WORKSPACE_ATTRIBUTE_SOURCE_ID}
+                  copy={copy}
+                  drafts={globalAttributeDrafts}
+                  isDatabaseAvailable={isDatabaseAvailable}
+                  attributes={attributes}
+                  hideValueAttribute
+                  valueAttributeId=""
+                  onDraftsChange={setGlobalAttributeDrafts}
+                  onValueAttributeIdChange={() => undefined}
+                />
+              </div>
+            </DialogBody>
+            <DialogFooter className="items-center justify-end gap-3">
+              <div className="relative">
+                <ErrorBubble>{globalFieldError}</ErrorBubble>
+                <button
+                  className={primaryButtonClassName}
+                  disabled={
+                    !isDatabaseAvailable ||
+                    !canWriteCategories ||
+                    loadGlobalAttributesMutation.isPending ||
+                    saveGlobalAttributesMutation.isPending
+                  }
+                  type="button"
+                  onClick={saveGlobalAttributes}
+                >
+                  {copy.saveGlobalAttributes}
+                </button>
+              </div>
+            </DialogFooter>
+          </>
+        ) : null}
+      </DialogShell>
     </>
   );
 }
@@ -735,6 +873,25 @@ function CategoryDialogContent({
       onError("database-unavailable");
     }
   });
+  const loadCreateGlobalAttributesMutation = useMutation({
+    mutationFn: getEffectiveWorkspaceAttributesForWorkspace,
+    onSuccess: (result) => {
+      if (!result.ok) {
+        onError(result.error);
+        return;
+      }
+
+      onCreateAttributeDraftsChange(
+        result.data.map((attribute) =>
+          toCategoryAttributeDraft(attribute, WORKSPACE_ATTRIBUTE_SOURCE_ID)
+        )
+      );
+      onCreateValueAttributeIdChange("");
+    },
+    onError: () => {
+      onError("database-unavailable");
+    }
+  });
   const activeAttributeDrafts =
     mode === "create" ? createAttributeDrafts : editAttributeDrafts;
   const activeValueAttributeId =
@@ -764,8 +921,9 @@ function CategoryDialogContent({
     }
 
     if (!createParentId) {
-      onCreateAttributeDraftsChange([]);
-      onCreateValueAttributeIdChange("");
+      loadCreateGlobalAttributesMutation.mutate({
+        workspaceSlug
+      });
       return;
     }
 
@@ -983,6 +1141,7 @@ function CategoryAttributesDraftEditor({
   drafts,
   isDatabaseAvailable,
   attributes,
+  hideValueAttribute = false,
   valueAttributeId,
   onDraftsChange,
   onValueAttributeIdChange
@@ -993,6 +1152,7 @@ function CategoryAttributesDraftEditor({
   drafts: CategoryAttributeDraft[];
   isDatabaseAvailable: boolean;
   attributes: AttributeListItem[];
+  hideValueAttribute?: boolean;
   valueAttributeId: string;
   onDraftsChange: (update: CategoryAttributeDraftUpdate) => void;
   onValueAttributeIdChange: (attributeId: string) => void;
@@ -1077,24 +1237,26 @@ function CategoryAttributesDraftEditor({
 
   return (
     <div className="grid gap-3">
-      <label className="grid max-w-sm gap-2 text-sm font-medium text-slate-700">
-        {copy.valueAttribute}
-        <select
-          className={categoryAttributeInputClassName}
-          disabled={!isDatabaseAvailable || !canWriteCategories}
-          value={valueAttributeId}
-          onChange={(event) =>
-            onValueAttributeIdChange(event.currentTarget.value)
-          }
-        >
-          <option value="">{copy.noValueAttribute}</option>
-          {drafts.map((draft) => (
-            <option key={draft.attribute.id} value={draft.attribute.id}>
-              {draft.attribute.name}
-            </option>
-          ))}
-        </select>
-      </label>
+      {!hideValueAttribute ? (
+        <label className="grid max-w-sm gap-2 text-sm font-medium text-slate-700">
+          {copy.valueAttribute}
+          <select
+            className={categoryAttributeInputClassName}
+            disabled={!isDatabaseAvailable || !canWriteCategories}
+            value={valueAttributeId}
+            onChange={(event) =>
+              onValueAttributeIdChange(event.currentTarget.value)
+            }
+          >
+            <option value="">{copy.noValueAttribute}</option>
+            {drafts.map((draft) => (
+              <option key={draft.attribute.id} value={draft.attribute.id}>
+                {draft.attribute.name}
+              </option>
+            ))}
+          </select>
+        </label>
+      ) : null}
       <CategoryAttributeDraftList
         canWriteCategories={canWriteCategories}
         categoryId={categoryId}
