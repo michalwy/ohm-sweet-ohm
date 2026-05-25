@@ -6,6 +6,7 @@ import { authorizeWorkspacePermission } from "@/server/access-control/authorize"
 import { getCurrentWorkspaceContextBySlug } from "@/server/auth/currentContext";
 import {
   createPartCategory,
+  deletePartCategory,
   getPartCategories,
   type PartCategoryListItem,
   updatePartCategory
@@ -15,6 +16,19 @@ export type PartCategoryMutationResult =
   | {
       ok: true;
       category: PartCategoryListItem;
+      categories: PartCategoryListItem[];
+      submittedAt: number;
+    }
+  | {
+      ok: false;
+      error: string;
+      submittedAt: number;
+    };
+
+export type PartCategoryDeleteResult =
+  | {
+      ok: true;
+      id: string;
       categories: PartCategoryListItem[];
       submittedAt: number;
     }
@@ -142,6 +156,55 @@ export async function updatePartCategoryFromForm(
   return getMutationSuccessState(category, categories);
 }
 
+export async function deletePartCategoryFromForm(
+  formData: FormData
+): Promise<PartCategoryDeleteResult> {
+  const workspaceSlug = getRequiredFormValue(formData, "workspaceSlug");
+  const id = getRequiredFormValue(formData, "id");
+  const categoriesPath = getPartCategoriesPath(workspaceSlug);
+  let categories: PartCategoryListItem[] = [];
+
+  if (!workspaceSlug || !id) {
+    return getDeleteErrorState("missing-required-fields");
+  }
+
+  let formError: string | null = null;
+
+  try {
+    const context = await getCurrentWorkspaceContextBySlug(workspaceSlug);
+
+    if (!context) {
+      formError = "database-unavailable";
+    } else {
+      await authorizeWorkspacePermission({
+        userId: context.user.id,
+        workspaceId: context.workspace.id,
+        permission: "part-categories:write"
+      });
+
+      await deletePartCategory({
+        id,
+        workspaceId: context.workspace.id
+      });
+      categories = await getPartCategories(context.workspace.id);
+    }
+  } catch (error) {
+    formError = getPartCategoryFormError(error);
+  }
+
+  if (formError) {
+    return getDeleteErrorState(formError);
+  }
+
+  revalidatePath(categoriesPath);
+  return {
+    ok: true,
+    id,
+    categories,
+    submittedAt: Date.now()
+  };
+}
+
 function getRequiredFormValue(formData: FormData, name: string) {
   const value = formData.get(name);
 
@@ -176,6 +239,8 @@ function getPartCategoryFormError(error: unknown) {
     error.message === "category_not_found" ||
     error.message === "invalid_parent_category" ||
     error.message === "category_tree_cycle" ||
+    error.message === "category_in_use_by_parts" ||
+    error.message === "category_has_children" ||
     error.message === "workspace_permission_denied"
   ) {
     return error.message.replaceAll("_", "-");
@@ -197,6 +262,14 @@ function getMutationSuccessState(
 }
 
 function getMutationErrorState(error: string): PartCategoryMutationResult {
+  return {
+    ok: false,
+    error,
+    submittedAt: Date.now()
+  };
+}
+
+function getDeleteErrorState(error: string): PartCategoryDeleteResult {
   return {
     ok: false,
     error,

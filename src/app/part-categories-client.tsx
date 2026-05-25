@@ -13,6 +13,7 @@ import {
 
 import {
   createPartCategoryFromForm,
+  deletePartCategoryFromForm,
   updatePartCategoryFromForm
 } from "@/server/parts/categoryActions";
 import type { PartCategoryListItem } from "@/server/parts/categories";
@@ -28,6 +29,7 @@ import {
   type ToastMessage
 } from "@/app/toast-notice";
 import {
+  DeleteConfirmationDialog,
   DialogBody,
   DialogFooter,
   DialogShell,
@@ -40,6 +42,7 @@ type Copy = {
   addRootCategory: string;
   addChild: string;
   edit: string;
+  delete: string;
   configureAttributes: string;
   categoryAttributes: string;
   detailsTab: string;
@@ -75,8 +78,12 @@ type Copy = {
   createCategory: string;
   saveChanges: string;
   close: string;
+  cancelDelete: string;
+  confirmDelete: string;
+  deleteConfirmationBody: string;
   createdToast: string;
   updatedToast: string;
+  deletedToast: string;
   attributeConfigUpdatedToast: string;
   attributeConfigDeletedToast: string;
   valueAttributeUpdatedToast: string;
@@ -84,6 +91,8 @@ type Copy = {
   invalidParentCategory: string;
   categoryNotFound: string;
   categoryTreeCycle: string;
+  categoryInUseByParts: string;
+  categoryHasChildren: string;
   permissionDenied: string;
   invalidAttributeDefaultValue: string;
   emptyTitle: string;
@@ -138,6 +147,8 @@ export function PartCategoriesClient({
       currentCategories.find((category) => category.id === categoryEditDialog) ??
       null
     );
+  const [categoryPendingDelete, setCategoryPendingDelete] =
+    useState<PartCategoryListItem | null>(null);
   const [createCategoryAttributeDrafts, setCreateCategoryAttributeDrafts] =
     useState<CategoryAttributeDraft[]>([]);
   const [createCategoryValueAttributeId, setCreateCategoryValueAttributeId] =
@@ -167,6 +178,7 @@ export function PartCategoriesClient({
     onSuccess: async (result, variables) => {
       if (!result.ok) {
         setCategoryFormError(result.error);
+        setCategoryPendingDelete(null);
         return;
       }
 
@@ -270,6 +282,32 @@ export function PartCategoriesClient({
       closeCategoryDialog();
     }
   });
+  const deleteCategoryMutation = useMutation({
+    mutationFn: deletePartCategoryFromForm,
+    onError: () => {
+      setCategoryFormError("database-unavailable");
+    },
+    onSuccess: (result) => {
+      if (!result.ok) {
+        setCategoryFormError(result.error);
+        return;
+      }
+
+      const deletedCategoryName =
+        currentCategories.find((category) => category.id === result.id)?.name ??
+        editingCategory?.name ??
+        "";
+
+      setCurrentCategories(result.categories);
+      setCategoryPendingDelete(null);
+      setCategoryFormError(null);
+      addToastMessage({
+        id: getNextToastId(nextToastIdRef),
+        message: `${copy.deletedToast}: ${deletedCategoryName}.`
+      });
+      closeCategoryDialog();
+    }
+  });
 
   useEffect(() => {
     if (categoryDialogOpen) {
@@ -356,6 +394,26 @@ export function PartCategoriesClient({
       attributeDrafts,
       valueAttributeId
     });
+  }
+
+  function handleDeleteCategory() {
+    if (!editingCategory) {
+      return;
+    }
+
+    setCategoryPendingDelete(editingCategory);
+  }
+
+  function confirmDeleteCategory() {
+    if (!categoryPendingDelete) {
+      return;
+    }
+
+    const formData = new FormData();
+    formData.set("workspaceSlug", workspaceSlug);
+    formData.set("id", categoryPendingDelete.id);
+    setCategoryFormError(null);
+    deleteCategoryMutation.mutate(formData);
   }
 
   function closeCategoryDialog() {
@@ -491,7 +549,8 @@ export function PartCategoriesClient({
             isPending={
               categoryDialogMode === "create"
                 ? createCategoryMutation.isPending
-                : updateCategoryMutation.isPending
+                : updateCategoryMutation.isPending ||
+                  deleteCategoryMutation.isPending
             }
             mode={categoryDialogMode}
             attributes={attributes}
@@ -504,10 +563,23 @@ export function PartCategoriesClient({
             onCreateAttributeDraftsChange={setCreateCategoryAttributeDrafts}
             onCreateValueAttributeIdChange={setCreateCategoryValueAttributeId}
             onTabChange={setActiveCategoryDialogTab}
+            onDelete={handleDeleteCategory}
             onUpdateSubmit={handleUpdateSubmit}
           />
         ) : null}
       </DialogShell>
+      <DeleteConfirmationDialog
+        body={copy.deleteConfirmationBody}
+        cancelLabel={copy.cancelDelete}
+        closeLabel={copy.close}
+        confirmLabel={copy.confirmDelete}
+        deleteLabel={copy.delete}
+        isPending={deleteCategoryMutation.isPending}
+        itemName={categoryPendingDelete?.name ?? ""}
+        open={Boolean(categoryPendingDelete)}
+        onCancel={() => setCategoryPendingDelete(null)}
+        onConfirm={confirmDeleteCategory}
+      />
     </>
   );
 }
@@ -532,6 +604,7 @@ function CategoryDialogContent({
   onCreateAttributeDraftsChange,
   onCreateValueAttributeIdChange,
   onTabChange,
+  onDelete,
   onUpdateSubmit
 }: {
   activeTab: CategoryDialogTab;
@@ -557,6 +630,7 @@ function CategoryDialogContent({
   onCreateAttributeDraftsChange: (drafts: CategoryAttributeDraft[]) => void;
   onCreateValueAttributeIdChange: (attributeId: string) => void;
   onTabChange: (tab: CategoryDialogTab) => void;
+  onDelete: () => void;
   onUpdateSubmit: (
     event: FormEvent<HTMLFormElement>,
     attributeDrafts: CategoryAttributeDraft[],
@@ -815,7 +889,23 @@ function CategoryDialogContent({
           )}
         </div>
       </DialogBody>
-      <DialogFooter>
+      <DialogFooter
+        className={
+          mode === "edit"
+            ? "items-center justify-between"
+            : "justify-end"
+        }
+      >
+        {mode === "edit" ? (
+          <button
+            className="min-h-9 rounded-md border border-[var(--color-error-border)] bg-white px-3 py-1.5 text-sm font-medium text-[var(--color-error)] transition hover:bg-[var(--color-error-soft)] focus:outline-none focus:ring-2 focus:ring-[var(--color-error-border)] focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400"
+            disabled={isSaveDisabled}
+            type="button"
+            onClick={onDelete}
+          >
+            {copy.delete}
+          </button>
+        ) : null}
         <button
           className={primaryButtonClassName}
           disabled={isSaveDisabled}
@@ -1632,6 +1722,14 @@ function getCategoryErrorMessage(copy: Copy, error: string) {
 
   if (error === "category-tree-cycle") {
     return copy.categoryTreeCycle;
+  }
+
+  if (error === "category-in-use-by-parts") {
+    return copy.categoryInUseByParts;
+  }
+
+  if (error === "category-has-children") {
+    return copy.categoryHasChildren;
   }
 
   if (error === "workspace-permission-denied") {

@@ -15,7 +15,7 @@ import {
 } from "@tanstack/react-table";
 import { createPortal } from "react-dom";
 
-import { createPart, updatePart } from "@/server/parts/createPart";
+import { createPart, deletePart, updatePart } from "@/server/parts/createPart";
 import type { ManufacturerSuggestion } from "@/server/organizations/organizations";
 import type { PartCategoryListItem } from "@/server/parts/categories";
 import type { PartsListItem } from "@/server/parts/getParts";
@@ -26,6 +26,7 @@ import {
   type ToastMessage
 } from "@/app/toast-notice";
 import {
+  DeleteConfirmationDialog,
   DialogBody,
   DialogFooter,
   DialogShell,
@@ -68,11 +69,16 @@ type Copy = {
   collapseCategory: string;
   createPart: string;
   editPart: string;
+  deletePart: string;
   saveChanges: string;
   close: string;
+  cancelDelete: string;
+  confirmDelete: string;
+  deleteConfirmationBody: string;
   addPart: string;
   createdToast: string;
   updatedToast: string;
+  deletedToast: string;
   missingRequiredFields: string;
   invalidCategory: string;
   secondaryWithoutPrimary: string;
@@ -155,6 +161,8 @@ export function PartsListClient({
   const [editingPart, setEditingPart] = useState<PartsListItem | null>(() =>
     currentParts.find((part) => part.id === partEditDialog) ?? null
   );
+  const [partPendingDelete, setPartPendingDelete] =
+    useState<PartsListItem | null>(null);
   const createHasAttributesTab =
     getPartAttributeGroups({
       categoryAttributesByCategoryId,
@@ -211,6 +219,7 @@ export function PartsListClient({
     onSuccess: (result) => {
       if (!result.ok) {
         setUpdateFormError(result.error);
+        setPartPendingDelete(null);
         return;
       }
 
@@ -231,6 +240,35 @@ export function PartsListClient({
         id: getNextToastId(nextToastIdRef),
         message: getPartSuccessMessage(copy.updatedToast, result.part)
       });
+      closeDialog(editDialogRef.current);
+    }
+  });
+  const deletePartMutation = useMutation({
+    mutationFn: deletePart,
+    onError: () => {
+      setUpdateFormError("database-unavailable");
+    },
+    onSuccess: (result) => {
+      if (!result.ok) {
+        setUpdateFormError(result.error);
+        return;
+      }
+
+      const deletedPart = currentParts.find((part) => part.id === result.id);
+      setCurrentParts((currentItems) =>
+        currentItems.filter((part) => part.id !== result.id)
+      );
+      setEditingPart(null);
+      setPartPendingDelete(null);
+      setUpdateFormError(null);
+
+      if (deletedPart) {
+        addToastMessage({
+          id: getNextToastId(nextToastIdRef),
+          message: getPartSuccessMessage(copy.deletedToast, deletedPart)
+        });
+      }
+
       closeDialog(editDialogRef.current);
     }
   });
@@ -408,6 +446,26 @@ export function PartsListClient({
     event.preventDefault();
     setUpdateFormError(null);
     updatePartMutation.mutate(new FormData(event.currentTarget));
+  }
+
+  function handleDeletePart() {
+    if (!editingPart) {
+      return;
+    }
+
+    setPartPendingDelete(editingPart);
+  }
+
+  function confirmDeletePart() {
+    if (!partPendingDelete) {
+      return;
+    }
+
+    const formData = new FormData();
+    formData.set("workspaceSlug", workspaceSlug);
+    formData.set("id", partPendingDelete.id);
+    setUpdateFormError(null);
+    deletePartMutation.mutate(formData);
   }
 
   function addManufacturerSuggestion(manufacturerName: string) {
@@ -773,11 +831,23 @@ export function PartsListClient({
                   </div>
                 ) : null}
               </DialogBody>
-              <DialogFooter>
+              <DialogFooter className="items-center justify-between">
+                <button
+                  className="min-h-9 rounded-md border border-[var(--color-error-border)] bg-white px-3 py-1.5 text-sm font-medium text-[var(--color-error)] transition hover:bg-[var(--color-error-soft)] focus:outline-none focus:ring-2 focus:ring-[var(--color-error-border)] focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400"
+                  disabled={!isDatabaseAvailable || deletePartMutation.isPending}
+                  type="button"
+                  onClick={handleDeletePart}
+                >
+                  {copy.deletePart}
+                </button>
                 <button
                   className={primaryButtonClassName}
                   type="submit"
-                  disabled={!isDatabaseAvailable || updatePartMutation.isPending}
+                  disabled={
+                    !isDatabaseAvailable ||
+                    updatePartMutation.isPending ||
+                    deletePartMutation.isPending
+                  }
                 >
                   {copy.saveChanges}
                 </button>
@@ -785,6 +855,22 @@ export function PartsListClient({
             </form>
           ) : null}
       </DialogShell>
+      <DeleteConfirmationDialog
+        body={copy.deleteConfirmationBody}
+        cancelLabel={copy.cancelDelete}
+        closeLabel={copy.close}
+        confirmLabel={copy.confirmDelete}
+        deleteLabel={copy.deletePart}
+        isPending={deletePartMutation.isPending}
+        itemName={
+          partPendingDelete
+            ? `${partPendingDelete.manufacturerName} ${partPendingDelete.catalogNumber}`
+            : ""
+        }
+        open={Boolean(partPendingDelete)}
+        onCancel={() => setPartPendingDelete(null)}
+        onConfirm={confirmDeletePart}
+      />
     </>
   );
 }

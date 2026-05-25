@@ -16,7 +16,12 @@ import {
   ToastNotice,
   type ToastMessage
 } from "@/app/toast-notice";
-import { DialogBody, DialogFooter, DialogShell } from "@/app/dialog-shell";
+import {
+  DeleteConfirmationDialog,
+  DialogBody,
+  DialogFooter,
+  DialogShell
+} from "@/app/dialog-shell";
 
 type Copy = {
   title: string;
@@ -24,6 +29,9 @@ type Copy = {
   edit: string;
   delete: string;
   close: string;
+  cancelDelete: string;
+  confirmDelete: string;
+  deleteConfirmationBody: string;
   createAttribute: string;
   saveChanges: string;
   addOption: string;
@@ -82,6 +90,8 @@ export function AttributesClient({
     useState<AttributeDialogMode | null>(null);
   const [editingAttribute, setEditingAttribute] =
     useState<AttributeListItem | null>(null);
+  const [attributePendingDelete, setAttributePendingDelete] =
+    useState<AttributeListItem | null>(null);
   const [dialogFormError, setDialogFormError] = useState<string | null>(null);
   const [dialogFormKey, setDialogFormKey] = useState(0);
   const [toastMessages, setToastMessages] = useState<ToastMessage[]>([]);
@@ -99,10 +109,12 @@ export function AttributesClient({
     onSuccess: async (result) => {
       if (!result.ok) {
         setDialogFormError(result.error);
+        setAttributePendingDelete(null);
         return;
       }
 
       await refreshAttributesMutation.mutateAsync();
+      setAttributePendingDelete(null);
       setDialogFormError(null);
       addToast(getAttributeSuccessMessage(copy.createdToast, result.data.name));
       closeAttributeDialog();
@@ -183,6 +195,25 @@ export function AttributesClient({
       type: getFormString(formData, "type") as AttributeValueType,
       baseUnitSymbol: getFormString(formData, "baseUnitSymbol"),
       choiceOptions: getChoiceOptionUpdatesFromFormData(formData)
+    });
+  }
+
+  function handleDeleteAttribute() {
+    if (!editingAttribute) {
+      return;
+    }
+
+    setAttributePendingDelete(editingAttribute);
+  }
+
+  function confirmDeleteAttribute() {
+    if (!attributePendingDelete) {
+      return;
+    }
+
+    deleteAttributeMutation.mutate({
+      workspaceSlug,
+      attributeId: attributePendingDelete.id
     });
   }
 
@@ -330,11 +361,7 @@ export function AttributesClient({
             attribute={editingAttribute}
             onDelete={
               attributeDialogMode === "edit" && editingAttribute
-                ? () =>
-                    deleteAttributeMutation.mutate({
-                      workspaceSlug,
-                      attributeId: editingAttribute.id
-                    })
+                ? handleDeleteAttribute
                 : undefined
             }
             onSubmit={
@@ -345,6 +372,18 @@ export function AttributesClient({
           />
         ) : null}
       </DialogShell>
+      <DeleteConfirmationDialog
+        body={copy.deleteConfirmationBody}
+        cancelLabel={copy.cancelDelete}
+        closeLabel={copy.close}
+        confirmLabel={copy.confirmDelete}
+        deleteLabel={copy.delete}
+        isPending={deleteAttributeMutation.isPending}
+        itemName={attributePendingDelete?.name ?? ""}
+        open={Boolean(attributePendingDelete)}
+        onCancel={() => setAttributePendingDelete(null)}
+        onConfirm={confirmDeleteAttribute}
+      />
     </>
   );
 }

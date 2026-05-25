@@ -3,7 +3,9 @@
 import {
   forwardRef,
   type CSSProperties,
-  type ReactNode
+  type ReactNode,
+  useEffect,
+  useRef
 } from "react";
 
 type DialogShellProps = {
@@ -21,6 +23,19 @@ type DialogSectionProps = {
   children: ReactNode;
   className?: string;
   style?: CSSProperties;
+};
+
+type DeleteConfirmationDialogProps = {
+  body: string;
+  cancelLabel: string;
+  confirmLabel: string;
+  closeLabel: string;
+  deleteLabel: string;
+  isPending: boolean;
+  itemName: string;
+  open: boolean;
+  onCancel: () => void;
+  onConfirm: () => void;
 };
 
 export const DialogShell = forwardRef<HTMLDialogElement, DialogShellProps>(
@@ -99,6 +114,94 @@ export function DialogFooter({
     >
       {children}
     </div>
+  );
+}
+
+export function DeleteConfirmationDialog({
+  body,
+  cancelLabel,
+  confirmLabel,
+  closeLabel,
+  deleteLabel,
+  isPending,
+  itemName,
+  open,
+  onCancel,
+  onConfirm
+}: DeleteConfirmationDialogProps) {
+  const dialogRef = useRef<HTMLDialogElement>(null);
+
+  function closeConfirmationDialog() {
+    const dialog = dialogRef.current;
+
+    if (dialog?.open) {
+      dialog.close();
+    }
+
+    onCancel();
+  }
+
+  useEffect(() => {
+    const dialog = dialogRef.current;
+
+    if (!dialog) {
+      return;
+    }
+
+    if (open && !dialog.open) {
+      try {
+        dialog.showModal();
+      } catch {
+        dialog.setAttribute("open", "");
+      }
+      return;
+    }
+
+    if (!open && dialog.open) {
+      dialog.close();
+    }
+  }, [open]);
+
+  return (
+    <DialogShell
+      ref={dialogRef}
+      closeLabel={closeLabel}
+      title={`${deleteLabel} ${itemName}?`}
+      titleId="delete-confirmation-dialog-title"
+      widthClassName="w-[min(32rem,calc(100vw-3rem))]"
+      onClose={onCancel}
+      onCloseClick={closeConfirmationDialog}
+    >
+      <DialogBody>
+        <p className="text-sm leading-6 text-slate-600">{body}</p>
+      </DialogBody>
+      <DialogFooter className="items-center justify-end gap-2">
+        <button
+          className="min-h-9 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:border-slate-400 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400"
+          disabled={isPending}
+          type="button"
+          onClick={closeConfirmationDialog}
+        >
+          {cancelLabel}
+        </button>
+        <button
+          className="min-h-9 rounded-md border border-[var(--color-error-border)] bg-white px-3 py-1.5 text-sm font-medium text-[var(--color-error)] transition hover:bg-[var(--color-error-soft)] focus:outline-none focus:ring-2 focus:ring-[var(--color-error-border)] focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400"
+          disabled={isPending}
+          type="button"
+          onClick={() => {
+            const dialog = dialogRef.current;
+
+            if (dialog?.open) {
+              dialog.close();
+            }
+
+            onConfirm();
+          }}
+        >
+          {confirmLabel}
+        </button>
+      </DialogFooter>
+    </DialogShell>
   );
 }
 

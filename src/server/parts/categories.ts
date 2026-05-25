@@ -244,6 +244,61 @@ export async function updatePartCategory({
   });
 }
 
+export async function deletePartCategory({
+  workspaceId,
+  id
+}: {
+  workspaceId: string;
+  id: string;
+}) {
+  return prisma.$transaction(async (tx) => {
+    const category = await tx.partCategory.findFirst({
+      where: {
+        id,
+        workspaceId
+      },
+      select: {
+        id: true
+      }
+    });
+
+    if (!category) {
+      throw new Error("category_not_found");
+    }
+
+    const [partCount, childCount] = await Promise.all([
+      tx.part.count({
+        where: {
+          workspaceId,
+          OR: [{ primaryCategoryId: id }, { secondaryCategoryId: id }]
+        }
+      }),
+      tx.partCategory.count({
+        where: {
+          workspaceId,
+          parentId: id
+        }
+      })
+    ]);
+
+    if (partCount > 0) {
+      throw new Error("category_in_use_by_parts");
+    }
+
+    if (childCount > 0) {
+      throw new Error("category_has_children");
+    }
+
+    await tx.partCategory.delete({
+      where: {
+        id
+      }
+    });
+
+    await rebuildPartCategoryClosures(tx, workspaceId);
+  });
+}
+
 async function validateParentCategory({
   tx,
   workspaceId,

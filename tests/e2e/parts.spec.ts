@@ -226,9 +226,26 @@ test.describe("parts list", () => {
     await expect(updatedPartRow).toContainText(updatedDescription);
     await expect(updatedPartRow).toContainText("Passives » Capacitors");
     await expect(updatedPartRow).toContainText("Passives » Resistors");
+
+    await updatedPartRow.getByRole("button", { name: "Edit" }).click();
+    await expect(editPartDialog).toBeVisible();
+    await editPartDialog.getByRole("button", { name: "Delete" }).click();
+    const deletePartDialog = page.getByRole("dialog", {
+      name: `Delete ${updatedManufacturer} ${updatedCatalogNumber}?`
+    });
+    await expect(deletePartDialog).toBeVisible();
+    await deletePartDialog.getByRole("button", { name: "Cancel" }).click();
+    await expect(deletePartDialog).toBeHidden();
+    await expect(editPartDialog).toBeVisible();
+    await editPartDialog.getByRole("button", { name: "Delete" }).click();
+    await deletePartDialog.getByRole("button", { name: "Delete" }).click();
+    await expect(page.getByRole("status")).toHaveText(
+      `Part deleted: ${updatedManufacturer} ${updatedCatalogNumber}.`
+    );
+    await expect(updatedPartRow).toHaveCount(0);
   });
 
-  test("manages the part category tree without delete actions", async ({
+  test("manages the part category tree with delete protections", async ({
     page
   }, testInfo) => {
     const categoryName = `Sensors ${testInfo.project.name}`;
@@ -259,13 +276,39 @@ test.describe("parts list", () => {
     await page.getByRole("button", { name: "Collapse Passives" }).click();
     await page.reload();
     await expect(
+      page.getByRole("button", { name: "Expand Passives" })
+    ).toBeVisible();
+    await expect(
       page.locator("p").filter({ hasText: /^Capacitors$/ })
     ).toHaveCount(0);
     await page.getByRole("button", { name: "Expand Passives" }).click();
     await expect(
       page.locator("p").filter({ hasText: /^Capacitors$/ }).first()
     ).toBeVisible();
-    await expect(page.getByText("Delete")).toHaveCount(0);
+
+    const integratedCircuitsNode = page
+      .getByTestId("part-category-node")
+      .filter({
+        has: page.locator("p").filter({
+          hasText: /^Integrated circuits$/
+        })
+      })
+      .first();
+    await integratedCircuitsNode.getByRole("button", { name: "Edit" }).click();
+    let editCategoryDialog = page.getByRole("dialog", {
+      name: "Edit category"
+    });
+    await expect(editCategoryDialog).toBeVisible();
+    await editCategoryDialog.getByRole("button", { name: "Delete" }).click();
+    let deleteCategoryDialog = page.getByRole("dialog", {
+      name: "Delete Integrated circuits?"
+    });
+    await expect(deleteCategoryDialog).toBeVisible();
+    await deleteCategoryDialog.getByRole("button", { name: "Delete" }).click();
+    await expect(
+      page.getByText("This category is used by parts and cannot be deleted.")
+    ).toBeVisible();
+    await editCategoryDialog.getByRole("button", { name: "Close" }).click();
 
     await page.getByRole("button", { name: "Add root category" }).click();
     const addCategoryDialog = page.getByRole("dialog", {
@@ -326,7 +369,7 @@ test.describe("parts list", () => {
       })
       .first();
     await childNode.getByRole("button", { name: "Edit" }).click();
-    const editCategoryDialog = page.getByRole("dialog", {
+    editCategoryDialog = page.getByRole("dialog", {
       name: "Edit category"
     });
     await expect(editCategoryDialog).toBeVisible();
@@ -351,6 +394,65 @@ test.describe("parts list", () => {
         })
         .first()
     ).toBeVisible();
+
+    await categoryNode.getByRole("button", { name: "Edit" }).click();
+    await expect(editCategoryDialog).toBeVisible();
+    await editCategoryDialog.getByRole("button", { name: "Delete" }).click();
+    deleteCategoryDialog = page.getByRole("dialog", {
+      name: `Delete ${categoryName}?`
+    });
+    await expect(deleteCategoryDialog).toBeVisible();
+    await deleteCategoryDialog.getByRole("button", { name: "Delete" }).click();
+    await expect(
+      page.getByText("Delete child categories before deleting this category.")
+    ).toBeVisible();
+    await editCategoryDialog.getByRole("button", { name: "Close" }).click();
+
+    const updatedChildNode = page
+      .getByTestId("part-category-node")
+      .filter({
+        has: page.locator("p").filter({
+          hasText: new RegExp(`^${updatedChildName}$`)
+        })
+      })
+      .first();
+    await updatedChildNode.getByRole("button", { name: "Edit" }).click();
+    await expect(editCategoryDialog).toBeVisible();
+    await editCategoryDialog.getByRole("button", { name: "Delete" }).click();
+    deleteCategoryDialog = page.getByRole("dialog", {
+      name: `Delete ${updatedChildName}?`
+    });
+    await expect(deleteCategoryDialog).toBeVisible();
+    await deleteCategoryDialog.getByRole("button", { name: "Delete" }).click();
+    await expect(page.getByRole("status")).toHaveText(
+      `Category deleted: ${updatedChildName}.`
+    );
+    await expect(
+      page.locator("p").filter({ hasText: new RegExp(`^${updatedChildName}$`) })
+    ).toHaveCount(0);
+
+    const updatedCategoryNode = page
+      .getByTestId("part-category-node")
+      .filter({
+        has: page.locator("p").filter({
+          hasText: new RegExp(`^${categoryName}$`)
+        })
+      })
+      .first();
+    await updatedCategoryNode.getByRole("button", { name: "Edit" }).click();
+    await expect(editCategoryDialog).toBeVisible();
+    await editCategoryDialog.getByRole("button", { name: "Delete" }).click();
+    deleteCategoryDialog = page.getByRole("dialog", {
+      name: `Delete ${categoryName}?`
+    });
+    await expect(deleteCategoryDialog).toBeVisible();
+    await deleteCategoryDialog.getByRole("button", { name: "Delete" }).click();
+    await expect(page.getByRole("status")).toHaveText(
+      `Category deleted: ${categoryName}.`
+    );
+    await expect(
+      page.locator("p").filter({ hasText: new RegExp(`^${categoryName}$`) })
+    ).toHaveCount(0);
   });
 
   test("manages attribute dictionary and category attribute configuration", async ({
@@ -361,6 +463,7 @@ test.describe("parts list", () => {
     const mountingName = `Mounting type ${suffix}`;
     const polarizedName = `Polarized ${suffix}`;
     const overrideName = `Override marker ${suffix}`;
+    const disposableName = `Disposable ${suffix}`;
 
     await page.goto("/");
     await page.getByLabel("Email").fill("owner@ohmsweetohm.local");
@@ -375,7 +478,40 @@ test.describe("parts list", () => {
 
     await expect(page).toHaveURL(/\/w\/default\/attributes$/);
     await page.getByRole("button", { name: "Add attribute" }).click();
-    const addAttributeDialog = page.getByRole("dialog", {
+    let addAttributeDialog = page.getByRole("dialog", {
+      name: "Add attribute"
+    });
+    await expect(addAttributeDialog).toBeVisible();
+    await addAttributeDialog.getByLabel("Name").fill(disposableName);
+    await addAttributeDialog.getByLabel("Type").selectOption("TEXT");
+    await addAttributeDialog
+      .getByRole("button", { name: "Create attribute" })
+      .click();
+    await expect(page.getByRole("status")).toHaveText(
+      `Attribute created: ${disposableName}.`
+    );
+    let disposableRow = page.getByRole("row", {
+      name: new RegExp(disposableName)
+    });
+    await expect(disposableRow).toBeVisible();
+    await disposableRow.getByRole("button", { name: "Edit" }).click();
+    let editAttributeDialog = page.getByRole("dialog", {
+      name: "Edit attribute"
+    });
+    await expect(editAttributeDialog).toBeVisible();
+    await editAttributeDialog.getByRole("button", { name: "Delete" }).click();
+    const deleteAttributeDialog = page.getByRole("dialog", {
+      name: `Delete ${disposableName}?`
+    });
+    await expect(deleteAttributeDialog).toBeVisible();
+    await deleteAttributeDialog.getByRole("button", { name: "Delete" }).click();
+    await expect(page.getByRole("status")).toHaveText(
+      `Attribute deleted: ${disposableName}.`
+    );
+    await expect(disposableRow).toHaveCount(0);
+
+    await page.getByRole("button", { name: "Add attribute" }).click();
+    addAttributeDialog = page.getByRole("dialog", {
       name: "Add attribute"
     });
     await expect(addAttributeDialog).toBeVisible();
@@ -412,7 +548,7 @@ test.describe("parts list", () => {
       name: new RegExp(`${mountingName}.*SMD`)
     });
     await mountingRow.getByRole("button", { name: "Edit" }).click();
-    const editAttributeDialog = page.getByRole("dialog", {
+    editAttributeDialog = page.getByRole("dialog", {
       name: "Edit attribute"
     });
     await expect(editAttributeDialog).toBeVisible();

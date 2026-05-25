@@ -30,6 +30,7 @@ const copy = {
   addRootCategory: "Add root category",
   addChild: "Add child",
   edit: "Edit",
+  delete: "Delete",
   configureAttributes: "Configure attributes",
   categoryAttributes: "Category attributes",
   detailsTab: "Details",
@@ -69,12 +70,20 @@ const copy = {
   createCategory: "Create category",
   saveChanges: "Save changes",
   close: "Close",
+  cancelDelete: "Cancel",
+  confirmDelete: "Delete",
+  deleteConfirmationBody: "This cannot be undone.",
   createdToast: "Category created",
   updatedToast: "Category updated",
+  deletedToast: "Category deleted",
   missingRequiredFields: "Enter a category name.",
   invalidParentCategory: "Choose a valid parent category.",
   categoryNotFound: "This category is no longer available.",
   categoryTreeCycle: "Choose a parent outside this category branch.",
+  categoryInUseByParts:
+    "This category is used by parts and cannot be deleted.",
+  categoryHasChildren:
+    "Delete child categories before deleting this category.",
   permissionDenied: "You do not have permission to manage categories.",
   invalidAttributeDefaultValue:
     "Choose a valid default value for each category attribute.",

@@ -30,6 +30,18 @@ export type PartMutationResult =
       submittedAt: number;
     };
 
+export type PartDeleteResult =
+  | {
+      ok: true;
+      id: string;
+      submittedAt: number;
+    }
+  | {
+      ok: false;
+      error: string;
+      submittedAt: number;
+    };
+
 export async function createPart(
   formData: FormData
 ): Promise<PartMutationResult> {
@@ -260,6 +272,56 @@ export async function updatePart(
   return getFormSuccessState(part);
 }
 
+export async function deletePart(formData: FormData): Promise<PartDeleteResult> {
+  const workspaceSlug = getRequiredFormValue(formData, "workspaceSlug");
+  const id = getRequiredFormValue(formData, "id");
+  const partsPath = getPartsPath(workspaceSlug);
+
+  if (!workspaceSlug || !id) {
+    return getDeleteErrorState("missing-required-fields");
+  }
+
+  let formError: string | null = null;
+
+  try {
+    const context = await getCurrentWorkspaceContextBySlug(workspaceSlug);
+
+    if (!context) {
+      formError = "database-unavailable";
+    } else {
+      await authorizeWorkspacePermission({
+        userId: context.user.id,
+        workspaceId: context.workspace.id,
+        permission: "parts:write"
+      });
+
+      const deleteResult = await prisma.part.deleteMany({
+        where: {
+          id,
+          workspaceId: context.workspace.id
+        }
+      });
+
+      if (deleteResult.count === 0) {
+        formError = "part-not-found";
+      }
+    }
+  } catch {
+    formError = "database-unavailable";
+  }
+
+  if (formError) {
+    return getDeleteErrorState(formError);
+  }
+
+  revalidatePath(partsPath);
+  return {
+    ok: true,
+    id,
+    submittedAt: Date.now()
+  };
+}
+
 function getRequiredFormValue(formData: FormData, name: string) {
   const value = formData.get(name);
 
@@ -406,6 +468,14 @@ function getFormSuccessState(part: PartsListItem): PartMutationResult {
 }
 
 function getFormErrorState(error: string): PartMutationResult {
+  return {
+    ok: false,
+    error,
+    submittedAt: Date.now()
+  };
+}
+
+function getDeleteErrorState(error: string): PartDeleteResult {
   return {
     ok: false,
     error,
