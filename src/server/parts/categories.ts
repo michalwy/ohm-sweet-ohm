@@ -145,9 +145,9 @@ export function buildPartCategoryPaths(
 
 export async function createPartCategory(input: PartCategoryInput) {
   return prisma.$transaction(async (tx) => {
-    const name = input.name.trim();
+    const pathSegments = getCategoryPathSegments(input.name);
 
-    if (!name) {
+    if (pathSegments.length === 0) {
       throw new Error("category_name_required");
     }
 
@@ -157,19 +157,119 @@ export async function createPartCategory(input: PartCategoryInput) {
       parentId: input.parentId
     });
 
-    const category = await tx.partCategory.create({
-      data: {
-        workspaceId: input.workspaceId,
-        parentId: input.parentId,
-        name,
-        isAssignable: input.isAssignable
-      }
-    });
+    const category =
+      pathSegments.length === 1
+        ? await tx.partCategory.create({
+            data: {
+              workspaceId: input.workspaceId,
+              parentId: input.parentId,
+              name: pathSegments[0],
+              isAssignable: input.isAssignable
+            }
+          })
+        : await createPartCategoryPath({
+            tx,
+            workspaceId: input.workspaceId,
+            parentId: input.parentId,
+            pathSegments,
+            finalIsAssignable: input.isAssignable
+          });
 
     await rebuildPartCategoryClosures(tx, input.workspaceId);
 
     return category;
   });
+}
+
+async function createPartCategoryPath({
+  tx,
+  workspaceId,
+  parentId,
+  pathSegments,
+  finalIsAssignable
+}: {
+  tx: PrismaTransaction;
+  workspaceId: string;
+  parentId: string | null;
+  pathSegments: string[];
+  finalIsAssignable: boolean;
+}) {
+  let currentParentId = parentId;
+  let lastCategory: { id: string } | null = null;
+
+  for (const [index, segmentName] of pathSegments.entries()) {
+    const shouldBeAssignable =
+      index === pathSegments.length - 1 ? finalIsAssignable : false;
+    const siblingCategories = await tx.partCategory.findMany({
+      where: {
+        workspaceId,
+        parentId: currentParentId
+      },
+      orderBy: [{ name: "asc" }, { id: "asc" }],
+      select: {
+        id: true,
+        name: true,
+        isAssignable: true
+      }
+    });
+    const normalizedSegmentName = normalizeCategoryName(segmentName);
+    const existingCategory = siblingCategories.find(
+      (category) => normalizeCategoryName(category.name) === normalizedSegmentName
+    );
+
+    if (existingCategory) {
+      if (existingCategory.isAssignable !== shouldBeAssignable) {
+        await tx.partCategory.update({
+          where: {
+            id: existingCategory.id
+          },
+          data: {
+            isAssignable: shouldBeAssignable
+          }
+        });
+      }
+
+      currentParentId = existingCategory.id;
+      lastCategory = existingCategory;
+      continue;
+    }
+
+    const createdCategory = await tx.partCategory.create({
+      data: {
+        workspaceId,
+        parentId: currentParentId,
+        name: segmentName,
+        isAssignable: shouldBeAssignable
+      },
+      select: {
+        id: true
+      }
+    });
+
+    currentParentId = createdCategory.id;
+    lastCategory = createdCategory;
+  }
+
+  if (!lastCategory) {
+    throw new Error("category_name_required");
+  }
+
+  return tx.partCategory.findUniqueOrThrow({
+    where: {
+      id: lastCategory.id
+    }
+  });
+}
+
+function getCategoryPathSegments(rawName: string) {
+  return rawName
+    .split("/")
+    .map((segment) => segment.trim().replace(/\s+/g, " "))
+    .filter(Boolean);
+}
+
+function normalizeCategoryName(name: string) {
+  return name.trim().replace(/\s+/g, " ").toLocaleLowerCase("en");
 }
 
 export async function updatePartCategory({

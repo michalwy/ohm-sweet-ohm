@@ -361,6 +361,9 @@ test.describe("parts list", () => {
     const categoryName = `Sensors ${testInfo.project.name}`;
     const childName = `Temperature sensors ${testInfo.project.name}`;
     const updatedChildName = `Thermistors ${testInfo.project.name}`;
+    const quickPathRootName = `Modules ${testInfo.project.name}`;
+    const quickPathLeafName = `Class D ${testInfo.project.name}`;
+    const quickPathName = `${quickPathRootName} / Audio ${testInfo.project.name} / ${quickPathLeafName}`;
 
     await page.goto("/");
     await page.getByLabel("Email").fill("owner@ohmsweetohm.local");
@@ -450,6 +453,16 @@ test.describe("parts list", () => {
       page.locator("p").filter({ hasText: new RegExp(`^${categoryName}$`) })
         .first()
     ).toBeVisible();
+
+    await page.getByRole("button", { name: "Add root category" }).click();
+    await expect(addCategoryDialog).toBeVisible();
+    await addCategoryDialog.getByLabel("Name").fill(quickPathName);
+    await addCategoryDialog
+      .getByRole("button", { name: "Create category" })
+      .click();
+    await expect(page.getByRole("status")).toHaveText(
+      `Category created: ${quickPathLeafName}.`
+    );
 
     const categoryNode = page
       .getByTestId("part-category-node")
