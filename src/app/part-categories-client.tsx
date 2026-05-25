@@ -15,6 +15,7 @@ import {
 import { createPortal } from "react-dom";
 
 import {
+  createPartCategoryPathFromForm,
   createPartCategoryFromForm,
   deletePartCategoryFromForm,
   updatePartCategoryFromForm
@@ -51,6 +52,11 @@ import {
 type Copy = {
   title: string;
   addRootCategory: string;
+  quickCreatePath: string;
+  quickCreatePathTitle: string;
+  quickCreatePathBody: string;
+  path: string;
+  pathPlaceholder: string;
   addChild: string;
   edit: string;
   delete: string;
@@ -154,6 +160,7 @@ export function PartCategoriesClient({
   workspaceSlug
 }: PartCategoriesClientProps) {
   const categoryDialogRef = useRef<HTMLDialogElement>(null);
+  const quickPathDialogRef = useRef<HTMLDialogElement>(null);
   const globalAttributesDialogRef = useRef<HTMLDialogElement>(null);
   const nextToastIdRef = useRef(0);
   const [currentCategories, setCurrentCategories] = useState(categories);
@@ -174,6 +181,7 @@ export function PartCategoriesClient({
   const [createCategoryValueAttributeId, setCreateCategoryValueAttributeId] =
     useState("");
   const [createFormResetKey, setCreateFormResetKey] = useState(0);
+  const [quickPathError, setQuickPathError] = useState<string | null>(null);
   const [isGlobalAttributesDialogOpen, setIsGlobalAttributesDialogOpen] =
     useState(false);
   const [globalAttributeDrafts, setGlobalAttributeDrafts] = useState<
@@ -254,6 +262,26 @@ export function PartCategoriesClient({
         message: getCategorySuccessMessage(copy.createdToast, result.category)
       });
       closeCategoryDialog();
+    }
+  });
+  const createCategoryPathMutation = useMutation({
+    mutationFn: createPartCategoryPathFromForm,
+    onError: () => {
+      setQuickPathError(getCategoryErrorMessage(copy, "database-unavailable"));
+    },
+    onSuccess: (result) => {
+      if (!result.ok) {
+        setQuickPathError(getCategoryErrorMessage(copy, result.error));
+        return;
+      }
+
+      setCurrentCategories(result.categories);
+      setQuickPathError(null);
+      addToastMessage({
+        id: getNextToastId(nextToastIdRef),
+        message: getCategorySuccessMessage(copy.createdToast, result.category)
+      });
+      closeDialog(quickPathDialogRef.current);
     }
   });
 
@@ -525,6 +553,26 @@ export function PartCategoriesClient({
     setToastMessages((currentMessages) => [...currentMessages, toast]);
   }
 
+  function openQuickPathDialog() {
+    setQuickPathError(null);
+    window.requestAnimationFrame(() => openDialog(quickPathDialogRef.current));
+  }
+
+  function submitQuickPath(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const formData = new FormData(event.currentTarget);
+    const path = String(formData.get("path") ?? "").trim();
+
+    if (!path) {
+      setQuickPathError(copy.missingRequiredFields);
+      return;
+    }
+
+    formData.set("workspaceSlug", workspaceSlug);
+    formData.set("finalType", "assignable");
+    createCategoryPathMutation.mutate(formData);
+  }
+
   function openGlobalAttributesDialog() {
     setGlobalFieldError(null);
     loadGlobalAttributesMutation.mutate({
@@ -565,6 +613,14 @@ export function PartCategoriesClient({
           {copy.title}
         </h2>
         <div className="flex items-center justify-end gap-3 border-b border-slate-200 bg-white px-4 py-3">
+          <button
+            className="min-h-9 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:border-slate-400 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400"
+            disabled={!isDatabaseAvailable || !canWriteCategories}
+            type="button"
+            onClick={openQuickPathDialog}
+          >
+            {copy.quickCreatePath}
+          </button>
           <button
             className="min-h-9 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:border-slate-400 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400"
             disabled={!isDatabaseAvailable || !canWriteCategories}
@@ -709,6 +765,45 @@ export function PartCategoriesClient({
         onCancel={() => setCategoryPendingDelete(null)}
         onConfirm={confirmDeleteCategory}
       />
+      <DialogShell
+        ref={quickPathDialogRef}
+        closeLabel={copy.close}
+        description={copy.quickCreatePathBody}
+        title={copy.quickCreatePathTitle}
+        titleId="quick-path-dialog-title"
+        widthClassName="w-[min(36rem,calc(100vw-3rem))]"
+        onClose={() => setQuickPathError(null)}
+      >
+        <form className="grid gap-3 p-5" onSubmit={submitQuickPath}>
+          <input name="workspaceSlug" type="hidden" value={workspaceSlug} />
+          <label className="grid gap-2 text-sm font-medium text-slate-700">
+            <LabelWithError error={quickPathError}>{copy.path}</LabelWithError>
+            <input
+              className={getFieldInputClassName(
+                "min-h-11 rounded-md border border-slate-300 bg-white px-3 py-2 text-base text-slate-950 outline-none transition placeholder:text-slate-400 hover:border-slate-400 focus:border-slate-500 focus:ring-2 focus:ring-slate-200 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400",
+                Boolean(quickPathError)
+              )}
+              name="path"
+              placeholder={copy.pathPlaceholder}
+              required
+              type="text"
+            />
+          </label>
+          <DialogFooter className="items-center justify-end gap-3 px-0">
+            <button
+              className={primaryButtonClassName}
+              disabled={
+                !isDatabaseAvailable ||
+                !canWriteCategories ||
+                createCategoryPathMutation.isPending
+              }
+              type="submit"
+            >
+              {copy.createCategory}
+            </button>
+          </DialogFooter>
+        </form>
+      </DialogShell>
       <DialogShell
         ref={globalAttributesDialogRef}
         closeLabel={copy.close}

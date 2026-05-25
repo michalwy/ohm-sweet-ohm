@@ -6,6 +6,7 @@ import { authorizeWorkspacePermission } from "@/server/access-control/authorize"
 import { getCurrentWorkspaceContextBySlug } from "@/server/auth/currentContext";
 import {
   createPartCategory,
+  createPartCategoryPath,
   deletePartCategory,
   getPartCategories,
   type PartCategoryListItem,
@@ -72,6 +73,65 @@ export async function createPartCategoryFromForm(
         parentId,
         name,
         isAssignable
+      });
+      const nextCategories = await getPartCategories(context.workspace.id);
+      category =
+        nextCategories.find(
+          (currentCategory) => currentCategory.id === createdCategory.id
+        ) ?? null;
+      categories = nextCategories;
+    }
+  } catch (error) {
+    formError = getPartCategoryFormError(error);
+  }
+
+  if (formError) {
+    return getMutationErrorState(formError);
+  }
+
+  if (!category) {
+    return getMutationErrorState("database-unavailable");
+  }
+
+  revalidatePath(categoriesPath);
+  return getMutationSuccessState(category, categories);
+}
+
+export async function createPartCategoryPathFromForm(
+  formData: FormData
+): Promise<PartCategoryMutationResult> {
+  const workspaceSlug = getRequiredFormValue(formData, "workspaceSlug");
+  const path = getRequiredFormValue(formData, "path");
+  const parentId = getOptionalFormValue(formData, "parentId");
+  const finalIsAssignable =
+    getRequiredFormValue(formData, "finalType") !== "organizational";
+  const categoriesPath = getPartCategoriesPath(workspaceSlug);
+  let category: PartCategoryListItem | null = null;
+  let categories: PartCategoryListItem[] = [];
+
+  if (!workspaceSlug || !path) {
+    return getMutationErrorState("missing-required-fields");
+  }
+
+  let formError: string | null = null;
+
+  try {
+    const context = await getCurrentWorkspaceContextBySlug(workspaceSlug);
+
+    if (!context) {
+      formError = "database-unavailable";
+    } else {
+      await authorizeWorkspacePermission({
+        userId: context.user.id,
+        workspaceId: context.workspace.id,
+        permission: "part-categories:write"
+      });
+
+      const createdCategory = await createPartCategoryPath({
+        workspaceId: context.workspace.id,
+        parentId,
+        path,
+        finalIsAssignable
       });
       const nextCategories = await getPartCategories(context.workspace.id);
       category =

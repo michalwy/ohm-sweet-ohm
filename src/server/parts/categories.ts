@@ -145,9 +145,9 @@ export function buildPartCategoryPaths(
 
 export async function createPartCategory(input: PartCategoryInput) {
   return prisma.$transaction(async (tx) => {
-    const pathSegments = getCategoryPathSegments(input.name);
+    const name = input.name.trim();
 
-    if (pathSegments.length === 0) {
+    if (!name) {
       throw new Error("category_name_required");
     }
 
@@ -157,23 +157,14 @@ export async function createPartCategory(input: PartCategoryInput) {
       parentId: input.parentId
     });
 
-    const category =
-      pathSegments.length === 1
-        ? await tx.partCategory.create({
-            data: {
-              workspaceId: input.workspaceId,
-              parentId: input.parentId,
-              name: pathSegments[0],
-              isAssignable: input.isAssignable
-            }
-          })
-        : await createPartCategoryPath({
-            tx,
-            workspaceId: input.workspaceId,
-            parentId: input.parentId,
-            pathSegments,
-            finalIsAssignable: input.isAssignable
-          });
+    const category = await tx.partCategory.create({
+      data: {
+        workspaceId: input.workspaceId,
+        parentId: input.parentId,
+        name,
+        isAssignable: input.isAssignable
+      }
+    });
 
     await rebuildPartCategoryClosures(tx, input.workspaceId);
 
@@ -181,7 +172,45 @@ export async function createPartCategory(input: PartCategoryInput) {
   });
 }
 
-async function createPartCategoryPath({
+export async function createPartCategoryPath({
+  workspaceId,
+  parentId,
+  path,
+  finalIsAssignable
+}: {
+  workspaceId: string;
+  parentId: string | null;
+  path: string;
+  finalIsAssignable: boolean;
+}) {
+  return prisma.$transaction(async (tx) => {
+    const pathSegments = getCategoryPathSegments(path);
+
+    if (pathSegments.length === 0) {
+      throw new Error("category_name_required");
+    }
+
+    await validateParentCategory({
+      tx,
+      workspaceId,
+      parentId
+    });
+
+    const category = await createPartCategoryPathInTransaction({
+      tx,
+      workspaceId,
+      parentId,
+      pathSegments,
+      finalIsAssignable
+    });
+
+    await rebuildPartCategoryClosures(tx, workspaceId);
+
+    return category;
+  });
+}
+
+async function createPartCategoryPathInTransaction({
   tx,
   workspaceId,
   parentId,

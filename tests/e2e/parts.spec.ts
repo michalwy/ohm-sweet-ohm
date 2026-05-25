@@ -361,9 +361,9 @@ test.describe("parts list", () => {
     const categoryName = `Sensors ${testInfo.project.name}`;
     const childName = `Temperature sensors ${testInfo.project.name}`;
     const updatedChildName = `Thermistors ${testInfo.project.name}`;
-    const quickPathRootName = `Modules ${testInfo.project.name}`;
+    const slashLiteralName = `A/B sensors ${testInfo.project.name}`;
     const quickPathLeafName = `Class D ${testInfo.project.name}`;
-    const quickPathName = `${quickPathRootName} / Audio ${testInfo.project.name} / ${quickPathLeafName}`;
+    const quickPathName = `Modules ${testInfo.project.name} / Audio ${testInfo.project.name} / ${quickPathLeafName}`;
 
     await page.goto("/");
     await page.getByLabel("Email").fill("owner@ohmsweetohm.local");
@@ -456,8 +456,24 @@ test.describe("parts list", () => {
 
     await page.getByRole("button", { name: "Add root category" }).click();
     await expect(addCategoryDialog).toBeVisible();
-    await addCategoryDialog.getByLabel("Name").fill(quickPathName);
+    await addCategoryDialog.getByLabel("Name").fill(slashLiteralName);
     await addCategoryDialog
+      .getByRole("button", { name: "Create category" })
+      .click();
+    await expect(page.getByRole("status")).toHaveText(
+      `Category created: ${slashLiteralName}.`
+    );
+    await expect(
+      page.locator("p").filter({ hasText: new RegExp(`^${slashLiteralName}$`) }).first()
+    ).toBeVisible();
+
+    await page.getByRole("button", { name: "Quick create path" }).click();
+    const quickPathDialog = page.getByRole("dialog", {
+      name: "Quick create path"
+    });
+    await expect(quickPathDialog).toBeVisible();
+    await quickPathDialog.getByLabel("Path").fill(quickPathName);
+    await quickPathDialog
       .getByRole("button", { name: "Create category" })
       .click();
     await expect(page.getByRole("status")).toHaveText(
