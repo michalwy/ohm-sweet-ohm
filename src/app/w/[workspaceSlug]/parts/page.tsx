@@ -11,6 +11,7 @@ import { getManufacturerSuggestionsForPartForm } from "@/server/organizations/or
 import { getPartCategoriesForPartForm } from "@/server/parts/categories";
 import { getPartsList } from "@/server/parts/getParts";
 import { getEffectivePartCategoryAttributes } from "@/server/parts/attributes";
+import { getWorkspaceAttributes } from "@/server/parts/attributeMutations";
 
 export const dynamic = "force-dynamic";
 
@@ -48,6 +49,17 @@ const copy = {
   filterByManufacturer: "Filter by manufacturer",
   allManufacturers: "All manufacturers",
   clearFilters: "Clear filters",
+  configureList: "Configure list",
+  configureListTitle: "Configure list",
+  configureListBody: "Choose visible columns, order, sorting, and widths.",
+  visibleColumns: "Columns",
+  attributeColumns: "Attributes",
+  moveUp: "Up",
+  moveDown: "Down",
+  columnWidthPx: "Width",
+  sortingLabel: "Sort",
+  clearSorting: "None",
+  resetListConfiguration: "Reset defaults",
   filteredPartsSummary: "{visible} of {total} parts",
   actions: "Actions",
   newPartTitle: "Add part",
@@ -122,15 +134,17 @@ export default async function PartsPage({
   }
 
   const { page, isDatabaseAvailable } = await getPartsList(context);
-  const [partCategories, manufacturerSuggestions] = isDatabaseAvailable
+  const [partCategories, manufacturerSuggestions, workspaceAttributes] =
+    isDatabaseAvailable
     ? await Promise.all([
         getPartCategoriesForPartForm(context).catch(() => []),
         getManufacturerSuggestionsForPartForm({
           userId: context.user.id,
           workspaceId: context.workspace.id
-        }).catch(() => [])
+        }).catch(() => []),
+        getWorkspaceAttributes(context.workspace.id).catch(() => [])
       ])
-    : [[], []];
+    : [[], [], []];
   const categoryAttributesByCategoryId = isDatabaseAvailable
     ? Object.fromEntries(
         await Promise.all(
@@ -239,6 +253,7 @@ export default async function PartsPage({
               partCategories={partCategories}
               categoryAttributesByCategoryId={categoryAttributesByCategoryId}
               manufacturerSuggestions={manufacturerSuggestions}
+              workspaceAttributes={workspaceAttributes}
               initialPage={page}
               workspaceSlug={workspaceSlug}
             />

@@ -313,6 +313,39 @@ test.describe("parts list", () => {
     await expect(updatedPartRow).toHaveCount(0);
   });
 
+  test("configures visible columns and persists list settings", async ({ page }) => {
+    await page.goto("/");
+    await page.getByLabel("Email").fill("owner@ohmsweetohm.local");
+    await page.getByLabel("Password").fill("ohm-sweet-ohm-owner");
+    await page.getByRole("button", { name: "Sign in" }).click();
+    await expect(page).toHaveURL(/\/(workspaces|w\/default\/parts)$/);
+    const openWorkspaceLink = page.getByRole("link", { name: "Open" });
+    if (await openWorkspaceLink.count()) {
+      await openWorkspaceLink.click();
+    }
+    await expect(page).toHaveURL(/\/w\/default\/parts$/);
+
+    const partsTable = page.getByRole("table");
+    await expect(partsTable.getByRole("columnheader", { name: "Description" })).toBeVisible();
+
+    await page.getByRole("button", { name: "Configure list" }).click();
+    const listConfigDropdown = page.getByRole("menu", { name: "Columns" });
+    await expect(listConfigDropdown).toBeVisible();
+    await listConfigDropdown
+      .locator("label")
+      .filter({ hasText: "Description" })
+      .locator('input[type="checkbox"]')
+      .uncheck();
+    await page.keyboard.press("Escape");
+
+    await expect(partsTable.getByRole("columnheader", { name: "Description" })).toHaveCount(0);
+
+    await page.reload();
+    await expect(page).toHaveURL(/\/w\/default\/parts$/);
+    await expect(page.getByRole("heading", { level: 1, name: "Parts" })).toBeVisible();
+    await expect(partsTable.getByRole("columnheader", { name: "Description" })).toHaveCount(0);
+  });
+
   test("loads more parts and attributes while scrolling", async ({
     page
   }, testInfo) => {

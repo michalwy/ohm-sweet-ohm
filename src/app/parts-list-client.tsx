@@ -26,7 +26,11 @@ import type { ManufacturerSuggestion } from "@/server/organizations/organization
 import type { PartCategoryListItem } from "@/server/parts/categories";
 import type { PartsListItem } from "@/server/parts/getParts";
 import type { EffectiveCategoryAttribute } from "@/server/parts/attributes";
+import type { AttributeListItem } from "@/server/parts/attributeMutations";
 import { InfiniteListViewport } from "@/app/infinite-list";
+import {
+  useListTableConfiguration
+} from "@/app/list-table-config";
 import {
   getNextToastId,
   ToastNotice,
@@ -74,6 +78,17 @@ type Copy = {
   filterByManufacturer: string;
   allManufacturers: string;
   clearFilters: string;
+  configureList: string;
+  configureListTitle: string;
+  configureListBody: string;
+  visibleColumns: string;
+  attributeColumns: string;
+  moveUp: string;
+  moveDown: string;
+  columnWidthPx: string;
+  sortingLabel: string;
+  clearSorting: string;
+  resetListConfiguration: string;
   filteredPartsSummary: string;
   actions: string;
   newPartTitle: string;
@@ -140,6 +155,7 @@ type PartsListClientProps = {
   partCategories: PartCategoryListItem[];
   categoryAttributesByCategoryId: Record<string, EffectiveCategoryAttribute[]>;
   manufacturerSuggestions: ManufacturerSuggestion[];
+  workspaceAttributes: AttributeListItem[];
   initialPage: ListPage<PartsListItem>;
   workspaceSlug: string;
 };
@@ -152,12 +168,14 @@ export function PartsListClient({
   partCategories,
   categoryAttributesByCategoryId,
   manufacturerSuggestions,
+  workspaceAttributes,
   initialPage,
   workspaceSlug
 }: PartsListClientProps) {
   const queryClient = useQueryClient();
   const createDialogRef = useRef<HTMLDialogElement>(null);
   const editDialogRef = useRef<HTMLDialogElement>(null);
+  const listColumnsMenuRef = useRef<HTMLDivElement>(null);
   const createDetailsContentRef = useRef<HTMLDivElement>(null);
   const editDetailsContentRef = useRef<HTMLDivElement>(null);
   const nextToastIdRef = useRef(0);
@@ -199,6 +217,87 @@ export function PartsListClient({
   const [editingPart, setEditingPart] = useState<PartsListItem | null>(null);
   const [partPendingDelete, setPartPendingDelete] =
     useState<PartsListItem | null>(null);
+  const [isColumnsMenuOpen, setIsColumnsMenuOpen] = useState(false);
+  const [draggedColumnId, setDraggedColumnId] = useState<string | null>(null);
+  const [isResizingColumn, setIsResizingColumn] = useState(false);
+  const attributeColumnDefinitions = useMemo(
+    () =>
+      workspaceAttributes.map((attribute) => ({
+        id: `attribute:${attribute.id}`,
+        label: attribute.name,
+        group: "attribute" as const,
+        defaultVisible: false,
+        defaultWidth: 160,
+        minWidth: 80,
+        sortable: true
+      })),
+    [workspaceAttributes]
+  );
+  const listColumns = useMemo(
+    () => [
+      {
+        id: "categories",
+        label: copy.categories,
+        group: "base" as const,
+        defaultWidth: 300,
+        minWidth: 120
+      },
+      {
+        id: "manufacturerName",
+        label: copy.manufacturer,
+        group: "base" as const,
+        defaultWidth: 160,
+        minWidth: 72,
+        sortable: true
+      },
+      {
+        id: "catalogNumber",
+        label: copy.catalogNumber,
+        group: "base" as const,
+        defaultWidth: 190,
+        minWidth: 64,
+        sortable: true
+      },
+      {
+        id: "description",
+        label: copy.description,
+        group: "base" as const,
+        defaultWidth: 360,
+        minWidth: 96,
+        sortable: true
+      },
+      {
+        id: "valueDisplayValue",
+        label: copy.value,
+        group: "base" as const,
+        defaultWidth: 110,
+        minWidth: 64,
+        sortable: true
+      },
+      ...attributeColumnDefinitions
+    ],
+    [attributeColumnDefinitions, copy]
+  );
+  const fixedListColumnIds = useMemo(() => ["actions"], []);
+  const {
+    columnSizing,
+    columnVisibility,
+    configurableColumns,
+    setColumnWidth,
+    setColumnSorting,
+    setColumnVisible,
+    setColumnOrder,
+    setColumnSizing,
+    setColumnVisibility,
+    setSorting,
+    sorting,
+    columnOrder: persistedColumnOrder,
+    isLoaded: isListConfigurationLoaded
+  } = useListTableConfiguration({
+    storageKey: `oso:list-config:parts:${workspaceSlug}`,
+    columns: listColumns,
+    fixedColumnIds: fixedListColumnIds
+  });
   const createHasAttributesTab =
     getPartAttributeGroups({
       categoryAttributesByCategoryId,
@@ -223,9 +322,11 @@ export function PartsListClient({
     {
       searchQuery: debouncedSearchQuery,
       categoryFilterId,
-      manufacturerFilter: debouncedManufacturerFilter
+      manufacturerFilter: debouncedManufacturerFilter,
+      sorting
     }
   ] as const;
+  const activeSorting = sorting[0] ?? null;
   const partsQuery = useInfiniteQuery({
     queryKey: partsQueryKey,
     enabled: isDatabaseAvailable,
@@ -236,7 +337,9 @@ export function PartsListClient({
         cursor: pageParam,
         searchQuery: debouncedSearchQuery,
         categoryFilterId,
-        manufacturerFilter: debouncedManufacturerFilter
+        manufacturerFilter: debouncedManufacturerFilter,
+        sortBy: activeSorting?.id ?? null,
+        sortDirection: activeSorting?.desc ? "desc" : "asc"
       });
 
       if (!result.ok) {
@@ -249,7 +352,8 @@ export function PartsListClient({
     initialData:
       !debouncedSearchQuery &&
       !categoryFilterId &&
-      !debouncedManufacturerFilter
+      !debouncedManufacturerFilter &&
+      sorting.length === 0
         ? {
             pages: [initialPage],
             pageParams: [null]
@@ -389,29 +493,80 @@ export function PartsListClient({
   });
   const columns = useMemo(() => {
     const columnHelper = createColumnHelper<PartsListItem>();
+    const attributeColumns = workspaceAttributes.map((attribute) =>
+      columnHelper.accessor(
+        (row) =>
+          row.attributeValues.find(
+            (attributeValue) => attributeValue.attributeId === attribute.id
+          )?.displayValue ?? "",
+        {
+          id: `attribute:${attribute.id}`,
+          header: attribute.name,
+          size: 160,
+          minSize: 80,
+          sortingFn: (rowA, rowB) => {
+            const valueA =
+              rowA.original.attributeValues.find(
+                (attributeValue) => attributeValue.attributeId === attribute.id
+              )?.displayValue ?? "";
+            const valueB =
+              rowB.original.attributeValues.find(
+                (attributeValue) => attributeValue.attributeId === attribute.id
+              )?.displayValue ?? "";
+
+            if (attribute.type === "QUANTITY") {
+              return compareQuantityDisplayValues(valueA, valueB);
+            }
+
+            if (attribute.type === "NUMBER") {
+              return compareNumericDisplayValues(valueA, valueB);
+            }
+
+            return compareTextValues(valueA, valueB);
+          },
+          cell: ({ getValue }) => {
+            const value = getValue();
+
+            return value ? (
+              <span className="text-slate-700">{value}</span>
+            ) : (
+              <span className="text-slate-400">-</span>
+            );
+          }
+        }
+      )
+    );
 
     return [
       columnHelper.display({
         id: "categories",
         header: copy.categories,
+        size: 300,
+        minSize: 120,
         cell: ({ row }) => (
           <PartCategoriesSummary copy={copy} part={row.original} />
         )
       }),
       columnHelper.accessor("manufacturerName", {
         header: copy.manufacturer,
+        size: 160,
+        minSize: 72,
         cell: ({ getValue }) => (
           <span className="text-slate-950">{getValue()}</span>
         )
       }),
       columnHelper.accessor("catalogNumber", {
         header: copy.catalogNumber,
+        size: 190,
+        minSize: 64,
         cell: ({ getValue }) => (
           <span className="font-mono text-slate-950">{getValue()}</span>
         )
       }),
       columnHelper.accessor("description", {
         header: copy.description,
+        size: 360,
+        minSize: 96,
         cell: ({ getValue }) => {
           const value = getValue();
 
@@ -424,6 +579,13 @@ export function PartsListClient({
       }),
       columnHelper.accessor("valueDisplayValue", {
         header: copy.value,
+        size: 110,
+        minSize: 64,
+        sortingFn: (rowA, rowB) =>
+          compareQuantityDisplayValues(
+            rowA.original.valueDisplayValue ?? "",
+            rowB.original.valueDisplayValue ?? ""
+          ),
         cell: ({ getValue }) => {
           const value = getValue();
 
@@ -437,6 +599,8 @@ export function PartsListClient({
       columnHelper.display({
         id: "actions",
         header: copy.actions,
+        size: 112,
+        minSize: 112,
         cell: ({ row }) => (
           <div className="text-right">
             <button
@@ -449,15 +613,34 @@ export function PartsListClient({
             </button>
           </div>
         )
-      })
+      }),
+      ...attributeColumns
     ];
-  }, [copy, isDatabaseAvailable]);
+  }, [copy, isDatabaseAvailable, workspaceAttributes]);
+  const tableColumnOrder = useMemo(
+    () => persistedColumnOrder,
+    [persistedColumnOrder]
+  );
   // TanStack Table intentionally returns dynamic helpers that React Compiler cannot memoize.
   // eslint-disable-next-line react-hooks/incompatible-library
   const partsTable = useReactTable({
     data: currentParts,
     columns,
-    getCoreRowModel: getCoreRowModel()
+    state: {
+      columnVisibility,
+      columnOrder: tableColumnOrder,
+      sorting,
+      columnSizing
+    },
+    onColumnVisibilityChange: setColumnVisibility,
+    onColumnOrderChange: setColumnOrder,
+    onSortingChange: setSorting,
+    onColumnSizingChange: setColumnSizing,
+    columnResizeMode: "onChange",
+    enableColumnResizing: true,
+    manualSorting: true,
+    getCoreRowModel: getCoreRowModel(),
+    getSortedRowModel: undefined
   });
 
   useEffect(() => {
@@ -662,6 +845,85 @@ export function PartsListClient({
     );
   }
 
+  function toggleColumnSorting(columnId: string) {
+    const currentSort = sorting.find((item) => item.id === columnId);
+    if (!currentSort) {
+      setColumnSorting(columnId, "asc");
+      return;
+    }
+
+    if (!currentSort.desc) {
+      setColumnSorting(columnId, "desc");
+      return;
+    }
+
+    setColumnSorting(columnId, "none");
+  }
+
+  function moveColumnByDrag(targetColumnId: string) {
+    if (!draggedColumnId || draggedColumnId === targetColumnId) {
+      return;
+    }
+
+    setColumnOrder((currentOrder) => {
+      const sourceIndex = currentOrder.indexOf(draggedColumnId);
+      const targetIndex = currentOrder.indexOf(targetColumnId);
+      if (sourceIndex < 0 || targetIndex < 0) {
+        return currentOrder;
+      }
+
+      const nextOrder = [...currentOrder];
+      const [sourceItem] = nextOrder.splice(sourceIndex, 1);
+      nextOrder.splice(targetIndex, 0, sourceItem);
+      return nextOrder;
+    });
+  }
+
+  useEffect(() => {
+    if (!isColumnsMenuOpen) {
+      return undefined;
+    }
+
+    function handlePointerDown(event: MouseEvent) {
+      if (!listColumnsMenuRef.current) {
+        return;
+      }
+
+      if (!listColumnsMenuRef.current.contains(event.target as Node)) {
+        setIsColumnsMenuOpen(false);
+      }
+    }
+
+    window.addEventListener("mousedown", handlePointerDown);
+    return () => window.removeEventListener("mousedown", handlePointerDown);
+  }, [isColumnsMenuOpen]);
+
+  useEffect(() => {
+    if (!isResizingColumn) {
+      return undefined;
+    }
+
+    function handlePointerUp() {
+      setIsResizingColumn(false);
+    }
+
+    window.addEventListener("mouseup", handlePointerUp);
+    window.addEventListener("touchend", handlePointerUp);
+
+    return () => {
+      window.removeEventListener("mouseup", handlePointerUp);
+      window.removeEventListener("touchend", handlePointerUp);
+    };
+  }, [isResizingColumn]);
+  const baseConfigurableColumns = useMemo(
+    () => configurableColumns.filter((column) => column.group !== "attribute"),
+    [configurableColumns]
+  );
+  const attributeConfigurableColumns = useMemo(
+    () => configurableColumns.filter((column) => column.group === "attribute"),
+    [configurableColumns]
+  );
+
   return (
     <>
       <section
@@ -712,7 +974,7 @@ export function PartsListClient({
             value={manufacturerFilter}
             onValueChange={setManufacturerFilter}
           />
-          <div className="flex min-h-9 items-center gap-3 pb-0.5">
+          <div className="ml-auto flex min-h-9 items-center gap-3 pb-0.5">
             <p className="min-w-28 text-sm text-slate-500">
               {formatFilteredPartsSummary(copy, {
                 total: partsCounts.totalCount,
@@ -732,8 +994,68 @@ export function PartsListClient({
                 {copy.clearFilters}
               </button>
             ) : null}
-          </div>
-          <div className="ml-auto pb-0.5">
+            <div ref={listColumnsMenuRef} className="relative">
+              <button
+                className="min-h-9 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:border-slate-400 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2"
+                type="button"
+                onClick={() => setIsColumnsMenuOpen((current) => !current)}
+              >
+                {copy.configureList}
+              </button>
+              {isColumnsMenuOpen ? (
+                <div
+                  aria-label={copy.visibleColumns}
+                  role="menu"
+                  className="absolute right-0 z-20 mt-2 min-w-64 rounded-md border border-slate-200 bg-white p-2 shadow-lg"
+                >
+                  <p className="px-2 py-1 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    {copy.visibleColumns}
+                  </p>
+                  <div className="grid gap-1">
+                    {baseConfigurableColumns.map((column) => (
+                      <label
+                        key={column.id}
+                        className="inline-flex min-h-8 items-center gap-2 rounded px-2 text-sm text-slate-700 hover:bg-slate-50"
+                      >
+                        <input
+                          checked={columnVisibility[column.id] !== false}
+                          type="checkbox"
+                          onChange={(event) =>
+                            setColumnVisible(column.id, event.currentTarget.checked)
+                          }
+                        />
+                        <span>{column.label}</span>
+                      </label>
+                    ))}
+                  </div>
+                  {attributeConfigurableColumns.length > 0 ? (
+                    <>
+                      <div className="my-2 border-t border-slate-200" />
+                      <p className="px-2 py-1 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                        {copy.attributeColumns}
+                      </p>
+                      <div className="grid max-h-56 gap-1 overflow-auto">
+                        {attributeConfigurableColumns.map((column) => (
+                          <label
+                            key={column.id}
+                            className="inline-flex min-h-8 items-center gap-2 rounded px-2 text-sm text-slate-700 hover:bg-slate-50"
+                          >
+                            <input
+                              checked={columnVisibility[column.id] !== false}
+                              type="checkbox"
+                              onChange={(event) =>
+                                setColumnVisible(column.id, event.currentTarget.checked)
+                              }
+                            />
+                            <span>{column.label}</span>
+                          </label>
+                        ))}
+                      </div>
+                    </>
+                  ) : null}
+                </div>
+              ) : null}
+            </div>
             <button
               className={primaryButtonClassName}
               disabled={!isDatabaseAvailable}
@@ -764,7 +1086,7 @@ export function PartsListClient({
           isEmpty={currentParts.length === 0}
           isError={partsQuery.isError}
           isFetchingNextPage={partsQuery.isFetchingNextPage}
-          isInitialLoading={partsQuery.isLoading}
+          isInitialLoading={partsQuery.isLoading || !isListConfigurationLoaded}
           loadingLabel={copy.loadingParts}
           loadingMoreLabel={copy.loadingMoreParts}
           loadMore={() => {
@@ -772,7 +1094,15 @@ export function PartsListClient({
           }}
           testId="parts-list-viewport"
         >
-          <table className="min-w-full border-separate border-spacing-0 text-left text-sm">
+          <table
+            className="table-fixed border-separate border-spacing-0 text-left text-sm"
+            style={{ width: partsTable.getTotalSize() }}
+          >
+            <colgroup>
+              {partsTable.getVisibleLeafColumns().map((column) => (
+                <col key={column.id} style={{ width: column.getSize() }} />
+              ))}
+            </colgroup>
             <thead className="sticky top-0 z-10 bg-slate-50">
               {partsTable.getHeaderGroups().map((headerGroup) => (
                 <tr key={headerGroup.id}>
@@ -780,16 +1110,114 @@ export function PartsListClient({
                     <th
                       key={header.id}
                       scope="col"
-                      className={`border-b border-slate-200 px-3 py-2 font-semibold text-slate-600 ${
-                        header.column.id === "actions" ? "w-28 text-right" : ""
+                      draggable={header.column.id !== "actions" && !isResizingColumn}
+                      className={`relative border-b border-slate-200 px-2 py-2 font-semibold text-slate-600 ${
+                        header.column.id === "actions"
+                          ? "w-28 text-right"
+                          : header.column.id.startsWith("attribute:") ||
+                              header.column.id === "valueDisplayValue"
+                            ? "text-center"
+                            : ""
                       }`}
+                      style={{ width: header.getSize() }}
+                      onDragStart={(event) => {
+                        if (isResizingColumn) {
+                          event.preventDefault();
+                          return;
+                        }
+
+                        if (header.column.id !== "actions") {
+                          setDraggedColumnId(header.column.id);
+                        }
+                      }}
+                      onDragOver={(event) => {
+                        if (draggedColumnId && header.column.id !== "actions") {
+                          event.preventDefault();
+                        }
+                      }}
+                      onDrop={() => {
+                        if (header.column.id !== "actions") {
+                          moveColumnByDrag(header.column.id);
+                        }
+                        setDraggedColumnId(null);
+                      }}
+                      onDragEnd={() => setDraggedColumnId(null)}
                     >
-                      {header.isPlaceholder
-                        ? null
-                        : flexRender(
-                            header.column.columnDef.header,
-                            header.getContext()
-                          )}
+                      {header.isPlaceholder ? null : (
+                        <div
+                          className={`flex items-center gap-2 ${
+                            header.column.id.startsWith("attribute:") ||
+                            header.column.id === "valueDisplayValue"
+                              ? "justify-center"
+                              : ""
+                          }`}
+                        >
+                          <button
+                            className={`inline-flex items-center gap-1 text-left ${
+                              header.column.getCanSort()
+                                ? "cursor-pointer hover:text-slate-900"
+                                : "cursor-default"
+                            } ${
+                              header.column.id.startsWith("attribute:") ||
+                              header.column.id === "valueDisplayValue"
+                                ? "w-full justify-center text-center"
+                                : ""
+                            }`}
+                            type="button"
+                            onClick={() => {
+                              if (header.column.getCanSort()) {
+                                toggleColumnSorting(header.column.id);
+                              }
+                            }}
+                          >
+                            <span>
+                              {flexRender(
+                                header.column.columnDef.header,
+                                header.getContext()
+                              )}
+                            </span>
+                            {header.column.getCanSort() &&
+                            header.column.getIsSorted() ? (
+                              <span className="text-xs text-slate-400">
+                                {header.column.getIsSorted() === "asc"
+                                  ? "▲"
+                                  : "▼"}
+                              </span>
+                            ) : null}
+                          </button>
+                        </div>
+                      )}
+                      {header.column.getCanResize() ? (
+                        <div
+                          className={`absolute right-0 top-0 h-full w-3 cursor-col-resize select-none ${
+                            header.column.getIsResizing()
+                              ? "bg-slate-200"
+                              : "bg-transparent"
+                          }`}
+                          onMouseDown={(event) => {
+                            event.stopPropagation();
+                            setIsResizingColumn(true);
+                            header.getResizeHandler()(event);
+                          }}
+                          onTouchStart={(event) => {
+                            event.stopPropagation();
+                            setIsResizingColumn(true);
+                            header.getResizeHandler()(event);
+                          }}
+                          onDoubleClick={() =>
+                            setColumnWidth(
+                              header.column.id,
+                              Number(
+                                listColumns.find(
+                                  (column) => column.id === header.column.id
+                                )?.defaultWidth ?? 160
+                              )
+                            )
+                          }
+                        >
+                          <div className="ml-auto h-full w-px bg-slate-300" />
+                        </div>
+                      ) : null}
                     </th>
                   ))}
                 </tr>
@@ -804,14 +1232,22 @@ export function PartsListClient({
                   {row.getVisibleCells().map((cell) => (
                     <td
                       key={cell.id}
-                      className={`border-b border-slate-100 px-3 py-2 text-slate-700 ${
-                        cell.column.id === "actions" ? "py-1.5" : ""
+                      className={`overflow-hidden border-b border-slate-100 px-2 py-2 text-slate-700 ${
+                        cell.column.id === "actions"
+                          ? "py-1.5"
+                          : cell.column.id.startsWith("attribute:") ||
+                              cell.column.id === "valueDisplayValue"
+                            ? "text-center"
+                            : ""
                       }`}
+                      style={{ width: cell.column.getSize() }}
                     >
-                      {flexRender(
-                        cell.column.columnDef.cell,
-                        cell.getContext()
-                      )}
+                      <div className="overflow-hidden text-ellipsis">
+                        {flexRender(
+                          cell.column.columnDef.cell,
+                          cell.getContext()
+                        )}
+                      </div>
                     </td>
                   ))}
                 </tr>
@@ -1237,6 +1673,100 @@ function getPartAttributeValueState(part: PartsListItem) {
       attributeValue.displayValue
     ])
   );
+}
+
+const siPrefixFactorBySymbol: Record<string, number> = {
+  p: 1e-12,
+  n: 1e-9,
+  u: 1e-6,
+  µ: 1e-6,
+  m: 1e-3,
+  "": 1,
+  k: 1e3,
+  M: 1e6,
+  G: 1e9
+};
+
+function parseQuantityDisplayValue(value: string) {
+  const normalized = value.trim();
+  if (!normalized) {
+    return null;
+  }
+
+  const match = normalized.match(
+    /^([+-]?\d+(?:[.,]\d+)?)\s*([pnumkMGµ]?)([a-zA-Z]+)?$/u
+  );
+
+  if (!match) {
+    return null;
+  }
+
+  const numericPart = Number(match[1].replace(",", "."));
+  if (!Number.isFinite(numericPart)) {
+    return null;
+  }
+
+  const prefix = match[2] ?? "";
+  const factor = siPrefixFactorBySymbol[prefix];
+
+  if (!factor) {
+    return null;
+  }
+
+  return numericPart * factor;
+}
+
+function compareNumericDisplayValues(left: string, right: string) {
+  const leftNumber = Number(left.replace(",", "."));
+  const rightNumber = Number(right.replace(",", "."));
+  const leftValid = Number.isFinite(leftNumber);
+  const rightValid = Number.isFinite(rightNumber);
+
+  if (!leftValid && !rightValid) {
+    return compareTextValues(left, right);
+  }
+  if (!leftValid) {
+    return 1;
+  }
+  if (!rightValid) {
+    return -1;
+  }
+  if (leftNumber < rightNumber) {
+    return -1;
+  }
+  if (leftNumber > rightNumber) {
+    return 1;
+  }
+  return 0;
+}
+
+function compareQuantityDisplayValues(left: string, right: string) {
+  const leftQuantity = parseQuantityDisplayValue(left);
+  const rightQuantity = parseQuantityDisplayValue(right);
+
+  if (leftQuantity === null && rightQuantity === null) {
+    return compareTextValues(left, right);
+  }
+  if (leftQuantity === null) {
+    return 1;
+  }
+  if (rightQuantity === null) {
+    return -1;
+  }
+  if (leftQuantity < rightQuantity) {
+    return -1;
+  }
+  if (leftQuantity > rightQuantity) {
+    return 1;
+  }
+  return 0;
+}
+
+function compareTextValues(left: string, right: string) {
+  return left.localeCompare(right, "en", {
+    sensitivity: "base",
+    numeric: true
+  });
 }
 
 function formatFilteredPartsSummary(

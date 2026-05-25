@@ -41,9 +41,13 @@ export type PartsListFilters = {
   manufacturerFilter?: string | null;
 };
 
+export type PartsListSortDirection = "asc" | "desc";
+
 export type PartsListPageInput = PartsListFilters & {
   cursor?: string | null;
   pageSize?: number | null;
+  sortBy?: string | null;
+  sortDirection?: PartsListSortDirection | null;
 };
 
 type WorkspaceContext = {
@@ -82,6 +86,10 @@ type PartListCursor = {
   id: string;
 };
 
+type SortedPartsCursor = {
+  offset: number;
+};
+
 export async function getPartsListPage(
   context: WorkspaceContext,
   input: PartsListPageInput
@@ -118,6 +126,23 @@ export async function getPartsListPage(
     filterCategoryIds,
     searchCategoryIds
   });
+  const activeSortBy = input.sortBy?.trim() ?? "";
+  const activeSortDirection: PartsListSortDirection =
+    input.sortDirection === "desc" ? "desc" : "asc";
+
+  if (activeSortBy) {
+    return getSortedPartsListPage({
+      baseWhere,
+      categoryPathsById,
+      pageSize,
+      sortBy: activeSortBy,
+      sortDirection: activeSortDirection,
+      totalCount,
+      workspaceId: context.workspace.id,
+      cursor: input.cursor
+    });
+  }
+
   const cursor = decodeListCursor<PartListCursor>(input.cursor);
   const where = cursor
     ? {
@@ -184,7 +209,9 @@ const partListSelect = {
     orderBy: [{ attribute: { name: "asc" } }, { id: "asc" }],
     select: {
       attributeId: true,
-      displayValue: true
+      displayValue: true,
+      numberValue: true,
+      quantityBaseValue: true
     }
   }
 } satisfies Prisma.PartSelect;
@@ -192,6 +219,217 @@ const partListSelect = {
 type SelectedPartListItem = Prisma.PartGetPayload<{
   select: typeof partListSelect;
 }>;
+
+type SortablePartRecord = {
+  item: PartsListItem;
+  part: SelectedPartListItem;
+  valueAttributeId: string | null;
+};
+
+async function getSortedPartsListPage({
+  baseWhere,
+  categoryPathsById,
+  cursor,
+  pageSize,
+  sortBy,
+  sortDirection,
+  totalCount,
+  workspaceId
+}: {
+  baseWhere: Prisma.PartWhereInput;
+  categoryPathsById: Map<string, string>;
+  cursor?: string | null;
+  pageSize: number;
+  sortBy: string;
+  sortDirection: PartsListSortDirection;
+  totalCount: number;
+  workspaceId: string;
+}): Promise<ListPage<PartsListItem>> {
+  const [filteredParts, filteredCount] = await Promise.all([
+    prisma.part.findMany({
+      where: baseWhere,
+      orderBy: [{ id: "asc" }],
+      select: partListSelect
+    }),
+    prisma.part.count({ where: baseWhere })
+  ]);
+  const valueAttributeIdsByCategoryId = await getValueAttributeIdsByCategoryId({
+    workspaceId,
+    categoryIds: filteredParts
+      .map((part) => part.primaryCategoryId)
+      .filter((categoryId): categoryId is string => Boolean(categoryId))
+  });
+  const sortableRecords: SortablePartRecord[] = filteredParts.map((part) => {
+    const item = mapPartListItem({
+      part,
+      categoryPathsById,
+      valueAttributeIdsByCategoryId
+    });
+    const valueAttributeId = part.primaryCategoryId
+      ? valueAttributeIdsByCategoryId.get(part.primaryCategoryId) ?? null
+      : null;
+
+    return {
+      item,
+      part,
+      valueAttributeId
+    };
+  });
+
+  sortableRecords.sort((left, right) => {
+    const comparison = comparePartsBySort({
+      left,
+      right,
+      sortBy
+    });
+
+    if (comparison !== 0) {
+      return sortDirection === "desc" ? -comparison : comparison;
+    }
+
+    return left.item.id.localeCompare(right.item.id, "en", {
+      sensitivity: "base"
+    });
+  });
+
+  const sortedCursor = decodeListCursor<SortedPartsCursor>(cursor);
+  const offset = sortedCursor?.offset ?? 0;
+  const pageItems = sortableRecords.slice(offset, offset + pageSize);
+  const nextOffset = offset + pageItems.length;
+  const nextCursor =
+    nextOffset < sortableRecords.length
+      ? encodeListCursor<SortedPartsCursor>({ offset: nextOffset })
+      : null;
+
+  return {
+    items: pageItems.map((record) => record.item),
+    nextCursor,
+    totalCount,
+    filteredCount
+  };
+}
+
+function comparePartsBySort({
+  left,
+  right,
+  sortBy
+}: {
+  left: SortablePartRecord;
+  right: SortablePartRecord;
+  sortBy: string;
+}) {
+  if (sortBy === "categories") {
+    return compareText(left.item.primaryCategoryPath ?? "", right.item.primaryCategoryPath ?? "");
+  }
+
+  if (sortBy === "manufacturerName") {
+    return compareText(left.item.manufacturerName, right.item.manufacturerName);
+  }
+
+  if (sortBy === "catalogNumber") {
+    return compareText(left.item.catalogNumber, right.item.catalogNumber);
+  }
+
+  if (sortBy === "description") {
+    return compareText(left.item.description ?? "", right.item.description ?? "");
+  }
+
+  if (sortBy === "valueDisplayValue") {
+    const leftValue = getSortableValueForAttribute(left.part, left.valueAttributeId);
+    const rightValue = getSortableValueForAttribute(right.part, right.valueAttributeId);
+
+    return compareSortableValues(leftValue, rightValue);
+  }
+
+  if (sortBy.startsWith("attribute:")) {
+    const attributeId = sortBy.replace("attribute:", "");
+    const leftValue = getSortableValueForAttribute(left.part, attributeId);
+    const rightValue = getSortableValueForAttribute(right.part, attributeId);
+
+    return compareSortableValues(leftValue, rightValue);
+  }
+
+  return 0;
+}
+
+type SortableValue =
+  | { kind: "quantity"; value: number }
+  | { kind: "number"; value: number }
+  | { kind: "text"; value: string }
+  | null;
+
+function getSortableValueForAttribute(
+  part: SelectedPartListItem,
+  attributeId: string | null
+): SortableValue {
+  if (!attributeId) {
+    return null;
+  }
+
+  const attributeValue = part.attributeValues.find(
+    (value) => value.attributeId === attributeId
+  );
+
+  if (!attributeValue) {
+    return null;
+  }
+
+  if (attributeValue.quantityBaseValue !== null) {
+    return {
+      kind: "quantity",
+      value: Number(attributeValue.quantityBaseValue)
+    };
+  }
+
+  if (attributeValue.numberValue !== null) {
+    return {
+      kind: "number",
+      value: Number(attributeValue.numberValue)
+    };
+  }
+
+  return {
+    kind: "text",
+    value: attributeValue.displayValue ?? ""
+  };
+}
+
+function compareSortableValues(left: SortableValue, right: SortableValue) {
+  if (left === null && right === null) {
+    return 0;
+  }
+
+  if (left === null) {
+    return 1;
+  }
+
+  if (right === null) {
+    return -1;
+  }
+
+  if ((left.kind === "quantity" || left.kind === "number") && right.kind === left.kind) {
+    if (left.value < right.value) {
+      return -1;
+    }
+    if (left.value > right.value) {
+      return 1;
+    }
+    return 0;
+  }
+
+  if (left.kind === "text" && right.kind === "text") {
+    return compareText(left.value, right.value);
+  }
+
+  return compareText(String(left.value), String(right.value));
+}
+
+function compareText(left: string, right: string) {
+  return left.localeCompare(right, "en", {
+    sensitivity: "base",
+    numeric: true
+  });
+}
 
 function mapPartListItem({
   part,
