@@ -12,6 +12,7 @@ import {
   deleteAttribute,
   detachCategoryAttribute,
   getEffectiveCategoryAttributeConfiguration,
+  getWorkspaceAttributePage,
   getWorkspaceAttributes,
   setCategoryValueAttribute,
   updateChoiceOption,
@@ -23,6 +24,7 @@ import {
 } from "@/server/parts/attributeMutations";
 import type { EffectiveCategoryAttribute } from "@/server/parts/attributes";
 import type { AttributeValueType } from "@/server/parts/attributeValues";
+import type { ListPage } from "@/server/pagination";
 
 export type AttributeActionResult<T> =
   | {
@@ -46,6 +48,29 @@ export async function getAttributeDictionaryForWorkspace(
     });
 
     return getSuccessState(await getWorkspaceAttributes(context.workspace.id));
+  } catch (error) {
+    return getErrorState(getAttributeActionError(error));
+  }
+}
+
+export async function getAttributeDictionaryPageForWorkspace(input: {
+  workspaceSlug: string;
+  cursor?: string | null;
+  pageSize?: number | null;
+}): Promise<AttributeActionResult<ListPage<AttributeListItem>>> {
+  try {
+    const context = await getAuthorizedAttributeContext({
+      workspaceSlug: input.workspaceSlug,
+      permission: "attributes:read"
+    });
+
+    return getSuccessState(
+      await getWorkspaceAttributePage({
+        workspaceId: context.workspace.id,
+        cursor: input.cursor,
+        pageSize: input.pageSize
+      })
+    );
   } catch (error) {
     return getErrorState(getAttributeActionError(error));
   }

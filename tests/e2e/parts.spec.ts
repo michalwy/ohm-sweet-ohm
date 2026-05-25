@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Locator, type Page } from "@playwright/test";
 import { Pool } from "pg";
 
 test.describe("parts list", () => {
@@ -292,6 +292,48 @@ test.describe("parts list", () => {
       `Part deleted: ${updatedManufacturer} ${updatedCatalogNumber}.`
     );
     await expect(updatedPartRow).toHaveCount(0);
+  });
+
+  test("loads more parts and attributes while scrolling", async ({
+    page
+  }, testInfo) => {
+    const suffix = getDatabaseSafeSuffix(testInfo.project.name);
+    const manufacturerName = `ZZZ Scroll Manufacturer ${suffix}`;
+    const targetCatalogNumber = `ZZZ-SCROLL-${suffix}-059`;
+    const targetAttributeName = `ZZZ Scroll Attribute ${suffix} 059`;
+
+    await seedLargeListsForScrolling(suffix);
+
+    await page.goto("/");
+    await page.getByLabel("Email").fill("owner@ohmsweetohm.local");
+    await page.getByLabel("Password").fill("ohm-sweet-ohm-owner");
+    await page.getByRole("button", { name: "Sign in" }).click();
+
+    await expect(
+      page.getByRole("heading", { level: 1, name: "Workspaces" })
+    ).toBeVisible();
+    await page.getByRole("link", { name: "Open" }).click();
+
+    await expect(page).toHaveURL(/\/w\/default\/parts$/);
+    const targetPartRow = page.getByRole("row", {
+      name: new RegExp(`${manufacturerName}.*${targetCatalogNumber}`)
+    });
+    await expect(targetPartRow).toHaveCount(0);
+    await scrollListUntilVisible(page, "parts-list-viewport", targetPartRow);
+    await expect(targetPartRow).toContainText("Scroll-loaded test part 059");
+
+    await page.getByRole("link", { name: "Attributes" }).click();
+    await expect(page).toHaveURL(/\/w\/default\/attributes$/);
+    const targetAttributeRow = page.getByRole("row", {
+      name: new RegExp(targetAttributeName)
+    });
+    await expect(targetAttributeRow).toHaveCount(0);
+    await scrollListUntilVisible(
+      page,
+      "attributes-list-viewport",
+      targetAttributeRow
+    );
+    await expect(targetAttributeRow).toContainText("Quantity");
   });
 
   test("manages the part category tree with delete protections", async ({
@@ -969,4 +1011,143 @@ async function attachTextAttributeToCategory({
   } finally {
     await pool.end();
   }
+}
+
+async function seedLargeListsForScrolling(suffix: string) {
+  const connectionString =
+    process.env.DATABASE_URL ??
+    "postgresql://oso:oso_e2e_password@localhost:5433/ohm_sweet_ohm_e2e?schema=public";
+  const pool = new Pool({ connectionString });
+  const organizationId = `org_e2e_scroll_${suffix}`;
+  const manufacturerName = `ZZZ Scroll Manufacturer ${suffix}`;
+
+  try {
+    const workspaceResult = await pool.query<{ id: string }>(
+      `SELECT id FROM "Workspace" WHERE slug = 'default' LIMIT 1`
+    );
+    const workspaceId = workspaceResult.rows[0]?.id;
+
+    if (!workspaceId) {
+      throw new Error("e2e_workspace_setup_failed");
+    }
+
+    await pool.query(
+      `
+        INSERT INTO "Organization" (
+          id,
+          "workspaceId",
+          name,
+          "normalizedName",
+          "createdAt",
+          "updatedAt"
+        )
+        VALUES ($1, $2, $3, $4, now(), now())
+        ON CONFLICT ("workspaceId", "normalizedName")
+        DO UPDATE SET
+          name = EXCLUDED.name,
+          "updatedAt" = now()
+      `,
+      [
+        organizationId,
+        workspaceId,
+        manufacturerName,
+        manufacturerName.toLocaleLowerCase("en")
+      ]
+    );
+    await pool.query(
+      `
+        INSERT INTO "OrganizationRole" ("organizationId", role, "createdAt")
+        VALUES ($1, 'manufacturer', now())
+        ON CONFLICT ("organizationId", role) DO NOTHING
+      `,
+      [organizationId]
+    );
+
+    for (let index = 0; index < 60; index += 1) {
+      const paddedIndex = index.toString().padStart(3, "0");
+
+      await pool.query(
+        `
+          INSERT INTO "Part" (
+            id,
+            "workspaceId",
+            "catalogNumber",
+            description,
+            "manufacturerId",
+            "createdAt",
+            "updatedAt"
+          )
+          VALUES ($1, $2, $3, $4, $5, now(), now())
+          ON CONFLICT ("workspaceId", "manufacturerId", "catalogNumber")
+          DO UPDATE SET
+            description = EXCLUDED.description,
+            "updatedAt" = now()
+        `,
+        [
+          `pt_e2e_scroll_${suffix}_${paddedIndex}`,
+          workspaceId,
+          `ZZZ-SCROLL-${suffix}-${paddedIndex}`,
+          `Scroll-loaded test part ${paddedIndex}`,
+          organizationId
+        ]
+      );
+      await pool.query(
+        `
+          INSERT INTO "Attribute" (
+            id,
+            "workspaceId",
+            name,
+            "normalizedName",
+            description,
+            type,
+            "baseUnitSymbol",
+            "createdAt",
+            "updatedAt"
+          )
+          VALUES ($1, $2, $3, $4, $5, 'QUANTITY', 'Ω', now(), now())
+          ON CONFLICT ("workspaceId", "normalizedName")
+          DO UPDATE SET
+            name = EXCLUDED.name,
+            description = EXCLUDED.description,
+            type = EXCLUDED.type,
+            "baseUnitSymbol" = EXCLUDED."baseUnitSymbol",
+            "updatedAt" = now()
+        `,
+        [
+          `attr_e2e_scroll_${suffix}_${paddedIndex}`,
+          workspaceId,
+          `ZZZ Scroll Attribute ${suffix} ${paddedIndex}`,
+          `zzz scroll attribute ${suffix} ${paddedIndex}`,
+          `Scroll-loaded test attribute ${paddedIndex}`
+        ]
+      );
+    }
+  } finally {
+    await pool.end();
+  }
+}
+
+async function scrollListUntilVisible(
+  page: Page,
+  testId: string,
+  locator: Locator
+) {
+  const viewport = page.getByTestId(testId);
+
+  for (let attempt = 0; attempt < 12; attempt += 1) {
+    if ((await locator.count()) > 0 && (await locator.first().isVisible())) {
+      return;
+    }
+
+    await viewport.evaluate((element) => {
+      element.scrollTop = element.scrollHeight;
+    });
+    await page.waitForTimeout(150);
+  }
+
+  await expect(locator).toBeVisible();
+}
+
+function getDatabaseSafeSuffix(value: string) {
+  return value.replace(/[^a-zA-Z0-9]/g, "_").toLocaleLowerCase("en");
 }

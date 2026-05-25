@@ -70,6 +70,7 @@ Do not use multiple roles to invent product behavior. Product decisions still re
 - When adding workspace-scoped functionality, protect every server-side read or mutation with the appropriate permission. If no suitable permission exists yet, introduce an explicit permission key for that resource/action before exposing the behavior.
 - Keep Next.js, React, and TypeScript as the frontend direction unless a future ADR documents a specific reason to migrate.
 - Use the SPA-like workspace interaction model documented in `docs/decisions/0010-spa-like-workspace-interactions.md`: keep Next.js App Router as the route/auth shell, but prefer client-side queries and mutations for rich workspace lists, dialogs, inline editing, and repeated list actions once those screens need responsive behavior.
+- Large workspace lists are expected to grow beyond client-side full loading. Prefer cursor-backed endless scrolling/infinite loading for parts and future large lists, and implement shared list primitives instead of custom endless-scroll behavior per screen.
 - Add browser interactivity with focused client components; do not make the whole app client-rendered by default.
 - Prefer established React ecosystem libraries for complex tables, dialogs, forms, validation, and accessible UI primitives when those needs become concrete.
 - For the SPA-like workspace interaction stack, use TanStack Query and TanStack Table as documented in `docs/decisions/0010-spa-like-workspace-interactions.md`. When adding or upgrading these libraries, verify the latest stable npm versions and do not pin older versions without a documented compatibility reason.
@@ -89,6 +90,7 @@ Do not use multiple roles to invent product behavior. Product decisions still re
 - Treat tabs inside dialogs as visual grouping only. A dialog must have one logical save action that persists values from all tabs and then closes the dialog when the save succeeds.
 - For all current and future dialogs, let the dialog height be determined by the primary/default tab content. The dialog may be constrained by the viewport; if content would exceed the viewport, only the dialog body should scroll while the header and footer remain fixed. Switching tabs must not change the dialog height.
 - Prefer in-place editing on lists for fields where inline edits are practical and clear.
+- Build list screens on shared base components/primitives for common behavior such as loading state, empty state, filters, table layout, and endless scrolling. Extend the shared primitives first when multiple lists need the same capability.
 - For rich workspace screens, reserve URL state for navigation, filters, sorting, pagination, selected records, and deep-linkable UI. Do not put ephemeral success feedback in URL parameters; use local toast feedback instead.
 - Use the semantic color tokens defined in `src/app/globals.css` for UI intent such as accent, success, error, warning, and primary actions instead of hard-coding black action buttons.
 

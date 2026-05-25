@@ -3,6 +3,12 @@ import "server-only";
 import { Prisma, type PrismaClient } from "@/generated/prisma/client";
 import { prisma } from "@/server/db/prisma";
 import {
+  decodeListCursor,
+  encodeListCursor,
+  getListPageSize,
+  type ListPage
+} from "@/server/pagination";
+import {
   assertCanChangeAttributeShape,
   assertCanDeleteChoiceOption,
   assertCanDeleteAttribute,
@@ -57,6 +63,77 @@ export async function getWorkspaceAttributes(workspaceId: string) {
     orderBy: [{ name: "asc" }, { id: "asc" }],
     select: attributeListSelect
   });
+}
+
+type AttributeListCursor = {
+  name: string;
+  id: string;
+};
+
+export async function getWorkspaceAttributePage({
+  workspaceId,
+  cursor,
+  pageSize
+}: {
+  workspaceId: string;
+  cursor?: string | null;
+  pageSize?: number | null;
+}): Promise<ListPage<AttributeListItem>> {
+  const decodedCursor = decodeListCursor<AttributeListCursor>(cursor);
+  const resolvedPageSize = getListPageSize(pageSize);
+  const cursorWhere = decodedCursor
+    ? {
+        OR: [
+          {
+            name: {
+              gt: decodedCursor.name
+            }
+          },
+          {
+            name: decodedCursor.name,
+            id: {
+              gt: decodedCursor.id
+            }
+          }
+        ]
+      }
+    : {};
+  const where: Prisma.AttributeWhereInput = {
+    AND: [
+      {
+        workspaceId
+      },
+      cursorWhere
+    ]
+  };
+  const [attributes, totalCount] = await Promise.all([
+    prisma.attribute.findMany({
+      where,
+      orderBy: [{ name: "asc" }, { id: "asc" }],
+      take: resolvedPageSize + 1,
+      select: attributeListSelect
+    }),
+    prisma.attribute.count({
+      where: {
+        workspaceId
+      }
+    })
+  ]);
+  const items = attributes.slice(0, resolvedPageSize);
+  const lastItem = items.at(-1);
+
+  return {
+    items,
+    nextCursor:
+      attributes.length > resolvedPageSize && lastItem
+        ? encodeListCursor<AttributeListCursor>({
+            name: lastItem.name,
+            id: lastItem.id
+          })
+        : null,
+    totalCount,
+    filteredCount: totalCount
+  };
 }
 
 export async function createAttribute({

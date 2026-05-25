@@ -8,8 +8,9 @@ import {
   getCurrentSession,
   getCurrentWorkspaceContextBySlug
 } from "@/server/auth/currentContext";
-import { getWorkspaceAttributes } from "@/server/parts/attributeMutations";
+import { getAttributeDictionaryPageForWorkspace } from "@/server/parts/attributeActions";
 import type { AttributeListItem } from "@/server/parts/attributeMutations";
+import type { ListPage } from "@/server/pagination";
 
 export const dynamic = "force-dynamic";
 
@@ -43,6 +44,8 @@ const copy = {
   options: "Options",
   noOptions: "No options",
   noAttributes: "No attributes yet",
+  loadingAttributes: "Loading attributes...",
+  loadingMoreAttributes: "Loading more attributes...",
   text: "Text",
   number: "Number",
   quantity: "Quantity",
@@ -79,10 +82,23 @@ export default async function AttributesPage({ params }: AttributesPageProps) {
   }
 
   let isDatabaseAvailable = true;
-  let attributes: AttributeListItem[] = [];
+  let attributePage: ListPage<AttributeListItem> = {
+    items: [],
+    nextCursor: null,
+    totalCount: 0,
+    filteredCount: 0
+  };
 
   try {
-    attributes = await getWorkspaceAttributes(context.workspace.id);
+    const result = await getAttributeDictionaryPageForWorkspace({
+      workspaceSlug
+    });
+
+    if (result.ok) {
+      attributePage = result.data;
+    } else {
+      isDatabaseAvailable = false;
+    }
   } catch {
     isDatabaseAvailable = false;
   }
@@ -180,7 +196,7 @@ export default async function AttributesPage({ params }: AttributesPageProps) {
               canWriteAttributes={canWriteAttributes}
               copy={copy}
               isDatabaseAvailable={isDatabaseAvailable}
-              attributes={attributes}
+              initialPage={attributePage}
               workspaceSlug={workspaceSlug}
             />
           </div>

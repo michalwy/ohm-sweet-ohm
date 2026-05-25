@@ -6,7 +6,11 @@ import type {
   KeyboardEvent as ReactKeyboardEvent
 } from "react";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { useMutation } from "@tanstack/react-query";
+import {
+  useInfiniteQuery,
+  useMutation,
+  useQueryClient
+} from "@tanstack/react-query";
 import {
   createColumnHelper,
   flexRender,
@@ -16,10 +20,12 @@ import {
 import { createPortal } from "react-dom";
 
 import { createPart, deletePart, updatePart } from "@/server/parts/createPart";
+import { getPartsListPageForWorkspace } from "@/server/parts/listActions";
 import type { ManufacturerSuggestion } from "@/server/organizations/organizations";
 import type { PartCategoryListItem } from "@/server/parts/categories";
 import type { PartsListItem } from "@/server/parts/getParts";
 import type { EffectiveCategoryAttribute } from "@/server/parts/attributes";
+import { InfiniteListViewport } from "@/app/infinite-list";
 import {
   getNextToastId,
   ToastNotice,
@@ -33,6 +39,7 @@ import {
   getDialogBodyHeightStyle,
   observeDialogContentHeight
 } from "@/app/dialog-shell";
+import { useDebouncedValue } from "@/app/use-debounced-value";
 
 type Copy = {
   title: string;
@@ -97,7 +104,16 @@ type Copy = {
   emptyBody: string;
   noMatchingPartsTitle: string;
   noMatchingPartsBody: string;
+  loadingParts: string;
+  loadingMoreParts: string;
   databaseUnavailable: string;
+};
+
+type ListPage<TItem> = {
+  items: TItem[];
+  nextCursor: string | null;
+  totalCount: number;
+  filteredCount: number;
 };
 
 type CategoryTreeItem = PartCategoryListItem & {
@@ -114,7 +130,7 @@ type PartsListClientProps = {
   partCategories: PartCategoryListItem[];
   categoryAttributesByCategoryId: Record<string, EffectiveCategoryAttribute[]>;
   manufacturerSuggestions: ManufacturerSuggestion[];
-  parts: PartsListItem[];
+  initialPage: ListPage<PartsListItem>;
   workspaceSlug: string;
 };
 
@@ -126,16 +142,16 @@ export function PartsListClient({
   partCategories,
   categoryAttributesByCategoryId,
   manufacturerSuggestions,
-  parts,
+  initialPage,
   workspaceSlug
 }: PartsListClientProps) {
+  const queryClient = useQueryClient();
   const createDialogRef = useRef<HTMLDialogElement>(null);
   const editDialogRef = useRef<HTMLDialogElement>(null);
   const createDetailsContentRef = useRef<HTMLDivElement>(null);
   const editDetailsContentRef = useRef<HTMLDivElement>(null);
   const nextToastIdRef = useRef(0);
   const categoryTree = buildCategoryTree(partCategories);
-  const [currentParts, setCurrentParts] = useState(() => sortParts(parts));
   const [searchQuery, setSearchQuery] = useState("");
   const [categoryFilterId, setCategoryFilterId] = useState("");
   const [manufacturerFilter, setManufacturerFilter] = useState("");
@@ -156,13 +172,8 @@ export function PartsListClient({
   >({});
   const [createFormResetKey, setCreateFormResetKey] = useState(0);
   const [editCatalogNumber, setEditCatalogNumber] = useState("");
-  const [editDescription, setEditDescription] = useState(
-    currentParts.find((part) => part.id === partEditDialog)?.description ?? ""
-  );
-  const [editManufacturerName, setEditManufacturerName] = useState(
-    currentParts.find((part) => part.id === partEditDialog)?.manufacturerName ??
-      ""
-  );
+  const [editDescription, setEditDescription] = useState("");
+  const [editManufacturerName, setEditManufacturerName] = useState("");
   const [editPrimaryCategoryId, setEditPrimaryCategoryId] = useState("");
   const [editSecondaryCategoryId, setEditSecondaryCategoryId] = useState("");
   const [editActiveTab, setEditActiveTab] = useState<PartDialogTab>("details");
@@ -171,9 +182,7 @@ export function PartsListClient({
   const [editAttributeValues, setEditAttributeValues] = useState<
     Record<string, string>
   >({});
-  const [editingPart, setEditingPart] = useState<PartsListItem | null>(() =>
-    currentParts.find((part) => part.id === partEditDialog) ?? null
-  );
+  const [editingPart, setEditingPart] = useState<PartsListItem | null>(null);
   const [partPendingDelete, setPartPendingDelete] =
     useState<PartsListItem | null>(null);
   const createHasAttributesTab =
@@ -194,55 +203,86 @@ export function PartsListClient({
     }).attributes.length > 0;
   const [createFormError, setCreateFormError] = useState<string | null>(null);
   const [updateFormError, setUpdateFormError] = useState<string | null>(null);
-  const categoryFilterIds = useMemo(
-    () => getCategoryFilterIds(partCategories, categoryFilterId),
-    [categoryFilterId, partCategories]
+  const debouncedSearchQuery = useDebouncedValue(searchQuery, 300);
+  const debouncedManufacturerFilter = useDebouncedValue(manufacturerFilter, 300);
+  const partsQueryKey = [
+    "parts-list",
+    workspaceSlug,
+    {
+      searchQuery: debouncedSearchQuery,
+      categoryFilterId,
+      manufacturerFilter: debouncedManufacturerFilter
+    }
+  ] as const;
+  const partsQuery = useInfiniteQuery({
+    queryKey: partsQueryKey,
+    enabled: isDatabaseAvailable,
+    initialPageParam: null as string | null,
+    queryFn: async ({ pageParam }) => {
+      const result = await getPartsListPageForWorkspace({
+        workspaceSlug,
+        cursor: pageParam,
+        searchQuery: debouncedSearchQuery,
+        categoryFilterId,
+        manufacturerFilter: debouncedManufacturerFilter
+      });
+
+      if (!result.ok) {
+        throw new Error(result.error);
+      }
+
+      return result.page;
+    },
+    getNextPageParam: (lastPage) => lastPage.nextCursor,
+    initialData:
+      !debouncedSearchQuery &&
+      !categoryFilterId &&
+      !debouncedManufacturerFilter
+        ? {
+            pages: [initialPage],
+            pageParams: [null]
+          }
+        : undefined
+  });
+  const currentParts = useMemo(
+    () => partsQuery.data?.pages.flatMap((page) => page.items) ?? [],
+    [partsQuery.data]
   );
-  const manufacturerFilterOptions = useMemo(
-    () =>
-      [...new Set(currentParts.map((part) => part.manufacturerName))].sort(
-        (left, right) =>
-          left.localeCompare(right, "en", { sensitivity: "base" })
-      ),
+  const currentPartsById = useMemo(
+    () => new Map(currentParts.map((part) => [part.id, part])),
     [currentParts]
   );
-  const filteredParts = useMemo(
+  const partsCounts = partsQuery.data?.pages[0] ?? initialPage;
+  const manufacturerFilterOptions = useMemo(
     () =>
-      currentParts.filter((part) =>
-        partMatchesFilters({
-          categoryFilterId,
-          categoryFilterIds,
-          manufacturerFilter,
-          part,
-          searchQuery
-        })
-      ),
-    [
-      categoryFilterId,
-      categoryFilterIds,
-      currentParts,
-      manufacturerFilter,
-      searchQuery
-    ]
+      currentManufacturerSuggestions
+        .map((suggestion) => suggestion.name)
+        .sort((left, right) =>
+          left.localeCompare(right, "en", { sensitivity: "base" })
+        ),
+    [currentManufacturerSuggestions]
   );
   const hasActiveFilters =
     Boolean(searchQuery.trim()) ||
     Boolean(categoryFilterId) ||
     Boolean(manufacturerFilter);
+  async function refreshPartsLists() {
+    await queryClient.invalidateQueries({
+      queryKey: ["parts-list", workspaceSlug]
+    });
+  }
   const createPartMutation = useMutation({
     mutationFn: createPart,
     onError: () => {
       setCreateFormError("database-unavailable");
     },
-    onSuccess: (result) => {
+    onSuccess: async (result) => {
       if (!result.ok) {
         setCreateFormError(result.error);
         return;
       }
 
-      setCurrentParts((currentItems) =>
-        sortParts([...currentItems, result.part])
-      );
+      await refreshPartsLists();
       addManufacturerSuggestion(result.part.manufacturerName);
       setCreateCatalogNumber("");
       setCreateDescription("");
@@ -264,20 +304,14 @@ export function PartsListClient({
     onError: () => {
       setUpdateFormError("database-unavailable");
     },
-    onSuccess: (result) => {
+    onSuccess: async (result) => {
       if (!result.ok) {
         setUpdateFormError(result.error);
         setPartPendingDelete(null);
         return;
       }
 
-      setCurrentParts((currentItems) =>
-        sortParts(
-          currentItems.map((part) =>
-            part.id === result.part.id ? result.part : part
-          )
-        )
-      );
+      await refreshPartsLists();
       addManufacturerSuggestion(result.part.manufacturerName);
       setEditingPart(result.part);
       setEditDescription(result.part.description ?? "");
@@ -296,16 +330,15 @@ export function PartsListClient({
     onError: () => {
       setUpdateFormError("database-unavailable");
     },
-    onSuccess: (result) => {
+    onSuccess: async (result) => {
       if (!result.ok) {
         setUpdateFormError(result.error);
         return;
       }
 
-      const deletedPart = currentParts.find((part) => part.id === result.id);
-      setCurrentParts((currentItems) =>
-        currentItems.filter((part) => part.id !== result.id)
-      );
+      const deletedPart =
+        currentPartsById.get(result.id) ?? partPendingDelete ?? editingPart;
+      await refreshPartsLists();
       setEditingPart(null);
       setPartPendingDelete(null);
       setUpdateFormError(null);
@@ -388,7 +421,7 @@ export function PartsListClient({
   // TanStack Table intentionally returns dynamic helpers that React Compiler cannot memoize.
   // eslint-disable-next-line react-hooks/incompatible-library
   const partsTable = useReactTable({
-    data: filteredParts,
+    data: currentParts,
     columns,
     getCoreRowModel: getCoreRowModel()
   });
@@ -466,6 +499,7 @@ export function PartsListClient({
     setEditManufacturerName(part.manufacturerName);
     setEditPrimaryCategoryId(part.primaryCategoryId ?? "");
     setEditSecondaryCategoryId(part.secondaryCategoryId ?? "");
+    setEditAttributeValues(getPartAttributeValueState(part));
     setEditActiveTab("details");
     setUpdateFormError(null);
     window.requestAnimationFrame(() => openDialog(editDialogRef.current));
@@ -598,8 +632,8 @@ export function PartsListClient({
           <div className="flex min-h-9 items-center gap-3 pb-0.5">
             <p className="min-w-28 text-sm text-slate-500">
               {formatFilteredPartsSummary(copy, {
-                total: currentParts.length,
-                visible: filteredParts.length
+                total: partsCounts.totalCount,
+                visible: partsCounts.filteredCount
               })}
             </p>
             {hasActiveFilters ? (
@@ -627,7 +661,34 @@ export function PartsListClient({
             </button>
           </div>
         </div>
-        <div className="min-h-0 flex-1 overflow-auto">
+        <InfiniteListViewport
+          emptyState={
+            <div className="px-4 py-10">
+              <p className="text-base font-medium text-slate-950">
+                {hasActiveFilters ? copy.noMatchingPartsTitle : copy.emptyTitle}
+              </p>
+              <p className="mt-2 max-w-xl text-sm leading-6 text-slate-500">
+                {hasActiveFilters ? copy.noMatchingPartsBody : copy.emptyBody}
+              </p>
+            </div>
+          }
+          errorState={
+            <p className="p-6 text-sm text-slate-500">
+              {copy.databaseUnavailable}
+            </p>
+          }
+          hasNextPage={Boolean(partsQuery.hasNextPage)}
+          isEmpty={currentParts.length === 0}
+          isError={partsQuery.isError}
+          isFetchingNextPage={partsQuery.isFetchingNextPage}
+          isInitialLoading={partsQuery.isLoading}
+          loadingLabel={copy.loadingParts}
+          loadingMoreLabel={copy.loadingMoreParts}
+          loadMore={() => {
+            void partsQuery.fetchNextPage();
+          }}
+          testId="parts-list-viewport"
+        >
           <table className="min-w-full border-separate border-spacing-0 text-left text-sm">
             <thead className="sticky top-0 z-10 bg-slate-50">
               {partsTable.getHeaderGroups().map((headerGroup) => (
@@ -652,46 +713,29 @@ export function PartsListClient({
               ))}
             </thead>
             <tbody className="bg-white">
-              {partsTable.getRowModel().rows.length > 0 ? (
-                partsTable.getRowModel().rows.map((row) => (
-                  <tr
-                    key={row.id}
-                    className="border-b border-slate-100 transition hover:bg-slate-50"
-                  >
-                    {row.getVisibleCells().map((cell) => (
-                      <td
-                        key={cell.id}
-                        className={`border-b border-slate-100 px-3 py-2 text-slate-700 ${
-                          cell.column.id === "actions" ? "py-1.5" : ""
-                        }`}
-                      >
-                        {flexRender(
-                          cell.column.columnDef.cell,
-                          cell.getContext()
-                        )}
-                      </td>
-                    ))}
-                  </tr>
-                ))
-              ) : (
-                <tr>
-                  <td className="px-4 py-10" colSpan={6}>
-                    <p className="text-base font-medium text-slate-950">
-                      {hasActiveFilters
-                        ? copy.noMatchingPartsTitle
-                        : copy.emptyTitle}
-                    </p>
-                    <p className="mt-2 max-w-xl text-sm leading-6 text-slate-500">
-                      {hasActiveFilters
-                        ? copy.noMatchingPartsBody
-                        : copy.emptyBody}
-                    </p>
-                  </td>
+              {partsTable.getRowModel().rows.map((row) => (
+                <tr
+                  key={row.id}
+                  className="border-b border-slate-100 transition hover:bg-slate-50"
+                >
+                  {row.getVisibleCells().map((cell) => (
+                    <td
+                      key={cell.id}
+                      className={`border-b border-slate-100 px-3 py-2 text-slate-700 ${
+                        cell.column.id === "actions" ? "py-1.5" : ""
+                      }`}
+                    >
+                      {flexRender(
+                        cell.column.columnDef.cell,
+                        cell.getContext()
+                      )}
+                    </td>
+                  ))}
                 </tr>
-              )}
+              ))}
             </tbody>
           </table>
-        </div>
+        </InfiniteListViewport>
       </section>
 
       <ToastNotice messages={toastMessages} onDismiss={dismissToastMessage} />
@@ -1023,84 +1067,6 @@ function getPartAttributeValueState(part: PartsListItem) {
   );
 }
 
-function sortParts(parts: PartsListItem[]) {
-  return [...parts].sort((left, right) => {
-    const manufacturerOrder = left.manufacturerName.localeCompare(
-      right.manufacturerName,
-      "en",
-      { sensitivity: "base" }
-    );
-
-    if (manufacturerOrder !== 0) {
-      return manufacturerOrder;
-    }
-
-    return left.catalogNumber.localeCompare(right.catalogNumber, "en", {
-      sensitivity: "base"
-    });
-  });
-}
-
-function partMatchesFilters({
-  categoryFilterId,
-  categoryFilterIds,
-  manufacturerFilter,
-  part,
-  searchQuery
-}: {
-  categoryFilterId: string;
-  categoryFilterIds: Set<string>;
-  manufacturerFilter: string;
-  part: PartsListItem;
-  searchQuery: string;
-}) {
-  if (
-    categoryFilterId &&
-    (!part.primaryCategoryId || !categoryFilterIds.has(part.primaryCategoryId)) &&
-    (!part.secondaryCategoryId ||
-      !categoryFilterIds.has(part.secondaryCategoryId))
-  ) {
-    return false;
-  }
-
-  if (
-    manufacturerFilter &&
-    !normalizeManufacturerSearchText(part.manufacturerName).includes(
-      normalizeManufacturerSearchText(manufacturerFilter)
-    )
-  ) {
-    return false;
-  }
-
-  const normalizedQuery = normalizePartsSearchText(searchQuery);
-
-  if (!normalizedQuery) {
-    return true;
-  }
-
-  return getPartSearchText(part).includes(normalizedQuery);
-}
-
-function getPartSearchText(part: PartsListItem) {
-  return normalizePartsSearchText(
-    [
-      part.catalogNumber,
-      part.manufacturerName,
-      part.description,
-      part.primaryCategoryPath,
-      part.secondaryCategoryPath,
-      part.valueDisplayValue,
-      ...part.attributeValues.map((attributeValue) => attributeValue.displayValue)
-    ]
-      .filter(Boolean)
-      .join(" ")
-  );
-}
-
-function normalizePartsSearchText(value: string) {
-  return value.trim().replace(/\s+/g, " ").toLocaleLowerCase("en");
-}
-
 function formatFilteredPartsSummary(
   copy: Pick<Copy, "filteredPartsSummary">,
   counts: { total: number; visible: number }
@@ -1108,38 +1074,6 @@ function formatFilteredPartsSummary(
   return copy.filteredPartsSummary
     .replace("{visible}", counts.visible.toLocaleString("en"))
     .replace("{total}", counts.total.toLocaleString("en"));
-}
-
-function getCategoryFilterIds(
-  categories: PartCategoryListItem[],
-  categoryId: string
-) {
-  const filterIds = new Set<string>();
-
-  if (!categoryId) {
-    return filterIds;
-  }
-
-  filterIds.add(categoryId);
-
-  let changed = true;
-
-  while (changed) {
-    changed = false;
-
-    for (const category of categories) {
-      if (
-        category.parentId &&
-        filterIds.has(category.parentId) &&
-        !filterIds.has(category.id)
-      ) {
-        filterIds.add(category.id);
-        changed = true;
-      }
-    }
-  }
-
-  return filterIds;
 }
 
 function getPartFormErrorMessage(copy: Copy, error: string) {

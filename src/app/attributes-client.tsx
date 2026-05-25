@@ -1,16 +1,21 @@
 "use client";
 
-import { useMutation } from "@tanstack/react-query";
-import { useRef, useState } from "react";
+import {
+  useInfiniteQuery,
+  useMutation,
+  useQueryClient
+} from "@tanstack/react-query";
+import { useMemo, useRef, useState } from "react";
 
 import {
   createAttributeForWorkspace,
   deleteAttributeForWorkspace,
-  getAttributeDictionaryForWorkspace,
+  getAttributeDictionaryPageForWorkspace,
   updateAttributeForWorkspace
 } from "@/server/parts/attributeActions";
 import type { AttributeListItem } from "@/server/parts/attributeMutations";
 import type { AttributeValueType } from "@/server/parts/attributeValues";
+import { InfiniteListViewport } from "@/app/infinite-list";
 import {
   getNextToastId,
   ToastNotice,
@@ -45,6 +50,8 @@ type Copy = {
   options: string;
   noOptions: string;
   noAttributes: string;
+  loadingAttributes: string;
+  loadingMoreAttributes: string;
   text: string;
   number: string;
   quantity: string;
@@ -59,11 +66,18 @@ type Copy = {
   invalidInput: string;
 };
 
+type ListPage<TItem> = {
+  items: TItem[];
+  nextCursor: string | null;
+  totalCount: number;
+  filteredCount: number;
+};
+
 type AttributesClientProps = {
   canWriteAttributes: boolean;
   copy: Copy;
   isDatabaseAvailable: boolean;
-  attributes: AttributeListItem[];
+  initialPage: ListPage<AttributeListItem>;
   workspaceSlug: string;
 };
 
@@ -80,12 +94,12 @@ export function AttributesClient({
   canWriteAttributes,
   copy,
   isDatabaseAvailable,
-  attributes,
+  initialPage,
   workspaceSlug
 }: AttributesClientProps) {
+  const queryClient = useQueryClient();
   const attributeDialogRef = useRef<HTMLDialogElement>(null);
   const nextToastIdRef = useRef(0);
-  const [currentAttributes, setCurrentAttributes] = useState(attributes);
   const [attributeDialogMode, setAttributeDialogMode] =
     useState<AttributeDialogMode | null>(null);
   const [editingAttribute, setEditingAttribute] =
@@ -95,15 +109,41 @@ export function AttributesClient({
   const [dialogFormError, setDialogFormError] = useState<string | null>(null);
   const [dialogFormKey, setDialogFormKey] = useState(0);
   const [toastMessages, setToastMessages] = useState<ToastMessage[]>([]);
+  const attributesQuery = useInfiniteQuery({
+    queryKey: ["attributes-list", workspaceSlug],
+    enabled: isDatabaseAvailable,
+    initialPageParam: null as string | null,
+    queryFn: async ({ pageParam }) => {
+      const result = await getAttributeDictionaryPageForWorkspace({
+        workspaceSlug,
+        cursor: pageParam
+      });
 
-  const refreshAttributesMutation = useMutation({
-    mutationFn: () => getAttributeDictionaryForWorkspace(workspaceSlug),
-    onSuccess: (result) => {
-      if (result.ok) {
-        setCurrentAttributes(result.data);
+      if (!result.ok) {
+        throw new Error(result.error);
       }
+
+      return result.data;
+    },
+    getNextPageParam: (lastPage) => lastPage.nextCursor,
+    initialData: {
+      pages: [initialPage],
+      pageParams: [null]
     }
   });
+  const currentAttributes = useMemo(
+    () => attributesQuery.data?.pages.flatMap((page) => page.items) ?? [],
+    [attributesQuery.data]
+  );
+  const currentAttributesById = useMemo(
+    () => new Map(currentAttributes.map((attribute) => [attribute.id, attribute])),
+    [currentAttributes]
+  );
+  async function refreshAttributes() {
+    await queryClient.invalidateQueries({
+      queryKey: ["attributes-list", workspaceSlug]
+    });
+  }
   const createAttributeMutation = useMutation({
     mutationFn: createAttributeForWorkspace,
     onSuccess: async (result) => {
@@ -113,7 +153,7 @@ export function AttributesClient({
         return;
       }
 
-      await refreshAttributesMutation.mutateAsync();
+      await refreshAttributes();
       setAttributePendingDelete(null);
       setDialogFormError(null);
       addToast(getAttributeSuccessMessage(copy.createdToast, result.data.name));
@@ -129,7 +169,7 @@ export function AttributesClient({
         return;
       }
 
-      await refreshAttributesMutation.mutateAsync();
+      await refreshAttributes();
       setDialogFormError(null);
       addToast(getAttributeSuccessMessage(copy.updatedToast, result.data.name));
       closeAttributeDialog();
@@ -145,10 +185,11 @@ export function AttributesClient({
       }
 
       const deletedAttributeName =
-        currentAttributes.find((attribute) => attribute.id === variables.attributeId)
-          ?.name ?? editingAttribute?.name ?? "";
+        currentAttributesById.get(variables.attributeId)?.name ??
+        editingAttribute?.name ??
+        "";
 
-      await refreshAttributesMutation.mutateAsync();
+      await refreshAttributes();
       setDialogFormError(null);
       addToast(getAttributeSuccessMessage(copy.deletedToast, deletedAttributeName));
       closeAttributeDialog();
@@ -258,8 +299,25 @@ export function AttributesClient({
             {copy.addAttribute}
           </button>
         </div>
-        <div className="min-h-0 flex-1 overflow-auto">
-          {currentAttributes.length > 0 ? (
+        <InfiniteListViewport
+          emptyState={<p className="p-6 text-sm text-slate-500">{copy.noAttributes}</p>}
+          errorState={
+            <p className="p-6 text-sm text-slate-500">
+              {copy.databaseUnavailable}
+            </p>
+          }
+          hasNextPage={Boolean(attributesQuery.hasNextPage)}
+          isEmpty={currentAttributes.length === 0}
+          isError={attributesQuery.isError}
+          isFetchingNextPage={attributesQuery.isFetchingNextPage}
+          isInitialLoading={attributesQuery.isLoading}
+          loadingLabel={copy.loadingAttributes}
+          loadingMoreLabel={copy.loadingMoreAttributes}
+          loadMore={() => {
+            void attributesQuery.fetchNextPage();
+          }}
+          testId="attributes-list-viewport"
+        >
             <table className="w-full border-collapse text-left text-sm">
               <thead className="sticky top-0 bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
                 <tr>
@@ -323,10 +381,7 @@ export function AttributesClient({
                 ))}
               </tbody>
             </table>
-          ) : (
-            <p className="p-6 text-sm text-slate-500">{copy.noAttributes}</p>
-          )}
-        </div>
+        </InfiniteListViewport>
       </section>
 
       <ToastNotice messages={toastMessages} onDismiss={dismissToastMessage} />

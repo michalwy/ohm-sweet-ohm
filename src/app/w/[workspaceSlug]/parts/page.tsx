@@ -87,6 +87,8 @@ const copy = {
   emptyBody: "Parts will appear here once they exist.",
   noMatchingPartsTitle: "No matching parts",
   noMatchingPartsBody: "Adjust the search or filters to show more parts.",
+  loadingParts: "Loading parts...",
+  loadingMoreParts: "Loading more parts...",
   databaseUnavailable:
     "Database is not available, so the list is shown empty for now."
 };
@@ -118,7 +120,7 @@ export default async function PartsPage({
     notFound();
   }
 
-  const { parts, isDatabaseAvailable } = await getPartsList(context);
+  const { page, isDatabaseAvailable } = await getPartsList(context);
   const [partCategories, manufacturerSuggestions] = isDatabaseAvailable
     ? await Promise.all([
         getPartCategoriesForPartForm(context).catch(() => []),
@@ -236,7 +238,7 @@ export default async function PartsPage({
               partCategories={partCategories}
               categoryAttributesByCategoryId={categoryAttributesByCategoryId}
               manufacturerSuggestions={manufacturerSuggestions}
-              parts={parts}
+              initialPage={page}
               workspaceSlug={workspaceSlug}
             />
           </div>
