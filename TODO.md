@@ -9,6 +9,7 @@ Keep this list focused on product and implementation work that has been explicit
 - [ ] When adding a new root category, select the organizational option by default.
 - [ ] Dialog focus behavior: when any dialog opens, focus should move to the first field.
 - [ ] Category dialog parent selector should use the same tree control used elsewhere.
+- [ ] When the parts list is filtered by category, adding a new part should preselect the same category if that filtered category is assignable.
 - [ ] Review user-facing text, for example whether "real purchasable parts" sounds right and whether the part dialog should mention more than catalog number and manufacturer.
 - [ ] Import part data from external suppliers. Define interfaces/abstractions first; initial candidates are DigiKey, Mouser, or TME.
 - [ ] Locations: exact assumptions TBD.

@@ -25,7 +25,12 @@ import {
   DeleteConfirmationDialog,
   DialogBody,
   DialogFooter,
-  DialogShell
+  DialogShell,
+  ErrorBubble,
+  LabelWithError,
+  closeDialog,
+  getFieldInputClassName,
+  openDialog
 } from "@/app/dialog-shell";
 
 type Copy = {
@@ -89,6 +94,8 @@ type ChoiceOptionDraft = {
 };
 
 type AttributeDialogMode = "create" | "edit";
+type AttributeFormField = "name" | "baseUnitSymbol" | "submit" | "delete";
+type AttributeFormErrors = Partial<Record<AttributeFormField, string>>;
 
 export function AttributesClient({
   canWriteAttributes,
@@ -106,7 +113,8 @@ export function AttributesClient({
     useState<AttributeListItem | null>(null);
   const [attributePendingDelete, setAttributePendingDelete] =
     useState<AttributeListItem | null>(null);
-  const [dialogFormError, setDialogFormError] = useState<string | null>(null);
+  const [attributeFieldErrors, setAttributeFieldErrors] =
+    useState<AttributeFormErrors>({});
   const [dialogFormKey, setDialogFormKey] = useState(0);
   const [toastMessages, setToastMessages] = useState<ToastMessage[]>([]);
   const attributesQuery = useInfiniteQuery({
@@ -148,39 +156,47 @@ export function AttributesClient({
     mutationFn: createAttributeForWorkspace,
     onSuccess: async (result) => {
       if (!result.ok) {
-        setDialogFormError(result.error);
+        setAttributeFieldErrors(getAttributeFormErrors(copy, result.error));
         setAttributePendingDelete(null);
         return;
       }
 
       await refreshAttributes();
       setAttributePendingDelete(null);
-      setDialogFormError(null);
+      setAttributeFieldErrors({});
       addToast(getAttributeSuccessMessage(copy.createdToast, result.data.name));
       closeAttributeDialog();
     },
-    onError: () => setDialogFormError("database-unavailable")
+    onError: () =>
+      setAttributeFieldErrors({
+        submit: getErrorMessage(copy, "database-unavailable")
+      })
   });
   const updateAttributeMutation = useMutation({
     mutationFn: updateAttributeForWorkspace,
     onSuccess: async (result) => {
       if (!result.ok) {
-        setDialogFormError(result.error);
+        setAttributeFieldErrors(getAttributeFormErrors(copy, result.error));
         return;
       }
 
       await refreshAttributes();
-      setDialogFormError(null);
+      setAttributeFieldErrors({});
       addToast(getAttributeSuccessMessage(copy.updatedToast, result.data.name));
       closeAttributeDialog();
     },
-    onError: () => setDialogFormError("database-unavailable")
+    onError: () =>
+      setAttributeFieldErrors({
+        submit: getErrorMessage(copy, "database-unavailable")
+      })
   });
   const deleteAttributeMutation = useMutation({
     mutationFn: deleteAttributeForWorkspace,
     onSuccess: async (result, variables) => {
       if (!result.ok) {
-        setDialogFormError(result.error);
+        setAttributeFieldErrors({
+          delete: getErrorMessage(copy, result.error)
+        });
         return;
       }
 
@@ -190,16 +206,19 @@ export function AttributesClient({
         "";
 
       await refreshAttributes();
-      setDialogFormError(null);
+      setAttributeFieldErrors({});
       addToast(getAttributeSuccessMessage(copy.deletedToast, deletedAttributeName));
       closeAttributeDialog();
     },
-    onError: () => setDialogFormError("database-unavailable")
+    onError: () =>
+      setAttributeFieldErrors({
+        delete: getErrorMessage(copy, "database-unavailable")
+      })
   });
   function openCreateDialog() {
     setEditingAttribute(null);
     setAttributeDialogMode("create");
-    setDialogFormError(null);
+    setAttributeFieldErrors({});
     setDialogFormKey((currentKey) => currentKey + 1);
     window.requestAnimationFrame(() => openDialog(attributeDialogRef.current));
   }
@@ -207,12 +226,20 @@ export function AttributesClient({
   function openEditDialog(attribute: AttributeListItem) {
     setEditingAttribute(attribute);
     setAttributeDialogMode("edit");
-    setDialogFormError(null);
+    setAttributeFieldErrors({});
     setDialogFormKey((currentKey) => currentKey + 1);
     window.requestAnimationFrame(() => openDialog(attributeDialogRef.current));
   }
 
   function handleCreateSubmit(formData: FormData) {
+    const fieldErrors = validateAttributeForm(copy, formData);
+
+    setAttributeFieldErrors(fieldErrors);
+
+    if (hasFieldErrors(fieldErrors)) {
+      return;
+    }
+
     createAttributeMutation.mutate({
       workspaceSlug,
       name: getFormString(formData, "name"),
@@ -225,6 +252,14 @@ export function AttributesClient({
 
   function handleUpdateSubmit(formData: FormData) {
     if (!editingAttribute) {
+      return;
+    }
+
+    const fieldErrors = validateAttributeForm(copy, formData);
+
+    setAttributeFieldErrors(fieldErrors);
+
+    if (hasFieldErrors(fieldErrors)) {
       return;
     }
 
@@ -252,6 +287,7 @@ export function AttributesClient({
       return;
     }
 
+    setAttributeFieldErrors({});
     deleteAttributeMutation.mutate({
       workspaceSlug,
       attributeId: attributePendingDelete.id
@@ -262,6 +298,7 @@ export function AttributesClient({
     closeDialog(attributeDialogRef.current);
     setAttributeDialogMode(null);
     setEditingAttribute(null);
+    setAttributeFieldErrors({});
   }
 
   function addToast(message: string) {
@@ -398,14 +435,13 @@ export function AttributesClient({
         onClose={() => {
           setAttributeDialogMode(null);
           setEditingAttribute(null);
-          setDialogFormError(null);
         }}
       >
         {attributeDialogMode ? (
           <AttributeDialogContent
             key={`${attributeDialogMode}-${editingAttribute?.id ?? "new"}-${dialogFormKey}`}
             copy={copy}
-            error={dialogFormError}
+            errors={attributeFieldErrors}
             isDatabaseAvailable={isDatabaseAvailable}
             isPending={
               attributeDialogMode === "create"
@@ -445,7 +481,7 @@ export function AttributesClient({
 
 function AttributeDialogContent({
   copy,
-  error,
+  errors,
   isDatabaseAvailable,
   isPending,
   mode,
@@ -454,7 +490,7 @@ function AttributeDialogContent({
   onSubmit
 }: {
   copy: Copy;
-  error: string | null;
+  errors: AttributeFormErrors;
   isDatabaseAvailable: boolean;
   isPending: boolean;
   mode: AttributeDialogMode;
@@ -516,16 +552,15 @@ function AttributeDialogContent({
         }}
       >
         <DialogBody className="flex-1">
-          {error ? (
-            <p className="mb-3 rounded-md border border-[var(--color-error-border)] bg-[var(--color-error-soft)] px-3 py-2 text-sm text-[var(--color-error)]">
-              {getErrorMessage(copy, error)}
-            </p>
-          ) : null}
           <div className="grid gap-3">
             <label className={labelClassName}>
-              {copy.name}
+              <LabelWithError error={errors.name}>{copy.name}</LabelWithError>
               <input
-                className={inputClassName}
+                aria-invalid={errors.name ? true : undefined}
+                className={getFieldInputClassName(
+                  inputClassName,
+                  Boolean(errors.name)
+                )}
                 defaultValue={attribute?.name ?? ""}
                 disabled={!isDatabaseAvailable}
                 name="name"
@@ -561,9 +596,15 @@ function AttributeDialogContent({
             </select>
           </label>
           <label className={labelClassName}>
-            {copy.baseUnit}
+            <LabelWithError error={errors.baseUnitSymbol}>
+              {copy.baseUnit}
+            </LabelWithError>
             <input
-              className={inputClassName}
+              aria-invalid={errors.baseUnitSymbol ? true : undefined}
+              className={getFieldInputClassName(
+                inputClassName,
+                Boolean(errors.baseUnitSymbol)
+              )}
               defaultValue={attribute?.baseUnitSymbol ?? ""}
               disabled={!isDatabaseAvailable || type !== "QUANTITY"}
               name="baseUnitSymbol"
@@ -588,26 +629,32 @@ function AttributeDialogContent({
         <DialogFooter
           className={
             mode === "edit"
-              ? "items-center justify-between"
-              : "justify-end"
+              ? "items-end justify-between"
+              : "items-center justify-end gap-3"
           }
         >
           {mode === "edit" && onDelete ? (
-            <button
-              className="min-h-9 rounded-md border border-[var(--color-error-border)] bg-white px-3 py-1.5 text-sm font-medium text-[var(--color-error)] transition hover:bg-[var(--color-error-soft)] focus:outline-none focus:ring-2 focus:ring-[var(--color-error-border)] focus:ring-offset-2"
-              type="button"
-              onClick={onDelete}
-            >
-              {copy.delete}
-            </button>
+            <div className="relative">
+              <ErrorBubble align="start">{errors.delete}</ErrorBubble>
+              <button
+                className="min-h-9 rounded-md border border-[var(--color-error-border)] bg-white px-3 py-1.5 text-sm font-medium text-[var(--color-error)] transition hover:bg-[var(--color-error-soft)] focus:outline-none focus:ring-2 focus:ring-[var(--color-error-border)] focus:ring-offset-2"
+                type="button"
+                onClick={onDelete}
+              >
+                {copy.delete}
+              </button>
+            </div>
           ) : null}
-          <button
-            className={primaryButtonClassName}
-            disabled={!isDatabaseAvailable || isPending}
-            type="submit"
-          >
-            {submitLabel}
-          </button>
+          <div className="relative">
+            <ErrorBubble>{errors.submit}</ErrorBubble>
+            <button
+              className={primaryButtonClassName}
+              disabled={!isDatabaseAvailable || isPending}
+              type="submit"
+            >
+              {submitLabel}
+            </button>
+          </div>
         </DialogFooter>
       </form>
     </>
@@ -778,26 +825,6 @@ function getNextDraftId(drafts: ChoiceOptionDraft[]) {
   return Math.max(...drafts.map((draft) => draft.draftId)) + 1;
 }
 
-function openDialog(dialog: HTMLDialogElement | null) {
-  if (!dialog || dialog.open) {
-    return;
-  }
-
-  try {
-    dialog.showModal();
-  } catch {
-    dialog.setAttribute("open", "");
-  }
-}
-
-function closeDialog(dialog: HTMLDialogElement | null) {
-  if (!dialog?.open) {
-    return;
-  }
-
-  dialog.close();
-}
-
 function getAttributeSuccessMessage(actionLabel: string, attributeName: string) {
   return `${actionLabel}: ${attributeName}.`;
 }
@@ -816,6 +843,42 @@ function getErrorMessage(copy: Copy, error: string) {
   }
 
   return copy.databaseUnavailable;
+}
+
+function validateAttributeForm(
+  copy: Copy,
+  formData: FormData
+): AttributeFormErrors {
+  const errors: AttributeFormErrors = {};
+
+  if (!getFormString(formData, "name")) {
+    errors.name = copy.invalidInput;
+  }
+
+  if (
+    getFormString(formData, "type") === "QUANTITY" &&
+    !getFormString(formData, "baseUnitSymbol")
+  ) {
+    errors.baseUnitSymbol = copy.invalidInput;
+  }
+
+  return errors;
+}
+
+function getAttributeFormErrors(copy: Copy, error: string): AttributeFormErrors {
+  if (error === "attribute-name-required") {
+    return { name: copy.invalidInput };
+  }
+
+  if (error === "quantity-unit-required") {
+    return { baseUnitSymbol: copy.invalidInput };
+  }
+
+  return { submit: getErrorMessage(copy, error) };
+}
+
+function hasFieldErrors(errors: Record<string, string | undefined>) {
+  return Object.values(errors).some(Boolean);
 }
 
 const labelClassName = "grid gap-2 text-sm font-medium text-slate-700";

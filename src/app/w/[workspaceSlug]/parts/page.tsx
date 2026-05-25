@@ -76,6 +76,8 @@ const copy = {
   updatedToast: "Part updated",
   deletedToast: "Part deleted",
   missingRequiredFields: "Enter both catalog number and manufacturer.",
+  missingCatalogNumber: "Enter a catalog number.",
+  missingManufacturer: "Enter a manufacturer.",
   invalidCategory: "Choose valid assignable categories.",
   secondaryWithoutPrimary:
     "Choose a primary category before choosing a secondary category.",

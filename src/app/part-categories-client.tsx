@@ -33,8 +33,13 @@ import {
   DialogBody,
   DialogFooter,
   DialogShell,
+  ErrorBubble,
+  LabelWithError,
+  closeDialog,
+  getFieldInputClassName,
   getDialogBodyHeightStyle,
-  observeDialogContentHeight
+  observeDialogContentHeight,
+  openDialog
 } from "@/app/dialog-shell";
 
 type Copy = {
@@ -106,6 +111,8 @@ type CategoryTreeItem = PartCategoryListItem & {
 
 type CategoryDialogMode = "create" | "edit";
 type CategoryDialogTab = "details" | "attributes";
+type CategoryFormField = "name" | "parentId" | "submit" | "delete";
+type CategoryFormErrors = Partial<Record<CategoryFormField, string>>;
 
 type CategoryDialogSubmitInput = {
   formData: FormData;
@@ -154,7 +161,8 @@ export function PartCategoriesClient({
   const [createCategoryValueAttributeId, setCreateCategoryValueAttributeId] =
     useState("");
   const [createFormResetKey, setCreateFormResetKey] = useState(0);
-  const [categoryFormError, setCategoryFormError] = useState<string | null>(null);
+  const [categoryFieldErrors, setCategoryFieldErrors] =
+    useState<CategoryFormErrors>({});
   const [toastMessages, setToastMessages] = useState<ToastMessage[]>([]);
   const categoryTree = useMemo(
     () => buildCategoryTree(currentCategories),
@@ -173,11 +181,13 @@ export function PartCategoriesClient({
     mutationFn: ({ formData }: CategoryDialogSubmitInput) =>
       createPartCategoryFromForm(formData),
     onError: () => {
-      setCategoryFormError("database-unavailable");
+      setCategoryFieldErrors({
+        submit: getCategoryErrorMessage(copy, "database-unavailable")
+      });
     },
     onSuccess: async (result, variables) => {
       if (!result.ok) {
-        setCategoryFormError(result.error);
+        setCategoryFieldErrors(getCategoryFormErrors(copy, result.error));
         setCategoryPendingDelete(null);
         return;
       }
@@ -201,7 +211,7 @@ export function PartCategoriesClient({
           setEditingCategory(result.category);
           setCategoryDialogMode("edit");
           setActiveCategoryDialogTab("attributes");
-          setCategoryFormError(configResult.error);
+          setCategoryFieldErrors(getCategoryFormErrors(copy, configResult.error));
           return;
         }
       }
@@ -219,7 +229,7 @@ export function PartCategoriesClient({
       setCreateCategoryAttributeDrafts([]);
       setCreateCategoryValueAttributeId("");
       setCreateFormResetKey((currentKey) => currentKey + 1);
-      setCategoryFormError(null);
+      setCategoryFieldErrors({});
       addToastMessage({
         id: getNextToastId(nextToastIdRef),
         message: getCategorySuccessMessage(copy.createdToast, result.category)
@@ -246,11 +256,13 @@ export function PartCategoriesClient({
     mutationFn: ({ formData }: CategoryDialogSubmitInput) =>
       updatePartCategoryFromForm(formData),
     onError: () => {
-      setCategoryFormError("database-unavailable");
+      setCategoryFieldErrors({
+        submit: getCategoryErrorMessage(copy, "database-unavailable")
+      });
     },
     onSuccess: async (result, variables) => {
       if (!result.ok) {
-        setCategoryFormError(result.error);
+        setCategoryFieldErrors(getCategoryFormErrors(copy, result.error));
         return;
       }
 
@@ -268,13 +280,13 @@ export function PartCategoriesClient({
         setCurrentCategories(result.categories);
         setEditingCategory(result.category);
         setActiveCategoryDialogTab("attributes");
-        setCategoryFormError(configResult.error);
+        setCategoryFieldErrors(getCategoryFormErrors(copy, configResult.error));
         return;
       }
 
       setCurrentCategories(result.categories);
       setEditingCategory(result.category);
-      setCategoryFormError(null);
+      setCategoryFieldErrors({});
       addToastMessage({
         id: getNextToastId(nextToastIdRef),
         message: getCategorySuccessMessage(copy.updatedToast, result.category)
@@ -285,11 +297,15 @@ export function PartCategoriesClient({
   const deleteCategoryMutation = useMutation({
     mutationFn: deletePartCategoryFromForm,
     onError: () => {
-      setCategoryFormError("database-unavailable");
+      setCategoryFieldErrors({
+        delete: getCategoryErrorMessage(copy, "database-unavailable")
+      });
     },
     onSuccess: (result) => {
       if (!result.ok) {
-        setCategoryFormError(result.error);
+        setCategoryFieldErrors({
+          delete: getCategoryErrorMessage(copy, result.error)
+        });
         return;
       }
 
@@ -300,7 +316,7 @@ export function PartCategoriesClient({
 
       setCurrentCategories(result.categories);
       setCategoryPendingDelete(null);
-      setCategoryFormError(null);
+      setCategoryFieldErrors({});
       addToastMessage({
         id: getNextToastId(nextToastIdRef),
         message: `${copy.deletedToast}: ${deletedCategoryName}.`
@@ -347,6 +363,7 @@ export function PartCategoriesClient({
     setCreateCategoryValueAttributeId("");
     setCategoryDialogMode("create");
     setActiveCategoryDialogTab("details");
+    setCategoryFieldErrors({});
     setCreateFormResetKey((currentKey) => currentKey + 1);
 
     if (parentId) {
@@ -355,7 +372,6 @@ export function PartCategoriesClient({
       saveExpandedCategoryIds(categoryExpansionStorageKey, nextIds);
     }
 
-    setCategoryFormError(null);
     window.requestAnimationFrame(() => openDialog(categoryDialogRef.current));
   }
 
@@ -363,7 +379,7 @@ export function PartCategoriesClient({
     setEditingCategory(category);
     setCategoryDialogMode("edit");
     setActiveCategoryDialogTab("details");
-    setCategoryFormError(null);
+    setCategoryFieldErrors({});
     setCreateFormResetKey((currentKey) => currentKey + 1);
     window.requestAnimationFrame(() => openDialog(categoryDialogRef.current));
   }
@@ -374,9 +390,17 @@ export function PartCategoriesClient({
     valueAttributeId: string
   ) {
     event.preventDefault();
-    setCategoryFormError(null);
+    const formData = new FormData(event.currentTarget);
+    const fieldErrors = validateCategoryForm(copy, formData);
+
+    setCategoryFieldErrors(fieldErrors);
+
+    if (hasFieldErrors(fieldErrors)) {
+      return;
+    }
+
     createCategoryMutation.mutate({
-      formData: new FormData(event.currentTarget),
+      formData,
       attributeDrafts,
       valueAttributeId
     });
@@ -388,9 +412,17 @@ export function PartCategoriesClient({
     valueAttributeId: string
   ) {
     event.preventDefault();
-    setCategoryFormError(null);
+    const formData = new FormData(event.currentTarget);
+    const fieldErrors = validateCategoryForm(copy, formData);
+
+    setCategoryFieldErrors(fieldErrors);
+
+    if (hasFieldErrors(fieldErrors)) {
+      return;
+    }
+
     updateCategoryMutation.mutate({
-      formData: new FormData(event.currentTarget),
+      formData,
       attributeDrafts,
       valueAttributeId
     });
@@ -412,7 +444,7 @@ export function PartCategoriesClient({
     const formData = new FormData();
     formData.set("workspaceSlug", workspaceSlug);
     formData.set("id", categoryPendingDelete.id);
-    setCategoryFormError(null);
+    setCategoryFieldErrors({});
     deleteCategoryMutation.mutate(formData);
   }
 
@@ -422,7 +454,7 @@ export function PartCategoriesClient({
     setEditingCategory(null);
     setCreateCategoryAttributeDrafts([]);
     setCreateCategoryValueAttributeId("");
-    setCategoryFormError(null);
+    setCategoryFieldErrors({});
     setActiveCategoryDialogTab("details");
   }
 
@@ -532,7 +564,6 @@ export function PartCategoriesClient({
         onClose={() => {
           setCategoryDialogMode(null);
           setEditingCategory(null);
-          setCategoryFormError(null);
           setActiveCategoryDialogTab("details");
         }}
       >
@@ -544,7 +575,7 @@ export function PartCategoriesClient({
             categories={currentCategories}
             copy={copy}
             createParentId={createParentId}
-            error={categoryFormError}
+            errors={categoryFieldErrors}
             isDatabaseAvailable={isDatabaseAvailable}
             isPending={
               categoryDialogMode === "create"
@@ -564,6 +595,9 @@ export function PartCategoriesClient({
             onCreateValueAttributeIdChange={setCreateCategoryValueAttributeId}
             onTabChange={setActiveCategoryDialogTab}
             onDelete={handleDeleteCategory}
+            onError={(error) =>
+              setCategoryFieldErrors(getCategoryFormErrors(copy, error))
+            }
             onUpdateSubmit={handleUpdateSubmit}
           />
         ) : null}
@@ -591,7 +625,7 @@ function CategoryDialogContent({
   category,
   copy,
   createParentId,
-  error,
+  errors,
   isDatabaseAvailable,
   isPending,
   mode,
@@ -605,6 +639,7 @@ function CategoryDialogContent({
   onCreateValueAttributeIdChange,
   onTabChange,
   onDelete,
+  onError,
   onUpdateSubmit
 }: {
   activeTab: CategoryDialogTab;
@@ -613,7 +648,7 @@ function CategoryDialogContent({
   category: PartCategoryListItem | null;
   copy: Copy;
   createParentId: string;
-  error: string | null;
+  errors: CategoryFormErrors;
   isDatabaseAvailable: boolean;
   isPending: boolean;
   mode: CategoryDialogMode;
@@ -631,6 +666,7 @@ function CategoryDialogContent({
   onCreateValueAttributeIdChange: (attributeId: string) => void;
   onTabChange: (tab: CategoryDialogTab) => void;
   onDelete: () => void;
+  onError: (error: string) => void;
   onUpdateSubmit: (
     event: FormEvent<HTMLFormElement>,
     attributeDrafts: CategoryAttributeDraft[],
@@ -644,13 +680,10 @@ function CategoryDialogContent({
   const [editValueAttributeId, setEditValueAttributeId] = useState("");
   const editAttributeDraftsRef = useRef<CategoryAttributeDraft[]>([]);
   const editValueAttributeIdRef = useRef("");
-  const detailsContentRef = useRef<HTMLFormElement>(null);
+  const detailsContentRef = useRef<HTMLDivElement>(null);
   const [detailsContentHeight, setDetailsContentHeight] = useState<
     number | null
   >(null);
-  const [editAttributesError, setEditAttributesError] = useState<string | null>(
-    null
-  );
   const [editAttributesLoaded, setEditAttributesLoaded] = useState(
     mode === "create"
   );
@@ -658,7 +691,7 @@ function CategoryDialogContent({
     mutationFn: getEffectiveCategoryAttributesForWorkspace,
     onSuccess: (result, variables) => {
       if (!result.ok) {
-        setEditAttributesError(result.error);
+        onError(result.error);
         setEditAttributesLoaded(false);
         return;
       }
@@ -671,11 +704,10 @@ function CategoryDialogContent({
       setEditValueAttribute(
         result.data.find((attribute) => attribute.isValue)?.attribute.id ?? ""
       );
-      setEditAttributesError(null);
       setEditAttributesLoaded(true);
     },
     onError: () => {
-      setEditAttributesError("database-unavailable");
+      onError("database-unavailable");
       setEditAttributesLoaded(false);
     }
   });
@@ -683,7 +715,7 @@ function CategoryDialogContent({
     mutationFn: getEffectiveCategoryAttributesForWorkspace,
     onSuccess: (result) => {
       if (!result.ok) {
-        setEditAttributesError(result.error);
+        onError(result.error);
         return;
       }
 
@@ -693,17 +725,15 @@ function CategoryDialogContent({
       onCreateValueAttributeIdChange(
         result.data.find((attribute) => attribute.isValue)?.attribute.id ?? ""
       );
-      setEditAttributesError(null);
     },
     onError: () => {
-      setEditAttributesError("database-unavailable");
+      onError("database-unavailable");
     }
   });
   const activeAttributeDrafts =
     mode === "create" ? createAttributeDrafts : editAttributeDrafts;
   const activeValueAttributeId =
     mode === "create" ? createValueAttributeId : editValueAttributeId;
-  const displayedError = error ?? editAttributesError;
   const areAttributeControlsEnabled = mode === "create" || editAttributesLoaded;
   const isSaveDisabled =
     !isDatabaseAvailable ||
@@ -832,37 +862,37 @@ function CategoryDialogContent({
         className="flex-[0_1_auto]"
         style={getDialogBodyHeightStyle(detailsContentHeight)}
       >
-        {displayedError ? (
-          <p className="mb-3 rounded-md border border-[var(--color-error-border)] bg-[var(--color-error-soft)] px-3 py-2 text-sm text-[var(--color-error)]">
-            {getCategoryErrorMessage(copy, displayedError)}
-          </p>
-        ) : null}
-        <form
-          key={`${mode}-${category?.id ?? "new"}`}
+        <div
           ref={detailsContentRef}
           className={
             activeTab === "details"
               ? "grid gap-3 pr-1"
               : "hidden"
           }
-          id={formId}
-          onSubmit={handleSubmit}
         >
-          <input name="workspaceSlug" type="hidden" value={workspaceSlug} />
-          {mode === "edit" && category ? (
-            <input name="id" type="hidden" value={category.id} />
-          ) : null}
-          <CategoryFormFields
-            categories={categories}
-            copy={copy}
-            defaultIsAssignable={category?.isAssignable ?? true}
-            excludedCategoryId={category?.id}
+          <form
+            key={`${mode}-${category?.id ?? "new"}`}
+            className="grid gap-3"
+            id={formId}
+            onSubmit={handleSubmit}
+          >
+            <input name="workspaceSlug" type="hidden" value={workspaceSlug} />
+            {mode === "edit" && category ? (
+              <input name="id" type="hidden" value={category.id} />
+            ) : null}
+            <CategoryFormFields
+              categories={categories}
+              copy={copy}
+              defaultIsAssignable={category?.isAssignable ?? true}
+              excludedCategoryId={category?.id}
             isDatabaseAvailable={isDatabaseAvailable}
             nameDefaultValue={category?.name ?? ""}
             parentId={mode === "create" ? createParentId : category?.parentId ?? ""}
+            errors={errors}
             setParentId={mode === "create" ? onParentIdChange : undefined}
           />
-        </form>
+          </form>
+        </div>
         <div
           className={
             activeTab === "attributes"
@@ -892,28 +922,34 @@ function CategoryDialogContent({
       <DialogFooter
         className={
           mode === "edit"
-            ? "items-center justify-between"
-            : "justify-end"
+            ? "items-end justify-between"
+            : "items-center justify-end gap-3"
         }
       >
         {mode === "edit" ? (
-          <button
-            className="min-h-9 rounded-md border border-[var(--color-error-border)] bg-white px-3 py-1.5 text-sm font-medium text-[var(--color-error)] transition hover:bg-[var(--color-error-soft)] focus:outline-none focus:ring-2 focus:ring-[var(--color-error-border)] focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400"
-            disabled={isSaveDisabled}
-            type="button"
-            onClick={onDelete}
-          >
-            {copy.delete}
-          </button>
+          <div className="relative">
+            <ErrorBubble align="start">{errors.delete}</ErrorBubble>
+            <button
+              className="min-h-9 rounded-md border border-[var(--color-error-border)] bg-white px-3 py-1.5 text-sm font-medium text-[var(--color-error)] transition hover:bg-[var(--color-error-soft)] focus:outline-none focus:ring-2 focus:ring-[var(--color-error-border)] focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400"
+              disabled={isSaveDisabled}
+              type="button"
+              onClick={onDelete}
+            >
+              {copy.delete}
+            </button>
+          </div>
         ) : null}
-        <button
-          className={primaryButtonClassName}
-          disabled={isSaveDisabled}
-          form={formId}
-          type="submit"
-        >
-          {mode === "create" ? copy.createCategory : copy.saveChanges}
-        </button>
+        <div className="relative">
+          <ErrorBubble>{errors.submit}</ErrorBubble>
+          <button
+            className={primaryButtonClassName}
+            disabled={isSaveDisabled}
+            form={formId}
+            type="submit"
+          >
+            {mode === "create" ? copy.createCategory : copy.saveChanges}
+          </button>
+        </div>
       </DialogFooter>
     </>
   );
@@ -1443,6 +1479,7 @@ function CategoryFormFields({
   copy,
   defaultIsAssignable,
   excludedCategoryId,
+  errors,
   isDatabaseAvailable,
   nameDefaultValue,
   parentId,
@@ -1452,6 +1489,7 @@ function CategoryFormFields({
   copy: Copy;
   defaultIsAssignable: boolean;
   excludedCategoryId?: string;
+  errors: CategoryFormErrors;
   isDatabaseAvailable: boolean;
   nameDefaultValue: string;
   parentId: string;
@@ -1467,9 +1505,13 @@ function CategoryFormFields({
   return (
     <>
       <label className="grid gap-2 text-sm font-medium text-slate-700">
-        {copy.name}
+        <LabelWithError error={errors.name}>{copy.name}</LabelWithError>
         <input
-          className="min-h-11 rounded-md border border-slate-300 bg-white px-3 py-2 text-base text-slate-950 outline-none transition placeholder:text-slate-400 hover:border-slate-400 focus:border-slate-500 focus:ring-2 focus:ring-slate-200 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400"
+          aria-invalid={errors.name ? true : undefined}
+          className={getFieldInputClassName(
+            "min-h-11 rounded-md border border-slate-300 bg-white px-3 py-2 text-base text-slate-950 outline-none transition placeholder:text-slate-400 hover:border-slate-400 focus:border-slate-500 focus:ring-2 focus:ring-slate-200 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400",
+            Boolean(errors.name)
+          )}
           defaultValue={nameDefaultValue}
           disabled={!isDatabaseAvailable}
           name="name"
@@ -1479,9 +1521,13 @@ function CategoryFormFields({
         />
       </label>
       <label className="grid gap-2 text-sm font-medium text-slate-700">
-        {copy.parentCategory}
+        <LabelWithError error={errors.parentId}>{copy.parentCategory}</LabelWithError>
         <select
-          className="min-h-11 rounded-md border border-slate-300 bg-white px-3 py-2 text-base text-slate-950 outline-none transition hover:border-slate-400 focus:border-slate-500 focus:ring-2 focus:ring-slate-200 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400"
+          aria-invalid={errors.parentId ? true : undefined}
+          className={getFieldInputClassName(
+            "min-h-11 rounded-md border border-slate-300 bg-white px-3 py-2 text-base text-slate-950 outline-none transition hover:border-slate-400 focus:border-slate-500 focus:ring-2 focus:ring-slate-200 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400",
+            Boolean(errors.parentId)
+          )}
           defaultValue={setParentId ? undefined : parentId}
           disabled={!isDatabaseAvailable}
           name="parentId"
@@ -1674,26 +1720,6 @@ function getCategoryAndDescendantIds(
   return excludedIds;
 }
 
-function openDialog(dialog: HTMLDialogElement | null) {
-  if (!dialog || dialog.open) {
-    return;
-  }
-
-  try {
-    dialog.showModal();
-  } catch {
-    dialog.setAttribute("open", "");
-  }
-}
-
-function closeDialog(dialog: HTMLDialogElement | null) {
-  if (!dialog?.open) {
-    return;
-  }
-
-  dialog.close();
-}
-
 function getCategorySuccessMessage(
   actionLabel: string,
   category: PartCategoryListItem
@@ -1705,6 +1731,32 @@ function getFormValue(formData: FormData, name: string) {
   const value = formData.get(name);
 
   return typeof value === "string" ? value.trim() : "";
+}
+
+function validateCategoryForm(copy: Copy, formData: FormData): CategoryFormErrors {
+  return getFormValue(formData, "name")
+    ? {}
+    : { name: copy.missingRequiredFields };
+}
+
+function getCategoryFormErrors(copy: Copy, error: string): CategoryFormErrors {
+  if (error === "missing-required-fields" || error === "category-name-required") {
+    return { name: copy.missingRequiredFields };
+  }
+
+  if (error === "invalid-parent-category" || error === "category-tree-cycle") {
+    return { parentId: getCategoryErrorMessage(copy, error) };
+  }
+
+  if (error === "category-in-use-by-parts" || error === "category-has-children") {
+    return { delete: getCategoryErrorMessage(copy, error) };
+  }
+
+  return { submit: getCategoryErrorMessage(copy, error) };
+}
+
+function hasFieldErrors(errors: Record<string, string | undefined>) {
+  return Object.values(errors).some(Boolean);
 }
 
 function getCategoryErrorMessage(copy: Copy, error: string) {

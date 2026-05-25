@@ -75,12 +75,14 @@ test.describe("parts list", () => {
       "Semiconductors » Integrated circuits"
     );
     await expect(page.getByText("2 of 2 parts")).toBeVisible();
-    await page.getByLabel("Search parts").fill("missing part");
+    await page.getByRole("searchbox", { name: "Search parts" }).fill("missing part");
     await expect(page.getByText("No matching parts")).toBeVisible();
     await expect(page.getByText("0 of 2 parts")).toBeVisible();
     await page.getByRole("button", { name: "Clear filters" }).click();
     await expect(seededPartRow).toBeVisible();
-    await page.getByLabel("Search parts").fill("integrated circuits");
+    await page
+      .getByRole("searchbox", { name: "Search parts" })
+      .fill("integrated circuits");
     await expect(seededPartRow).toBeVisible();
     await expect(page.getByText("1 of 2 parts")).toBeVisible();
     await page.getByRole("button", { name: "Clear filters" }).click();
@@ -114,6 +116,10 @@ test.describe("parts list", () => {
     await page.getByRole("button", { name: "Add part" }).click();
     const addPartDialog = page.getByRole("dialog", { name: "Add part" });
     await expect(addPartDialog).toBeVisible();
+    await expect(addPartDialog.getByLabel("Catalog number")).toBeFocused();
+    await addPartDialog.getByRole("button", { name: "Create part" }).click();
+    await expect(addPartDialog.getByText("Enter a catalog number.")).toBeVisible();
+    await expect(addPartDialog.getByText("Enter a manufacturer.")).toBeVisible();
     await addPartDialog.getByLabel("Catalog number").fill(catalogNumber);
     await addPartDialog.getByLabel("Description").fill(description);
     const createManufacturerInput = addPartDialog.getByLabel("Manufacturer");
@@ -173,14 +179,14 @@ test.describe("parts list", () => {
     await page.getByRole("button", { name: "Create part" }).click();
 
     await expect(
-      page.getByText(
+      addPartDialog.getByText(
         "A part with this manufacturer and catalog number already exists."
       )
-    ).toHaveCount(1);
+    ).toHaveCount(2);
     await expect(addPartDialog.getByLabel("Catalog number")).toHaveValue(
       catalogNumber
     );
-    await expect(addPartDialog.getByLabel("Manufacturer")).toHaveValue(
+    await expect(addPartDialog.getByLabel("Manufacturer", { exact: true })).toHaveValue(
       "Microchip Technology"
     );
     await addPartDialog.getByRole("button", { name: "Close" }).click();
@@ -188,6 +194,7 @@ test.describe("parts list", () => {
     await createdPartRow.getByRole("button", { name: "Edit" }).click();
     const editPartDialog = page.getByRole("dialog", { name: "Edit part" });
     await expect(editPartDialog).toBeVisible();
+    await expect(editPartDialog.getByLabel("Catalog number")).toBeFocused();
     await expect(editPartDialog.getByLabel("Catalog number")).toHaveValue(
       catalogNumber
     );
@@ -201,19 +208,21 @@ test.describe("parts list", () => {
     await editPartDialog.getByLabel("Manufacturer").fill("Texas Instruments");
     await editPartDialog.getByRole("button", { name: "Save changes" }).click();
     await expect(
-      page.getByText(
+      editPartDialog.getByText(
         "A part with this manufacturer and catalog number already exists."
       )
-    ).toHaveCount(1);
+    ).toHaveCount(2);
     await expect(editPartDialog.getByLabel("Catalog number")).toHaveValue(
       "NE555P"
     );
-    await expect(editPartDialog.getByLabel("Manufacturer")).toHaveValue(
+    await expect(editPartDialog.getByLabel("Manufacturer", { exact: true })).toHaveValue(
       "Texas Instruments"
     );
     await editPartDialog.getByLabel("Catalog number").fill(updatedCatalogNumber);
     await editPartDialog.getByLabel("Description").fill(updatedDescription);
-    const editManufacturerInput = editPartDialog.getByLabel("Manufacturer");
+    const editManufacturerInput = editPartDialog.getByLabel("Manufacturer", {
+      exact: true
+    });
     await editManufacturerInput.fill("dio");
     await page.keyboard.press("Enter");
     await expect(editManufacturerInput).toHaveValue("Diodes Incorporated");
@@ -283,6 +292,8 @@ test.describe("parts list", () => {
       name: `Delete ${updatedManufacturer} ${updatedCatalogNumber}?`
     });
     await expect(deletePartDialog).toBeVisible();
+    await expect(deletePartDialog.getByRole("button", { name: "Cancel" }))
+      .toBeFocused();
     await deletePartDialog.getByRole("button", { name: "Cancel" }).click();
     await expect(deletePartDialog).toBeHidden();
     await expect(editPartDialog).toBeVisible();
@@ -397,7 +408,9 @@ test.describe("parts list", () => {
     await expect(deleteCategoryDialog).toBeVisible();
     await deleteCategoryDialog.getByRole("button", { name: "Delete" }).click();
     await expect(
-      page.getByText("This category is used by parts and cannot be deleted.")
+      editCategoryDialog.getByText(
+        "This category is used by parts and cannot be deleted."
+      )
     ).toBeVisible();
     await editCategoryDialog.getByRole("button", { name: "Close" }).click();
 
@@ -406,6 +419,7 @@ test.describe("parts list", () => {
       name: "Add category"
     });
     await expect(addCategoryDialog).toBeVisible();
+    await expect(addCategoryDialog.getByLabel("Name")).toBeFocused();
     await addCategoryDialog.getByLabel("Name").fill(categoryName);
     await addCategoryDialog.getByText("Organizational", { exact: true }).click();
     await addCategoryDialog
@@ -464,6 +478,7 @@ test.describe("parts list", () => {
       name: "Edit category"
     });
     await expect(editCategoryDialog).toBeVisible();
+    await expect(editCategoryDialog.getByLabel("Name")).toBeFocused();
     await editCategoryDialog.getByLabel("Name").fill(updatedChildName);
     await editCategoryDialog
       .getByRole("button", { name: "Save changes" })
@@ -573,6 +588,7 @@ test.describe("parts list", () => {
       name: "Add attribute"
     });
     await expect(addAttributeDialog).toBeVisible();
+    await expect(addAttributeDialog.getByLabel("Name")).toBeFocused();
     await addAttributeDialog.getByLabel("Name").fill(disposableName);
     await addAttributeDialog.getByLabel("Type").selectOption("TEXT");
     await addAttributeDialog
@@ -590,6 +606,7 @@ test.describe("parts list", () => {
       name: "Edit attribute"
     });
     await expect(editAttributeDialog).toBeVisible();
+    await expect(editAttributeDialog.getByLabel("Name")).toBeFocused();
     await editAttributeDialog.getByRole("button", { name: "Delete" }).click();
     const deleteAttributeDialog = page.getByRole("dialog", {
       name: `Delete ${disposableName}?`

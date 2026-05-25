@@ -3,7 +3,8 @@
 import type {
   CSSProperties,
   FormEvent,
-  KeyboardEvent as ReactKeyboardEvent
+  KeyboardEvent as ReactKeyboardEvent,
+  SetStateAction
 } from "react";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import {
@@ -36,8 +37,13 @@ import {
   DialogBody,
   DialogFooter,
   DialogShell,
+  ErrorBubble,
+  LabelWithError,
+  closeDialog,
+  getFieldInputClassName,
   getDialogBodyHeightStyle,
-  observeDialogContentHeight
+  observeDialogContentHeight,
+  openDialog
 } from "@/app/dialog-shell";
 import { useDebouncedValue } from "@/app/use-debounced-value";
 
@@ -95,6 +101,8 @@ type Copy = {
   updatedToast: string;
   deletedToast: string;
   missingRequiredFields: string;
+  missingCatalogNumber: string;
+  missingManufacturer: string;
   invalidCategory: string;
   secondaryWithoutPrimary: string;
   duplicateCategories: string;
@@ -121,6 +129,8 @@ type CategoryTreeItem = PartCategoryListItem & {
 };
 
 type PartDialogTab = "details" | "attributes";
+type PartFormField = "catalogNumber" | "manufacturerName" | "primaryCategoryId" | "secondaryCategoryId" | "submit" | "delete";
+type PartFormErrors = Partial<Record<PartFormField, string>>;
 
 type PartsListClientProps = {
   copy: Copy;
@@ -170,6 +180,9 @@ export function PartsListClient({
   const [createAttributeValues, setCreateAttributeValues] = useState<
     Record<string, string>
   >({});
+  const [createFieldErrors, setCreateFieldErrors] = useState<PartFormErrors>(
+    {}
+  );
   const [createFormResetKey, setCreateFormResetKey] = useState(0);
   const [editCatalogNumber, setEditCatalogNumber] = useState("");
   const [editDescription, setEditDescription] = useState("");
@@ -182,6 +195,7 @@ export function PartsListClient({
   const [editAttributeValues, setEditAttributeValues] = useState<
     Record<string, string>
   >({});
+  const [editFieldErrors, setEditFieldErrors] = useState<PartFormErrors>({});
   const [editingPart, setEditingPart] = useState<PartsListItem | null>(null);
   const [partPendingDelete, setPartPendingDelete] =
     useState<PartsListItem | null>(null);
@@ -201,8 +215,6 @@ export function PartsListClient({
       selectedPrimaryCategoryId: editPrimaryCategoryId,
       selectedSecondaryCategoryId: editSecondaryCategoryId
     }).attributes.length > 0;
-  const [createFormError, setCreateFormError] = useState<string | null>(null);
-  const [updateFormError, setUpdateFormError] = useState<string | null>(null);
   const debouncedSearchQuery = useDebouncedValue(searchQuery, 300);
   const debouncedManufacturerFilter = useDebouncedValue(manufacturerFilter, 300);
   const partsQueryKey = [
@@ -274,11 +286,20 @@ export function PartsListClient({
   const createPartMutation = useMutation({
     mutationFn: createPart,
     onError: () => {
-      setCreateFormError("database-unavailable");
+      setCreateFieldErrors({
+        submit: getPartFormErrorMessage(copy, "database-unavailable")
+      });
     },
     onSuccess: async (result) => {
       if (!result.ok) {
-        setCreateFormError(result.error);
+        const nextErrors = getPartFormErrors(copy, result.error);
+        setCreateFieldErrors(nextErrors);
+        const firstErrorTab = getFirstTabWithErrors(nextErrors);
+
+        if (firstErrorTab) {
+          setCreateActiveTab(firstErrorTab);
+        }
+
         return;
       }
 
@@ -291,6 +312,7 @@ export function PartsListClient({
       setCreateSecondaryCategoryId("");
       setCreateActiveTab("details");
       setCreateAttributeValues({});
+      setCreateFieldErrors({});
       setCreateFormResetKey((currentKey) => currentKey + 1);
       addToastMessage({
         id: getNextToastId(nextToastIdRef),
@@ -302,11 +324,20 @@ export function PartsListClient({
   const updatePartMutation = useMutation({
     mutationFn: updatePart,
     onError: () => {
-      setUpdateFormError("database-unavailable");
+      setEditFieldErrors({
+        submit: getPartFormErrorMessage(copy, "database-unavailable")
+      });
     },
     onSuccess: async (result) => {
       if (!result.ok) {
-        setUpdateFormError(result.error);
+        const nextErrors = getPartFormErrors(copy, result.error);
+        setEditFieldErrors(nextErrors);
+        const firstErrorTab = getFirstTabWithErrors(nextErrors);
+
+        if (firstErrorTab) {
+          setEditActiveTab(firstErrorTab);
+        }
+
         setPartPendingDelete(null);
         return;
       }
@@ -318,6 +349,7 @@ export function PartsListClient({
       setEditManufacturerName(result.part.manufacturerName);
       setEditActiveTab("details");
       setEditAttributeValues(getPartAttributeValueState(result.part));
+      setEditFieldErrors({});
       addToastMessage({
         id: getNextToastId(nextToastIdRef),
         message: getPartSuccessMessage(copy.updatedToast, result.part)
@@ -328,11 +360,13 @@ export function PartsListClient({
   const deletePartMutation = useMutation({
     mutationFn: deletePart,
     onError: () => {
-      setUpdateFormError("database-unavailable");
+      setEditFieldErrors({
+        delete: getPartFormErrorMessage(copy, "database-unavailable")
+      });
     },
     onSuccess: async (result) => {
       if (!result.ok) {
-        setUpdateFormError(result.error);
+        setEditFieldErrors({ delete: getPartFormErrorMessage(copy, result.error) });
         return;
       }
 
@@ -341,7 +375,7 @@ export function PartsListClient({
       await refreshPartsLists();
       setEditingPart(null);
       setPartPendingDelete(null);
-      setUpdateFormError(null);
+      setEditFieldErrors({});
 
       if (deletedPart) {
         addToastMessage({
@@ -501,7 +535,7 @@ export function PartsListClient({
     setEditSecondaryCategoryId(part.secondaryCategoryId ?? "");
     setEditAttributeValues(getPartAttributeValueState(part));
     setEditActiveTab("details");
-    setUpdateFormError(null);
+    setEditFieldErrors({});
     window.requestAnimationFrame(() => openDialog(editDialogRef.current));
   }
 
@@ -513,21 +547,65 @@ export function PartsListClient({
     setCreateSecondaryCategoryId("");
     setCreateActiveTab("details");
     setCreateAttributeValues({});
+    setCreateFieldErrors({});
     setCreateFormResetKey((currentKey) => currentKey + 1);
-    setCreateFormError(null);
     openDialog(createDialogRef.current);
   }
 
   function handleCreateSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setCreateFormError(null);
-    createPartMutation.mutate(new FormData(event.currentTarget));
+    const formData = new FormData(event.currentTarget);
+    const fieldErrors = validatePartForm(copy, {
+      catalogNumber: createCatalogNumber,
+      manufacturerName: createManufacturerName
+    });
+
+    setCreateFieldErrors(fieldErrors);
+    const firstErrorTab = getFirstTabWithErrors(fieldErrors);
+
+    if (firstErrorTab) {
+      setCreateActiveTab(firstErrorTab);
+    }
+
+    if (hasFieldErrors(fieldErrors)) {
+      return;
+    }
+
+    formData.set("catalogNumber", createCatalogNumber);
+    formData.set("manufacturerName", createManufacturerName);
+    formData.set("description", createDescription);
+    formData.set("primaryCategoryId", createPrimaryCategoryId);
+    formData.set("secondaryCategoryId", createSecondaryCategoryId);
+
+    createPartMutation.mutate(formData);
   }
 
   function handleUpdateSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setUpdateFormError(null);
-    updatePartMutation.mutate(new FormData(event.currentTarget));
+    const formData = new FormData(event.currentTarget);
+    const fieldErrors = validatePartForm(copy, {
+      catalogNumber: editCatalogNumber,
+      manufacturerName: editManufacturerName
+    });
+
+    setEditFieldErrors(fieldErrors);
+    const firstErrorTab = getFirstTabWithErrors(fieldErrors);
+
+    if (firstErrorTab) {
+      setEditActiveTab(firstErrorTab);
+    }
+
+    if (hasFieldErrors(fieldErrors)) {
+      return;
+    }
+
+    formData.set("catalogNumber", editCatalogNumber);
+    formData.set("manufacturerName", editManufacturerName);
+    formData.set("description", editDescription);
+    formData.set("primaryCategoryId", editPrimaryCategoryId);
+    formData.set("secondaryCategoryId", editSecondaryCategoryId);
+
+    updatePartMutation.mutate(formData);
   }
 
   function handleDeletePart() {
@@ -546,7 +624,7 @@ export function PartsListClient({
     const formData = new FormData();
     formData.set("workspaceSlug", workspaceSlug);
     formData.set("id", partPendingDelete.id);
-    setUpdateFormError(null);
+    setEditFieldErrors({});
     deletePartMutation.mutate(formData);
   }
 
@@ -747,7 +825,6 @@ export function PartsListClient({
         title={copy.newPartTitle}
         titleId="add-part-dialog-title"
         widthClassName="w-[min(58rem,calc(100vw-3rem))]"
-        onCloseClick={() => setCreateFormError(null)}
       >
           <form
             className="flex min-h-0 flex-1 flex-col overflow-hidden"
@@ -763,13 +840,6 @@ export function PartsListClient({
               selectedSecondaryCategoryId={createSecondaryCategoryId}
             />
             <div className="shrink-0 border-b border-slate-200 px-5 pt-4">
-              {createFormError ? (
-                <p className="mb-3 rounded-md border border-[var(--color-error-border)] bg-[var(--color-error-soft)] px-3 py-2 text-sm text-[var(--color-error)]">
-                  {createFormError === "missing-required-fields"
-                    ? copy.missingRequiredFields
-                    : getPartFormErrorMessage(copy, createFormError)}
-                </p>
-              ) : null}
               <PartDialogTabs
                 activeTab={createActiveTab}
                 copy={copy}
@@ -794,6 +864,7 @@ export function PartsListClient({
                     disabled={!isDatabaseAvailable}
                     description={createDescription}
                     descriptionInputId="create-description"
+                    errors={createFieldErrors}
                     formResetKey={createFormResetKey}
                     manufacturerInputId="create-manufacturer-name"
                     manufacturerName={createManufacturerName}
@@ -801,14 +872,25 @@ export function PartsListClient({
                     partCategories={partCategories}
                     primaryCategoryId={createPrimaryCategoryId}
                     secondaryCategoryId={createSecondaryCategoryId}
-                    onCatalogNumberChange={setCreateCatalogNumber}
+                    onCatalogNumberChange={(value) => {
+                      setCreateCatalogNumber(value);
+                      clearPartFieldError(setCreateFieldErrors, "catalogNumber");
+                    }}
                     onDescriptionChange={setCreateDescription}
-                    onManufacturerNameChange={setCreateManufacturerName}
+                    onManufacturerNameChange={(value) => {
+                      setCreateManufacturerName(value);
+                      clearPartFieldError(setCreateFieldErrors, "manufacturerName");
+                    }}
                     onPrimaryCategoryChange={(categoryId) => {
                       setCreatePrimaryCategoryId(categoryId);
                       setCreateSecondaryCategoryId("");
+                      clearPartFieldError(setCreateFieldErrors, "primaryCategoryId");
+                      clearPartFieldError(setCreateFieldErrors, "secondaryCategoryId");
                     }}
-                    onSecondaryCategoryChange={setCreateSecondaryCategoryId}
+                    onSecondaryCategoryChange={(categoryId) => {
+                      setCreateSecondaryCategoryId(categoryId);
+                      clearPartFieldError(setCreateFieldErrors, "secondaryCategoryId");
+                    }}
                   />
                   <PartAttributeSections
                     categoryAttributesByCategoryId={
@@ -855,14 +937,17 @@ export function PartsListClient({
                 </div>
               ) : null}
             </DialogBody>
-            <DialogFooter>
-              <button
-                className={primaryButtonClassName}
-                type="submit"
-                disabled={!isDatabaseAvailable || createPartMutation.isPending}
-              >
-                {copy.createPart}
-              </button>
+            <DialogFooter className="items-center justify-end gap-3">
+              <div className="relative">
+                <ErrorBubble>{createFieldErrors.submit}</ErrorBubble>
+                <button
+                  className={primaryButtonClassName}
+                  type="submit"
+                  disabled={!isDatabaseAvailable || createPartMutation.isPending}
+                >
+                  {copy.createPart}
+                </button>
+              </div>
             </DialogFooter>
           </form>
       </DialogShell>
@@ -874,7 +959,6 @@ export function PartsListClient({
         title={copy.editPartTitle}
         titleId="edit-part-dialog-title"
         widthClassName="w-[min(58rem,calc(100vw-3rem))]"
-        onCloseClick={() => setUpdateFormError(null)}
       >
           {editingPart ? (
             <form
@@ -892,13 +976,6 @@ export function PartsListClient({
                 selectedSecondaryCategoryId={editSecondaryCategoryId}
               />
               <div className="shrink-0 border-b border-slate-200 px-5 pt-4">
-                {updateFormError ? (
-                  <p className="mb-3 rounded-md border border-[var(--color-error-border)] bg-[var(--color-error-soft)] px-3 py-2 text-sm text-[var(--color-error)]">
-                    {updateFormError === "missing-required-fields"
-                      ? copy.missingRequiredFields
-                      : getPartFormErrorMessage(copy, updateFormError)}
-                  </p>
-                ) : null}
                 <PartDialogTabs
                   activeTab={editActiveTab}
                   copy={copy}
@@ -923,6 +1000,7 @@ export function PartsListClient({
                       disabled={!isDatabaseAvailable}
                       description={editDescription}
                       descriptionInputId="edit-description"
+                      errors={editFieldErrors}
                       formResetKey={`${editingPart.id}-${editingPart.manufacturerName}`}
                       manufacturerInputId="edit-manufacturer-name"
                       manufacturerName={editManufacturerName}
@@ -930,20 +1008,34 @@ export function PartsListClient({
                       partCategories={partCategories}
                       primaryCategoryId={editPrimaryCategoryId}
                       secondaryCategoryId={editSecondaryCategoryId}
-                      onCatalogNumberChange={setEditCatalogNumber}
+                      onCatalogNumberChange={(value) => {
+                        setEditCatalogNumber(value);
+                        clearPartFieldError(setEditFieldErrors, "catalogNumber");
+                      }}
                       onDescriptionChange={setEditDescription}
-                      onManufacturerNameChange={setEditManufacturerName}
+                      onManufacturerNameChange={(value) => {
+                        setEditManufacturerName(value);
+                        clearPartFieldError(setEditFieldErrors, "manufacturerName");
+                      }}
                       onPrimaryCategoryChange={(categoryId) => {
                         setEditPrimaryCategoryId(categoryId);
+                        clearPartFieldError(setEditFieldErrors, "primaryCategoryId");
 
                         if (
                           !categoryId ||
                           editSecondaryCategoryId === categoryId
                         ) {
                           setEditSecondaryCategoryId("");
+                          clearPartFieldError(
+                            setEditFieldErrors,
+                            "secondaryCategoryId"
+                          );
                         }
                       }}
-                      onSecondaryCategoryChange={setEditSecondaryCategoryId}
+                      onSecondaryCategoryChange={(categoryId) => {
+                        setEditSecondaryCategoryId(categoryId);
+                        clearPartFieldError(setEditFieldErrors, "secondaryCategoryId");
+                      }}
                     />
                     <PartAttributeSections
                       categoryAttributesByCategoryId={
@@ -990,26 +1082,32 @@ export function PartsListClient({
                   </div>
                 ) : null}
               </DialogBody>
-              <DialogFooter className="items-center justify-between">
-                <button
-                  className="min-h-9 rounded-md border border-[var(--color-error-border)] bg-white px-3 py-1.5 text-sm font-medium text-[var(--color-error)] transition hover:bg-[var(--color-error-soft)] focus:outline-none focus:ring-2 focus:ring-[var(--color-error-border)] focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400"
-                  disabled={!isDatabaseAvailable || deletePartMutation.isPending}
-                  type="button"
-                  onClick={handleDeletePart}
-                >
-                  {copy.deletePart}
-                </button>
-                <button
-                  className={primaryButtonClassName}
-                  type="submit"
-                  disabled={
-                    !isDatabaseAvailable ||
-                    updatePartMutation.isPending ||
-                    deletePartMutation.isPending
-                  }
-                >
-                  {copy.saveChanges}
-                </button>
+              <DialogFooter className="items-end justify-between">
+                <div className="relative">
+                  <ErrorBubble align="start">{editFieldErrors.delete}</ErrorBubble>
+                  <button
+                    className="min-h-9 rounded-md border border-[var(--color-error-border)] bg-white px-3 py-1.5 text-sm font-medium text-[var(--color-error)] transition hover:bg-[var(--color-error-soft)] focus:outline-none focus:ring-2 focus:ring-[var(--color-error-border)] focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400"
+                    disabled={!isDatabaseAvailable || deletePartMutation.isPending}
+                    type="button"
+                    onClick={handleDeletePart}
+                  >
+                    {copy.deletePart}
+                  </button>
+                </div>
+                <div className="relative">
+                  <ErrorBubble>{editFieldErrors.submit}</ErrorBubble>
+                  <button
+                    className={primaryButtonClassName}
+                    type="submit"
+                    disabled={
+                      !isDatabaseAvailable ||
+                      updatePartMutation.isPending ||
+                      deletePartMutation.isPending
+                    }
+                  >
+                    {copy.saveChanges}
+                  </button>
+                </div>
               </DialogFooter>
             </form>
           ) : null}
@@ -1034,28 +1132,97 @@ export function PartsListClient({
   );
 }
 
-function openDialog(dialog: HTMLDialogElement | null) {
-  if (!dialog || dialog.open) {
-    return;
-  }
-
-  try {
-    dialog.showModal();
-  } catch {
-    dialog.setAttribute("open", "");
-  }
-}
-
-function closeDialog(dialog: HTMLDialogElement | null) {
-  if (!dialog?.open) {
-    return;
-  }
-
-  dialog.close();
-}
-
 function getPartSuccessMessage(actionLabel: string, part: PartsListItem) {
   return `${actionLabel}: ${part.manufacturerName} ${part.catalogNumber}.`;
+}
+
+function validatePartForm(
+  copy: Copy,
+  values: { catalogNumber: string; manufacturerName: string }
+): PartFormErrors {
+  const errors: PartFormErrors = {};
+
+  if (!values.catalogNumber.trim()) {
+    errors.catalogNumber = copy.missingCatalogNumber;
+  }
+
+  if (!values.manufacturerName.trim()) {
+    errors.manufacturerName = copy.missingManufacturer;
+  }
+
+  return errors;
+}
+
+function getPartFormErrors(copy: Copy, error: string): PartFormErrors {
+  if (error === "missing-required-fields") {
+    return {
+      catalogNumber: copy.missingRequiredFields,
+      manufacturerName: copy.missingRequiredFields
+    };
+  }
+
+  if (error === "duplicate-part") {
+    return {
+      catalogNumber: copy.duplicatePart,
+      manufacturerName: copy.duplicatePart
+    };
+  }
+
+  if (error === "invalid-category") {
+    return { primaryCategoryId: copy.invalidCategory };
+  }
+
+  if (error === "secondary-without-primary") {
+    return { secondaryCategoryId: copy.secondaryWithoutPrimary };
+  }
+
+  if (error === "duplicate-categories") {
+    return {
+      primaryCategoryId: copy.duplicateCategories,
+      secondaryCategoryId: copy.duplicateCategories
+    };
+  }
+
+  return { submit: getPartFormErrorMessage(copy, error) };
+}
+
+function hasFieldErrors(errors: Record<string, string | undefined>) {
+  return Object.values(errors).some(Boolean);
+}
+
+function clearPartFieldError(
+  setErrors: (update: SetStateAction<PartFormErrors>) => void,
+  field: PartFormField
+) {
+  setErrors((currentErrors) => {
+    if (!currentErrors[field]) {
+      return currentErrors;
+    }
+
+    const nextErrors = { ...currentErrors };
+    delete nextErrors[field];
+    delete nextErrors.submit;
+    return nextErrors;
+  });
+}
+
+function getFirstTabWithErrors(errors: PartFormErrors): PartDialogTab | null {
+  if (
+    errors.catalogNumber ||
+    errors.manufacturerName ||
+    errors.primaryCategoryId ||
+    errors.secondaryCategoryId
+  ) {
+    return "details";
+  }
+
+  return null;
+}
+
+function getFormValue(formData: FormData, name: string) {
+  const value = formData.get(name);
+
+  return typeof value === "string" ? value.trim() : "";
 }
 
 function getPartAttributeValueState(part: PartsListItem) {
@@ -1077,6 +1244,10 @@ function formatFilteredPartsSummary(
 }
 
 function getPartFormErrorMessage(copy: Copy, error: string) {
+  if (error === "missing-required-fields") {
+    return copy.missingRequiredFields;
+  }
+
   if (error === "duplicate-part") {
     return copy.duplicatePart;
   }
@@ -1104,6 +1275,7 @@ function ManufacturerAutocomplete({
   compact = false,
   copy,
   disabled,
+  error,
   inputId,
   label = copy.manufacturer,
   name,
@@ -1115,6 +1287,7 @@ function ManufacturerAutocomplete({
   compact?: boolean;
   copy: Copy;
   disabled: boolean;
+  error?: string;
   inputId: string;
   label?: string;
   name: string;
@@ -1197,7 +1370,9 @@ function ManufacturerAutocomplete({
         compact ? "min-w-52 gap-1.5" : "gap-2"
       }`}
     >
-      <label htmlFor={inputId}>{label}</label>
+      <LabelWithError htmlFor={inputId} error={error}>
+        {label}
+      </LabelWithError>
       <input
         id={inputId}
         aria-activedescendant={
@@ -1208,10 +1383,14 @@ function ManufacturerAutocomplete({
         aria-autocomplete="list"
         aria-controls={listboxId}
         aria-expanded={isOpen}
+        aria-invalid={error ? true : undefined}
         autoComplete="off"
-        className={`rounded-md border border-slate-300 bg-white px-3 text-slate-950 outline-none transition placeholder:text-slate-400 hover:border-slate-400 focus:border-slate-500 focus:ring-2 focus:ring-slate-200 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400 ${
-          compact ? "min-h-9 py-1.5 text-sm" : "min-h-11 py-2 text-base"
-        }`}
+        className={getFieldInputClassName(
+          `rounded-md border border-slate-300 bg-white px-3 text-slate-950 outline-none transition placeholder:text-slate-400 hover:border-slate-400 focus:border-slate-500 focus:ring-2 focus:ring-slate-200 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400 ${
+            compact ? "min-h-9 py-1.5 text-sm" : "min-h-11 py-2 text-base"
+          }`,
+          Boolean(error)
+        )}
         disabled={disabled}
         name={name}
         placeholder={placeholder}
@@ -1389,6 +1568,7 @@ function PartDetailsFields({
   disabled,
   description,
   descriptionInputId,
+  errors,
   formResetKey,
   manufacturerInputId,
   manufacturerName,
@@ -1409,6 +1589,7 @@ function PartDetailsFields({
   disabled: boolean;
   description: string;
   descriptionInputId: string;
+  errors: PartFormErrors;
   formResetKey: number | string;
   manufacturerInputId: string;
   manufacturerName: string;
@@ -1429,9 +1610,15 @@ function PartDetailsFields({
           className="grid gap-2 text-sm font-medium text-slate-700"
           htmlFor={catalogNumberInputId}
         >
-          {copy.catalogNumber}
+          <LabelWithError htmlFor={catalogNumberInputId} error={errors.catalogNumber}>
+            {copy.catalogNumber}
+          </LabelWithError>
           <input
-            className="min-h-10 rounded-md border border-slate-300 bg-white px-3 py-1.5 font-mono text-sm text-slate-950 outline-none transition placeholder:text-slate-400 hover:border-slate-400 focus:border-slate-500 focus:ring-2 focus:ring-slate-200 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400"
+            aria-invalid={errors.catalogNumber ? true : undefined}
+            className={getFieldInputClassName(
+              "min-h-10 rounded-md border border-slate-300 bg-white px-3 py-1.5 font-mono text-sm text-slate-950 outline-none transition placeholder:text-slate-400 hover:border-slate-400 focus:border-slate-500 focus:ring-2 focus:ring-slate-200 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400",
+              Boolean(errors.catalogNumber)
+            )}
             id={catalogNumberInputId}
             name="catalogNumber"
             placeholder={copy.catalogNumberPlaceholder}
@@ -1449,6 +1636,7 @@ function PartDetailsFields({
           value={manufacturerName}
           name="manufacturerName"
           placeholder={copy.manufacturerPlaceholder}
+          error={errors.manufacturerName}
           suggestions={manufacturerSuggestions}
           onValueChange={onManufacturerNameChange}
         />
@@ -1478,6 +1666,7 @@ function PartDetailsFields({
           name="primaryCategoryId"
           noSelectionLabel={copy.noCategory}
           selectedId={primaryCategoryId}
+          error={errors.primaryCategoryId}
           onSelectedIdChange={onPrimaryCategoryChange}
         />
         <CategoryTreeSelect
@@ -1491,6 +1680,7 @@ function PartDetailsFields({
           name="secondaryCategoryId"
           noSelectionLabel={copy.noSecondaryCategory}
           selectedId={secondaryCategoryId}
+          error={errors.secondaryCategoryId}
           onSelectedIdChange={onSecondaryCategoryChange}
         />
       </div>
@@ -1850,6 +2040,7 @@ function CategoryTreeSelect({
   name,
   noSelectionLabel,
   selectedId,
+  error,
   onSelectedIdChange
 }: {
   allowOrganizationalCategories?: boolean;
@@ -1863,6 +2054,7 @@ function CategoryTreeSelect({
   name: string;
   noSelectionLabel: string;
   selectedId: string;
+  error?: string;
   onSelectedIdChange: (categoryId: string) => void;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -2106,8 +2298,8 @@ function CategoryTreeSelect({
 
   return (
     <div ref={containerRef} className="relative grid gap-2">
-      <span id={labelId} className="text-sm font-medium text-slate-700">
-        {label}
+      <span id={labelId}>
+        <LabelWithError error={error}>{label}</LabelWithError>
       </span>
       <input name={name} type="hidden" value={currentSelectedId} />
       <button
@@ -2117,7 +2309,8 @@ function CategoryTreeSelect({
         aria-label={`${label} ${
           currentSelectedCategory?.path ?? noSelectionLabel
         }`}
-        className={buttonClassName}
+        aria-invalid={error ? true : undefined}
+        className={getFieldInputClassName(buttonClassName, Boolean(error))}
         disabled={disabled}
         type="button"
         onClick={() => (isOpen ? setIsOpen(false) : openSelect())}
@@ -2130,7 +2323,6 @@ function CategoryTreeSelect({
           ▾
         </span>
       </button>
-
       {isOpen
         ? createPortal(
             <div

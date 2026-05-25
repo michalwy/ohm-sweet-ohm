@@ -25,6 +25,17 @@ type DialogSectionProps = {
   style?: CSSProperties;
 };
 
+type FieldErrorProps = {
+  children?: ReactNode;
+  id?: string;
+};
+
+type LabelWithErrorProps = {
+  error?: ReactNode;
+  htmlFor?: string;
+  children: ReactNode;
+};
+
 type DeleteConfirmationDialogProps = {
   body: string;
   cancelLabel: string;
@@ -117,6 +128,67 @@ export function DialogFooter({
   );
 }
 
+export function FieldError({ children, id }: FieldErrorProps) {
+  if (!children) {
+    return null;
+  }
+
+  return (
+    <p
+      id={id}
+      className="text-xs font-medium leading-5 text-[var(--color-error)]"
+    >
+      {children}
+    </p>
+  );
+}
+
+export function LabelWithError({ error, htmlFor, children }: LabelWithErrorProps) {
+  return (
+    <div className="flex min-h-5 items-start justify-between gap-2 text-sm font-medium text-slate-700">
+      {htmlFor ? <label htmlFor={htmlFor}>{children}</label> : <span>{children}</span>}
+      {error ? (
+        <span className="text-xs font-medium leading-5 text-[var(--color-error)]">
+          {error}
+        </span>
+      ) : null}
+    </div>
+  );
+}
+
+export function ErrorBubble({
+  align = "center",
+  children
+}: {
+  align?: "center" | "start" | "end";
+  children?: ReactNode;
+}) {
+  if (!children) {
+    return null;
+  }
+
+  const alignmentClassName =
+    align === "start"
+      ? "left-0"
+      : align === "end"
+        ? "right-0"
+        : "left-1/2 -translate-x-1/2";
+
+  return (
+    <div
+      className={`pointer-events-none absolute bottom-full z-20 mb-2 w-max max-w-64 rounded-md border border-[var(--color-error-border)] bg-white px-2 py-1 text-xs font-medium text-[var(--color-error)] shadow-md ${alignmentClassName}`}
+    >
+      {children}
+    </div>
+  );
+}
+
+export function getFieldInputClassName(className: string, hasError: boolean) {
+  return hasError
+    ? `${className} !border-[var(--color-error)] !bg-[var(--color-error-soft)]/30 hover:!border-[var(--color-error)] focus:!border-[var(--color-error)] focus:!ring-[var(--color-error-soft)]`
+    : className;
+}
+
 export function DeleteConfirmationDialog({
   body,
   cancelLabel,
@@ -149,11 +221,7 @@ export function DeleteConfirmationDialog({
     }
 
     if (open && !dialog.open) {
-      try {
-        dialog.showModal();
-      } catch {
-        dialog.setAttribute("open", "");
-      }
+      openDialog(dialog);
       return;
     }
 
@@ -178,6 +246,7 @@ export function DeleteConfirmationDialog({
       <DialogFooter className="items-center justify-end gap-2">
         <button
           className="min-h-9 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:border-slate-400 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400"
+          data-dialog-initial-focus
           disabled={isPending}
           type="button"
           onClick={closeConfirmationDialog}
@@ -232,6 +301,44 @@ export function getDialogBodyHeightStyle(
   return contentHeight
     ? { height: `${contentHeight + dialogBodyVerticalPadding}px` }
     : undefined;
+}
+
+export function openDialog(dialog: HTMLDialogElement | null) {
+  if (!dialog || dialog.open) {
+    return;
+  }
+
+  try {
+    dialog.showModal();
+  } catch {
+    dialog.setAttribute("open", "");
+  }
+
+  window.requestAnimationFrame(() => focusFirstDialogField(dialog));
+}
+
+export function closeDialog(dialog: HTMLDialogElement | null) {
+  if (!dialog?.open) {
+    return;
+  }
+
+  dialog.close();
+}
+
+function focusFirstDialogField(dialog: HTMLDialogElement) {
+  const firstField = dialog.querySelector<HTMLElement>(
+    [
+      "input:not([type='hidden']):not(:disabled)",
+      "select:not(:disabled)",
+      "textarea:not(:disabled)"
+    ].join(",")
+  );
+
+  const fallbackControl = dialog.querySelector<HTMLElement>(
+    "[data-dialog-initial-focus]"
+  );
+
+  (firstField ?? fallbackControl)?.focus();
 }
 
 function CloseIcon() {
