@@ -424,6 +424,11 @@ test.describe("parts list", () => {
       addCategoryDialog
         .locator('input[name="type"][value="organizational"]')
     ).toBeChecked();
+    await expect(
+      addCategoryDialog.getByRole("button", {
+        name: "Parent category No parent"
+      })
+    ).toBeVisible();
     await addCategoryDialog.getByLabel("Name").fill(categoryName);
     await addCategoryDialog
       .getByRole("button", { name: "Create category" })

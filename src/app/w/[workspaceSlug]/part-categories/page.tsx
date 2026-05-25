@@ -55,6 +55,8 @@ const copy = {
   valueAttributeUpdatedToast: "Value attribute updated",
   expandCategory: "Expand",
   collapseCategory: "Collapse",
+  searchCategories: "Search categories",
+  noMatchingCategories: "No matching categories",
   actions: "Actions",
   newCategoryTitle: "Add category",
   newCategoryBody: "Create a category in the parts category tree.",
