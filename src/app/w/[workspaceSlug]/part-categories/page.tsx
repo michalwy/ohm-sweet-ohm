@@ -26,7 +26,7 @@ const copy = {
   attributes: "Attributes",
   title: "Part categories",
   intro:
-    "Manage the category tree used to organize real purchasable electronic parts.",
+    "Manage the category tree used to organize electronic parts.",
   addRootCategory: "Add root category",
   quickCreatePath: "Quick create path",
   quickCreatePathTitle: "Quick create path",
