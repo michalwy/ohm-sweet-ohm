@@ -2,7 +2,6 @@
 
 Keep this list focused on product and implementation work that has been explicitly requested but not yet completed. Do not treat these items as finalized requirements when they say assumptions are still TBD.
 
-- [ ] List configuration: visible columns, column order, sorting, and column widths.
 - [ ] Import part data from external suppliers. Define interfaces/abstractions first; initial candidates are DigiKey, Mouser, or TME.
 - [ ] Locations: exact assumptions TBD.
 - [ ] Stock/inventory states: exact assumptions TBD.
