@@ -540,10 +540,15 @@ export function PartsListClient({
   }
 
   function openCreateDialog() {
+    const defaultPrimaryCategoryId = getCreatePrimaryCategoryFromFilter({
+      categories: partCategories,
+      categoryFilterId
+    });
+
     setCreateCatalogNumber("");
     setCreateDescription("");
     setCreateManufacturerName("");
-    setCreatePrimaryCategoryId("");
+    setCreatePrimaryCategoryId(defaultPrimaryCategoryId);
     setCreateSecondaryCategoryId("");
     setCreateActiveTab("details");
     setCreateAttributeValues({});
@@ -2691,6 +2696,24 @@ function getVisibleCategoryOptions(
   }
 
   return visibleCategories;
+}
+
+function getCreatePrimaryCategoryFromFilter({
+  categories,
+  categoryFilterId
+}: {
+  categories: PartCategoryListItem[];
+  categoryFilterId: string;
+}) {
+  if (!categoryFilterId) {
+    return "";
+  }
+
+  const filteredCategory = categories.find(
+    (category) => category.id === categoryFilterId
+  );
+
+  return filteredCategory?.isAssignable ? filteredCategory.id : "";
 }
 
 const primaryButtonClassName =

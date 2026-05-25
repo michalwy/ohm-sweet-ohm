@@ -102,6 +102,15 @@ test.describe("parts list", () => {
     }).click();
     await expect(seededPartRow).toBeVisible();
     await expect(page.getByText("1 of 2 parts")).toBeVisible();
+    await page.getByRole("button", { name: "Add part" }).click();
+    const addPartDialog = page.getByRole("dialog", { name: "Add part" });
+    await expect(addPartDialog).toBeVisible();
+    await expect(
+      addPartDialog.getByRole("button", {
+        name: /Primary category.*Semiconductors » Integrated circuits/
+      })
+    ).toBeVisible();
+    await addPartDialog.getByRole("button", { name: "Close" }).click();
     await page.getByLabel("Filter by manufacturer").fill("tex");
     await expect(
       page.locator('button[role="option"]').filter({
@@ -114,7 +123,6 @@ test.describe("parts list", () => {
     await page.getByRole("button", { name: "Clear filters" }).click();
 
     await page.getByRole("button", { name: "Add part" }).click();
-    const addPartDialog = page.getByRole("dialog", { name: "Add part" });
     await expect(addPartDialog).toBeVisible();
     await expect(addPartDialog.getByLabel("Catalog number")).toBeFocused();
     await addPartDialog.getByRole("button", { name: "Create part" }).click();
