@@ -24,6 +24,7 @@ const copy = {
   switchWorkspace: "Switch workspace",
   parts: "Parts",
   attributes: "Attributes",
+  settingsIntegrations: "Integrations",
   title: "Part categories",
   intro:
     "Manage the category tree used to organize electronic parts.",
@@ -196,6 +197,12 @@ export default async function PartCategoriesPage({
               href={`/w/${workspaceSlug}/attributes`}
             >
               {copy.attributes}
+            </Link>
+            <Link
+              className="flex min-h-10 items-center rounded-md px-3 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+              href={`/w/${workspaceSlug}/settings/integrations`}
+            >
+              {copy.settingsIntegrations}
             </Link>
           </nav>
           <div className="border-t border-slate-200 p-3">

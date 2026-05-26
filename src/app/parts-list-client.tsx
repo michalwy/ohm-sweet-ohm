@@ -21,6 +21,7 @@ import {
 import { createPortal } from "react-dom";
 
 import { createPart, deletePart, updatePart } from "@/server/parts/createPart";
+import { searchDigiKeyPartsForWorkspace } from "@/server/integrations/digikeyActions";
 import { getPartsListPageForWorkspace } from "@/server/parts/listActions";
 import type { ManufacturerSuggestion } from "@/server/organizations/organizations";
 import type { PartCategoryListItem } from "@/server/parts/categories";
@@ -71,6 +72,9 @@ type Copy = {
   noSecondaryCategory: string;
   manufacturer: string;
   noMatchingManufacturers: string;
+  digikeyNoMatchingParts: string;
+  digikeySearchError: string;
+  digikeySuggestionLabel: string;
   searchParts: string;
   searchPartsPlaceholder: string;
   filterByCategory: string;
@@ -1322,6 +1326,8 @@ export function PartsListClient({
                       setCreateManufacturerName(value);
                       clearPartFieldError(setCreateFieldErrors, "manufacturerName");
                     }}
+                    workspaceSlug={workspaceSlug}
+                    enableDigiKeySearch
                     onPrimaryCategoryChange={(categoryId) => {
                       setCreatePrimaryCategoryId(categoryId);
                       setCreateSecondaryCategoryId("");
@@ -1458,6 +1464,8 @@ export function PartsListClient({
                         setEditManufacturerName(value);
                         clearPartFieldError(setEditFieldErrors, "manufacturerName");
                       }}
+                      workspaceSlug={workspaceSlug}
+                      enableDigiKeySearch={false}
                       onPrimaryCategoryChange={(categoryId) => {
                         setEditPrimaryCategoryId(categoryId);
                         clearPartFieldError(setEditFieldErrors, "primaryCategoryId");
@@ -2111,6 +2119,8 @@ function PartDetailsFields({
   partCategories,
   primaryCategoryId,
   secondaryCategoryId,
+  workspaceSlug,
+  enableDigiKeySearch,
   onCatalogNumberChange,
   onDescriptionChange,
   onManufacturerNameChange,
@@ -2132,37 +2142,314 @@ function PartDetailsFields({
   partCategories: PartCategoryListItem[];
   primaryCategoryId: string;
   secondaryCategoryId: string;
+  workspaceSlug: string;
+  enableDigiKeySearch: boolean;
   onCatalogNumberChange: (catalogNumber: string) => void;
   onDescriptionChange: (description: string) => void;
   onManufacturerNameChange: (manufacturerName: string) => void;
   onPrimaryCategoryChange: (categoryId: string) => void;
   onSecondaryCategoryChange: (categoryId: string) => void;
 }) {
+  const digiKeyAnchorRef = useRef<HTMLDivElement>(null);
+  const digiKeyPanelRef = useRef<HTMLDivElement>(null);
+  const [isDigiKeyOpen, setIsDigiKeyOpen] = useState(false);
+  const [activeDigiKeyIndex, setActiveDigiKeyIndex] = useState(0);
+  const [digiKeyPanelStyle, setDigiKeyPanelStyle] = useState<CSSProperties>({});
+  const [digiKeyPortalTarget, setDigiKeyPortalTarget] =
+    useState<HTMLElement | null>(null);
+  const debouncedCatalogNumber = useDebouncedValue(catalogNumber, 500);
+  const normalizedCatalogQuery = debouncedCatalogNumber.trim();
+  const shouldSearchDigiKey =
+    enableDigiKeySearch && !disabled && normalizedCatalogQuery.length >= 3;
+  const digiKeyResultsQuery = useInfiniteQuery({
+    queryKey: ["digikey-search", workspaceSlug, normalizedCatalogQuery],
+    enabled: shouldSearchDigiKey,
+    initialPageParam: 0,
+    queryFn: ({ pageParam }) =>
+      searchDigiKeyPartsForWorkspace({
+        workspaceSlug,
+        query: normalizedCatalogQuery,
+        limit: 10,
+        offset: pageParam
+      }),
+    getNextPageParam: (lastPage) => {
+      if (!lastPage.ok) {
+        return undefined;
+      }
+
+      return lastPage.page.nextStartPosition ?? undefined;
+    }
+  });
+  const digiKeyResult = digiKeyResultsQuery.data;
+  const digiKeyResults =
+    digiKeyResult?.pages.flatMap((page) => (page.ok ? page.page.items : [])) ?? [];
+  const hasDigiKeyError = digiKeyResult?.pages.some((page) => !page.ok) ?? false;
+  const activeDigiKeyResult = digiKeyResults[activeDigiKeyIndex];
+  const digiKeyListboxId = `${catalogNumberInputId}-digikey-suggestions`;
+
+  useEffect(() => {
+    setActiveDigiKeyIndex(0);
+  }, [normalizedCatalogQuery]);
+
+  useEffect(() => {
+    if (!isDigiKeyOpen || digiKeyResults.length === 0) {
+      return;
+    }
+
+    const activeOption = digiKeyPanelRef.current?.querySelector<HTMLElement>(
+      `#${catalogNumberInputId}-digikey-option-${activeDigiKeyIndex}`
+    );
+
+    activeOption?.scrollIntoView({
+      block: "nearest"
+    });
+  }, [
+    activeDigiKeyIndex,
+    catalogNumberInputId,
+    isDigiKeyOpen
+  ]);
+
+  useEffect(() => {
+    if (!isDigiKeyOpen) {
+      return;
+    }
+
+    function onPointerDown(event: PointerEvent) {
+      if (
+        event.target instanceof Node &&
+        !digiKeyAnchorRef.current?.contains(event.target) &&
+        !digiKeyPanelRef.current?.contains(event.target)
+      ) {
+        setIsDigiKeyOpen(false);
+      }
+    }
+
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        setIsDigiKeyOpen(false);
+      }
+    }
+
+    function onReposition() {
+      const nextStyle = getFloatingPanelStyle(digiKeyAnchorRef.current);
+      if (nextStyle) {
+        setDigiKeyPanelStyle(nextStyle);
+      }
+    }
+
+    document.addEventListener("pointerdown", onPointerDown);
+    document.addEventListener("keydown", onKeyDown);
+    window.addEventListener("resize", onReposition);
+    window.addEventListener("scroll", onReposition, true);
+
+    return () => {
+      document.removeEventListener("pointerdown", onPointerDown);
+      document.removeEventListener("keydown", onKeyDown);
+      window.removeEventListener("resize", onReposition);
+      window.removeEventListener("scroll", onReposition, true);
+    };
+  }, [isDigiKeyOpen]);
+
+  function handleDigiKeyListScroll(event: React.UIEvent<HTMLOListElement>) {
+    const target = event.currentTarget;
+    const distanceToBottom =
+      target.scrollHeight - target.scrollTop - target.clientHeight;
+
+    if (
+      distanceToBottom <= 24 &&
+      digiKeyResultsQuery.hasNextPage &&
+      !digiKeyResultsQuery.isFetchingNextPage
+    ) {
+      void digiKeyResultsQuery.fetchNextPage();
+    }
+  }
+
+  function updateDigiKeyOpen(nextValue: string) {
+    const normalizedNextValue = nextValue.trim();
+    const shouldOpen =
+      enableDigiKeySearch && !disabled && normalizedNextValue.length >= 3;
+    if (!shouldOpen) {
+      setIsDigiKeyOpen(false);
+      return;
+    }
+
+    setDigiKeyPanelStyle(getFloatingPanelStyle(digiKeyAnchorRef.current) ?? {});
+    setDigiKeyPortalTarget(
+      digiKeyAnchorRef.current?.closest("dialog") ?? document.body
+    );
+    setIsDigiKeyOpen(true);
+  }
+
+  function selectDigiKeyResult(result: {
+    manufacturerName: string;
+    catalogNumber: string;
+    description: string;
+  }) {
+    onCatalogNumberChange(result.catalogNumber);
+    onManufacturerNameChange(result.manufacturerName);
+    onDescriptionChange(result.description);
+    setIsDigiKeyOpen(false);
+    setActiveDigiKeyIndex(0);
+  }
+
+  function moveActiveDigiKeyResult(direction: 1 | -1) {
+    if (!digiKeyResults.length) {
+      return;
+    }
+
+    setActiveDigiKeyIndex(
+      (activeDigiKeyIndex + direction + digiKeyResults.length) %
+        digiKeyResults.length
+    );
+  }
+
+  function handleCatalogNumberKeyDown(event: ReactKeyboardEvent<HTMLInputElement>) {
+    if (!shouldSearchDigiKey) {
+      return;
+    }
+
+    if (event.key === "ArrowDown") {
+      event.preventDefault();
+      if (!isDigiKeyOpen) {
+        setIsDigiKeyOpen(true);
+      } else {
+        moveActiveDigiKeyResult(1);
+      }
+    }
+
+    if (event.key === "ArrowUp") {
+      event.preventDefault();
+      if (!isDigiKeyOpen) {
+        setIsDigiKeyOpen(true);
+      } else {
+        moveActiveDigiKeyResult(-1);
+      }
+    }
+
+    if (event.key === "Enter" && isDigiKeyOpen && activeDigiKeyResult) {
+      event.preventDefault();
+      selectDigiKeyResult(activeDigiKeyResult);
+    }
+
+    if (event.key === "Escape" && isDigiKeyOpen) {
+      event.preventDefault();
+      setIsDigiKeyOpen(false);
+    }
+  }
+
   return (
     <div className="grid gap-3">
       <div className="grid grid-cols-2 gap-3">
-        <label
-          className="grid gap-2 text-sm font-medium text-slate-700"
-          htmlFor={catalogNumberInputId}
+        <div
+          ref={digiKeyAnchorRef}
+          className="relative grid gap-2 text-sm font-medium text-slate-700"
         >
           <LabelWithError htmlFor={catalogNumberInputId} error={errors.catalogNumber}>
             {copy.catalogNumber}
           </LabelWithError>
           <input
+            id={catalogNumberInputId}
+            name="catalogNumber"
             aria-invalid={errors.catalogNumber ? true : undefined}
+            aria-activedescendant={
+              isDigiKeyOpen && activeDigiKeyResult
+                ? `${catalogNumberInputId}-digikey-option-${activeDigiKeyIndex}`
+                : undefined
+            }
+            aria-autocomplete={enableDigiKeySearch ? "list" : undefined}
+            aria-controls={isDigiKeyOpen ? digiKeyListboxId : undefined}
+            aria-expanded={isDigiKeyOpen}
+            autoComplete="off"
             className={getFieldInputClassName(
               "min-h-10 rounded-md border border-slate-300 bg-white px-3 py-1.5 font-mono text-sm text-slate-950 outline-none transition placeholder:text-slate-400 hover:border-slate-400 focus:border-slate-500 focus:ring-2 focus:ring-slate-200 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400",
               Boolean(errors.catalogNumber)
             )}
-            id={catalogNumberInputId}
-            name="catalogNumber"
             placeholder={copy.catalogNumberPlaceholder}
+            role={enableDigiKeySearch ? "combobox" : undefined}
             type="text"
             value={catalogNumber}
             disabled={disabled}
-            onChange={(event) => onCatalogNumberChange(event.target.value)}
+            onBlur={() => {
+              setIsDigiKeyOpen(false);
+            }}
+            onChange={(event) => {
+              const nextValue = event.target.value;
+              onCatalogNumberChange(nextValue);
+              updateDigiKeyOpen(nextValue);
+            }}
+            onFocus={(event) => {
+              updateDigiKeyOpen(event.currentTarget.value);
+            }}
+            onKeyDown={handleCatalogNumberKeyDown}
           />
-        </label>
+          {isDigiKeyOpen && shouldSearchDigiKey
+            ? createPortal(
+                <div
+                  ref={digiKeyPanelRef}
+                  id={digiKeyListboxId}
+                  aria-label={copy.digikeySuggestionLabel}
+                  className="fixed z-50 overflow-hidden rounded-md border border-slate-200 bg-white shadow-lg"
+                  style={digiKeyPanelStyle}
+                  role="listbox"
+                >
+                  {digiKeyResultsQuery.isLoading ? (
+                    <p className="px-3 py-3 text-sm font-normal text-slate-500">
+                      {copy.loadingParts}
+                    </p>
+                  ) : digiKeyResultsQuery.isError || hasDigiKeyError ? (
+                    <p className="px-3 py-3 text-sm font-normal text-slate-500">
+                      {copy.digikeySearchError}
+                    </p>
+                  ) : digiKeyResults.length > 0 ? (
+                    <ol
+                      className="max-h-56 overflow-auto p-1"
+                      onScroll={handleDigiKeyListScroll}
+                    >
+                      {digiKeyResults.map((result, index) => (
+                        <li key={`${result.manufacturerName}-${result.catalogNumber}`}>
+                          <button
+                            id={`${catalogNumberInputId}-digikey-option-${index}`}
+                            aria-selected={index === activeDigiKeyIndex}
+                            className={`w-full rounded-md px-3 py-2 text-left text-sm transition focus:outline-none focus:ring-2 focus:ring-slate-300 ${
+                              index === activeDigiKeyIndex
+                                ? "bg-[var(--color-accent-soft)] font-semibold text-slate-950"
+                                : "text-slate-700 hover:bg-slate-50"
+                            }`}
+                            role="option"
+                            type="button"
+                            onMouseDown={(event) => event.preventDefault()}
+                            onClick={() => selectDigiKeyResult(result)}
+                          >
+                            <span className="flex items-center justify-between gap-3">
+                              <span className="font-mono text-slate-950">
+                                {result.catalogNumber}
+                              </span>
+                              <span className="truncate text-xs font-medium uppercase tracking-wide text-slate-500">
+                                {result.manufacturerName}
+                              </span>
+                            </span>
+                            <span className="mt-1 block overflow-hidden text-ellipsis whitespace-nowrap text-xs font-normal leading-5 text-slate-600">
+                              {result.description}
+                            </span>
+                          </button>
+                        </li>
+                      ))}
+                      {digiKeyResultsQuery.isFetchingNextPage ? (
+                        <li className="px-3 py-2 text-xs text-slate-500">
+                          {copy.loadingMoreParts}
+                        </li>
+                      ) : null}
+                    </ol>
+                  ) : (
+                    <p className="px-3 py-3 text-sm font-normal text-slate-500">
+                      {copy.digikeyNoMatchingParts}
+                    </p>
+                  )}
+                </div>,
+                digiKeyPortalTarget ?? document.body
+              )
+            : null}
+        </div>
         <ManufacturerAutocomplete
           key={`manufacturer-${formResetKey}`}
           copy={copy}

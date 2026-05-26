@@ -26,6 +26,7 @@ const copy = {
   attributesTab: "Attributes",
   partCategories: "Part categories",
   attributes: "Attributes",
+  settingsIntegrations: "Integrations",
   intro: "Parts in this workspace.",
   catalogNumber: "Catalog number",
   description: "Description",
@@ -69,6 +70,9 @@ const copy = {
   catalogNumberPlaceholder: "NE555P",
   descriptionPlaceholder: "Timer IC in DIP-8 package",
   manufacturerPlaceholder: "Texas Instruments",
+  digikeyNoMatchingParts: "No matching parts found",
+  digikeySearchError: "DigiKey search is currently unavailable.",
+  digikeySuggestionLabel: "DigiKey suggestions",
   categoryPlaceholder: "Choose a category",
   searchCategories: "Search categories",
   noMatchingCategories: "No matching categories",
@@ -203,6 +207,12 @@ export default async function PartsPage({
               href={`/w/${workspaceSlug}/attributes`}
             >
               {copy.attributes}
+            </Link>
+            <Link
+              className="flex min-h-10 items-center rounded-md px-3 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+              href={`/w/${workspaceSlug}/settings/integrations`}
+            >
+              {copy.settingsIntegrations}
             </Link>
           </nav>
           <div className="border-t border-slate-200 p-3">

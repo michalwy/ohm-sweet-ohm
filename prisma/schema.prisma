@@ -303,6 +303,17 @@ model Workspace {
   workspaceAttributes  WorkspaceAttribute[]
   partAttributeValues  PartAttributeValue[]
   roles                Role[]
+  digiKeyIntegration   WorkspaceDigiKeyIntegration?
+}
+
+model WorkspaceDigiKeyIntegration {
+  workspaceId   String   @id
+  clientId      String
+  clientSecret  String
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
 }
 
 model WorkspaceMember {

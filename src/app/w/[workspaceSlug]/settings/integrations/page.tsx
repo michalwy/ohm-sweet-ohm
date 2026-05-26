@@ -1,16 +1,14 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 
-import { AttributesClient } from "@/app/attributes-client";
-import { hasWorkspacePermission } from "@/server/access-control/authorize";
 import { signOut } from "@/server/auth/actions";
 import {
   getCurrentSession,
   getCurrentWorkspaceContextBySlug
 } from "@/server/auth/currentContext";
-import { getAttributeDictionaryPageForWorkspace } from "@/server/parts/attributeActions";
-import type { AttributeListItem } from "@/server/parts/attributeMutations";
-import type { ListPage } from "@/server/pagination";
+import { hasWorkspacePermission } from "@/server/access-control/authorize";
+import { getWorkspaceDigiKeyIntegration } from "@/server/integrations/digikey";
+import { DigiKeyIntegrationSettingsClient } from "@/app/digikey-integration-settings-client";
 
 export const dynamic = "force-dynamic";
 
@@ -21,54 +19,33 @@ const copy = {
   switchWorkspace: "Switch workspace",
   parts: "Parts",
   partCategories: "Part categories",
+  attributes: "Attributes",
   settingsIntegrations: "Integrations",
-  title: "Attributes",
+  title: "Integrations",
   intro:
-    "Manage the workspace dictionary of typed attributes used by part categories.",
-  addAttribute: "Add attribute",
-  edit: "Edit",
-  delete: "Delete",
-  close: "Close",
-  cancelDelete: "Cancel",
-  confirmDelete: "Delete",
-  deleteConfirmationBody: "This cannot be undone.",
-  createAttribute: "Create attribute",
+    "Configure workspace-level integrations used by the parts workflow.",
+  sectionTitle: "DigiKey",
+  sectionBody:
+    "Provide DigiKey API credentials for this workspace. These credentials are used when searching part numbers while adding a part.",
+  clientId: "Client ID",
+  clientSecret: "Client secret",
   saveChanges: "Save changes",
-  addOption: "Add option",
-  deleteOption: "Delete",
-  newAttributeTitle: "Add attribute",
-  editAttributeTitle: "Edit attribute",
-  name: "Name",
-  description: "Description",
-  type: "Type",
-  baseUnit: "Base unit",
-  options: "Options",
-  noOptions: "No options",
-  noAttributes: "No attributes yet",
-  loadingAttributes: "Loading attributes...",
-  loadingMoreAttributes: "Loading more attributes...",
-  text: "Text",
-  number: "Number",
-  quantity: "Quantity",
-  boolean: "Boolean",
-  choice: "Choice",
-  optionLabel: "Option label",
-  sortOrder: "Sort order",
-  createdToast: "Attribute created",
-  updatedToast: "Attribute updated",
-  deletedToast: "Attribute deleted",
-  invalidInput: "Check the attribute fields and try again.",
+  saved: "Saved",
+  noPermission:
+    "Only workspace admins can update integration credentials.",
+  missingRequiredFields: "Enter both Client ID and Client secret.",
+  permissionDenied: "You do not have permission to update integrations.",
   databaseUnavailable:
-    "Database is not available, so the attribute dictionary is shown empty for now."
+    "Database is not available, so integrations cannot be updated right now."
 };
 
-type AttributesPageProps = {
+type IntegrationsPageProps = {
   params: Promise<{
     workspaceSlug: string;
   }>;
 };
 
-export default async function AttributesPage({ params }: AttributesPageProps) {
+export default async function IntegrationsPage({ params }: IntegrationsPageProps) {
   const { workspaceSlug } = await params;
   const session = await getCurrentSession();
 
@@ -83,34 +60,24 @@ export default async function AttributesPage({ params }: AttributesPageProps) {
   }
 
   let isDatabaseAvailable = true;
-  let attributePage: ListPage<AttributeListItem> = {
-    items: [],
-    nextCursor: null,
-    totalCount: 0,
-    filteredCount: 0
-  };
+  let canManageIntegrations = false;
+  let initialClientId = "";
+  let hasSavedClientSecret = false;
 
   try {
-    const result = await getAttributeDictionaryPageForWorkspace({
-      workspaceSlug
+    canManageIntegrations = await hasWorkspacePermission({
+      userId: context.user.id,
+      workspaceId: context.workspace.id,
+      permission: "admin"
     });
 
-    if (result.ok) {
-      attributePage = result.data;
-    } else {
-      isDatabaseAvailable = false;
-    }
+    const integration = await getWorkspaceDigiKeyIntegration(context.workspace.id);
+
+    initialClientId = integration?.clientId ?? "";
+    hasSavedClientSecret = Boolean(integration?.clientSecret);
   } catch {
     isDatabaseAvailable = false;
   }
-
-  const canWriteAttributes = isDatabaseAvailable
-    ? await hasWorkspacePermission({
-        userId: context.user.id,
-        workspaceId: context.workspace.id,
-        permission: "attributes:write"
-      }).catch(() => false)
-    : false;
 
   return (
     <main className="h-screen overflow-hidden bg-slate-100 text-slate-950">
@@ -121,12 +88,8 @@ export default async function AttributesPage({ params }: AttributesPageProps) {
               {copy.appShortName}
             </div>
             <div className="min-w-0">
-              <p className="text-sm font-semibold leading-5 text-slate-950">
-                {copy.appName}
-              </p>
-              <p className="truncate text-xs leading-4 text-slate-500">
-                {context.workspace.name}
-              </p>
+              <p className="text-sm font-semibold leading-5 text-slate-950">{copy.appName}</p>
+              <p className="truncate text-xs leading-4 text-slate-500">{context.workspace.name}</p>
             </div>
           </div>
           <nav
@@ -146,23 +109,21 @@ export default async function AttributesPage({ params }: AttributesPageProps) {
               {copy.partCategories}
             </Link>
             <Link
-              aria-current="page"
-              className="flex min-h-10 items-center rounded-md bg-[var(--color-accent-soft)] px-3 text-sm font-semibold text-slate-950"
+              className="flex min-h-10 items-center rounded-md px-3 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
               href={`/w/${workspaceSlug}/attributes`}
             >
-              {copy.title}
+              {copy.attributes}
             </Link>
             <Link
-              className="flex min-h-10 items-center rounded-md px-3 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+              aria-current="page"
+              className="flex min-h-10 items-center rounded-md bg-[var(--color-accent-soft)] px-3 text-sm font-semibold text-slate-950"
               href={`/w/${workspaceSlug}/settings/integrations`}
             >
               {copy.settingsIntegrations}
             </Link>
           </nav>
           <div className="border-t border-slate-200 p-3">
-            <p className="mb-2 truncate text-xs leading-5 text-slate-500">
-              {context.user.email}
-            </p>
+            <p className="mb-2 truncate text-xs leading-5 text-slate-500">{context.user.email}</p>
             <Link
               className="mb-2 flex min-h-10 items-center rounded-md border border-slate-300 bg-white px-3 text-sm font-medium text-slate-700 transition hover:border-slate-400 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2"
               href="/workspaces"
@@ -184,12 +145,8 @@ export default async function AttributesPage({ params }: AttributesPageProps) {
           <div className="flex min-h-0 flex-1 flex-col gap-4 p-6">
             <header className="flex items-end justify-between gap-2 border-b border-slate-200 pb-4">
               <div>
-                <h1 className="text-2xl font-semibold tracking-normal text-slate-950">
-                  {copy.title}
-                </h1>
-                <p className="mt-1 max-w-3xl text-sm leading-6 text-slate-600">
-                  {copy.intro}
-                </p>
+                <h1 className="text-2xl font-semibold tracking-normal text-slate-950">{copy.title}</h1>
+                <p className="mt-1 max-w-3xl text-sm leading-6 text-slate-600">{copy.intro}</p>
               </div>
             </header>
 
@@ -199,11 +156,12 @@ export default async function AttributesPage({ params }: AttributesPageProps) {
               </p>
             ) : null}
 
-            <AttributesClient
-              canWriteAttributes={canWriteAttributes}
+            <DigiKeyIntegrationSettingsClient
+              canManageIntegrations={canManageIntegrations}
               copy={copy}
+              hasSavedClientSecret={hasSavedClientSecret}
+              initialClientId={initialClientId}
               isDatabaseAvailable={isDatabaseAvailable}
-              initialPage={attributePage}
               workspaceSlug={workspaceSlug}
             />
           </div>
