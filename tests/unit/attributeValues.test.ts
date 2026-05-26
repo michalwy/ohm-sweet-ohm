@@ -22,7 +22,7 @@ describe("attribute value parsing", () => {
         {
           type: "QUANTITY",
           quantityBaseValue: "10000",
-          displayValue: rawValue === "10000 Ω" ? "10000 Ω" : "10 kΩ"
+          displayValue: "10 kΩ"
         }
       );
     }
@@ -38,7 +38,7 @@ describe("attribute value parsing", () => {
       {
         type: "QUANTITY",
         quantityBaseValue: "10000",
-        displayValue: "10000 Ω"
+        displayValue: "10 kΩ"
       }
     );
   });
@@ -54,6 +54,62 @@ describe("attribute value parsing", () => {
         type: "QUANTITY",
         quantityBaseValue: "4700",
         displayValue: "4.7 kΩ"
+      }
+    );
+  });
+
+  test("normalizes quantity display to the closest SI unit", () => {
+    assert.deepEqual(
+      parseAttributeValue({
+        type: "QUANTITY",
+        rawValue: "2200 pF",
+        baseUnitSymbol: "F"
+      }),
+      {
+        type: "QUANTITY",
+        quantityBaseValue: "0.0000000022",
+        displayValue: "2.2 nF"
+      }
+    );
+
+    assert.deepEqual(
+      parseAttributeValue({
+        type: "QUANTITY",
+        rawValue: "0.047 uF",
+        baseUnitSymbol: "F"
+      }),
+      {
+        type: "QUANTITY",
+        quantityBaseValue: "0.000000047",
+        displayValue: "47 nF"
+      }
+    );
+  });
+
+  test("does not normalize percent quantities and removes leading +/- markers", () => {
+    assert.deepEqual(
+      parseAttributeValue({
+        type: "QUANTITY",
+        rawValue: "±5%",
+        baseUnitSymbol: "%"
+      }),
+      {
+        type: "QUANTITY",
+        quantityBaseValue: "5",
+        displayValue: "5 %"
+      }
+    );
+
+    assert.deepEqual(
+      parseAttributeValue({
+        type: "QUANTITY",
+        rawValue: "+/- 10 %",
+        baseUnitSymbol: "%"
+      }),
+      {
+        type: "QUANTITY",
+        quantityBaseValue: "10",
+        displayValue: "10 %"
       }
     );
   });

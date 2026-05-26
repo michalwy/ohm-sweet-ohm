@@ -54,6 +54,13 @@ const CANONICAL_PREFIXES = new Map([
   ["u", "µ"],
   ["K", "k"]
 ]);
+const NORMALIZABLE_PREFIX_EXPONENTS = [-12, -9, -6, -3, 0, 3, 6, 9];
+const EXPONENT_PREFIXES = new Map(
+  NORMALIZABLE_PREFIX_EXPONENTS.map((exponent) => [
+    exponent,
+    exponent === -6 ? "µ" : [...SI_PREFIX_EXPONENTS.entries()].find(([, value]) => value === exponent)?.[0] ?? ""
+  ])
+);
 
 export function normalizeDictionaryName(value: string) {
   return normalizeWhitespace(value).toLocaleLowerCase("en");
@@ -119,7 +126,11 @@ function parseQuantityValue({
     throw new Error("quantity_unit_required");
   }
 
-  const compactValue = normalizeWhitespace(rawValue).replace(",", ".");
+  const isPercentUnit = unitSymbol === "%";
+  const compactValue = normalizePercentSignInput({
+    value: normalizeWhitespace(rawValue).replace(",", "."),
+    isPercentUnit
+  });
   const match = compactValue.match(/^([+-]?(?:\d+(?:\.\d*)?|\.\d+))\s*(.*)$/);
 
   if (!match) {
@@ -138,13 +149,20 @@ function parseQuantityValue({
     throw new Error("invalid_quantity_prefix");
   }
 
+  const quantityBaseValue = multiplyDecimalByPowerOfTen(
+    normalizeDecimalString(numericDisplay),
+    exponent
+  );
+  const normalizedDisplay = getNormalizedQuantityDisplay({
+    baseValue: quantityBaseValue,
+    baseUnitSymbol: unitSymbol,
+    preserveBaseUnit: isPercentUnit
+  });
+
   return {
     type: "QUANTITY",
-    quantityBaseValue: multiplyDecimalByPowerOfTen(
-      normalizeDecimalString(numericDisplay),
-      exponent
-    ),
-    displayValue: `${numericDisplay} ${displayUnit}`
+    quantityBaseValue,
+    displayValue: normalizedDisplay ?? `${numericDisplay} ${displayUnit}`
   };
 }
 
@@ -194,6 +212,104 @@ function isUnitAlias(value: string, baseUnitSymbol: string) {
   }
 
   return value.toLocaleLowerCase("en") === baseUnitSymbol.toLocaleLowerCase("en");
+}
+
+function normalizePercentSignInput({
+  value,
+  isPercentUnit
+}: {
+  value: string;
+  isPercentUnit: boolean;
+}) {
+  if (!isPercentUnit) {
+    return value;
+  }
+
+  return value.replace(/^(?:±|\+\/-)\s*/, "");
+}
+
+function getNormalizedQuantityDisplay({
+  baseValue,
+  baseUnitSymbol,
+  preserveBaseUnit
+}: {
+  baseValue: string;
+  baseUnitSymbol: string;
+  preserveBaseUnit: boolean;
+}) {
+  if (preserveBaseUnit) {
+    return `${baseValue} ${baseUnitSymbol}`;
+  }
+
+  if (isZeroDecimal(baseValue)) {
+    return `0 ${baseUnitSymbol}`;
+  }
+
+  const chosenExponent = chooseBestQuantityExponent(baseValue);
+  const chosenPrefix = EXPONENT_PREFIXES.get(chosenExponent);
+
+  if (chosenPrefix === undefined) {
+    return null;
+  }
+
+  const scaledValue = multiplyDecimalByPowerOfTen(baseValue, -chosenExponent);
+  return `${scaledValue} ${chosenPrefix}${baseUnitSymbol}`;
+}
+
+function chooseBestQuantityExponent(baseValue: string) {
+  for (const exponent of NORMALIZABLE_PREFIX_EXPONENTS) {
+    const scaledValue = multiplyDecimalByPowerOfTen(baseValue, -exponent);
+    const absoluteScaled = getAbsoluteDecimal(scaledValue);
+
+    if (
+      comparePositiveDecimal(absoluteScaled, "1") >= 0 &&
+      comparePositiveDecimal(absoluteScaled, "1000") < 0
+    ) {
+      return exponent;
+    }
+  }
+
+  const smallestExponent = NORMALIZABLE_PREFIX_EXPONENTS[0] ?? 0;
+  const largestExponent =
+    NORMALIZABLE_PREFIX_EXPONENTS[NORMALIZABLE_PREFIX_EXPONENTS.length - 1] ?? 0;
+  const smallestScaled = getAbsoluteDecimal(
+    multiplyDecimalByPowerOfTen(baseValue, -smallestExponent)
+  );
+
+  if (comparePositiveDecimal(smallestScaled, "1") < 0) {
+    return smallestExponent;
+  }
+
+  return largestExponent;
+}
+
+function getAbsoluteDecimal(value: string) {
+  return value.startsWith("-") ? value.slice(1) : value;
+}
+
+function comparePositiveDecimal(left: string, right: string) {
+  const [leftInteger = "0", leftFraction = ""] = left.split(".");
+  const [rightInteger = "0", rightFraction = ""] = right.split(".");
+  const normalizedLeftInteger = trimLeadingZeroes(leftInteger);
+  const normalizedRightInteger = trimLeadingZeroes(rightInteger);
+
+  if (normalizedLeftInteger.length !== normalizedRightInteger.length) {
+    return normalizedLeftInteger.length < normalizedRightInteger.length ? -1 : 1;
+  }
+
+  if (normalizedLeftInteger !== normalizedRightInteger) {
+    return normalizedLeftInteger < normalizedRightInteger ? -1 : 1;
+  }
+
+  const maxFractionLength = Math.max(leftFraction.length, rightFraction.length);
+  const normalizedLeftFraction = leftFraction.padEnd(maxFractionLength, "0");
+  const normalizedRightFraction = rightFraction.padEnd(maxFractionLength, "0");
+
+  if (normalizedLeftFraction === normalizedRightFraction) {
+    return 0;
+  }
+
+  return normalizedLeftFraction < normalizedRightFraction ? -1 : 1;
 }
 
 function parseBooleanValue(rawValue: string): ParsedAttributeValue {

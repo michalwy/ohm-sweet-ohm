@@ -100,6 +100,7 @@ Do not use multiple roles to invent product behavior. Product decisions still re
 ## Testing Direction
 
 - Use `pnpm typecheck` for TypeScript verification.
+- Use `pnpm test:unit` for unit tests (`tsx --test tests/unit/**/*.test.ts`).
 - Use `pnpm test:e2e` for browser-level verification of interactive UI changes.
 - Run browser verification against desktop browser projects only; do not add mobile viewport projects or mobile-specific assertions.
 - Keep e2e tests pointed at the isolated PostgreSQL service in `docker-compose.e2e.yml`, not the normal development database.
