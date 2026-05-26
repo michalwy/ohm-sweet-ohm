@@ -81,6 +81,9 @@ Do not use multiple roles to invent product behavior. Product decisions still re
 - Treat `docker compose up` as the user's normal local-use stack: it should run the built app with `next start` against the persistent development database.
 - Use `docker compose -f docker-compose.yml -f docker-compose.dev.yml up` for containerized development with hot reload.
 - Keep dependencies reasonably current; avoid leaving generated scaffolds pinned to old major versions without a documented compatibility reason.
+- DigiKey search payload reference:
+  - The repository keeps a supplier-response shape note at `docs/integrations-digikey-search-sample.json`.
+  - For source category mapping, prefer the explicit tree path from `Products[].Category.Name` and nested `Products[].Category.ChildCategories[]` (deepest branch), instead of relying on flat/fuzzy category keys.
 
 ## UI Direction
 

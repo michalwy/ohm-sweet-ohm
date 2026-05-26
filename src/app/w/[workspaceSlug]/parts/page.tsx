@@ -10,7 +10,10 @@ import {
 import { getManufacturerSuggestionsForPartForm } from "@/server/organizations/organizations";
 import { getPartCategoriesForPartForm } from "@/server/parts/categories";
 import { getPartsList } from "@/server/parts/getParts";
-import { getEffectivePartCategoryAttributes } from "@/server/parts/attributes";
+import {
+  getEffectivePartCategoryAttributes,
+  getEffectiveWorkspaceAttributes
+} from "@/server/parts/attributes";
 import { getWorkspaceAttributes } from "@/server/parts/attributeMutations";
 
 export const dynamic = "force-dynamic";
@@ -73,6 +76,25 @@ const copy = {
   digikeyNoMatchingParts: "No matching parts found",
   digikeySearchError: "DigiKey search is currently unavailable.",
   digikeySuggestionLabel: "DigiKey suggestions",
+  matchingDialogTitle: "Supplier matching",
+  matchingDialogBody: "Review and adjust category and attribute mapping.",
+  sourceCategoryLabel: "Source category",
+  targetCategoryLabel: "Target category",
+  sourceAttributeLabel: "Source attribute",
+  sourceValueLabel: "Source value",
+  targetAttributeLabel: "Target attribute",
+  noAttribute: "No attribute",
+  targetValueLabel: "Target value",
+  skipMatching: "Skip matching",
+  confirmSkipMatchingTitle: "Skip matching?",
+  confirmSkipMatchingBody: "Matching changes will be discarded.",
+  noLearningSaved: "No learning will be saved.",
+  keepMatching: "Keep matching",
+  skipAndContinue: "Skip and continue",
+  reassignTitle: "Reassign attribute?",
+  reassignBody: "This target attribute is already used. Reassigning will clear the previous row.",
+  reassignAction: "Reassign",
+  cancelAction: "Cancel",
   categoryPlaceholder: "Choose a category",
   searchCategories: "Search categories",
   noMatchingCategories: "No matching categories",
@@ -138,7 +160,12 @@ export default async function PartsPage({
   }
 
   const { page, isDatabaseAvailable } = await getPartsList(context);
-  const [partCategories, manufacturerSuggestions, workspaceAttributes] =
+  const [
+    partCategories,
+    manufacturerSuggestions,
+    workspaceAttributes,
+    globalWorkspaceAttributesForMatching
+  ] =
     isDatabaseAvailable
     ? await Promise.all([
         getPartCategoriesForPartForm(context).catch(() => []),
@@ -146,9 +173,23 @@ export default async function PartsPage({
           userId: context.user.id,
           workspaceId: context.workspace.id
         }).catch(() => []),
-        getWorkspaceAttributes(context.workspace.id).catch(() => [])
+        getWorkspaceAttributes(context.workspace.id).catch(() => []),
+        getEffectiveWorkspaceAttributes({
+          workspaceId: context.workspace.id
+        })
+          .then((attributes) =>
+            attributes.map((effectiveAttribute) => ({
+              id: effectiveAttribute.attribute.id,
+              name: effectiveAttribute.attribute.name,
+              description: effectiveAttribute.attribute.description,
+              type: effectiveAttribute.attribute.type,
+              baseUnitSymbol: effectiveAttribute.attribute.baseUnitSymbol,
+              choiceOptions: effectiveAttribute.attribute.choiceOptions
+            }))
+          )
+          .catch(() => [])
       ])
-    : [[], [], []];
+    : [[], [], [], []];
   const categoryAttributesByCategoryId = isDatabaseAvailable
     ? Object.fromEntries(
         await Promise.all(
@@ -264,6 +305,9 @@ export default async function PartsPage({
               categoryAttributesByCategoryId={categoryAttributesByCategoryId}
               manufacturerSuggestions={manufacturerSuggestions}
               workspaceAttributes={workspaceAttributes}
+              globalWorkspaceAttributesForMatching={
+                globalWorkspaceAttributesForMatching
+              }
               initialPage={page}
               workspaceSlug={workspaceSlug}
             />

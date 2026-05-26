@@ -22,12 +22,14 @@ import { createPortal } from "react-dom";
 
 import { createPart, deletePart, updatePart } from "@/server/parts/createPart";
 import { searchSupplierPartsForWorkspace } from "@/server/integrations/supplierActions";
+import { getSupplierMatchingSuggestionsForWorkspace } from "@/server/integrations/matching";
 import { getPartsListPageForWorkspace } from "@/server/parts/listActions";
 import type { ManufacturerSuggestion } from "@/server/organizations/organizations";
 import type { PartCategoryListItem } from "@/server/parts/categories";
 import type { PartsListItem } from "@/server/parts/getParts";
 import type { EffectiveCategoryAttribute } from "@/server/parts/attributes";
 import type { AttributeListItem } from "@/server/parts/attributeMutations";
+import type { SupplierProviderKey } from "@/server/integrations/types";
 import { InfiniteListViewport } from "@/app/infinite-list";
 import {
   useListTableConfiguration
@@ -75,6 +77,25 @@ type Copy = {
   digikeyNoMatchingParts: string;
   digikeySearchError: string;
   digikeySuggestionLabel: string;
+  matchingDialogTitle: string;
+  matchingDialogBody: string;
+  sourceCategoryLabel: string;
+  targetCategoryLabel: string;
+  sourceAttributeLabel: string;
+  sourceValueLabel: string;
+  targetAttributeLabel: string;
+  noAttribute: string;
+  targetValueLabel: string;
+  skipMatching: string;
+  confirmSkipMatchingTitle: string;
+  confirmSkipMatchingBody: string;
+  noLearningSaved: string;
+  keepMatching: string;
+  skipAndContinue: string;
+  reassignTitle: string;
+  reassignBody: string;
+  reassignAction: string;
+  cancelAction: string;
   searchParts: string;
   searchPartsPlaceholder: string;
   filterByCategory: string;
@@ -150,6 +171,21 @@ type CategoryTreeItem = PartCategoryListItem & {
 type PartDialogTab = "details" | "attributes";
 type PartFormField = "catalogNumber" | "manufacturerName" | "primaryCategoryId" | "secondaryCategoryId" | "submit" | "delete";
 type PartFormErrors = Partial<Record<PartFormField, string>>;
+type MatchingDialogState = {
+  provider: SupplierProviderKey;
+  sourceCategory: string | null;
+  sourceCategoryKey: string;
+  targetCategoryId: string;
+  rows: Array<{
+    sourceAttribute: string;
+    sourceAttributeName: string;
+    sourceUnit: string | null;
+    sourceAttributeKey: string;
+    sourceValue: string;
+    targetAttributeId: string;
+    targetValue: string;
+  }>;
+};
 
 type PartsListClientProps = {
   copy: Copy;
@@ -160,6 +196,7 @@ type PartsListClientProps = {
   categoryAttributesByCategoryId: Record<string, EffectiveCategoryAttribute[]>;
   manufacturerSuggestions: ManufacturerSuggestion[];
   workspaceAttributes: AttributeListItem[];
+  globalWorkspaceAttributesForMatching: AttributeListItem[];
   initialPage: ListPage<PartsListItem>;
   workspaceSlug: string;
 };
@@ -173,12 +210,14 @@ export function PartsListClient({
   categoryAttributesByCategoryId,
   manufacturerSuggestions,
   workspaceAttributes,
+  globalWorkspaceAttributesForMatching,
   initialPage,
   workspaceSlug
 }: PartsListClientProps) {
   const queryClient = useQueryClient();
   const createDialogRef = useRef<HTMLDialogElement>(null);
   const editDialogRef = useRef<HTMLDialogElement>(null);
+  const matchingDialogRef = useRef<HTMLDialogElement>(null);
   const listColumnsMenuRef = useRef<HTMLDivElement>(null);
   const createDetailsContentRef = useRef<HTMLDivElement>(null);
   const editDetailsContentRef = useRef<HTMLDivElement>(null);
@@ -205,6 +244,18 @@ export function PartsListClient({
   const [createFieldErrors, setCreateFieldErrors] = useState<PartFormErrors>(
     {}
   );
+  const [createSupplierMatchingPayload, setCreateSupplierMatchingPayload] =
+    useState("");
+  const [matchingState, setMatchingState] = useState<MatchingDialogState | null>(
+    null
+  );
+  const [matchingRowPendingReassign, setMatchingRowPendingReassign] = useState<{
+    nextRowIndex: number;
+    nextTargetAttributeId: string;
+    previousRowIndex: number;
+  } | null>(null);
+  const [skipMatchingPendingConfirmation, setSkipMatchingPendingConfirmation] =
+    useState(false);
   const [createFormResetKey, setCreateFormResetKey] = useState(0);
   const [editCatalogNumber, setEditCatalogNumber] = useState("");
   const [editDescription, setEditDescription] = useState("");
@@ -420,6 +471,7 @@ export function PartsListClient({
       setCreateSecondaryCategoryId("");
       setCreateActiveTab("details");
       setCreateAttributeValues({});
+      setCreateSupplierMatchingPayload("");
       setCreateFieldErrors({});
       setCreateFormResetKey((currentKey) => currentKey + 1);
       addToastMessage({
@@ -739,9 +791,150 @@ export function PartsListClient({
     setCreateSecondaryCategoryId("");
     setCreateActiveTab("details");
     setCreateAttributeValues({});
+    setCreateSupplierMatchingPayload("");
     setCreateFieldErrors({});
     setCreateFormResetKey((currentKey) => currentKey + 1);
     openDialog(createDialogRef.current);
+  }
+
+  async function openMatchingDialogFromSupplierResult(input: {
+    provider: SupplierProviderKey;
+    sourceCategory: string | null;
+    sourceAttributes: Array<{ name: string; value: string; unit: string | null }>;
+  }) {
+    const hasDataToMap =
+      Boolean(input.sourceCategory?.trim()) ||
+      input.sourceAttributes.some((attribute) => attribute.value.trim().length > 0);
+
+    if (!hasDataToMap) {
+      return;
+    }
+
+    try {
+      const initialResult = await getSupplierMatchingSuggestionsForWorkspace({
+        workspaceSlug,
+        provider: input.provider,
+        sourceCategory: input.sourceCategory,
+        sourceAttributes: input.sourceAttributes.map((attribute) => ({
+          sourceAttribute: attribute.name,
+          sourceValue: attribute.value,
+          sourceUnit: attribute.unit
+        })),
+        targetCategoryId: null
+      });
+
+      if (!initialResult.ok) {
+        return;
+      }
+
+      const targetCategoryId = initialResult.payload.suggestedTargetCategoryId ?? "";
+      let attributeRows = initialResult.payload.attributeRows;
+
+      if (targetCategoryId) {
+        const scopedResult = await getSupplierMatchingSuggestionsForWorkspace({
+          workspaceSlug,
+          provider: input.provider,
+          sourceCategory: input.sourceCategory,
+          sourceAttributes: input.sourceAttributes.map((attribute) => ({
+            sourceAttribute: attribute.name,
+            sourceValue: attribute.value,
+            sourceUnit: attribute.unit
+          })),
+          targetCategoryId
+        });
+
+        if (scopedResult.ok) {
+          attributeRows = scopedResult.payload.attributeRows;
+        }
+      }
+
+      const rows = attributeRows.map((row) => ({
+        sourceAttribute: row.sourceAttribute,
+        sourceAttributeName: row.sourceAttributeName,
+        sourceUnit: row.sourceUnit,
+        sourceAttributeKey: row.sourceAttributeKey,
+        sourceValue: row.sourceValue,
+        targetAttributeId: row.suggestedTargetAttributeId ?? "",
+        targetValue: row.sourceValue
+      }));
+
+      const filteredRows = applySuggestedTargetAttributes({
+        categoryAttributesByCategoryId,
+        globalWorkspaceAttributesForMatching,
+        targetCategoryId,
+        rows
+      });
+
+      setMatchingState({
+        provider: input.provider,
+        sourceCategory: input.sourceCategory,
+        sourceCategoryKey: initialResult.payload.sourceCategoryKey,
+        targetCategoryId,
+        rows: filteredRows
+      });
+      setSkipMatchingPendingConfirmation(false);
+      window.requestAnimationFrame(() => openDialog(matchingDialogRef.current));
+    } catch {
+      // Keep supplier autofill behavior even when suggestions fail.
+    }
+  }
+
+  async function handleMatchingTargetCategoryChange(targetCategoryId: string) {
+    if (!matchingState) {
+      return;
+    }
+
+    try {
+      const suggestionResult = await getSupplierMatchingSuggestionsForWorkspace({
+        workspaceSlug,
+        provider: matchingState.provider,
+        sourceCategory: matchingState.sourceCategory,
+        sourceAttributes: matchingState.rows.map((row) => ({
+          sourceAttribute: row.sourceAttributeName,
+          sourceValue: row.sourceValue,
+          sourceUnit: row.sourceUnit
+        })),
+        targetCategoryId: targetCategoryId || null
+      });
+
+      if (!suggestionResult.ok) {
+        return;
+      }
+
+      const suggestedByKey = new Map(
+        suggestionResult.payload.attributeRows.map((row) => [
+          row.sourceAttributeKey,
+          row.suggestedTargetAttributeId ?? ""
+        ])
+      );
+
+      setMatchingState((current) => {
+        if (!current) {
+          return current;
+        }
+
+        const nextRows = applySuggestedTargetAttributes({
+          categoryAttributesByCategoryId,
+          globalWorkspaceAttributesForMatching,
+          targetCategoryId,
+          rows: current.rows.map((row) => ({
+            ...row,
+            targetAttributeId:
+              suggestedByKey.get(row.sourceAttributeKey) ??
+              row.targetAttributeId,
+            targetValue: row.sourceValue
+          }))
+        });
+
+        return {
+          ...current,
+          targetCategoryId,
+          rows: nextRows
+        };
+      });
+    } catch {
+      // no-op
+    }
   }
 
   function handleCreateSubmit(event: FormEvent<HTMLFormElement>) {
@@ -847,6 +1040,126 @@ export function PartsListClient({
     setToastMessages((currentMessages) =>
       currentMessages.filter((toast) => toast.id !== toastId)
     );
+  }
+
+  function handleMatchingTargetAttributeChange(
+    rowIndex: number,
+    nextTargetAttributeId: string
+  ) {
+    setMatchingState((current) => {
+      if (!current) {
+        return current;
+      }
+
+      const previousRowIndex = current.rows.findIndex(
+        (row, index) =>
+          index !== rowIndex && row.targetAttributeId === nextTargetAttributeId
+      );
+
+      if (nextTargetAttributeId && previousRowIndex >= 0) {
+        setMatchingRowPendingReassign({
+          nextRowIndex: rowIndex,
+          nextTargetAttributeId,
+          previousRowIndex
+        });
+        return current;
+      }
+
+      const nextRows = [...current.rows];
+      nextRows[rowIndex] = {
+        ...nextRows[rowIndex],
+        targetAttributeId: nextTargetAttributeId,
+        targetValue: nextTargetAttributeId ? nextRows[rowIndex].sourceValue : ""
+      };
+
+      return { ...current, rows: nextRows };
+    });
+  }
+
+  function handleMatchingTargetValueChange(rowIndex: number, targetValue: string) {
+    setMatchingState((current) => {
+      if (!current) {
+        return current;
+      }
+
+      const nextRows = [...current.rows];
+      nextRows[rowIndex] = {
+        ...nextRows[rowIndex],
+        targetValue
+      };
+
+      return { ...current, rows: nextRows };
+    });
+  }
+
+  function confirmMatchingReassignment() {
+    if (!matchingRowPendingReassign) {
+      return;
+    }
+
+    setMatchingState((current) => {
+      if (!current) {
+        return current;
+      }
+
+      const nextRows = [...current.rows];
+      const { nextRowIndex, nextTargetAttributeId, previousRowIndex } =
+        matchingRowPendingReassign;
+      nextRows[previousRowIndex] = {
+        ...nextRows[previousRowIndex],
+        targetAttributeId: "",
+        targetValue: ""
+      };
+      nextRows[nextRowIndex] = {
+        ...nextRows[nextRowIndex],
+        targetAttributeId: nextTargetAttributeId,
+        targetValue: nextRows[nextRowIndex].sourceValue
+      };
+
+      return { ...current, rows: nextRows };
+    });
+
+    setMatchingRowPendingReassign(null);
+  }
+
+  function applyMatchingToPartForm() {
+    if (!matchingState) {
+      closeDialog(matchingDialogRef.current);
+      return;
+    }
+
+    const nextAttributeValues: Record<string, string> = {};
+
+    for (const row of matchingState.rows) {
+      if (!row.targetAttributeId) {
+        continue;
+      }
+
+      nextAttributeValues[row.targetAttributeId] = row.targetValue;
+    }
+
+    setCreateSupplierMatchingPayload(
+      JSON.stringify({
+        mode: "create-from-suggestion",
+        provider: matchingState.provider,
+        sourceCategoryKey: matchingState.sourceCategoryKey,
+        targetCategoryId: matchingState.targetCategoryId || null,
+        attributeMappings: matchingState.rows
+          .filter((row) => row.targetAttributeId)
+          .map((row) => ({
+            sourceAttributeKey: row.sourceAttributeKey,
+            targetAttributeId: row.targetAttributeId
+          }))
+      })
+    );
+
+    setCreateAttributeValues((current) => ({
+      ...current,
+      ...nextAttributeValues
+    }));
+    setCreatePrimaryCategoryId(matchingState.targetCategoryId);
+    setCreateSecondaryCategoryId("");
+    closeDialog(matchingDialogRef.current);
   }
 
   function toggleColumnSorting(columnId: string) {
@@ -1276,6 +1589,14 @@ export function PartsListClient({
             onSubmit={handleCreateSubmit}
           >
             <input name="workspaceSlug" type="hidden" value={workspaceSlug} />
+            <input
+              name="supplierMatchingPayload"
+              type="hidden"
+              value={
+                createSupplierMatchingPayload ||
+                getSupplierMatchingPayloadValue(matchingState)
+              }
+            />
             <PartAttributeHiddenInputs
               attributeValues={createAttributeValues}
               categoryAttributesByCategoryId={categoryAttributesByCategoryId}
@@ -1325,6 +1646,16 @@ export function PartsListClient({
                     onManufacturerNameChange={(value) => {
                       setCreateManufacturerName(value);
                       clearPartFieldError(setCreateFieldErrors, "manufacturerName");
+                    }}
+                    onSupplierSuggestionSelect={(suggestion) => {
+                      setCreateCatalogNumber(suggestion.catalogNumber);
+                      setCreateManufacturerName(suggestion.manufacturerName);
+                      setCreateDescription(suggestion.description);
+                      void openMatchingDialogFromSupplierResult({
+                        provider: "digikey",
+                        sourceCategory: suggestion.sourceCategory,
+                        sourceAttributes: suggestion.sourceAttributes
+                      });
                     }}
                     workspaceSlug={workspaceSlug}
                     enableDigiKeySearch
@@ -1400,6 +1731,166 @@ export function PartsListClient({
       </DialogShell>
 
       <DialogShell
+        ref={matchingDialogRef}
+        closeLabel={copy.close}
+        description={copy.matchingDialogBody}
+        onCancel={(event) => {
+          event.preventDefault();
+          setSkipMatchingPendingConfirmation(true);
+        }}
+        onCloseClick={(event) => {
+          event.preventDefault();
+          setSkipMatchingPendingConfirmation(true);
+        }}
+        title={copy.matchingDialogTitle}
+        titleId="supplier-matching-dialog-title"
+        widthClassName="w-[min(68rem,calc(100vw-3rem))]"
+      >
+        {matchingState ? (
+          <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+            <DialogBody>
+              <div className="grid gap-4">
+                <div className="grid grid-cols-2 gap-3">
+                  <label className="grid gap-2 text-sm font-medium text-slate-700">
+                    {copy.sourceCategoryLabel}
+                    <div className="min-h-10 rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700">
+                      {matchingState.sourceCategory?.trim() || copy.noCategory}
+                    </div>
+                  </label>
+                  <CategoryTreeSelect
+                    categories={partCategories}
+                    categoryTree={categoryTree}
+                    copy={copy}
+                    disabled={!isDatabaseAvailable}
+                    label={copy.targetCategoryLabel}
+                    name="matchingTargetCategoryId"
+                    noSelectionLabel={copy.noCategory}
+                    selectedId={matchingState.targetCategoryId}
+                    onSelectedIdChange={(nextCategoryId) => {
+                      void handleMatchingTargetCategoryChange(nextCategoryId);
+                    }}
+                  />
+                </div>
+                <div className="overflow-hidden rounded-md border border-slate-200">
+                  <table className="w-full table-fixed text-left text-sm">
+                    <thead className="bg-slate-50 text-slate-600">
+                      <tr>
+                        <th className="px-3 py-2 font-semibold">{copy.sourceAttributeLabel}</th>
+                        <th className="px-3 py-2 font-semibold">{copy.sourceValueLabel}</th>
+                        <th className="px-3 py-2 font-semibold">{copy.targetAttributeLabel}</th>
+                        <th className="px-3 py-2 font-semibold">{copy.targetValueLabel}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {matchingState.rows.map((row, rowIndex) => {
+                        const availableAttributes = getMatchingTargetAttributes({
+                          categoryAttributesByCategoryId,
+                          globalWorkspaceAttributesForMatching,
+                          targetCategoryId: matchingState.targetCategoryId
+                        });
+                        const selectedAttribute = availableAttributes.find(
+                          (attribute) => attribute.id === row.targetAttributeId
+                        );
+                        const canEditTargetValue = Boolean(selectedAttribute);
+
+                        return (
+                          <tr key={`${row.sourceAttributeKey}-${rowIndex}`} className="border-t border-slate-100">
+                            <td className="px-3 py-2 text-slate-700">{row.sourceAttribute}</td>
+                            <td className="px-3 py-2 font-mono text-slate-950">{row.sourceValue}</td>
+                            <td className="px-3 py-2">
+                              <select
+                                className="min-h-9 w-full rounded-md border border-slate-300 bg-white px-2 py-1 text-sm text-slate-950"
+                                value={row.targetAttributeId}
+                                onChange={(event) =>
+                                  handleMatchingTargetAttributeChange(
+                                    rowIndex,
+                                    event.currentTarget.value
+                                  )
+                                }
+                              >
+                                <option value="">{copy.noAttribute}</option>
+                                {availableAttributes.map((attribute) => (
+                                  <option key={attribute.id} value={attribute.id}>
+                                    {attribute.name}
+                                  </option>
+                                ))}
+                              </select>
+                            </td>
+                            <td className="px-3 py-2">
+                              {canEditTargetValue && selectedAttribute ? (
+                                selectedAttribute.type === "BOOLEAN" ? (
+                                  <select
+                                    className="min-h-9 w-full rounded-md border border-slate-300 bg-white px-2 py-1 text-sm text-slate-950"
+                                    value={row.targetValue}
+                                    onChange={(event) =>
+                                      handleMatchingTargetValueChange(
+                                        rowIndex,
+                                        event.currentTarget.value
+                                      )
+                                    }
+                                  >
+                                    <option value="">-</option>
+                                    <option value="Yes">Yes</option>
+                                    <option value="No">No</option>
+                                  </select>
+                                ) : selectedAttribute.type === "CHOICE" ? (
+                                  <select
+                                    className="min-h-9 w-full rounded-md border border-slate-300 bg-white px-2 py-1 text-sm text-slate-950"
+                                    value={row.targetValue}
+                                    onChange={(event) =>
+                                      handleMatchingTargetValueChange(
+                                        rowIndex,
+                                        event.currentTarget.value
+                                      )
+                                    }
+                                  >
+                                    <option value="">-</option>
+                                    {selectedAttribute.choiceOptions.map((choiceOption) => (
+                                      <option key={choiceOption.id} value={choiceOption.label}>
+                                        {choiceOption.label}
+                                      </option>
+                                    ))}
+                                  </select>
+                                ) : (
+                                  <input
+                                    className="min-h-9 w-full rounded-md border border-slate-300 bg-white px-2 py-1 text-sm text-slate-950"
+                                    type={selectedAttribute.type === "NUMBER" ? "number" : "text"}
+                                    value={row.targetValue}
+                                    onChange={(event) =>
+                                      handleMatchingTargetValueChange(
+                                        rowIndex,
+                                        event.currentTarget.value
+                                      )
+                                    }
+                                  />
+                                )
+                              ) : null}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </DialogBody>
+            <DialogFooter className="justify-between gap-3">
+              <button
+                className="min-h-9 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700"
+                type="button"
+                onClick={() => setSkipMatchingPendingConfirmation(true)}
+              >
+                {copy.skipMatching}
+              </button>
+              <button className={primaryButtonClassName} type="button" onClick={applyMatchingToPartForm}>
+                {copy.saveChanges}
+              </button>
+            </DialogFooter>
+          </div>
+        ) : null}
+      </DialogShell>
+
+      <DialogShell
         ref={editDialogRef}
         closeLabel={copy.close}
         description={copy.editPartBody}
@@ -1463,6 +1954,9 @@ export function PartsListClient({
                       onManufacturerNameChange={(value) => {
                         setEditManufacturerName(value);
                         clearPartFieldError(setEditFieldErrors, "manufacturerName");
+                      }}
+                      onSupplierSuggestionSelect={() => {
+                        // Supplier suggestions are disabled in edit mode.
                       }}
                       workspaceSlug={workspaceSlug}
                       enableDigiKeySearch={false}
@@ -1577,12 +2071,141 @@ export function PartsListClient({
         onCancel={() => setPartPendingDelete(null)}
         onConfirm={confirmDeletePart}
       />
+      <DeleteConfirmationDialog
+        body={`${copy.confirmSkipMatchingBody} ${copy.noLearningSaved}`}
+        cancelLabel={copy.keepMatching}
+        closeLabel={copy.close}
+        confirmLabel={copy.skipAndContinue}
+        deleteLabel={copy.skipMatching}
+        isPending={false}
+        itemName=""
+        open={skipMatchingPendingConfirmation}
+        onCancel={() => setSkipMatchingPendingConfirmation(false)}
+        onConfirm={() => {
+          setSkipMatchingPendingConfirmation(false);
+          setMatchingState(null);
+          closeDialog(matchingDialogRef.current);
+        }}
+      />
+      <DeleteConfirmationDialog
+        body={copy.reassignBody}
+        cancelLabel={copy.cancelAction}
+        closeLabel={copy.close}
+        confirmLabel={copy.reassignAction}
+        deleteLabel={copy.reassignTitle}
+        isPending={false}
+        itemName=""
+        open={Boolean(matchingRowPendingReassign)}
+        onCancel={() => setMatchingRowPendingReassign(null)}
+        onConfirm={confirmMatchingReassignment}
+      />
     </>
   );
 }
 
 function getPartSuccessMessage(actionLabel: string, part: PartsListItem) {
   return `${actionLabel}: ${part.manufacturerName} ${part.catalogNumber}.`;
+}
+
+function getMatchingTargetAttributes({
+  categoryAttributesByCategoryId,
+  globalWorkspaceAttributesForMatching,
+  targetCategoryId
+}: {
+  categoryAttributesByCategoryId: Record<string, EffectiveCategoryAttribute[]>;
+  globalWorkspaceAttributesForMatching: AttributeListItem[];
+  targetCategoryId: string;
+}) {
+  const globalById = new Map(
+    globalWorkspaceAttributesForMatching.map((attribute) => [
+      attribute.id,
+      attribute
+    ])
+  );
+  const categoryById = new Map(
+    (targetCategoryId
+      ? (categoryAttributesByCategoryId[targetCategoryId] ?? []).map(
+          (entry) => entry.attribute
+        )
+      : []
+    ).map((attribute) => [attribute.id, attribute])
+  );
+  const merged = new Map([...globalById, ...categoryById]);
+
+  return [...merged.values()].sort((left, right) =>
+    left.name.localeCompare(right.name, "en", { sensitivity: "base" })
+  );
+}
+
+function applySuggestedTargetAttributes({
+  categoryAttributesByCategoryId,
+  globalWorkspaceAttributesForMatching,
+  targetCategoryId,
+  rows
+}: {
+  categoryAttributesByCategoryId: Record<string, EffectiveCategoryAttribute[]>;
+  globalWorkspaceAttributesForMatching: AttributeListItem[];
+  targetCategoryId: string;
+  rows: Array<{
+    sourceAttribute: string;
+    sourceAttributeName: string;
+    sourceUnit: string | null;
+    sourceAttributeKey: string;
+    sourceValue: string;
+    targetAttributeId: string;
+    targetValue: string;
+  }>;
+}) {
+  const availableAttributeIds = new Set(
+    getMatchingTargetAttributes({
+      categoryAttributesByCategoryId,
+      globalWorkspaceAttributesForMatching,
+      targetCategoryId
+    }).map((attribute) => attribute.id)
+  );
+  const used = new Set<string>();
+
+  return rows.map((row) => {
+    const targetAttributeId =
+      row.targetAttributeId && availableAttributeIds.has(row.targetAttributeId)
+        ? row.targetAttributeId
+        : "";
+
+    if (!targetAttributeId || used.has(targetAttributeId)) {
+      return {
+        ...row,
+        targetAttributeId: "",
+        targetValue: ""
+      };
+    }
+
+    used.add(targetAttributeId);
+
+    return {
+      ...row,
+      targetAttributeId,
+      targetValue: row.sourceValue
+    };
+  });
+}
+
+function getSupplierMatchingPayloadValue(state: MatchingDialogState | null) {
+  if (!state) {
+    return "";
+  }
+
+  return JSON.stringify({
+    mode: "create-from-suggestion",
+    provider: state.provider,
+    sourceCategoryKey: state.sourceCategoryKey,
+    targetCategoryId: state.targetCategoryId || null,
+    attributeMappings: state.rows
+      .filter((row) => row.targetAttributeId)
+      .map((row) => ({
+        sourceAttributeKey: row.sourceAttributeKey,
+        targetAttributeId: row.targetAttributeId
+      }))
+  });
 }
 
 function validatePartForm(
@@ -2124,6 +2747,7 @@ function PartDetailsFields({
   onCatalogNumberChange,
   onDescriptionChange,
   onManufacturerNameChange,
+  onSupplierSuggestionSelect,
   onPrimaryCategoryChange,
   onSecondaryCategoryChange
 }: {
@@ -2147,12 +2771,21 @@ function PartDetailsFields({
   onCatalogNumberChange: (catalogNumber: string) => void;
   onDescriptionChange: (description: string) => void;
   onManufacturerNameChange: (manufacturerName: string) => void;
+  onSupplierSuggestionSelect: (suggestion: {
+    manufacturerName: string;
+    catalogNumber: string;
+    description: string;
+    sourceCategory: string | null;
+    sourceAttributes: Array<{ name: string; value: string; unit: string | null }>;
+  }) => void;
   onPrimaryCategoryChange: (categoryId: string) => void;
   onSecondaryCategoryChange: (categoryId: string) => void;
 }) {
   const digiKeyAnchorRef = useRef<HTMLDivElement>(null);
   const digiKeyPanelRef = useRef<HTMLDivElement>(null);
   const [isDigiKeyOpen, setIsDigiKeyOpen] = useState(false);
+  const [suppressDigiKeyOpenOnFocus, setSuppressDigiKeyOpenOnFocus] =
+    useState(false);
   const [activeDigiKeyIndex, setActiveDigiKeyIndex] = useState(0);
   const [digiKeyPanelStyle, setDigiKeyPanelStyle] = useState<CSSProperties>({});
   const [digiKeyPortalTarget, setDigiKeyPortalTarget] =
@@ -2285,12 +2918,16 @@ function PartDetailsFields({
     manufacturerName: string;
     catalogNumber: string;
     description: string;
+    sourceCategory: string | null;
+    sourceAttributes: Array<{ name: string; value: string; unit: string | null }>;
   }) {
     onCatalogNumberChange(result.catalogNumber);
     onManufacturerNameChange(result.manufacturerName);
     onDescriptionChange(result.description);
+    onSupplierSuggestionSelect(result);
     setIsDigiKeyOpen(false);
     setActiveDigiKeyIndex(0);
+    setSuppressDigiKeyOpenOnFocus(true);
   }
 
   function moveActiveDigiKeyResult(direction: 1 | -1) {
@@ -2376,9 +3013,13 @@ function PartDetailsFields({
             onChange={(event) => {
               const nextValue = event.target.value;
               onCatalogNumberChange(nextValue);
+              setSuppressDigiKeyOpenOnFocus(false);
               updateDigiKeyOpen(nextValue);
             }}
             onFocus={(event) => {
+              if (suppressDigiKeyOpenOnFocus) {
+                return;
+              }
               updateDigiKeyOpen(event.currentTarget.value);
             }}
             onKeyDown={handleCatalogNumberKeyDown}

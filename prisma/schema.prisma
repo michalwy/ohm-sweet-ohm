@@ -56,6 +56,7 @@ model Attribute {
   workspaceAttributes  WorkspaceAttribute[]
   partValues           PartAttributeValue[]
   valueForCategories   PartCategory[]          @relation("PartCategoryValueAttribute")
+  supplierAttributeMappingStats SupplierAttributeMappingStat[]
 
   @@unique([workspaceId, normalizedName])
   @@index([workspaceId, name])
@@ -304,6 +305,46 @@ model Workspace {
   partAttributeValues  PartAttributeValue[]
   roles                Role[]
   digiKeyIntegration   WorkspaceDigiKeyIntegration?
+  supplierCategoryMappingStats SupplierCategoryMappingStat[]
+  supplierAttributeMappingStats SupplierAttributeMappingStat[]
+}
+
+model SupplierCategoryMappingStat {
+  id                String   @id @default(cuid())
+  workspaceId       String
+  provider          String
+  sourceCategoryKey String
+  targetCategoryId  String
+  score             Int      @default(0)
+  lastUsedAt        DateTime @default(now())
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@unique([workspaceId, provider, sourceCategoryKey, targetCategoryId])
+  @@index([workspaceId, provider, sourceCategoryKey, score, lastUsedAt])
+}
+
+model SupplierAttributeMappingStat {
+  id                     String   @id @default(cuid())
+  workspaceId            String
+  provider               String
+  sourceCategoryKey      String
+  targetCategoryScopeKey String
+  sourceAttributeKey     String
+  targetAttributeId      String
+  score                  Int      @default(0)
+  lastUsedAt             DateTime @default(now())
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  attribute Attribute @relation(fields: [targetAttributeId], references: [id], onDelete: Cascade)
+
+  @@unique([workspaceId, provider, sourceCategoryKey, targetCategoryScopeKey, sourceAttributeKey, targetAttributeId])
+  @@index([workspaceId, provider, sourceCategoryKey, targetCategoryScopeKey, sourceAttributeKey, score, lastUsedAt])
+  @@index([workspaceId, targetAttributeId])
 }
 
 model WorkspaceDigiKeyIntegration {

@@ -1,0 +1,29 @@
+{
+  "source": "User-provided DigiKey keyword search payload in Codex thread (2026-05-26)",
+  "notes": [
+    "Category path is represented as a nested tree in Products[].Category with ChildCategories.",
+    "There is no guaranteed single flat path field; parser should build path from deepest child chain.",
+    "Attributes for matching come from Products[].Parameters[]."
+  ],
+  "keyPaths": {
+    "catalogNumber": "Products[].ManufacturerProductNumber",
+    "manufacturer": "Products[].Manufacturer.Name",
+    "description": "Products[].Description.ProductDescription",
+    "sourceAttributes": "Products[].Parameters[]",
+    "categoryTree": "Products[].Category"
+  },
+  "exampleCategoryTree": {
+    "Name": "Integrated Circuits (ICs)",
+    "ChildCategories": [
+      {
+        "Name": "Clock/Timing",
+        "ChildCategories": [
+          {
+            "Name": "Programmable Timers and Oscillators",
+            "ChildCategories": []
+          }
+        ]
+      }
+    ]
+  }
+}

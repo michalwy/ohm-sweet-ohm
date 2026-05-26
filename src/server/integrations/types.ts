@@ -6,6 +6,12 @@ export type SupplierPartSearchItem = {
   manufacturerName: string;
   catalogNumber: string;
   description: string;
+  sourceCategory: string | null;
+  sourceAttributes: Array<{
+    name: string;
+    value: string;
+    unit: string | null;
+  }>;
 };
 
 export type SupplierPartSearchPage = {

@@ -17,6 +17,8 @@ import {
   type EffectiveCategoryAttribute
 } from "@/server/parts/attributes";
 import { parseAttributeValue } from "@/server/parts/attributeValues";
+import { learnSupplierMatching } from "@/server/integrations/matching";
+import type { SupplierProviderKey } from "@/server/integrations/types";
 
 export type PartMutationResult =
   | {
@@ -55,6 +57,7 @@ export async function createPart(
     "secondaryCategoryId"
   );
   const submittedAttributeValues = getSubmittedAttributeValues(formData);
+  const supplierMatchingPayload = getSupplierMatchingPayload(formData);
   const partsPath = getPartsPath(workspaceSlug);
   let part: PartsListItem | null = null;
 
@@ -124,6 +127,17 @@ export async function createPart(
                 partId: nextPart.id,
                 attributeValueWrites
               });
+
+              if (supplierMatchingPayload?.mode === "create-from-suggestion") {
+                await learnSupplierMatching({
+                  tx,
+                  workspaceId: context.workspace.id,
+                  provider: supplierMatchingPayload.provider,
+                  sourceCategoryKey: supplierMatchingPayload.sourceCategoryKey,
+                  targetCategoryId: supplierMatchingPayload.targetCategoryId,
+                  attributeMappings: supplierMatchingPayload.attributeMappings
+                });
+              }
 
               return nextPart;
             });
@@ -350,6 +364,71 @@ function getSubmittedAttributeValues(formData: FormData) {
   }
 
   return submittedValues;
+}
+
+type SupplierMatchingPayload = {
+  mode: "create-from-suggestion";
+  provider: SupplierProviderKey;
+  sourceCategoryKey: string;
+  targetCategoryId: string | null;
+  attributeMappings: Array<{
+    sourceAttributeKey: string;
+    targetAttributeId: string;
+  }>;
+};
+
+function getSupplierMatchingPayload(
+  formData: FormData
+): SupplierMatchingPayload | null {
+  const rawPayload = formData.get("supplierMatchingPayload");
+
+  if (typeof rawPayload !== "string" || !rawPayload.trim()) {
+    return null;
+  }
+
+  try {
+    const parsed = JSON.parse(rawPayload) as Partial<SupplierMatchingPayload>;
+
+    if (
+      parsed.mode !== "create-from-suggestion" ||
+      !isSupplierProviderKey(parsed.provider) ||
+      typeof parsed.sourceCategoryKey !== "string" ||
+      !Array.isArray(parsed.attributeMappings)
+    ) {
+      return null;
+    }
+
+    const targetCategoryId =
+      typeof parsed.targetCategoryId === "string" && parsed.targetCategoryId
+        ? parsed.targetCategoryId
+        : null;
+    const attributeMappings = parsed.attributeMappings
+      .filter(
+        (item): item is { sourceAttributeKey: string; targetAttributeId: string } =>
+          typeof item?.sourceAttributeKey === "string" &&
+          item.sourceAttributeKey.length > 0 &&
+          typeof item?.targetAttributeId === "string" &&
+          item.targetAttributeId.length > 0
+      )
+      .map((item) => ({
+        sourceAttributeKey: item.sourceAttributeKey,
+        targetAttributeId: item.targetAttributeId
+      }));
+
+    return {
+      mode: "create-from-suggestion",
+      provider: parsed.provider,
+      sourceCategoryKey: parsed.sourceCategoryKey,
+      targetCategoryId,
+      attributeMappings
+    };
+  } catch {
+    return null;
+  }
+}
+
+function isSupplierProviderKey(value: unknown): value is SupplierProviderKey {
+  return value === "digikey" || value === "mouser" || value === "tme";
 }
 
 function getPartsPath(workspaceSlug: string) {

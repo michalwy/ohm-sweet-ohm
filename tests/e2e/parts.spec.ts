@@ -1042,6 +1042,93 @@ test.describe("parts list", () => {
       page.getByRole("heading", { level: 1, name: "Parts" })
     ).toBeVisible();
   });
+
+  test("prefills supplier attribute mappings from learned history", async ({
+    page
+  }, testInfo) => {
+    const suffix = getDatabaseSafeSuffix(`${testInfo.project.name}-${testInfo.retry}`);
+    const frequencyAttributeName = `E2E Frequency ${suffix}`;
+    const packageAttributeName = `E2E Package ${suffix}`;
+
+    await ensureGlobalTextAttributesForMatching({
+      frequencyAttributeName,
+      packageAttributeName
+    });
+
+    await page.goto("/");
+    await page.getByLabel("Email").fill("owner@ohmsweetohm.local");
+    await page.getByLabel("Password").fill("ohm-sweet-ohm-owner");
+    await page.getByRole("button", { name: "Sign in" }).click();
+    await page.getByRole("link", { name: "Open" }).click();
+    await expect(page).toHaveURL(/\/w\/default\/parts$/);
+
+    const addPartDialog = page.getByRole("dialog", { name: "Add part" });
+    const matchingDialog = page.getByRole("dialog", { name: "Supplier matching" });
+
+    const addPartButton = page.getByRole("button", { name: "Add part" }).first();
+    await expect(addPartButton).toBeEnabled();
+    await addPartButton.click();
+    await expect(page.getByRole("heading", { name: "Add part" })).toBeVisible();
+    await expect(addPartDialog).toBeVisible();
+    await addPartDialog.getByLabel("Catalog number").fill("E2E-NE555");
+    await expect(page.getByRole("option", { name: /E2E-NE555A/ })).toBeVisible();
+    await page.getByRole("option", { name: /E2E-NE555A/ }).click();
+
+    await expect(matchingDialog).toBeVisible();
+    await matchingDialog.getByRole("button", { name: /Target category/ }).click();
+    await page.getByPlaceholder("Search categories").fill("integrated");
+    await page.keyboard.press("Enter");
+
+    const frequencyRow = matchingDialog.locator("tr", {
+      has: page.getByText("Frequency")
+    });
+    await frequencyRow.locator("select").first().selectOption({
+      label: frequencyAttributeName
+    });
+
+    const packageRow = matchingDialog.locator("tr", {
+      has: page.getByText("Package / Case")
+    });
+    await packageRow.locator("select").first().selectOption({
+      label: packageAttributeName
+    });
+
+    await matchingDialog.getByRole("button", { name: "Save changes" }).click();
+    await addPartDialog.getByRole("button", { name: "Create part" }).click();
+    await expect(page.getByRole("status")).toHaveText(
+      "Part created: Texas Instruments E2E-NE555A."
+    );
+
+    await addPartButton.click();
+    await expect(page.getByRole("heading", { name: "Add part" })).toBeVisible();
+    await expect(addPartDialog).toBeVisible();
+    await addPartDialog.getByLabel("Catalog number").fill("E2E-NE555");
+    await expect(page.getByRole("option", { name: /E2E-NE555B/ })).toBeVisible();
+    await page.getByRole("option", { name: /E2E-NE555B/ }).click();
+
+    await expect(matchingDialog).toBeVisible();
+    await expect(matchingDialog.getByRole("button", { name: /Target category.*Integrated circuits/ })).toBeVisible();
+
+    const secondFrequencyRow = matchingDialog.locator("tr", {
+      has: page.getByText("Frequency")
+    });
+    await expect(secondFrequencyRow.locator("select").first()).toHaveValue(
+      await optionValueByLabel(secondFrequencyRow.locator("select").first(), frequencyAttributeName)
+    );
+
+    const secondPackageRow = matchingDialog.locator("tr", {
+      has: page.getByText("Package / Case")
+    });
+    await expect(secondPackageRow.locator("select").first()).toHaveValue(
+      await optionValueByLabel(secondPackageRow.locator("select").first(), packageAttributeName)
+    );
+
+    await matchingDialog.getByRole("button", { name: "Skip matching" }).click();
+    await page.getByRole("dialog", { name: /Skip matching/ }).getByRole("button", {
+      name: "Skip and continue"
+    }).click();
+    await expect(addPartDialog).toBeVisible();
+  });
 });
 
 async function attachTextAttributeToCategory({
@@ -1270,4 +1357,100 @@ async function scrollListUntilVisible(
 
 function getDatabaseSafeSuffix(value: string) {
   return value.replace(/[^a-zA-Z0-9]/g, "_").toLocaleLowerCase("en");
+}
+
+async function ensureGlobalTextAttributesForMatching({
+  frequencyAttributeName,
+  packageAttributeName
+}: {
+  frequencyAttributeName: string;
+  packageAttributeName: string;
+}) {
+  const connectionString =
+    process.env.DATABASE_URL ??
+    "postgresql://oso:oso_e2e_password@localhost:5433/ohm_sweet_ohm_e2e?schema=public";
+  const pool = new Pool({ connectionString });
+
+  try {
+    const workspaceResult = await pool.query<{ id: string }>(
+      `SELECT id FROM "Workspace" WHERE slug = 'default' LIMIT 1`
+    );
+    const workspaceId = workspaceResult.rows[0]?.id;
+
+    if (!workspaceId) {
+      throw new Error("e2e_workspace_setup_failed");
+    }
+
+    for (const [index, name] of [frequencyAttributeName, packageAttributeName].entries()) {
+      const normalizedName = name.trim().toLocaleLowerCase("en");
+      await pool.query(
+        `
+          INSERT INTO "Attribute" (
+            id,
+            "workspaceId",
+            name,
+            "normalizedName",
+            type,
+            "createdAt",
+            "updatedAt"
+          )
+          VALUES ($1, $2, $3, $4, 'TEXT', now(), now())
+          ON CONFLICT ("workspaceId", "normalizedName")
+          DO UPDATE SET
+            name = EXCLUDED.name,
+            "updatedAt" = now()
+        `,
+        [
+          `attr_e2e_matching_${index}_${normalizedName.replace(/[^a-z0-9]/g, "_").slice(0, 40)}`,
+          workspaceId,
+          name,
+          normalizedName
+        ]
+      );
+
+      await pool.query(
+        `
+          INSERT INTO "WorkspaceAttribute" (
+            id,
+            "workspaceId",
+            "attributeId",
+            "sortOrder",
+            "createdAt",
+            "updatedAt"
+          )
+          SELECT
+            $1,
+            $2,
+            attribute.id,
+            $3,
+            now(),
+            now()
+          FROM "Attribute" attribute
+          WHERE attribute."workspaceId" = $2
+            AND attribute."normalizedName" = $4
+          ON CONFLICT ("workspaceId", "attributeId")
+          DO UPDATE SET
+            "sortOrder" = EXCLUDED."sortOrder",
+            "updatedAt" = now()
+        `,
+        [
+          `wa_e2e_matching_${index}_${normalizedName.replace(/[^a-z0-9]/g, "_").slice(0, 40)}`,
+          workspaceId,
+          index + 1,
+          normalizedName
+        ]
+      );
+    }
+  } finally {
+    await pool.end();
+  }
+}
+
+async function optionValueByLabel(select: Locator, label: string) {
+  const option = select.locator("option", { hasText: new RegExp(`^${escapeRegex(label)}$`) });
+  return (await option.first().getAttribute("value")) ?? "";
+}
+
+function escapeRegex(value: string) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }

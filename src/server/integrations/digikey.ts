@@ -1,6 +1,7 @@
 import "server-only";
 
 import { prisma } from "@/server/db/prisma";
+import { PART_CATEGORY_PATH_SEPARATOR } from "@/server/parts/categories";
 import type {
   SupplierPartSearchInput,
   SupplierPartSearchItem,
@@ -185,10 +186,16 @@ export async function searchDigiKeyParts(
         return null;
       }
 
+      const sourceCategory = getSourceCategoryPath(product);
+
+      const sourceAttributes = extractSourceAttributes(product);
+
       return {
         manufacturerName,
         catalogNumber,
-        description
+        description,
+        sourceCategory: sourceCategory ?? null,
+        sourceAttributes
       };
     })
     .filter((item): item is DigiKeyPartSearchItem => item !== null);
@@ -316,6 +323,221 @@ function getNestedValue(source: Record<string, unknown>, path: string): unknown 
   }
 
   return current;
+}
+
+function getSourceCategoryPath(product: Record<string, unknown>) {
+  const categoryTreePath = getCategoryTreePathFromProduct(product);
+  if (categoryTreePath) {
+    return normalizeCategoryPathDisplay(categoryTreePath);
+  }
+
+  const explicitPath =
+    getStringValue(
+      product,
+      "CategoryPath",
+      "categoryPath",
+      "Category.Path",
+      "category.path",
+      "FamilyPath",
+      "familyPath"
+    ) ?? findCategoryPathByKey(product);
+
+  if (explicitPath) {
+    return normalizeCategoryPathDisplay(explicitPath);
+  }
+
+  const categoryName =
+    getStringValue(product, "Category.Name", "CategoryName", "category.name", "categoryName") ??
+    findStringByAnyKey(product, ["categoryname", "category"]);
+  const familyName =
+    getStringValue(product, "Family.Name", "FamilyName", "family.name", "familyName") ??
+    findStringByAnyKey(product, ["familyname", "family"]);
+
+  if (categoryName && familyName) {
+    if (normalizePathSegment(categoryName) === normalizePathSegment(familyName)) {
+      return categoryName;
+    }
+
+    return normalizeCategoryPathDisplay(`${categoryName} / ${familyName}`);
+  }
+
+  return categoryName ?? familyName;
+}
+
+function getCategoryTreePathFromProduct(product: Record<string, unknown>) {
+  const category = getNestedValue(product, "Category");
+  if (typeof category !== "object" || category === null) {
+    return null;
+  }
+
+  const segments = collectCategoryPathSegments(category as Record<string, unknown>);
+  if (segments.length === 0) {
+    return null;
+  }
+
+  return segments.join(PART_CATEGORY_PATH_SEPARATOR);
+}
+
+function collectCategoryPathSegments(node: Record<string, unknown>): string[] {
+  const currentName = getStringValue(node, "Name", "name");
+  const childrenRaw = node["ChildCategories"];
+  const children = Array.isArray(childrenRaw)
+    ? childrenRaw.filter(
+        (item): item is Record<string, unknown> =>
+          typeof item === "object" && item !== null
+      )
+    : [];
+  const deepestChildPath = findDeepestCategoryPath(children);
+
+  if (!currentName) {
+    return deepestChildPath;
+  }
+
+  return [currentName, ...deepestChildPath];
+}
+
+function findDeepestCategoryPath(
+  nodes: Array<Record<string, unknown>>
+): string[] {
+  let best: string[] = [];
+
+  for (const node of nodes) {
+    const candidate = collectCategoryPathSegments(node);
+    if (candidate.length > best.length) {
+      best = candidate;
+    }
+  }
+
+  return best;
+}
+
+function normalizePathSegment(value: string) {
+  return value.trim().toLocaleLowerCase("en").replace(/\s+/g, " ");
+}
+
+function normalizeCategoryPathDisplay(path: string) {
+  return path.trim().replace(/\s*\/\s*/g, PART_CATEGORY_PATH_SEPARATOR);
+}
+
+function findCategoryPathByKey(source: Record<string, unknown>) {
+  const wanted = new Set(
+    [
+      "categorypath",
+      "path",
+      "category_path",
+      "familypath",
+      "taxonomy"
+    ].map((key) => key.toLocaleLowerCase("en"))
+  );
+  const visited = new Set<unknown>();
+
+  return scanNodeForCategoryPath(source, wanted, visited);
+}
+
+function scanNodeForCategoryPath(
+  value: unknown,
+  wanted: Set<string>,
+  visited: Set<unknown>
+): string | null {
+  if (!value || typeof value !== "object") {
+    return null;
+  }
+
+  if (visited.has(value)) {
+    return null;
+  }
+
+  visited.add(value);
+
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      const found = scanNodeForCategoryPath(item, wanted, visited);
+      if (found) {
+        return found;
+      }
+    }
+    return null;
+  }
+
+  for (const [rawKey, child] of Object.entries(value)) {
+    const normalizedKey = rawKey.toLocaleLowerCase("en");
+    if (typeof child === "string") {
+      const trimmed = child.trim();
+      if (trimmed.includes("/") && wanted.has(normalizedKey)) {
+        return trimmed;
+      }
+    }
+  }
+
+  for (const child of Object.values(value)) {
+    const found = scanNodeForCategoryPath(child, wanted, visited);
+    if (found) {
+      return found;
+    }
+  }
+
+  return null;
+}
+
+function extractSourceAttributes(product: Record<string, unknown>) {
+  const parameterCollections = [
+    getNestedValue(product, "Parameters"),
+    getNestedValue(product, "parameters"),
+    getNestedValue(product, "ProductVariations"),
+    getNestedValue(product, "productVariations")
+  ];
+  const attributes: Array<{ name: string; value: string; unit: string | null }> = [];
+
+  for (const collection of parameterCollections) {
+    if (!Array.isArray(collection)) {
+      continue;
+    }
+
+    for (const entry of collection) {
+      if (typeof entry !== "object" || entry === null) {
+        continue;
+      }
+
+      const item = entry as Record<string, unknown>;
+      const name =
+        getStringValue(item, "ParameterText", "parameterText", "Name", "name") ??
+        findStringByAnyKey(item, ["parametertext", "name", "parameter"]);
+      const value =
+        getStringValue(
+          item,
+          "ValueText",
+          "valueText",
+          "Value",
+          "value",
+          "ValueDescription",
+          "valueDescription"
+        ) ?? findStringByAnyKey(item, ["valuetext", "value", "valuedescription"]);
+      const unit =
+        getStringValue(item, "UnitText", "unitText", "Unit", "unit") ??
+        findStringByAnyKey(item, ["unittext", "unit"]);
+
+      if (!name || !value) {
+        continue;
+      }
+
+      attributes.push({
+        name,
+        value,
+        unit: unit ?? null
+      });
+    }
+  }
+
+  const deduped = new Map<string, { name: string; value: string; unit: string | null }>();
+
+  for (const attribute of attributes) {
+    const dedupeKey = `${attribute.name.trim().toLowerCase()}::${attribute.unit?.trim().toLowerCase() ?? ""}`;
+    if (!deduped.has(dedupeKey)) {
+      deduped.set(dedupeKey, attribute);
+    }
+  }
+
+  return [...deduped.values()];
 }
 
 function findStringByAnyKey(

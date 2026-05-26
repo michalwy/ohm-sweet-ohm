@@ -3,7 +3,9 @@
 import {
   forwardRef,
   type CSSProperties,
+  type MouseEvent,
   type ReactNode,
+  type SyntheticEvent,
   useEffect,
   useRef
 } from "react";
@@ -16,7 +18,8 @@ type DialogShellProps = {
   titleId: string;
   widthClassName?: string;
   onClose?: () => void;
-  onCloseClick?: () => void;
+  onCancel?: (event: SyntheticEvent<HTMLDialogElement, Event>) => void;
+  onCloseClick?: (event: MouseEvent<HTMLButtonElement>) => void;
 };
 
 type DialogSectionProps = {
@@ -59,6 +62,7 @@ export const DialogShell = forwardRef<HTMLDialogElement, DialogShellProps>(
       titleId,
       widthClassName = "w-[min(48rem,calc(100vw-3rem))]",
       onClose,
+      onCancel,
       onCloseClick
     },
     ref
@@ -69,6 +73,7 @@ export const DialogShell = forwardRef<HTMLDialogElement, DialogShellProps>(
         aria-labelledby={titleId}
         className={`fixed inset-0 m-auto max-h-[calc(100vh-2rem)] ${widthClassName} overflow-hidden rounded-lg border border-slate-200 bg-white p-0 text-slate-950 shadow-2xl backdrop:bg-slate-950/40`}
         onClose={onClose}
+        onCancel={onCancel}
       >
         <div className="flex max-h-[calc(100vh-2rem)] min-h-0 flex-col">
           <div className="flex items-start justify-between gap-4 border-b border-slate-200 px-5 py-4">
