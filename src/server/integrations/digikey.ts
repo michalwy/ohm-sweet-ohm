@@ -1,6 +1,12 @@
 import "server-only";
 
 import { prisma } from "@/server/db/prisma";
+import type {
+  SupplierPartSearchInput,
+  SupplierPartSearchItem,
+  SupplierPartSearchProvider,
+  SupplierPartSearchResult
+} from "@/server/integrations/types";
 
 const DIGIKEY_TOKEN_ENDPOINT = "https://api.digikey.com/v1/oauth2/token";
 const DIGIKEY_KEYWORD_SEARCH_ENDPOINT =
@@ -20,26 +26,8 @@ type DigiKeySearchApiResult = {
   ExactMatches?: unknown[];
 };
 
-export type DigiKeyPartSearchItem = {
-  manufacturerName: string;
-  catalogNumber: string;
-  description: string;
-};
-
-export type DigiKeyPartSearchPage = {
-  items: DigiKeyPartSearchItem[];
-  nextStartPosition: number | null;
-};
-
-export type DigiKeyPartSearchResult =
-  | {
-      ok: true;
-      page: DigiKeyPartSearchPage;
-    }
-  | {
-      ok: false;
-      error: "missing-credentials" | "token-request-failed" | "search-request-failed";
-    };
+export type DigiKeyPartSearchItem = SupplierPartSearchItem;
+export type DigiKeyPartSearchResult = SupplierPartSearchResult;
 
 export async function getWorkspaceDigiKeyIntegration(workspaceId: string) {
   return prisma.workspaceDigiKeyIntegration.findUnique({
@@ -80,12 +68,9 @@ export async function upsertWorkspaceDigiKeyIntegration(input: {
   });
 }
 
-export async function searchDigiKeyParts(input: {
-  workspaceId: string;
-  query: string;
-  limit?: number;
-  offset?: number;
-}): Promise<DigiKeyPartSearchResult> {
+export async function searchDigiKeyParts(
+  input: SupplierPartSearchInput
+): Promise<DigiKeyPartSearchResult> {
   const normalizedQuery = input.query.trim();
   const offset = Math.max(0, input.offset ?? 0);
   const pageSize = Math.max(1, Math.min(input.limit ?? 8, 20));
@@ -95,7 +80,7 @@ export async function searchDigiKeyParts(input: {
       ok: true,
       page: {
         items: [],
-        nextStartPosition: null
+        nextOffset: null
       }
     };
   }
@@ -232,10 +217,15 @@ export async function searchDigiKeyParts(input: {
     ok: true,
     page: {
       items,
-      nextStartPosition
+      nextOffset: nextStartPosition
     }
   };
 }
+
+export const digiKeyPartSearchProvider: SupplierPartSearchProvider = {
+  key: "digikey",
+  searchParts: searchDigiKeyParts
+};
 
 async function fetchDigiKeyAccessToken(clientId: string, clientSecret: string) {
   const response = await fetch(DIGIKEY_TOKEN_ENDPOINT, {

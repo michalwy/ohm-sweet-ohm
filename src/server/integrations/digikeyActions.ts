@@ -5,9 +5,7 @@ import { revalidatePath } from "next/cache";
 import { authorizeWorkspacePermission } from "@/server/access-control/authorize";
 import { getCurrentWorkspaceContextBySlug } from "@/server/auth/currentContext";
 import {
-  searchDigiKeyParts,
-  upsertWorkspaceDigiKeyIntegration,
-  type DigiKeyPartSearchResult
+  upsertWorkspaceDigiKeyIntegration
 } from "@/server/integrations/digikey";
 
 export type DigiKeyIntegrationSettingsResult =
@@ -71,36 +69,6 @@ export async function updateDigiKeyIntegrationSettings(
     return {
       ok: false,
       error: "database-unavailable"
-    };
-  }
-}
-
-export async function searchDigiKeyPartsForWorkspace(input: {
-  workspaceSlug: string;
-  query: string;
-  limit?: number;
-  offset?: number;
-}): Promise<DigiKeyPartSearchResult> {
-  try {
-    const context = await getCurrentWorkspaceContextBySlug(input.workspaceSlug);
-
-    if (!context) {
-      return {
-        ok: false,
-        error: "search-request-failed"
-      };
-    }
-
-    return searchDigiKeyParts({
-      workspaceId: context.workspace.id,
-      query: input.query,
-      limit: input.limit,
-      offset: input.offset
-    });
-  } catch {
-    return {
-      ok: false,
-      error: "search-request-failed"
     };
   }
 }

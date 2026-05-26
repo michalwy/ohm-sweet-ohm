@@ -21,7 +21,7 @@ import {
 import { createPortal } from "react-dom";
 
 import { createPart, deletePart, updatePart } from "@/server/parts/createPart";
-import { searchDigiKeyPartsForWorkspace } from "@/server/integrations/digikeyActions";
+import { searchSupplierPartsForWorkspace } from "@/server/integrations/supplierActions";
 import { getPartsListPageForWorkspace } from "@/server/parts/listActions";
 import type { ManufacturerSuggestion } from "@/server/organizations/organizations";
 import type { PartCategoryListItem } from "@/server/parts/categories";
@@ -2166,8 +2166,9 @@ function PartDetailsFields({
     enabled: shouldSearchDigiKey,
     initialPageParam: 0,
     queryFn: ({ pageParam }) =>
-      searchDigiKeyPartsForWorkspace({
+      searchSupplierPartsForWorkspace({
         workspaceSlug,
+        provider: "digikey",
         query: normalizedCatalogQuery,
         limit: 10,
         offset: pageParam
@@ -2177,7 +2178,7 @@ function PartDetailsFields({
         return undefined;
       }
 
-      return lastPage.page.nextStartPosition ?? undefined;
+      return lastPage.page.nextOffset ?? undefined;
     }
   });
   const digiKeyResult = digiKeyResultsQuery.data;
