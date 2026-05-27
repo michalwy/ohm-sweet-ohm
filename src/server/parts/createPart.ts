@@ -135,7 +135,10 @@ export async function createPart(
                   provider: supplierMatchingPayload.provider,
                   sourceCategoryKey: supplierMatchingPayload.sourceCategoryKey,
                   targetCategoryId: supplierMatchingPayload.targetCategoryId,
-                  attributeMappings: supplierMatchingPayload.attributeMappings
+                  attributeMappings: supplierMatchingPayload.attributeMappings,
+                  sourceManufacturerKey:
+                    supplierMatchingPayload.sourceManufacturerKey,
+                  targetManufacturerId: manufacturer.id
                 });
               }
 
@@ -370,6 +373,7 @@ type SupplierMatchingPayload = {
   mode: "create-from-suggestion";
   provider: SupplierProviderKey;
   sourceCategoryKey: string;
+  sourceManufacturerKey: string;
   targetCategoryId: string | null;
   attributeMappings: Array<{
     sourceAttributeKey: string;
@@ -393,6 +397,7 @@ function getSupplierMatchingPayload(
       parsed.mode !== "create-from-suggestion" ||
       !isSupplierProviderKey(parsed.provider) ||
       typeof parsed.sourceCategoryKey !== "string" ||
+      typeof parsed.sourceManufacturerKey !== "string" ||
       !Array.isArray(parsed.attributeMappings)
     ) {
       return null;
@@ -419,6 +424,7 @@ function getSupplierMatchingPayload(
       mode: "create-from-suggestion",
       provider: parsed.provider,
       sourceCategoryKey: parsed.sourceCategoryKey,
+      sourceManufacturerKey: parsed.sourceManufacturerKey,
       targetCategoryId,
       attributeMappings
     };

@@ -21,6 +21,7 @@ export type SupplierAttributeDraft = {
 export async function getSupplierMatchingSuggestionsForWorkspace(input: {
   workspaceSlug: string;
   provider: SupplierProviderKey;
+  sourceManufacturerName?: string | null;
   sourceCategory: string | null;
   sourceAttributes: Array<{
     sourceAttribute: string;
@@ -44,7 +45,12 @@ export async function getSupplierMatchingSuggestionsForWorkspace(input: {
   const sourceCategoryKey = normalizeSourceCategoryKey(input.sourceCategory);
   const targetCategoryScopeKey = getTargetCategoryScopeKey(input.targetCategoryId);
 
-  const [categoryCandidates, attributeCandidates] = await Promise.all([
+  const sourceManufacturerKey = normalizeSourceManufacturerKey(
+    input.sourceManufacturerName
+  );
+
+  const [categoryCandidates, attributeCandidates, manufacturerCandidates] =
+    await Promise.all([
     prisma.supplierCategoryMappingStat.findMany({
       where: {
         workspaceId: context.workspace.id,
@@ -71,6 +77,21 @@ export async function getSupplierMatchingSuggestionsForWorkspace(input: {
         targetAttributeId: true,
         score: true,
         lastUsedAt: true
+      }
+    }),
+    prisma.supplierManufacturerMappingStat.findMany({
+      where: {
+        workspaceId: context.workspace.id,
+        provider: input.provider,
+        sourceManufacturerKey
+      },
+      orderBy: [{ score: "desc" }, { lastUsedAt: "desc" }, { createdAt: "desc" }],
+      select: {
+        targetManufacturer: {
+          select: {
+            name: true
+          }
+        }
       }
     })
   ]);
@@ -118,7 +139,10 @@ export async function getSupplierMatchingSuggestionsForWorkspace(input: {
     ok: true as const,
     payload: {
       sourceCategoryKey,
+      sourceManufacturerKey,
       suggestedTargetCategoryId: bestTargetCategoryId,
+      suggestedTargetManufacturerName:
+        manufacturerCandidates[0]?.targetManufacturer.name ?? null,
       attributeRows: rows
     }
   };
@@ -134,6 +158,8 @@ export async function learnSupplierMatching(input: {
     sourceAttributeKey: string;
     targetAttributeId: string;
   }>;
+  sourceManufacturerKey: string;
+  targetManufacturerId: string | null;
 }) {
   const now = new Date();
 
@@ -205,6 +231,31 @@ export async function learnSupplierMatching(input: {
       }
     });
   }
+
+  if (input.targetManufacturerId) {
+    await input.tx.supplierManufacturerMappingStat.upsert({
+      where: {
+        workspaceId_provider_sourceManufacturerKey_targetManufacturerId: {
+          workspaceId: input.workspaceId,
+          provider: input.provider,
+          sourceManufacturerKey: input.sourceManufacturerKey,
+          targetManufacturerId: input.targetManufacturerId
+        }
+      },
+      create: {
+        workspaceId: input.workspaceId,
+        provider: input.provider,
+        sourceManufacturerKey: input.sourceManufacturerKey,
+        targetManufacturerId: input.targetManufacturerId,
+        score: 1,
+        lastUsedAt: now
+      },
+      update: {
+        score: { increment: 1 },
+        lastUsedAt: now
+      }
+    });
+  }
 }
 
 function normalizeSourceCategoryKey(sourceCategory: string | null | undefined) {
@@ -213,6 +264,17 @@ function normalizeSourceCategoryKey(sourceCategory: string | null | undefined) {
   }
 
   const normalized = normalizeKey(sourceCategory);
+  return normalized || UNCATEGORIZED_SOURCE_KEY;
+}
+
+function normalizeSourceManufacturerKey(
+  sourceManufacturerName: string | null | undefined
+) {
+  if (!sourceManufacturerName) {
+    return UNCATEGORIZED_SOURCE_KEY;
+  }
+
+  const normalized = normalizeKey(sourceManufacturerName);
   return normalized || UNCATEGORIZED_SOURCE_KEY;
 }
 

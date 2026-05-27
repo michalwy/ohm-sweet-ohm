@@ -80,6 +80,8 @@ type Copy = {
   matchingDialogTitle: string;
   matchingDialogBody: string;
   sourceCategoryLabel: string;
+  sourceManufacturerLabel: string;
+  targetManufacturerLabel: string;
   targetCategoryLabel: string;
   sourceAttributeLabel: string;
   sourceValueLabel: string;
@@ -173,6 +175,8 @@ type PartFormField = "catalogNumber" | "manufacturerName" | "primaryCategoryId" 
 type PartFormErrors = Partial<Record<PartFormField, string>>;
 type MatchingDialogState = {
   provider: SupplierProviderKey;
+  sourceManufacturerName: string;
+  targetManufacturerName: string;
   sourceCategory: string | null;
   sourceCategoryKey: string;
   targetCategoryId: string;
@@ -799,6 +803,7 @@ export function PartsListClient({
 
   async function openMatchingDialogFromSupplierResult(input: {
     provider: SupplierProviderKey;
+    sourceManufacturerName: string;
     sourceCategory: string | null;
     sourceAttributes: Array<{ name: string; value: string; unit: string | null }>;
   }) {
@@ -814,6 +819,7 @@ export function PartsListClient({
       const initialResult = await getSupplierMatchingSuggestionsForWorkspace({
         workspaceSlug,
         provider: input.provider,
+        sourceManufacturerName: input.sourceManufacturerName,
         sourceCategory: input.sourceCategory,
         sourceAttributes: input.sourceAttributes.map((attribute) => ({
           sourceAttribute: attribute.name,
@@ -834,6 +840,7 @@ export function PartsListClient({
         const scopedResult = await getSupplierMatchingSuggestionsForWorkspace({
           workspaceSlug,
           provider: input.provider,
+          sourceManufacturerName: input.sourceManufacturerName,
           sourceCategory: input.sourceCategory,
           sourceAttributes: input.sourceAttributes.map((attribute) => ({
             sourceAttribute: attribute.name,
@@ -867,6 +874,10 @@ export function PartsListClient({
 
       setMatchingState({
         provider: input.provider,
+        sourceManufacturerName: input.sourceManufacturerName,
+        targetManufacturerName:
+          initialResult.payload.suggestedTargetManufacturerName ??
+          input.sourceManufacturerName,
         sourceCategory: input.sourceCategory,
         sourceCategoryKey: initialResult.payload.sourceCategoryKey,
         targetCategoryId,
@@ -888,6 +899,7 @@ export function PartsListClient({
       const suggestionResult = await getSupplierMatchingSuggestionsForWorkspace({
         workspaceSlug,
         provider: matchingState.provider,
+        sourceManufacturerName: matchingState.sourceManufacturerName,
         sourceCategory: matchingState.sourceCategory,
         sourceAttributes: matchingState.rows.map((row) => ({
           sourceAttribute: row.sourceAttributeName,
@@ -929,6 +941,7 @@ export function PartsListClient({
         return {
           ...current,
           targetCategoryId,
+          targetManufacturerName: current.targetManufacturerName,
           rows: nextRows
         };
       });
@@ -1143,6 +1156,8 @@ export function PartsListClient({
         mode: "create-from-suggestion",
         provider: matchingState.provider,
         sourceCategoryKey: matchingState.sourceCategoryKey,
+        sourceManufacturerKey:
+          normalizeSupplierMatchingKey(matchingState.sourceManufacturerName),
         targetCategoryId: matchingState.targetCategoryId || null,
         attributeMappings: matchingState.rows
           .filter((row) => row.targetAttributeId)
@@ -1157,6 +1172,8 @@ export function PartsListClient({
       ...current,
       ...nextAttributeValues
     }));
+    setCreateManufacturerName(matchingState.targetManufacturerName);
+    clearPartFieldError(setCreateFieldErrors, "manufacturerName");
     setCreatePrimaryCategoryId(matchingState.targetCategoryId);
     setCreateSecondaryCategoryId("");
     closeDialog(matchingDialogRef.current);
@@ -1653,6 +1670,7 @@ export function PartsListClient({
                       setCreateDescription(suggestion.description);
                       void openMatchingDialogFromSupplierResult({
                         provider: "digikey",
+                        sourceManufacturerName: suggestion.manufacturerName,
                         sourceCategory: suggestion.sourceCategory,
                         sourceAttributes: suggestion.sourceAttributes
                       });
@@ -1750,6 +1768,35 @@ export function PartsListClient({
           <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
             <DialogBody>
               <div className="grid gap-4">
+                <div className="grid grid-cols-2 gap-3">
+                  <label className="grid gap-2 text-sm font-medium text-slate-700">
+                    {copy.sourceManufacturerLabel}
+                    <div className="min-h-10 rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700">
+                      {matchingState.sourceManufacturerName}
+                    </div>
+                  </label>
+                  <ManufacturerAutocomplete
+                    compact
+                    copy={copy}
+                    disabled={!isDatabaseAvailable}
+                    inputId="matching-target-manufacturer"
+                    label={copy.targetManufacturerLabel}
+                    name="matchingTargetManufacturerName"
+                    placeholder={copy.manufacturerPlaceholder}
+                    suggestions={currentManufacturerSuggestions}
+                    value={matchingState.targetManufacturerName}
+                    onValueChange={(value) =>
+                      setMatchingState((current) =>
+                        current
+                          ? {
+                              ...current,
+                              targetManufacturerName: value
+                            }
+                          : current
+                      )
+                    }
+                  />
+                </div>
                 <div className="grid grid-cols-2 gap-3">
                   <label className="grid gap-2 text-sm font-medium text-slate-700">
                     {copy.sourceCategoryLabel}
@@ -2198,6 +2245,9 @@ function getSupplierMatchingPayloadValue(state: MatchingDialogState | null) {
     mode: "create-from-suggestion",
     provider: state.provider,
     sourceCategoryKey: state.sourceCategoryKey,
+    sourceManufacturerKey: normalizeSupplierMatchingKey(
+      state.sourceManufacturerName
+    ),
     targetCategoryId: state.targetCategoryId || null,
     attributeMappings: state.rows
       .filter((row) => row.targetAttributeId)
@@ -2206,6 +2256,15 @@ function getSupplierMatchingPayloadValue(state: MatchingDialogState | null) {
         targetAttributeId: row.targetAttributeId
       }))
   });
+}
+
+function normalizeSupplierMatchingKey(value: string | null | undefined) {
+  const normalized = (value ?? "")
+    .trim()
+    .toLocaleLowerCase("en")
+    .replace(/\s+/g, " ");
+
+  return normalized || "uncategorized";
 }
 
 function validatePartForm(

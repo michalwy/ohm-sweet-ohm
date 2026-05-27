@@ -78,6 +78,8 @@ const copy = {
   digikeySuggestionLabel: "DigiKey suggestions",
   matchingDialogTitle: "Supplier matching",
   matchingDialogBody: "Review and adjust category and attribute mapping.",
+  sourceManufacturerLabel: "Source manufacturer",
+  targetManufacturerLabel: "Target manufacturer",
   sourceCategoryLabel: "Source category",
   targetCategoryLabel: "Target category",
   sourceAttributeLabel: "Source attribute",

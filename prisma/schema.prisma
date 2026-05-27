@@ -93,6 +93,7 @@ model Organization {
   workspace         Workspace          @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   roles             OrganizationRole[]
   manufacturedParts Part[]             @relation("PartManufacturer")
+  supplierManufacturerMappingStats SupplierManufacturerMappingStat[]
 
   @@unique([workspaceId, normalizedName])
   @@index([workspaceId, name])
@@ -307,6 +308,7 @@ model Workspace {
   digiKeyIntegration   WorkspaceDigiKeyIntegration?
   supplierCategoryMappingStats SupplierCategoryMappingStat[]
   supplierAttributeMappingStats SupplierAttributeMappingStat[]
+  supplierManufacturerMappingStats SupplierManufacturerMappingStat[]
 }
 
 model SupplierCategoryMappingStat {
@@ -345,6 +347,25 @@ model SupplierAttributeMappingStat {
   @@unique([workspaceId, provider, sourceCategoryKey, targetCategoryScopeKey, sourceAttributeKey, targetAttributeId])
   @@index([workspaceId, provider, sourceCategoryKey, targetCategoryScopeKey, sourceAttributeKey, score, lastUsedAt])
   @@index([workspaceId, targetAttributeId])
+}
+
+model SupplierManufacturerMappingStat {
+  id                    String   @id @default(cuid())
+  workspaceId           String
+  provider              String
+  sourceManufacturerKey String
+  targetManufacturerId  String
+  score                 Int      @default(0)
+  lastUsedAt            DateTime @default(now())
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  workspace          Workspace    @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  targetManufacturer Organization @relation(fields: [targetManufacturerId], references: [id], onDelete: Cascade)
+
+  @@unique([workspaceId, provider, sourceManufacturerKey, targetManufacturerId])
+  @@index([workspaceId, provider, sourceManufacturerKey, score, lastUsedAt])
+  @@index([workspaceId, targetManufacturerId])
 }
 
 model WorkspaceDigiKeyIntegration {
