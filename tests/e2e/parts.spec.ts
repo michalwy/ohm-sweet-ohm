@@ -140,6 +140,7 @@ test.describe("parts list", () => {
     await page.keyboard.press("Enter");
     await expect(createManufacturerInput).toHaveValue("Texas Instruments");
     await createManufacturerInput.fill("Microchip Technology");
+    await addPartDialog.getByLabel("Unit").selectOption({ label: "Pieces (pcs)" });
     await addPartDialog.getByLabel("Primary category").click();
     await expect(
       page.locator('button[role="option"]').filter({ hasText: /^Passives$/ })
@@ -184,6 +185,7 @@ test.describe("parts list", () => {
     await expect(addPartDialog).toBeVisible();
     await addPartDialog.getByLabel("Catalog number").fill(catalogNumber);
     await addPartDialog.getByLabel("Manufacturer").fill("Microchip Technology");
+    await addPartDialog.getByLabel("Unit").selectOption({ label: "Pieces (pcs)" });
     await page.getByRole("button", { name: "Create part" }).click();
 
     await expect(
@@ -1269,6 +1271,29 @@ async function seedLargeListsForScrolling(suffix: string) {
       `,
       [organizationId]
     );
+    const unitId = `unit_e2e_scroll_${suffix}`;
+    await pool.query(
+      `
+        INSERT INTO "Unit" (
+          id,
+          "workspaceId",
+          name,
+          "normalizedName",
+          symbol,
+          "allowsFraction",
+          "createdAt",
+          "updatedAt"
+        )
+        VALUES ($1, $2, 'Pieces', 'pieces', 'pcs', false, now(), now())
+        ON CONFLICT ("workspaceId", "normalizedName")
+        DO UPDATE SET
+          name = EXCLUDED.name,
+          symbol = EXCLUDED.symbol,
+          "allowsFraction" = EXCLUDED."allowsFraction",
+          "updatedAt" = now()
+      `,
+      [unitId, workspaceId]
+    );
 
     for (let index = 0; index < 60; index += 1) {
       const paddedIndex = index.toString().padStart(3, "0");
@@ -1278,13 +1303,14 @@ async function seedLargeListsForScrolling(suffix: string) {
           INSERT INTO "Part" (
             id,
             "workspaceId",
+            "unitId",
             "catalogNumber",
             description,
             "manufacturerId",
             "createdAt",
             "updatedAt"
           )
-          VALUES ($1, $2, $3, $4, $5, now(), now())
+          VALUES ($1, $2, $3, $4, $5, $6, now(), now())
           ON CONFLICT ("workspaceId", "manufacturerId", "catalogNumber")
           DO UPDATE SET
             description = EXCLUDED.description,
@@ -1293,6 +1319,7 @@ async function seedLargeListsForScrolling(suffix: string) {
         [
           `pt_e2e_scroll_${suffix}_${paddedIndex}`,
           workspaceId,
+          unitId,
           `ZZZ-SCROLL-${suffix}-${paddedIndex}`,
           `Scroll-loaded test part ${paddedIndex}`,
           organizationId

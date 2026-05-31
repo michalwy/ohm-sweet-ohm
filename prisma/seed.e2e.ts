@@ -12,6 +12,10 @@ import {
   developmentUserEmail,
   developmentUserPassword
 } from "../src/server/auth/developmentDefaults";
+import {
+  DEFAULT_PART_UNIT_NORMALIZED_NAME,
+  ensureDefaultUnitsForWorkspace
+} from "../src/server/units/defaultUnits";
 
 const connectionString = process.env.DATABASE_URL;
 
@@ -31,6 +35,7 @@ async function main() {
   await prisma.role.deleteMany();
   await prisma.workspaceMember.deleteMany();
   await prisma.part.deleteMany();
+  await prisma.unit.deleteMany();
   await prisma.organizationRole.deleteMany();
   await prisma.organization.deleteMany();
   await prisma.partCategoryClosure.deleteMany();
@@ -94,6 +99,19 @@ async function main() {
     roleIdsByName.set(role.name, createdRole.id);
   }
 
+  await ensureDefaultUnitsForWorkspace(prisma, workspace.id);
+  const pieceUnit = await prisma.unit.findUniqueOrThrow({
+    where: {
+      workspaceId_normalizedName: {
+        workspaceId: workspace.id,
+        normalizedName: DEFAULT_PART_UNIT_NORMALIZED_NAME
+      }
+    },
+    select: {
+      id: true
+    }
+  });
+
   const ownerRoleId = roleIdsByName.get(OWNER_ROLE_NAME);
 
   if (!ownerRoleId) {
@@ -129,6 +147,7 @@ async function main() {
   await prisma.part.create({
     data: {
       workspaceId: workspace.id,
+      unitId: pieceUnit.id,
       catalogNumber: "NE555P",
       manufacturerId: texasInstruments.id,
       primaryCategoryId: categories.integratedCircuits.id
@@ -138,6 +157,7 @@ async function main() {
   await prisma.part.create({
     data: {
       workspaceId: workspace.id,
+      unitId: pieceUnit.id,
       catalogNumber: "1N4148W",
       manufacturerId: diodesIncorporated.id,
       primaryCategoryId: categories.diodes.id

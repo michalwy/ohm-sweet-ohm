@@ -11,6 +11,7 @@ import {
   PERMISSIONS
 } from "@/server/access-control/permissions";
 import { prisma } from "@/server/db/prisma";
+import { ensureDefaultUnitsForWorkspace } from "@/server/units/defaultUnits";
 
 type DatabaseClient = PrismaClient | Prisma.TransactionClient;
 
@@ -92,6 +93,8 @@ export async function createWorkspaceWithDefaultRolesTx(
       }
     });
   }
+
+  await ensureDefaultUnitsForWorkspace(tx, workspace.id);
 
   return workspace;
 }

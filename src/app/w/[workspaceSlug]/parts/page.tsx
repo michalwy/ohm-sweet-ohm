@@ -16,6 +16,7 @@ import {
   getEffectiveWorkspaceAttributes
 } from "@/server/parts/attributes";
 import { getWorkspaceAttributes } from "@/server/parts/attributeMutations";
+import { getUnitsForWorkspace } from "@/server/units/getUnits";
 
 export const dynamic = "force-dynamic";
 
@@ -30,6 +31,7 @@ const copy = {
   attributesTab: "Attributes",
   partCategories: "Part categories",
   attributes: "Attributes",
+  units: "Units",
   settingsIntegrations: "Integrations",
   intro: "Parts in this workspace.",
   catalogNumber: "Catalog number",
@@ -46,6 +48,9 @@ const copy = {
   noCategory: "No category",
   noSecondaryCategory: "No secondary category",
   manufacturer: "Manufacturer",
+  unit: "Unit",
+  unitPlaceholder: "Choose a unit",
+  missingUnit: "Choose a unit.",
   noMatchingManufacturers: "No matching manufacturers",
   searchParts: "Search parts",
   searchPartsPlaceholder: "Search catalog, manufacturer, category, value",
@@ -115,7 +120,7 @@ const copy = {
   createdToast: "Part created",
   updatedToast: "Part updated",
   deletedToast: "Part deleted",
-  missingRequiredFields: "Enter both catalog number and manufacturer.",
+  missingRequiredFields: "Enter catalog number, manufacturer, and unit.",
   missingCatalogNumber: "Enter a catalog number.",
   missingManufacturer: "Enter a manufacturer.",
   invalidCategory: "Choose valid assignable categories.",
@@ -167,7 +172,8 @@ export default async function PartsPage({
     partCategories,
     manufacturerSuggestions,
     workspaceAttributes,
-    globalWorkspaceAttributesForMatching
+    globalWorkspaceAttributesForMatching,
+    units
   ] =
     isDatabaseAvailable
     ? await Promise.all([
@@ -190,9 +196,10 @@ export default async function PartsPage({
               choiceOptions: effectiveAttribute.attribute.choiceOptions
             }))
           )
-          .catch(() => [])
+          .catch(() => []),
+        getUnitsForWorkspace(context.workspace.id).catch(() => [])
       ])
-    : [[], [], [], []];
+    : [[], [], [], [], []];
   const categoryAttributesByCategoryId = isDatabaseAvailable
     ? Object.fromEntries(
         await Promise.all(
@@ -257,6 +264,12 @@ export default async function PartsPage({
             </Link>
             <Link
               className="flex min-h-10 items-center rounded-md px-3 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+              href={`/w/${workspaceSlug}/units`}
+            >
+              {copy.units}
+            </Link>
+            <Link
+              className="flex min-h-10 items-center rounded-md px-3 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
               href={`/w/${workspaceSlug}/settings/integrations`}
             >
               {copy.settingsIntegrations}
@@ -310,10 +323,11 @@ export default async function PartsPage({
               partCategories={partCategories}
               categoryAttributesByCategoryId={categoryAttributesByCategoryId}
               manufacturerSuggestions={manufacturerSuggestions}
-              workspaceAttributes={workspaceAttributes}
-              globalWorkspaceAttributesForMatching={
-                globalWorkspaceAttributesForMatching
-              }
+        workspaceAttributes={workspaceAttributes}
+        units={units}
+        globalWorkspaceAttributesForMatching={
+          globalWorkspaceAttributesForMatching
+        }
               initialPage={page}
               workspaceSlug={workspaceSlug}
               activeSupplierProvider={activeSupplierProvider}

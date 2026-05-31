@@ -8,6 +8,7 @@ import {
   developmentUserEmail,
   developmentUserPassword
 } from "../src/server/auth/developmentDefaults";
+import { ensureDefaultUnitsForWorkspace } from "../src/server/units/defaultUnits";
 
 const connectionString = process.env.DATABASE_URL;
 
@@ -94,6 +95,7 @@ async function main() {
     }
   });
 
+  await ensureDefaultUnitsForWorkspace(prisma, workspace.id);
   await seedPartCategories(workspace.id);
 }
 

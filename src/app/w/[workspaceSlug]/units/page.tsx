@@ -1,19 +1,15 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 
-import { PartCategoriesClient } from "@/app/part-categories-client";
+import { UnitsClient } from "@/app/units-client";
 import { hasWorkspacePermission } from "@/server/access-control/authorize";
 import { signOut } from "@/server/auth/actions";
 import {
   getCurrentSession,
   getCurrentWorkspaceContextBySlug
 } from "@/server/auth/currentContext";
-import {
-  getPartCategoriesForManagement,
-  type PartCategoryListItem
-} from "@/server/parts/categories";
-import { getWorkspaceAttributes } from "@/server/parts/attributeMutations";
-import type { AttributeListItem } from "@/server/parts/attributeMutations";
+import { getWorkspaceUnits } from "@/server/units/unitMutations";
+import type { UnitListItem } from "@/server/units/unitMutations";
 
 export const dynamic = "force-dynamic";
 
@@ -23,105 +19,49 @@ const copy = {
   signOut: "Sign out",
   switchWorkspace: "Switch workspace",
   parts: "Parts",
+  partCategories: "Part categories",
   attributes: "Attributes",
-  units: "Units",
   settingsIntegrations: "Integrations",
-  title: "Part categories",
-  intro:
-    "Manage the category tree used to organize electronic parts.",
-  addRootCategory: "Add root category",
-  quickCreatePath: "Quick create path",
-  quickCreatePathTitle: "Quick create path",
-  quickCreatePathBody:
-    "Create nested categories from a slash-separated path, for example Passives / Capacitors / Audio.",
-  path: "Path",
-  pathPlaceholder: "Passives / Capacitors / Audio / Electrolytic",
-  addChild: "Add child",
+  title: "Units",
+  intro: "Manage workspace units used by parts and inventory quantities.",
+  addUnit: "Add unit",
   edit: "Edit",
   delete: "Delete",
-  configureAttributes: "Configure attributes",
-  categoryAttributes: "Category attributes",
-  detailsTab: "Details",
-  attributesTab: "Attributes",
-  createCategoryBeforeAttributes:
-    "Create the category before assigning attributes.",
-  attribute: "Attribute",
-  sortOrder: "Sort order",
-  defaultValue: "Default value",
-  valueAttribute: "Value attribute",
-  primaryAttribute: "Primary attribute",
-  inherited: "Inherited",
-  local: "Local",
-  attachAttribute: "Attach",
-  globalAttributes: "Global attributes",
-  globalAttributesTitle: "Global attributes",
-  globalAttributesBody:
-    "Manage attributes inherited by all root categories in this workspace.",
-  saveGlobalAttributes: "Save global attributes",
-  saveAttributeConfig: "Save configuration",
-  detachAttribute: "Detach",
-  noValueAttribute: "No local value",
-  noAttributes: "No attributes configured",
-  selectCategory: "Select a category",
-  attributeConfigUpdatedToast: "Category attribute configuration updated",
-  attributeConfigDeletedToast: "Category attribute configuration removed",
-  valueAttributeUpdatedToast: "Value attribute updated",
-  expandCategory: "Expand",
-  collapseCategory: "Collapse",
-  searchCategories: "Search categories",
-  noMatchingCategories: "No matching categories",
-  actions: "Actions",
-  newCategoryTitle: "Add category",
-  newCategoryBody: "Create a category in the parts category tree.",
-  editCategoryTitle: "Edit category",
-  editCategoryBody: "Update this category's name, parent, and assignment type.",
-  name: "Name",
-  namePlaceholder: "Resistors",
-  parentCategory: "Parent category",
-  rootCategory: "No parent",
-  type: "Type",
-  organizational: "Organizational",
-  assignable: "Assignable",
-  createCategory: "Create category",
-  saveChanges: "Save changes",
   close: "Close",
   cancelDelete: "Cancel",
   confirmDelete: "Delete",
   deleteConfirmationBody: "This cannot be undone.",
-  createdToast: "Category created",
-  updatedToast: "Category updated",
-  deletedToast: "Category deleted",
-  missingRequiredFields: "Enter a category name.",
-  invalidParentCategory: "Choose a valid parent category.",
-  categoryNotFound: "This category is no longer available.",
-  categoryTreeCycle: "Choose a parent outside this category branch.",
-  categoryInUseByParts:
-    "This category is used by parts and cannot be deleted.",
-  categoryHasChildren:
-    "Delete child categories before deleting this category.",
-  permissionDenied: "You do not have permission to manage categories.",
-  invalidAttributeDefaultValue:
-    "Choose a valid default value for each category attribute.",
-  emptyTitle: "No categories yet",
-  emptyBody: "Create a root category to start organizing the parts tree.",
-  databaseUnavailable:
-    "Database is not available, so the category tree is shown empty for now."
+  createUnit: "Create unit",
+  saveChanges: "Save changes",
+  newUnitTitle: "Add unit",
+  editUnitTitle: "Edit unit",
+  name: "Name",
+  symbol: "Symbol",
+  allowsFraction: "Allows fractional quantities",
+  yes: "Yes",
+  no: "No",
+  actions: "Actions",
+  duplicateUnitName: "A unit with this name already exists.",
+  unitInUse: "This unit is used by parts and cannot be deleted.",
+  unitNotFound: "This unit is no longer available.",
+  permissionDenied: "You do not have permission to manage units.",
+  databaseUnavailable: "Database is not available right now.",
+  noUnits: "No units yet.",
+  createdToast: "Unit created",
+  updatedToast: "Unit updated",
+  deletedToast: "Unit deleted",
+  invalidInput: "Check the unit fields and try again.",
+  databaseUnavailableBanner:
+    "Database is not available, so units cannot be managed right now."
 };
 
-type PartCategoriesPageProps = {
+type UnitsPageProps = {
   params: Promise<{
     workspaceSlug: string;
   }>;
-  searchParams?: Promise<{
-    categoryDialog?: string;
-    categoryEditDialog?: string;
-  }>;
 };
 
-export default async function PartCategoriesPage({
-  params,
-  searchParams
-}: PartCategoriesPageProps) {
+export default async function UnitsPage({ params }: UnitsPageProps) {
   const { workspaceSlug } = await params;
   const session = await getCurrentSession();
 
@@ -136,28 +76,21 @@ export default async function PartCategoriesPage({
   }
 
   let isDatabaseAvailable = true;
-  let categories: PartCategoryListItem[] = [];
-  let attributes: AttributeListItem[] = [];
+  let units: UnitListItem[] = [];
 
   try {
-    [categories, attributes] = await Promise.all([
-      getPartCategoriesForManagement(context),
-      getWorkspaceAttributes(context.workspace.id)
-    ]);
+    units = await getWorkspaceUnits(context.workspace.id);
   } catch {
     isDatabaseAvailable = false;
   }
 
-  const canWriteCategories = isDatabaseAvailable
+  const canWriteUnits = isDatabaseAvailable
     ? await hasWorkspacePermission({
         userId: context.user.id,
         workspaceId: context.workspace.id,
-        permission: "part-categories:write"
+        permission: "units:write"
       }).catch(() => false)
     : false;
-  const resolvedSearchParams = await searchParams;
-  const categoryDialogOpen = resolvedSearchParams?.categoryDialog === "create";
-  const categoryEditDialog = resolvedSearchParams?.categoryEditDialog;
 
   return (
     <main className="h-screen overflow-hidden bg-slate-100 text-slate-950">
@@ -187,11 +120,10 @@ export default async function PartCategoriesPage({
               {copy.parts}
             </Link>
             <Link
-              className="flex min-h-10 items-center rounded-md bg-[var(--color-accent-soft)] px-3 text-sm font-semibold text-slate-950"
+              className="flex min-h-10 items-center rounded-md px-3 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
               href={`/w/${workspaceSlug}/part-categories`}
-              aria-current="page"
             >
-              {copy.title}
+              {copy.partCategories}
             </Link>
             <Link
               className="flex min-h-10 items-center rounded-md px-3 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
@@ -200,10 +132,11 @@ export default async function PartCategoriesPage({
               {copy.attributes}
             </Link>
             <Link
-              className="flex min-h-10 items-center rounded-md px-3 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+              aria-current="page"
+              className="flex min-h-10 items-center rounded-md bg-[var(--color-accent-soft)] px-3 text-sm font-semibold text-slate-950"
               href={`/w/${workspaceSlug}/units`}
             >
-              {copy.units}
+              {copy.title}
             </Link>
             <Link
               className="flex min-h-10 items-center rounded-md px-3 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
@@ -248,18 +181,15 @@ export default async function PartCategoriesPage({
 
             {!isDatabaseAvailable ? (
               <p className="rounded-md border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-                {copy.databaseUnavailable}
+                {copy.databaseUnavailableBanner}
               </p>
             ) : null}
 
-            <PartCategoriesClient
-              categories={categories}
-              categoryDialogOpen={categoryDialogOpen}
-              categoryEditDialog={categoryEditDialog}
-              canWriteCategories={canWriteCategories}
+            <UnitsClient
+              canWriteUnits={canWriteUnits}
               copy={copy}
+              initialUnits={units}
               isDatabaseAvailable={isDatabaseAvailable}
-              attributes={attributes}
               workspaceSlug={workspaceSlug}
             />
           </div>

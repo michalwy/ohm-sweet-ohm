@@ -10,6 +10,7 @@ datasource db {
 model Part {
   id                  String   @id @default(cuid())
   workspaceId         String
+  unitId              String
   catalogNumber       String
   description         String?
   manufacturerId      String
@@ -19,6 +20,7 @@ model Part {
   updatedAt           DateTime @updatedAt
 
   workspace         Workspace            @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  unit              Unit                 @relation(fields: [unitId], references: [id], onDelete: Restrict)
   manufacturer      Organization         @relation("PartManufacturer", fields: [manufacturerId], references: [id], onDelete: Restrict)
   primaryCategory   PartCategory?        @relation("PartPrimaryCategory", fields: [primaryCategoryId], references: [id], onDelete: SetNull)
   secondaryCategory PartCategory?        @relation("PartSecondaryCategory", fields: [secondaryCategoryId], references: [id], onDelete: SetNull)
@@ -26,9 +28,27 @@ model Part {
 
   @@unique([workspaceId, manufacturerId, catalogNumber])
   @@index([workspaceId, catalogNumber])
+  @@index([workspaceId, unitId])
   @@index([workspaceId, manufacturerId])
   @@index([workspaceId, primaryCategoryId])
   @@index([workspaceId, secondaryCategoryId])
+}
+
+model Unit {
+  id             String   @id @default(cuid())
+  workspaceId    String
+  name           String
+  normalizedName String
+  symbol         String
+  allowsFraction Boolean
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  parts     Part[]
+
+  @@unique([workspaceId, normalizedName])
+  @@index([workspaceId, symbol])
 }
 
 enum AttributeType {
@@ -302,6 +322,7 @@ model Workspace {
   partCategories       PartCategory[]
   partCategoryClosures PartCategoryClosure[]
   attributes           Attribute[]
+  units                Unit[]
   categoryAttributes   CategoryAttribute[]
   workspaceAttributes  WorkspaceAttribute[]
   partAttributeValues  PartAttributeValue[]

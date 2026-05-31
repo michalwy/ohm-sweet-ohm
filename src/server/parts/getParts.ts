@@ -14,6 +14,7 @@ import {
 
 export type PartsListItem = {
   id: string;
+  unitId: string;
   catalogNumber: string;
   description: string | null;
   manufacturerName: string;
@@ -196,6 +197,7 @@ export async function getPartsListPage(
 
 const partListSelect = {
   id: true,
+  unitId: true,
   catalogNumber: true,
   description: true,
   manufacturer: {
@@ -452,6 +454,7 @@ function mapPartListItem({
 
   return {
     id: part.id,
+    unitId: part.unitId,
     catalogNumber: part.catalogNumber,
     description: part.description,
     manufacturerName: part.manufacturer.name,

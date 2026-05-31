@@ -33,6 +33,7 @@ import type { PartsListItem } from "@/server/parts/getParts";
 import type { EffectiveCategoryAttribute } from "@/server/parts/attributes";
 import type { AttributeListItem } from "@/server/parts/attributeMutations";
 import type { SupplierProviderKey } from "@/server/integrations/types";
+import type { UnitListItem } from "@/server/units/getUnits";
 import { InfiniteListViewport } from "@/app/infinite-list";
 import {
   useListTableConfiguration
@@ -76,6 +77,8 @@ type Copy = {
   noCategory: string;
   noSecondaryCategory: string;
   manufacturer: string;
+  unit: string;
+  unitPlaceholder: string;
   noMatchingManufacturers: string;
   supplierNoMatchingParts: string;
   supplierSearchError: string;
@@ -148,6 +151,7 @@ type Copy = {
   missingRequiredFields: string;
   missingCatalogNumber: string;
   missingManufacturer: string;
+  missingUnit: string;
   invalidCategory: string;
   secondaryWithoutPrimary: string;
   duplicateCategories: string;
@@ -174,7 +178,7 @@ type CategoryTreeItem = PartCategoryListItem & {
 };
 
 type PartDialogTab = "details" | "attributes";
-type PartFormField = "catalogNumber" | "manufacturerName" | "primaryCategoryId" | "secondaryCategoryId" | "submit" | "delete";
+type PartFormField = "catalogNumber" | "manufacturerName" | "unitId" | "primaryCategoryId" | "secondaryCategoryId" | "submit" | "delete";
 type PartFormErrors = Partial<Record<PartFormField, string>>;
 type MatchingDialogState = {
   provider: SupplierProviderKey;
@@ -200,6 +204,7 @@ type PartsListClientProps = {
   partDialogOpen: boolean;
   partEditDialog?: string;
   partCategories: PartCategoryListItem[];
+  units: UnitListItem[];
   categoryAttributesByCategoryId: Record<string, EffectiveCategoryAttribute[]>;
   manufacturerSuggestions: ManufacturerSuggestion[];
   workspaceAttributes: AttributeListItem[];
@@ -215,6 +220,7 @@ export function PartsListClient({
   partDialogOpen,
   partEditDialog,
   partCategories,
+  units,
   categoryAttributesByCategoryId,
   manufacturerSuggestions,
   workspaceAttributes,
@@ -241,6 +247,7 @@ export function PartsListClient({
   const [createCatalogNumber, setCreateCatalogNumber] = useState("");
   const [createDescription, setCreateDescription] = useState("");
   const [createManufacturerName, setCreateManufacturerName] = useState("");
+  const [createUnitId, setCreateUnitId] = useState("");
   const [createPrimaryCategoryId, setCreatePrimaryCategoryId] = useState("");
   const [createSecondaryCategoryId, setCreateSecondaryCategoryId] =
     useState("");
@@ -269,6 +276,7 @@ export function PartsListClient({
   const [editCatalogNumber, setEditCatalogNumber] = useState("");
   const [editDescription, setEditDescription] = useState("");
   const [editManufacturerName, setEditManufacturerName] = useState("");
+  const [editUnitId, setEditUnitId] = useState("");
   const [editPrimaryCategoryId, setEditPrimaryCategoryId] = useState("");
   const [editSecondaryCategoryId, setEditSecondaryCategoryId] = useState("");
   const [editActiveTab, setEditActiveTab] = useState<PartDialogTab>("details");
@@ -782,6 +790,7 @@ export function PartsListClient({
       setEditCatalogNumber(part.catalogNumber);
       setEditDescription(part.description ?? "");
       setEditManufacturerName(part.manufacturerName);
+      setEditUnitId(part.unitId);
       setEditPrimaryCategoryId(part.primaryCategoryId ?? "");
       setEditSecondaryCategoryId(part.secondaryCategoryId ?? "");
       setEditAttributeValues(getPartAttributeValueState(part));
@@ -795,6 +804,7 @@ export function PartsListClient({
     setEditCatalogNumber(part.catalogNumber);
     setEditDescription(part.description ?? "");
     setEditManufacturerName(part.manufacturerName);
+    setEditUnitId(part.unitId);
     setEditPrimaryCategoryId(part.primaryCategoryId ?? "");
     setEditSecondaryCategoryId(part.secondaryCategoryId ?? "");
     setEditAttributeValues(getPartAttributeValueState(part));
@@ -812,6 +822,7 @@ export function PartsListClient({
     setCreateCatalogNumber("");
     setCreateDescription("");
     setCreateManufacturerName("");
+    setCreateUnitId("");
     setCreatePrimaryCategoryId(defaultPrimaryCategoryId);
     setCreateSecondaryCategoryId("");
     setCreateActiveTab("details");
@@ -976,7 +987,8 @@ export function PartsListClient({
     const formData = new FormData(event.currentTarget);
     const fieldErrors = validatePartForm(copy, {
       catalogNumber: createCatalogNumber,
-      manufacturerName: createManufacturerName
+      manufacturerName: createManufacturerName,
+      unitId: createUnitId
     });
 
     setCreateFieldErrors(fieldErrors);
@@ -992,6 +1004,7 @@ export function PartsListClient({
 
     formData.set("catalogNumber", createCatalogNumber);
     formData.set("manufacturerName", createManufacturerName);
+    formData.set("unitId", createUnitId);
     formData.set("description", createDescription);
     formData.set("primaryCategoryId", createPrimaryCategoryId);
     formData.set("secondaryCategoryId", createSecondaryCategoryId);
@@ -1004,7 +1017,8 @@ export function PartsListClient({
     const formData = new FormData(event.currentTarget);
     const fieldErrors = validatePartForm(copy, {
       catalogNumber: editCatalogNumber,
-      manufacturerName: editManufacturerName
+      manufacturerName: editManufacturerName,
+      unitId: editUnitId
     });
 
     setEditFieldErrors(fieldErrors);
@@ -1020,6 +1034,7 @@ export function PartsListClient({
 
     formData.set("catalogNumber", editCatalogNumber);
     formData.set("manufacturerName", editManufacturerName);
+    formData.set("unitId", editUnitId);
     formData.set("description", editDescription);
     formData.set("primaryCategoryId", editPrimaryCategoryId);
     formData.set("secondaryCategoryId", editSecondaryCategoryId);
@@ -1672,6 +1687,8 @@ export function PartsListClient({
                     formResetKey={createFormResetKey}
                     manufacturerInputId="create-manufacturer-name"
                     manufacturerName={createManufacturerName}
+                    unitId={createUnitId}
+                    units={units}
                     manufacturerSuggestions={currentManufacturerSuggestions}
                     partCategories={partCategories}
                     primaryCategoryId={createPrimaryCategoryId}
@@ -1684,6 +1701,10 @@ export function PartsListClient({
                     onManufacturerNameChange={(value) => {
                       setCreateManufacturerName(value);
                       clearPartFieldError(setCreateFieldErrors, "manufacturerName");
+                    }}
+                    onUnitIdChange={(value) => {
+                      setCreateUnitId(value);
+                      clearPartFieldError(setCreateFieldErrors, "unitId");
                     }}
                     onSupplierSuggestionSelect={(suggestion) => {
                       setCreateCatalogNumber(suggestion.catalogNumber);
@@ -2018,6 +2039,8 @@ export function PartsListClient({
                       formResetKey={`${editingPart.id}-${editingPart.manufacturerName}`}
                       manufacturerInputId="edit-manufacturer-name"
                       manufacturerName={editManufacturerName}
+                      unitId={editUnitId}
+                      units={units}
                       manufacturerSuggestions={currentManufacturerSuggestions}
                       partCategories={partCategories}
                       primaryCategoryId={editPrimaryCategoryId}
@@ -2030,6 +2053,10 @@ export function PartsListClient({
                       onManufacturerNameChange={(value) => {
                         setEditManufacturerName(value);
                         clearPartFieldError(setEditFieldErrors, "manufacturerName");
+                      }}
+                      onUnitIdChange={(value) => {
+                        setEditUnitId(value);
+                        clearPartFieldError(setEditFieldErrors, "unitId");
                       }}
                       onSupplierSuggestionSelect={() => {
                         // Supplier suggestions are disabled in edit mode.
@@ -2298,7 +2325,7 @@ function normalizeSupplierMatchingKey(value: string | null | undefined) {
 
 function validatePartForm(
   copy: Copy,
-  values: { catalogNumber: string; manufacturerName: string }
+  values: { catalogNumber: string; manufacturerName: string; unitId: string }
 ): PartFormErrors {
   const errors: PartFormErrors = {};
 
@@ -2310,6 +2337,10 @@ function validatePartForm(
     errors.manufacturerName = copy.missingManufacturer;
   }
 
+  if (!values.unitId.trim()) {
+    errors.unitId = copy.missingUnit;
+  }
+
   return errors;
 }
 
@@ -2317,7 +2348,8 @@ function getPartFormErrors(copy: Copy, error: string): PartFormErrors {
   if (error === "missing-required-fields") {
     return {
       catalogNumber: copy.missingRequiredFields,
-      manufacturerName: copy.missingRequiredFields
+      manufacturerName: copy.missingRequiredFields,
+      unitId: copy.missingRequiredFields
     };
   }
 
@@ -2330,6 +2362,10 @@ function getPartFormErrors(copy: Copy, error: string): PartFormErrors {
 
   if (error === "invalid-category") {
     return { primaryCategoryId: copy.invalidCategory };
+  }
+
+  if (error === "invalid-unit") {
+    return { unitId: copy.missingUnit };
   }
 
   if (error === "secondary-without-primary") {
@@ -2370,6 +2406,7 @@ function getFirstTabWithErrors(errors: PartFormErrors): PartDialogTab | null {
   if (
     errors.catalogNumber ||
     errors.manufacturerName ||
+    errors.unitId ||
     errors.primaryCategoryId ||
     errors.secondaryCategoryId
   ) {
@@ -2826,6 +2863,8 @@ function PartDetailsFields({
   formResetKey,
   manufacturerInputId,
   manufacturerName,
+  unitId,
+  units,
   manufacturerSuggestions,
   partCategories,
   primaryCategoryId,
@@ -2835,6 +2874,7 @@ function PartDetailsFields({
   onCatalogNumberChange,
   onDescriptionChange,
   onManufacturerNameChange,
+  onUnitIdChange,
   onSupplierSuggestionSelect,
   onPrimaryCategoryChange,
   onSecondaryCategoryChange
@@ -2850,6 +2890,8 @@ function PartDetailsFields({
   formResetKey: number | string;
   manufacturerInputId: string;
   manufacturerName: string;
+  unitId: string;
+  units: UnitListItem[];
   manufacturerSuggestions: ManufacturerSuggestion[];
   partCategories: PartCategoryListItem[];
   primaryCategoryId: string;
@@ -2859,6 +2901,7 @@ function PartDetailsFields({
   onCatalogNumberChange: (catalogNumber: string) => void;
   onDescriptionChange: (description: string) => void;
   onManufacturerNameChange: (manufacturerName: string) => void;
+  onUnitIdChange: (unitId: string) => void;
   onSupplierSuggestionSelect: (suggestion: {
     manufacturerName: string;
     catalogNumber: string;
@@ -3197,6 +3240,32 @@ function PartDetailsFields({
           suggestions={manufacturerSuggestions}
           onValueChange={onManufacturerNameChange}
         />
+        <label className="grid gap-2 text-sm font-medium text-slate-700">
+          <LabelWithError
+            error={errors.unitId}
+            htmlFor={`${catalogNumberInputId}-unit`}
+          >
+            {copy.unit}
+          </LabelWithError>
+          <select
+            id={`${catalogNumberInputId}-unit`}
+            name="unitId"
+            value={unitId}
+            disabled={disabled}
+            className={getFieldInputClassName(
+              "min-h-10 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-950 outline-none transition hover:border-slate-400 focus:border-slate-500 focus:ring-2 focus:ring-slate-200 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400",
+              Boolean(errors.unitId)
+            )}
+            onChange={(event) => onUnitIdChange(event.target.value)}
+          >
+            <option value="">{copy.unitPlaceholder}</option>
+            {units.map((unit) => (
+              <option key={unit.id} value={unit.id}>
+                {unit.name} ({unit.symbol})
+              </option>
+            ))}
+          </select>
+        </label>
       </div>
       <label
         className="grid gap-2 text-sm font-medium text-slate-700"

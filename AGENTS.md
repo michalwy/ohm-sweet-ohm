@@ -17,6 +17,7 @@ This project is intentionally vibe-coded. Future agents must preserve product in
 ## Working Rules
 
 - Do not assume domain behavior. Ask before defining inventory rules, labels, part states, suppliers, purchase orders, storage hierarchy, import formats, or pricing behavior.
+- When clarifying product behavior, ask one question at a time and wait for the answer before asking the next question.
 - Do not add user-facing functionality unless the current task explicitly asks for it.
 - Keep user-facing copy in English.
 - Structure new user-facing strings so future localization is possible.

@@ -48,6 +48,7 @@ export async function createPart(
   formData: FormData
 ): Promise<PartMutationResult> {
   const workspaceSlug = getRequiredFormValue(formData, "workspaceSlug");
+  const unitId = getRequiredFormValue(formData, "unitId");
   const catalogNumber = getRequiredFormValue(formData, "catalogNumber");
   const description = getOptionalFormValue(formData, "description");
   const manufacturerName = getRequiredFormValue(formData, "manufacturerName");
@@ -61,7 +62,7 @@ export async function createPart(
   const partsPath = getPartsPath(workspaceSlug);
   let part: PartsListItem | null = null;
 
-  if (!workspaceSlug || !catalogNumber || !manufacturerName) {
+  if (!workspaceSlug || !unitId || !catalogNumber || !manufacturerName) {
     return getFormErrorState("missing-required-fields");
   }
 
@@ -84,6 +85,13 @@ export async function createPart(
         primaryCategoryId,
         secondaryCategoryId
       });
+
+      if (!formError) {
+        formError = await validatePartUnit({
+          workspaceId: context.workspace.id,
+          unitId
+        });
+      }
 
       if (!formError) {
         const effectiveAttributes = await getEffectivePartAttributesForCategories({
@@ -110,6 +118,7 @@ export async function createPart(
               const nextPart = await tx.part.create({
                 data: {
                   workspaceId: context.workspace.id,
+                  unitId,
                   catalogNumber,
                   description,
                   manufacturerId: manufacturer.id,
@@ -175,6 +184,7 @@ export async function updatePart(
 ): Promise<PartMutationResult> {
   const workspaceSlug = getRequiredFormValue(formData, "workspaceSlug");
   const id = getRequiredFormValue(formData, "id");
+  const unitId = getRequiredFormValue(formData, "unitId");
   const catalogNumber = getRequiredFormValue(formData, "catalogNumber");
   const description = getOptionalFormValue(formData, "description");
   const manufacturerName = getRequiredFormValue(formData, "manufacturerName");
@@ -187,7 +197,7 @@ export async function updatePart(
   const partsPath = getPartsPath(workspaceSlug);
   let part: PartsListItem | null = null;
 
-  if (!workspaceSlug || !id || !catalogNumber || !manufacturerName) {
+  if (!workspaceSlug || !id || !unitId || !catalogNumber || !manufacturerName) {
     return getFormErrorState("missing-required-fields");
   }
 
@@ -210,6 +220,13 @@ export async function updatePart(
         primaryCategoryId,
         secondaryCategoryId
       });
+
+      if (!formError) {
+        formError = await validatePartUnit({
+          workspaceId: context.workspace.id,
+          unitId
+        });
+      }
 
       if (!formError) {
         const effectiveAttributes = await getEffectivePartAttributesForCategories({
@@ -239,6 +256,7 @@ export async function updatePart(
                   workspaceId: context.workspace.id
                 },
                 data: {
+                  unitId,
                   catalogNumber,
                   description,
                   manufacturerId: manufacturer.id,
@@ -494,6 +512,34 @@ async function validatePartCategoryAssignment({
   return null;
 }
 
+async function validatePartUnit({
+  workspaceId,
+  unitId
+}: {
+  workspaceId: string;
+  unitId: string | null;
+}) {
+  if (!unitId) {
+    return "missing-required-fields";
+  }
+
+  const unit = await prisma.unit.findFirst({
+    where: {
+      id: unitId,
+      workspaceId
+    },
+    select: {
+      id: true
+    }
+  });
+
+  if (!unit) {
+    return "invalid-unit";
+  }
+
+  return null;
+}
+
 async function getEffectivePartAttributesForCategories({
   workspaceId,
   primaryCategoryId,
@@ -713,6 +759,7 @@ async function getPartListItem({
       },
       select: {
         id: true,
+        unitId: true,
         catalogNumber: true,
         description: true,
         manufacturer: {
@@ -759,6 +806,7 @@ async function getPartListItem({
 
   return {
     id: part.id,
+    unitId: part.unitId,
     catalogNumber: part.catalogNumber,
     description: part.description,
     manufacturerName: part.manufacturer.name,

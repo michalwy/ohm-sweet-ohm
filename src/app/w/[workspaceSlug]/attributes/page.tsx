@@ -21,6 +21,7 @@ const copy = {
   switchWorkspace: "Switch workspace",
   parts: "Parts",
   partCategories: "Part categories",
+  units: "Units",
   settingsIntegrations: "Integrations",
   title: "Attributes",
   intro:
@@ -151,6 +152,12 @@ export default async function AttributesPage({ params }: AttributesPageProps) {
               href={`/w/${workspaceSlug}/attributes`}
             >
               {copy.title}
+            </Link>
+            <Link
+              className="flex min-h-10 items-center rounded-md px-3 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+              href={`/w/${workspaceSlug}/units`}
+            >
+              {copy.units}
             </Link>
             <Link
               className="flex min-h-10 items-center rounded-md px-3 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
