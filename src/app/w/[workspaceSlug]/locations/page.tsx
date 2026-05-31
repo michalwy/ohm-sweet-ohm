@@ -1,9 +1,8 @@
-import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 
 import { LocationsClient } from "@/app/locations-client";
+import { WorkspaceShell } from "@/app/workspace-shell";
 import { hasWorkspacePermission } from "@/server/access-control/authorize";
-import { signOut } from "@/server/auth/actions";
 import {
   getCurrentSession,
   getCurrentWorkspaceContextBySlug
@@ -97,114 +96,27 @@ export default async function LocationsPage({ params }: LocationsPageProps) {
     : false;
 
   return (
-    <main className="h-screen overflow-hidden bg-slate-100 text-slate-950">
-      <div className="flex h-full min-h-0">
-        <aside className="flex h-full w-60 shrink-0 flex-col border-r border-slate-200 bg-white">
-          <div className="flex min-h-14 items-center gap-3 border-b border-slate-200 px-4">
-            <div className="grid h-8 w-8 place-items-center rounded-md bg-[var(--color-accent)] text-sm font-semibold text-white">
-              {copy.appShortName}
-            </div>
-            <div className="min-w-0">
-              <p className="text-sm font-semibold leading-5 text-slate-950">
-                {copy.appName}
-              </p>
-              <p className="truncate text-xs leading-4 text-slate-500">
-                {context.workspace.name}
-              </p>
-            </div>
-          </div>
-          <nav
-            className="flex min-h-0 flex-1 flex-col gap-1 overflow-auto p-3"
-            aria-label="Main navigation"
-          >
-            <Link
-              className="flex min-h-10 items-center rounded-md px-3 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
-              href={`/w/${workspaceSlug}/parts`}
-            >
-              {copy.parts}
-            </Link>
-            <Link
-              className="flex min-h-10 items-center rounded-md px-3 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
-              href={`/w/${workspaceSlug}/part-categories`}
-            >
-              {copy.partCategories}
-            </Link>
-            <Link
-              className="flex min-h-10 items-center rounded-md px-3 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
-              href={`/w/${workspaceSlug}/attributes`}
-            >
-              {copy.attributes}
-            </Link>
-            <Link
-              className="flex min-h-10 items-center rounded-md px-3 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
-              href={`/w/${workspaceSlug}/units`}
-            >
-              {copy.units}
-            </Link>
-            <Link
-              aria-current="page"
-              className="flex min-h-10 items-center rounded-md bg-[var(--color-accent-soft)] px-3 text-sm font-semibold text-slate-950"
-              href={`/w/${workspaceSlug}/locations`}
-            >
-              {copy.locations}
-            </Link>
-            <Link
-              className="flex min-h-10 items-center rounded-md px-3 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
-              href={`/w/${workspaceSlug}/settings/integrations`}
-            >
-              {copy.settingsIntegrations}
-            </Link>
-          </nav>
-          <div className="border-t border-slate-200 p-3">
-            <p className="mb-2 truncate text-xs leading-5 text-slate-500">
-              {context.user.email}
-            </p>
-            <Link
-              className="mb-2 flex min-h-10 items-center rounded-md border border-slate-300 bg-white px-3 text-sm font-medium text-slate-700 transition hover:border-slate-400 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2"
-              href="/workspaces"
-            >
-              {copy.switchWorkspace}
-            </Link>
-            <form action={signOut}>
-              <button
-                className="min-h-10 w-full rounded-md border border-slate-300 bg-white px-3 text-left text-sm font-medium text-slate-700 transition hover:border-slate-400 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2"
-                type="submit"
-              >
-                {copy.signOut}
-              </button>
-            </form>
-          </div>
-        </aside>
+    <WorkspaceShell
+      activeNavItem="locations"
+      intro={copy.intro}
+      title={copy.title}
+      userEmail={context.user.email}
+      workspaceName={context.workspace.name}
+      workspaceSlug={workspaceSlug}
+    >
+      {!isDatabaseAvailable ? (
+        <p className="rounded-md border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+          {copy.databaseUnavailable}
+        </p>
+      ) : null}
 
-        <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
-          <div className="flex min-h-0 flex-1 flex-col gap-4 p-6">
-            <header className="flex items-end justify-between gap-2 border-b border-slate-200 pb-4">
-              <div>
-                <h1 className="text-2xl font-semibold tracking-normal text-slate-950">
-                  {copy.title}
-                </h1>
-                <p className="mt-1 max-w-3xl text-sm leading-6 text-slate-600">
-                  {copy.intro}
-                </p>
-              </div>
-            </header>
-
-            {!isDatabaseAvailable ? (
-              <p className="rounded-md border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-                {copy.databaseUnavailable}
-              </p>
-            ) : null}
-
-            <LocationsClient
-              canWriteLocations={canWriteLocations}
-              copy={copy}
-              initialLocations={locations}
-              isDatabaseAvailable={isDatabaseAvailable}
-              workspaceSlug={workspaceSlug}
-            />
-          </div>
-        </div>
-      </div>
-    </main>
+      <LocationsClient
+        canWriteLocations={canWriteLocations}
+        copy={copy}
+        initialLocations={locations}
+        isDatabaseAvailable={isDatabaseAvailable}
+        workspaceSlug={workspaceSlug}
+      />
+    </WorkspaceShell>
   );
 }
