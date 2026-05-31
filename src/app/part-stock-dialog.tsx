@@ -1,11 +1,10 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import {
-  createInventoryEntryForWorkspace,
-  getPartBalancesForWorkspace
+  createInventoryEntryForWorkspace
 } from "@/server/inventory/entryActions";
 import { getLocationsForWorkspace } from "@/server/inventory/locationActions";
 import type { PartsListItem } from "@/server/parts/getParts";
@@ -33,8 +32,6 @@ type Copy = {
   transfer: string;
   adjustment: string;
   noLocations: string;
-  noBalances: string;
-  currentStock: string;
   stockSaved: string;
   stockActionInvalid: string;
 };
@@ -67,24 +64,6 @@ export function PartStockDialog({
   const [note, setNote] = useState("");
   const [submitError, setSubmitError] = useState<string | null>(null);
 
-  const balancesQuery = useQuery({
-    queryKey: ["part-balances", workspaceSlug, part?.id],
-    enabled: open && Boolean(part?.id) && canReadInventory,
-    queryFn: async () => {
-      if (!part) {
-        return [];
-      }
-      const result = await getPartBalancesForWorkspace({
-        workspaceSlug,
-        partId: part.id
-      });
-      if (!result.ok) {
-        throw new Error(result.error);
-      }
-      return result.data;
-    }
-  });
-
   const locationsQuery = useQuery({
     queryKey: ["locations-assignable", workspaceSlug],
     enabled: open && canReadInventory,
@@ -114,27 +93,14 @@ export function PartStockDialog({
           queryKey: ["part-balances", workspaceSlug, part?.id]
         }),
         queryClient.invalidateQueries({
+          queryKey: ["part-balances", workspaceSlug, part?.id, "details-panel"]
+        }),
+        queryClient.invalidateQueries({
           queryKey: ["parts-list", workspaceSlug]
         })
       ]);
     }
   });
-
-  const locationNameById = useMemo(
-    () => new Map((locationsQuery.data ?? []).map((location) => [location.id, location.name])),
-    [locationsQuery.data]
-  );
-
-  const rows = useMemo(() => {
-    const source = balancesQuery.data ?? [];
-    return source
-      .map((row) => ({
-        locationId: row.locationId,
-        locationName: locationNameById.get(row.locationId) ?? row.locationId,
-        quantity: row.quantity
-      }))
-      .sort((left, right) => left.locationName.localeCompare(right.locationName, "en"));
-  }, [balancesQuery.data, locationNameById]);
 
   function resetAndClose() {
     setSubmitError(null);
@@ -183,28 +149,7 @@ export function PartStockDialog({
     >
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
         <DialogBody className="grid gap-4">
-          <section className="grid gap-2">
-            <h3 className="text-sm font-semibold text-slate-900">{copy.currentStock}</h3>
-            {rows.length === 0 ? (
-              <p className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-600">
-                {copy.noBalances}
-              </p>
-            ) : (
-              <ul className="grid gap-2">
-                {rows.map((row) => (
-                  <li
-                    className="flex items-center justify-between rounded-md border border-slate-200 bg-white px-3 py-2 text-sm"
-                    key={row.locationId}
-                  >
-                    <span className="text-slate-700">{row.locationName}</span>
-                    <span className="font-semibold text-slate-950">{row.quantity}</span>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </section>
-
-          <section className="grid gap-3 border-t border-slate-200 pt-4">
+          <section className="grid gap-3">
             <label className="grid gap-1 text-sm">
               <span className="font-medium text-slate-700">{copy.stockEntryType}</span>
               <select

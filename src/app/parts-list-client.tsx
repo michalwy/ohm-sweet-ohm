@@ -738,17 +738,6 @@ export function PartsListClient({
           <div className="flex justify-end gap-2">
             <button
               className="min-h-8 rounded-md border border-slate-300 bg-white px-2.5 py-1 text-sm font-medium text-slate-700 transition hover:border-slate-400 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400"
-              disabled={!isDatabaseAvailable || !canReadInventory}
-              type="button"
-              onClick={(event) => {
-                event.stopPropagation();
-                setPartForStockDialog(row.original);
-              }}
-            >
-              {copy.stock}
-            </button>
-            <button
-              className="min-h-8 rounded-md border border-slate-300 bg-white px-2.5 py-1 text-sm font-medium text-slate-700 transition hover:border-slate-400 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400"
               disabled={!isDatabaseAvailable}
               type="button"
               onClick={(event) => {
@@ -1956,6 +1945,18 @@ export function PartsListClient({
                       </table>
                     </div>
                   )}
+                  {canWriteInventory ? (
+                    <div className="pt-2">
+                      <button
+                        className="min-h-8 rounded-md border border-slate-300 bg-white px-2.5 py-1 text-sm font-medium text-slate-700 transition hover:border-slate-400 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400"
+                        disabled={!isDatabaseAvailable}
+                        type="button"
+                        onClick={() => setPartForStockDialog(selectedPart)}
+                      >
+                        {copy.addMovement}
+                      </button>
+                    </div>
+                  ) : null}
                 </section>
               ) : null}
             </div>
