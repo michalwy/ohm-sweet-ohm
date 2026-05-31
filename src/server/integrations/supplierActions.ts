@@ -1,7 +1,9 @@
 "use server";
 
 import { getCurrentWorkspaceContextBySlug } from "@/server/auth/currentContext";
+import { getWorkspaceActiveSupplierProvider } from "@/server/integrations/providerSettings";
 import { getSupplierPartSearchProvider } from "@/server/integrations/providers";
+import { fetchTmeProductParameters } from "@/server/integrations/tme";
 import type {
   SupplierPartSearchResult,
   SupplierProviderKey
@@ -9,7 +11,6 @@ import type {
 
 export async function searchSupplierPartsForWorkspace(input: {
   workspaceSlug: string;
-  provider: SupplierProviderKey;
   query: string;
   limit?: number;
   offset?: number;
@@ -24,7 +25,18 @@ export async function searchSupplierPartsForWorkspace(input: {
       };
     }
 
-    const provider = getSupplierPartSearchProvider(input.provider);
+    const activeProvider = await getWorkspaceActiveSupplierProvider(
+      context.workspace.id
+    );
+
+    if (!activeProvider) {
+      return {
+        ok: false,
+        error: "missing-credentials"
+      };
+    }
+
+    const provider = getSupplierPartSearchProvider(activeProvider);
 
     if (!provider) {
       return {
@@ -33,7 +45,12 @@ export async function searchSupplierPartsForWorkspace(input: {
       };
     }
 
-    const fixture = getE2ESupplierSearchFixture(input);
+    const fixture = getE2ESupplierSearchFixture({
+      provider: activeProvider,
+      query: input.query,
+      limit: input.limit,
+      offset: input.offset
+    });
     if (fixture) {
       return fixture;
     }
@@ -52,6 +69,54 @@ export async function searchSupplierPartsForWorkspace(input: {
   }
 }
 
+export async function getSupplierPartAttributesForWorkspace(input: {
+  workspaceSlug: string;
+  catalogNumber: string;
+}) {
+  try {
+    const context = await getCurrentWorkspaceContextBySlug(input.workspaceSlug);
+    if (!context) {
+      return {
+        ok: false as const,
+        reason: "use-search-fallback" as const
+      };
+    }
+
+    const activeProvider = await getWorkspaceActiveSupplierProvider(
+      context.workspace.id
+    );
+
+    if (activeProvider !== "tme") {
+      return {
+        ok: false as const,
+        reason: "use-search-fallback" as const
+      };
+    }
+
+    const productAttributes = await fetchTmeProductParameters({
+      workspaceId: context.workspace.id,
+      symbol: input.catalogNumber
+    });
+
+    if (productAttributes.length === 0) {
+      return {
+        ok: false as const,
+        reason: "use-search-fallback" as const
+      };
+    }
+
+    return {
+      ok: true as const,
+      sourceAttributes: productAttributes
+    };
+  } catch {
+    return {
+      ok: false as const,
+      reason: "use-search-fallback" as const
+    };
+  }
+}
+
 function getE2ESupplierSearchFixture(input: {
   provider: SupplierProviderKey;
   query: string;
@@ -62,7 +127,7 @@ function getE2ESupplierSearchFixture(input: {
     return null;
   }
 
-  if (input.provider !== "digikey") {
+  if (input.provider !== "digikey" && input.provider !== "tme") {
     return null;
   }
 

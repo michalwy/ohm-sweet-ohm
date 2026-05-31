@@ -84,6 +84,11 @@ Do not use multiple roles to invent product behavior. Product decisions still re
 - DigiKey search payload reference:
   - The repository keeps a supplier-response shape note at `docs/integrations-digikey-search-sample.json`.
   - For source category mapping, prefer the explicit tree path from `Products[].Category.Name` and nested `Products[].Category.ChildCategories[]` (deepest branch), instead of relying on flat/fuzzy category keys.
+- TME integration payload references:
+  - The repository keeps TME response notes and examples at `docs/integrations-tme.md` and `docs/integrations-tme-*-sample.json`.
+  - In TME `/products/search`, product rows are under `data.products.elements[]`, while `data.parameters.elements[]` are result-level facets (not reliable as per-product attributes for broad queries).
+  - For per-product attributes, use `GET /products/parameters` with the selected symbol.
+  - For full source category paths, derive from cached `GET /products/categories/list` data (`id` + `parent_id`) instead of relying on the immediate `product.category.name` alone.
 
 ## UI Direction
 

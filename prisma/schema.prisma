@@ -292,6 +292,7 @@ model Workspace {
   id        String   @id @default(cuid())
   name      String
   slug      String   @unique
+  activeSupplierProvider SupplierProvider?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -306,9 +307,17 @@ model Workspace {
   partAttributeValues  PartAttributeValue[]
   roles                Role[]
   digiKeyIntegration   WorkspaceDigiKeyIntegration?
+  tmeIntegration       WorkspaceTmeIntegration?
+  tmeCategoryCaches    WorkspaceTmeCategoryCache[]
   supplierCategoryMappingStats SupplierCategoryMappingStat[]
   supplierAttributeMappingStats SupplierAttributeMappingStat[]
   supplierManufacturerMappingStats SupplierManufacturerMappingStat[]
+}
+
+enum SupplierProvider {
+  DIGIKEY
+  MOUSER
+  TME
 }
 
 model SupplierCategoryMappingStat {
@@ -376,6 +385,31 @@ model WorkspaceDigiKeyIntegration {
   updatedAt     DateTime @updatedAt
 
   workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+}
+
+model WorkspaceTmeIntegration {
+  workspaceId   String   @id
+  clientId      String
+  clientSecret  String
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+}
+
+model WorkspaceTmeCategoryCache {
+  id              String   @id @default(cuid())
+  workspaceId     String
+  country         String
+  categoriesJson  Json
+  fetchedAt       DateTime
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@unique([workspaceId, country])
+  @@index([workspaceId, country, fetchedAt])
 }
 
 model WorkspaceMember {

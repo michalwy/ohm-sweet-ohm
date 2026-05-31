@@ -8,6 +8,8 @@ import {
 } from "@/server/auth/currentContext";
 import { hasWorkspacePermission } from "@/server/access-control/authorize";
 import { getWorkspaceDigiKeyIntegration } from "@/server/integrations/digikey";
+import { getWorkspaceActiveSupplierProvider } from "@/server/integrations/providerSettings";
+import { getWorkspaceTmeIntegration } from "@/server/integrations/tme";
 import { DigiKeyIntegrationSettingsClient } from "@/app/digikey-integration-settings-client";
 
 export const dynamic = "force-dynamic";
@@ -24,16 +26,24 @@ const copy = {
   title: "Integrations",
   intro:
     "Configure workspace-level integrations used by the parts workflow.",
-  sectionTitle: "DigiKey",
+  sectionTitle: "Supplier integrations",
   sectionBody:
-    "Provide DigiKey API credentials for this workspace. These credentials are used when searching part numbers while adding a part.",
+    "Configure supplier credentials and select one active provider for part search suggestions.",
+  providerSectionTitle: "Active provider",
+  providerSectionBody: "Only the active provider is used to suggest parts in the Add part dialog.",
+  digikey: "DigiKey",
+  tme: "TME",
   clientId: "Client ID",
   clientSecret: "Client secret",
+  tmeApiToken: "API token (50 chars)",
+  tmeApplicationSecret: "Application secret (20 chars)",
   saveChanges: "Save changes",
+  setActiveProvider: "Set active provider",
   saved: "Saved",
   noPermission:
     "Only workspace admins can update integration credentials.",
-  missingRequiredFields: "Enter both Client ID and Client secret.",
+  missingRequiredFields: "Enter all required credentials.",
+  invalidProvider: "Choose a valid provider.",
   permissionDenied: "You do not have permission to update integrations.",
   databaseUnavailable:
     "Database is not available, so integrations cannot be updated right now."
@@ -61,8 +71,11 @@ export default async function IntegrationsPage({ params }: IntegrationsPageProps
 
   let isDatabaseAvailable = true;
   let canManageIntegrations = false;
-  let initialClientId = "";
-  let hasSavedClientSecret = false;
+  let initialDigiKeyClientId = "";
+  let hasSavedDigiKeyClientSecret = false;
+  let initialTmeClientId = "";
+  let hasSavedTmeClientSecret = false;
+  let initialActiveProvider = null;
 
   try {
     canManageIntegrations = await hasWorkspacePermission({
@@ -71,10 +84,17 @@ export default async function IntegrationsPage({ params }: IntegrationsPageProps
       permission: "admin"
     });
 
-    const integration = await getWorkspaceDigiKeyIntegration(context.workspace.id);
+    const [digiKeyIntegration, tmeIntegration, activeProvider] = await Promise.all([
+      getWorkspaceDigiKeyIntegration(context.workspace.id),
+      getWorkspaceTmeIntegration(context.workspace.id),
+      getWorkspaceActiveSupplierProvider(context.workspace.id)
+    ]);
 
-    initialClientId = integration?.clientId ?? "";
-    hasSavedClientSecret = Boolean(integration?.clientSecret);
+    initialDigiKeyClientId = digiKeyIntegration?.clientId ?? "";
+    hasSavedDigiKeyClientSecret = Boolean(digiKeyIntegration?.clientSecret);
+    initialTmeClientId = tmeIntegration?.clientId ?? "";
+    hasSavedTmeClientSecret = Boolean(tmeIntegration?.clientSecret);
+    initialActiveProvider = activeProvider;
   } catch {
     isDatabaseAvailable = false;
   }
@@ -159,8 +179,11 @@ export default async function IntegrationsPage({ params }: IntegrationsPageProps
             <DigiKeyIntegrationSettingsClient
               canManageIntegrations={canManageIntegrations}
               copy={copy}
-              hasSavedClientSecret={hasSavedClientSecret}
-              initialClientId={initialClientId}
+              hasSavedDigiKeyClientSecret={hasSavedDigiKeyClientSecret}
+              hasSavedTmeClientSecret={hasSavedTmeClientSecret}
+              initialActiveProvider={initialActiveProvider}
+              initialDigiKeyClientId={initialDigiKeyClientId}
+              initialTmeClientId={initialTmeClientId}
               isDatabaseAvailable={isDatabaseAvailable}
               workspaceSlug={workspaceSlug}
             />

@@ -1,0 +1,81 @@
+{
+  "source": "Live TME /products/parameters response captured in Codex thread (2026-05-31)",
+  "query": {
+    "country": "PL",
+    "symbols": [
+      "NE555P"
+    ]
+  },
+  "notes": [
+    "Per-symbol attributes are returned in data.elements[].parameters.elements[].",
+    "Use this endpoint after suggestion selection to avoid broad-search facet mixing."
+  ],
+  "response": {
+    "status": "OK",
+    "symbolSample": [
+      {
+        "symbol": "NE555P",
+        "parameterSample": [
+          {
+            "id": 2,
+            "name": "Manufacturer",
+            "values": [
+              "TEXAS INSTRUMENTS"
+            ]
+          },
+          {
+            "id": 367,
+            "name": "Type of integrated circuit",
+            "values": [
+              "peripheral circuit"
+            ]
+          },
+          {
+            "id": 2613,
+            "name": "Kind of integrated circuit",
+            "values": [
+              "astable",
+              "monostable",
+              "RC timer"
+            ]
+          },
+          {
+            "id": 144,
+            "name": "Frequency",
+            "values": [
+              "0.5MHz"
+            ]
+          },
+          {
+            "id": 98,
+            "name": "Supply voltage",
+            "values": [
+              "4.5...16V DC"
+            ]
+          },
+          {
+            "id": 35,
+            "name": "Case",
+            "values": [
+              "DIP8"
+            ]
+          },
+          {
+            "id": 96,
+            "name": "DC supply current",
+            "values": [
+              "10mA"
+            ]
+          },
+          {
+            "id": 365,
+            "name": "Output current",
+            "values": [
+              "0.2A"
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

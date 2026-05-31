@@ -1,0 +1,87 @@
+{
+  "source": "Live TME /products/categories/list response captured in Codex thread (2026-05-31)",
+  "query": {
+    "country": "PL"
+  },
+  "notes": [
+    "Flat category list includes id, parent_id, and name.",
+    "Useful for building and caching full category paths by traversing parent_id links."
+  ],
+  "response": {
+    "status": "OK",
+    "sample": [
+      {
+        "id": 111000,
+        "parent_id": 111000,
+        "name": "",
+        "products_count": 1556202
+      },
+      {
+        "id": 112140,
+        "parent_id": 111000,
+        "name": "Semiconductors",
+        "products_count": 252658
+      },
+      {
+        "id": 112141,
+        "parent_id": 112140,
+        "name": "Diodes",
+        "products_count": 88377
+      },
+      {
+        "id": 100179,
+        "parent_id": 112141,
+        "name": "Universal diodes",
+        "products_count": 13357
+      },
+      {
+        "id": 112791,
+        "parent_id": 100179,
+        "name": "SMD universal diodes",
+        "products_count": 6315
+      },
+      {
+        "id": 113119,
+        "parent_id": 100179,
+        "name": "THT universal diodes",
+        "products_count": 4934
+      },
+      {
+        "id": 112792,
+        "parent_id": 100179,
+        "name": "Stud mounting universal diodes",
+        "products_count": 1757
+      },
+      {
+        "id": 112793,
+        "parent_id": 100179,
+        "name": "Diodes - others",
+        "products_count": 351
+      },
+      {
+        "id": 112795,
+        "parent_id": 112141,
+        "name": "Schottky diodes",
+        "products_count": 8152
+      },
+      {
+        "id": 112796,
+        "parent_id": 112795,
+        "name": "SMD Schottky diodes",
+        "products_count": 5715
+      },
+      {
+        "id": 112797,
+        "parent_id": 112795,
+        "name": "THT Schottky diodes",
+        "products_count": 2431
+      },
+      {
+        "id": 112798,
+        "parent_id": 112795,
+        "name": "Stud mounting Schottky diodes",
+        "products_count": 6
+      }
+    ]
+  }
+}

@@ -21,7 +21,10 @@ import {
 import { createPortal } from "react-dom";
 
 import { createPart, deletePart, updatePart } from "@/server/parts/createPart";
-import { searchSupplierPartsForWorkspace } from "@/server/integrations/supplierActions";
+import {
+  getSupplierPartAttributesForWorkspace,
+  searchSupplierPartsForWorkspace
+} from "@/server/integrations/supplierActions";
 import { getSupplierMatchingSuggestionsForWorkspace } from "@/server/integrations/matching";
 import { getPartsListPageForWorkspace } from "@/server/parts/listActions";
 import type { ManufacturerSuggestion } from "@/server/organizations/organizations";
@@ -74,9 +77,9 @@ type Copy = {
   noSecondaryCategory: string;
   manufacturer: string;
   noMatchingManufacturers: string;
-  digikeyNoMatchingParts: string;
-  digikeySearchError: string;
-  digikeySuggestionLabel: string;
+  supplierNoMatchingParts: string;
+  supplierSearchError: string;
+  supplierSuggestionLabel: string;
   matchingDialogTitle: string;
   matchingDialogBody: string;
   sourceCategoryLabel: string;
@@ -203,6 +206,7 @@ type PartsListClientProps = {
   globalWorkspaceAttributesForMatching: AttributeListItem[];
   initialPage: ListPage<PartsListItem>;
   workspaceSlug: string;
+  activeSupplierProvider: SupplierProviderKey | null;
 };
 
 export function PartsListClient({
@@ -216,7 +220,8 @@ export function PartsListClient({
   workspaceAttributes,
   globalWorkspaceAttributesForMatching,
   initialPage,
-  workspaceSlug
+  workspaceSlug,
+  activeSupplierProvider
 }: PartsListClientProps) {
   const queryClient = useQueryClient();
   const createDialogRef = useRef<HTMLDialogElement>(null);
@@ -445,6 +450,22 @@ export function PartsListClient({
     await queryClient.invalidateQueries({
       queryKey: ["parts-list", workspaceSlug]
     });
+  }
+
+  async function getSuggestionSourceAttributesForMatching(input: {
+    catalogNumber: string;
+    sourceAttributes: Array<{ name: string; value: string; unit: string | null }>;
+  }) {
+    const result = await getSupplierPartAttributesForWorkspace({
+      workspaceSlug,
+      catalogNumber: input.catalogNumber
+    });
+
+    if (!result.ok) {
+      return input.sourceAttributes;
+    }
+
+    return result.sourceAttributes;
   }
   const createPartMutation = useMutation({
     mutationFn: createPart,
@@ -1668,15 +1689,23 @@ export function PartsListClient({
                       setCreateCatalogNumber(suggestion.catalogNumber);
                       setCreateManufacturerName(suggestion.manufacturerName);
                       setCreateDescription(suggestion.description);
-                      void openMatchingDialogFromSupplierResult({
-                        provider: "digikey",
-                        sourceManufacturerName: suggestion.manufacturerName,
-                        sourceCategory: suggestion.sourceCategory,
-                        sourceAttributes: suggestion.sourceAttributes
-                      });
+                      void (async () => {
+                        const sourceAttributes =
+                          await getSuggestionSourceAttributesForMatching({
+                            catalogNumber: suggestion.catalogNumber,
+                            sourceAttributes: suggestion.sourceAttributes
+                          });
+
+                        await openMatchingDialogFromSupplierResult({
+                          provider: activeSupplierProvider ?? "digikey",
+                          sourceManufacturerName: suggestion.manufacturerName,
+                          sourceCategory: suggestion.sourceCategory,
+                          sourceAttributes
+                        });
+                      })();
                     }}
                     workspaceSlug={workspaceSlug}
-                    enableDigiKeySearch
+                    activeSupplierProvider={activeSupplierProvider}
                     onPrimaryCategoryChange={(categoryId) => {
                       setCreatePrimaryCategoryId(categoryId);
                       setCreateSecondaryCategoryId("");
@@ -2006,7 +2035,7 @@ export function PartsListClient({
                         // Supplier suggestions are disabled in edit mode.
                       }}
                       workspaceSlug={workspaceSlug}
-                      enableDigiKeySearch={false}
+                      activeSupplierProvider={null}
                       onPrimaryCategoryChange={(categoryId) => {
                         setEditPrimaryCategoryId(categoryId);
                         clearPartFieldError(setEditFieldErrors, "primaryCategoryId");
@@ -2802,7 +2831,7 @@ function PartDetailsFields({
   primaryCategoryId,
   secondaryCategoryId,
   workspaceSlug,
-  enableDigiKeySearch,
+  activeSupplierProvider,
   onCatalogNumberChange,
   onDescriptionChange,
   onManufacturerNameChange,
@@ -2826,7 +2855,7 @@ function PartDetailsFields({
   primaryCategoryId: string;
   secondaryCategoryId: string;
   workspaceSlug: string;
-  enableDigiKeySearch: boolean;
+  activeSupplierProvider: SupplierProviderKey | null;
   onCatalogNumberChange: (catalogNumber: string) => void;
   onDescriptionChange: (description: string) => void;
   onManufacturerNameChange: (manufacturerName: string) => void;
@@ -2851,8 +2880,12 @@ function PartDetailsFields({
     useState<HTMLElement | null>(null);
   const debouncedCatalogNumber = useDebouncedValue(catalogNumber, 500);
   const normalizedCatalogQuery = debouncedCatalogNumber.trim();
+  const hasActiveSupplierSearch = activeSupplierProvider !== null;
+  const minSupplierQueryLength = activeSupplierProvider === "tme" ? 2 : 3;
   const shouldSearchDigiKey =
-    enableDigiKeySearch && !disabled && normalizedCatalogQuery.length >= 3;
+    hasActiveSupplierSearch &&
+    !disabled &&
+    normalizedCatalogQuery.length >= minSupplierQueryLength;
   const digiKeyResultsQuery = useInfiniteQuery({
     queryKey: ["digikey-search", workspaceSlug, normalizedCatalogQuery],
     enabled: shouldSearchDigiKey,
@@ -2860,7 +2893,6 @@ function PartDetailsFields({
     queryFn: ({ pageParam }) =>
       searchSupplierPartsForWorkspace({
         workspaceSlug,
-        provider: "digikey",
         query: normalizedCatalogQuery,
         limit: 10,
         offset: pageParam
@@ -2960,7 +2992,9 @@ function PartDetailsFields({
   function updateDigiKeyOpen(nextValue: string) {
     const normalizedNextValue = nextValue.trim();
     const shouldOpen =
-      enableDigiKeySearch && !disabled && normalizedNextValue.length >= 3;
+      hasActiveSupplierSearch &&
+      !disabled &&
+      normalizedNextValue.length >= minSupplierQueryLength;
     if (!shouldOpen) {
       setIsDigiKeyOpen(false);
       return;
@@ -3053,7 +3087,7 @@ function PartDetailsFields({
                 ? `${catalogNumberInputId}-digikey-option-${activeDigiKeyIndex}`
                 : undefined
             }
-            aria-autocomplete={enableDigiKeySearch ? "list" : undefined}
+            aria-autocomplete={hasActiveSupplierSearch ? "list" : undefined}
             aria-controls={isDigiKeyOpen ? digiKeyListboxId : undefined}
             aria-expanded={isDigiKeyOpen}
             autoComplete="off"
@@ -3062,7 +3096,7 @@ function PartDetailsFields({
               Boolean(errors.catalogNumber)
             )}
             placeholder={copy.catalogNumberPlaceholder}
-            role={enableDigiKeySearch ? "combobox" : undefined}
+            role={hasActiveSupplierSearch ? "combobox" : undefined}
             type="text"
             value={catalogNumber}
             disabled={disabled}
@@ -3088,7 +3122,7 @@ function PartDetailsFields({
                 <div
                   ref={digiKeyPanelRef}
                   id={digiKeyListboxId}
-                  aria-label={copy.digikeySuggestionLabel}
+                  aria-label={copy.supplierSuggestionLabel}
                   className="fixed z-50 overflow-hidden rounded-md border border-slate-200 bg-white shadow-lg"
                   style={digiKeyPanelStyle}
                   role="listbox"
@@ -3099,7 +3133,7 @@ function PartDetailsFields({
                     </p>
                   ) : digiKeyResultsQuery.isError || hasDigiKeyError ? (
                     <p className="px-3 py-3 text-sm font-normal text-slate-500">
-                      {copy.digikeySearchError}
+                      {copy.supplierSearchError}
                     </p>
                   ) : digiKeyResults.length > 0 ? (
                     <ol
@@ -3143,7 +3177,7 @@ function PartDetailsFields({
                     </ol>
                   ) : (
                     <p className="px-3 py-3 text-sm font-normal text-slate-500">
-                      {copy.digikeyNoMatchingParts}
+                      {copy.supplierNoMatchingParts}
                     </p>
                   )}
                 </div>,

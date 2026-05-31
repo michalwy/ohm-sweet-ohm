@@ -1,0 +1,35 @@
+{
+  "source": "Live TME /products/categories/tree response captured in Codex thread (2026-05-31)",
+  "query": {
+    "country": "PL"
+  },
+  "notes": [
+    "Tree endpoint returns nested children from a root node.",
+    "List endpoint is easier to cache and path-resolve in app code."
+  ],
+  "response": {
+    "status": "OK",
+    "root": {
+      "id": 111000,
+      "parent_id": 111000,
+      "name": "",
+      "children": [
+        {
+          "id": 112140,
+          "name": "Semiconductors",
+          "childCount": 13
+        },
+        {
+          "id": 113611,
+          "name": "Embedded and IoT systems",
+          "childCount": 9
+        },
+        {
+          "id": 100327,
+          "name": "Optoelectronics",
+          "childCount": 7
+        }
+      ]
+    }
+  }
+}

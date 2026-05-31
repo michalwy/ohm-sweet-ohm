@@ -1,0 +1,76 @@
+{
+  "source": "Live TME /products/search response captured in Codex thread (2026-05-31)",
+  "query": {
+    "country": "PL",
+    "phrase": "NE555P",
+    "limit": 20,
+    "page": 1,
+    "scope": [
+      "products",
+      "parameters",
+      "counters"
+    ]
+  },
+  "notes": [
+    "Products are returned in data.products.elements[].",
+    "Search-level parameters are returned in data.parameters.elements[] and are faceted across the whole result set.",
+    "Category id and immediate category name are available per product at product.category.id/name."
+  ],
+  "response": {
+    "status": "OK",
+    "counters": {
+      "count": 4,
+      "page": 1,
+      "pages": 1
+    },
+    "productsSample": [
+      {
+        "symbol": "NE555P",
+        "manufacturer": "TEXAS INSTRUMENTS",
+        "category": {
+          "id": 112875,
+          "name": "Watchdog and reset circuits"
+        },
+        "description": "IC: peripheral circuit; astable,monostable,RC timer; 500kHz"
+      },
+      {
+        "symbol": "NE555PWR",
+        "manufacturer": "TEXAS INSTRUMENTS",
+        "category": {
+          "id": 112875,
+          "name": "Watchdog and reset circuits"
+        },
+        "description": "IC: peripheral circuit; astable,monostable,RC timer; 500kHz"
+      }
+    ],
+    "parameterSample": [
+      {
+        "id": 2,
+        "name": "Manufacturer",
+        "values": [
+          "TEXAS INSTRUMENTS"
+        ],
+        "products_count": 4
+      },
+      {
+        "id": 367,
+        "name": "Type of integrated circuit",
+        "values": [
+          "peripheral circuit"
+        ],
+        "products_count": 4
+      },
+      {
+        "id": 35,
+        "name": "Case",
+        "values": [
+          "DIP8",
+          "PDIP8",
+          "SO8-W",
+          "TSSOP8"
+        ],
+        "products_count": 4
+      }
+    ]
+  }
+}

@@ -8,6 +8,7 @@ import {
   getCurrentWorkspaceContextBySlug
 } from "@/server/auth/currentContext";
 import { getManufacturerSuggestionsForPartForm } from "@/server/organizations/organizations";
+import { getWorkspaceActiveSupplierProvider } from "@/server/integrations/providerSettings";
 import { getPartCategoriesForPartForm } from "@/server/parts/categories";
 import { getPartsList } from "@/server/parts/getParts";
 import {
@@ -73,9 +74,9 @@ const copy = {
   catalogNumberPlaceholder: "NE555P",
   descriptionPlaceholder: "Timer IC in DIP-8 package",
   manufacturerPlaceholder: "Texas Instruments",
-  digikeyNoMatchingParts: "No matching parts found",
-  digikeySearchError: "DigiKey search is currently unavailable.",
-  digikeySuggestionLabel: "DigiKey suggestions",
+  supplierNoMatchingParts: "No matching parts found",
+  supplierSearchError: "Supplier search is currently unavailable.",
+  supplierSuggestionLabel: "Supplier suggestions",
   matchingDialogTitle: "Supplier matching",
   matchingDialogBody: "Review and adjust category and attribute mapping.",
   sourceManufacturerLabel: "Source manufacturer",
@@ -210,6 +211,9 @@ export default async function PartsPage({
   const resolvedSearchParams = await searchParams;
   const partDialogOpen = resolvedSearchParams?.partDialog === "open";
   const partEditDialog = resolvedSearchParams?.partEditDialog;
+  const activeSupplierProvider = isDatabaseAvailable
+    ? await getWorkspaceActiveSupplierProvider(context.workspace.id).catch(() => null)
+    : null;
 
   return (
     <main className="h-screen overflow-hidden bg-slate-100 text-slate-950">
@@ -312,6 +316,7 @@ export default async function PartsPage({
               }
               initialPage={page}
               workspaceSlug={workspaceSlug}
+              activeSupplierProvider={activeSupplierProvider}
             />
           </div>
         </div>

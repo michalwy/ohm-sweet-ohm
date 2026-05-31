@@ -1,0 +1,91 @@
+{
+  "source": "Live TME /products/search response captured in Codex thread (2026-05-31)",
+  "query": {
+    "country": "PL",
+    "phrase": "NE",
+    "limit": 20,
+    "page": 1,
+    "scope": [
+      "products",
+      "parameters",
+      "counters"
+    ]
+  },
+  "notes": [
+    "Broad phrase queries return mixed products (e.g. NE555 + NEO tools + NEON lamps).",
+    "data.parameters.elements[] can contain hundreds of parameter facets for the whole result set."
+  ],
+  "response": {
+    "status": "OK",
+    "counters": {
+      "count": 11941,
+      "page": 1,
+      "pages": 598
+    },
+    "symbols": [
+      "NE555P",
+      "NEVADA-3W-V2",
+      "NE555DR",
+      "NET2T16PVN002",
+      "NE5532P",
+      "NET5T05ZVN001",
+      "NEON-2",
+      "NEO-84-308",
+      "NEO-10-806",
+      "NEON-3",
+      "NEO-09-512",
+      "NE5532DR",
+      "NEO-11-610",
+      "NEO-84-315",
+      "NEON-5",
+      "NEO-11-614",
+      "NEO-02-417",
+      "NEO-11-975",
+      "NEO-04-178",
+      "NEO-84-329"
+    ],
+    "parameterCount": 796,
+    "parameterSample": [
+      {
+        "name": "Manufacturer",
+        "values": [
+          "3M",
+          "4CARMEDIA",
+          "4D Systems"
+        ]
+      },
+      {
+        "name": "Type of OSH component",
+        "values": [
+          "boots",
+          "dungarees",
+          "fleece"
+        ]
+      },
+      {
+        "name": "Type of wire",
+        "values": [
+          "assembly",
+          "coaxial",
+          "coil wire"
+        ]
+      },
+      {
+        "name": "Type of meter",
+        "values": [
+          "ammeter",
+          "appliance meter",
+          "digital multimeter"
+        ]
+      },
+      {
+        "name": "Type of power tool accessories",
+        "values": [
+          "acces. for drills",
+          "accessories set",
+          "adapter"
+        ]
+      }
+    ]
+  }
+}
