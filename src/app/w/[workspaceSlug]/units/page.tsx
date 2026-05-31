@@ -21,6 +21,7 @@ const copy = {
   parts: "Parts",
   partCategories: "Part categories",
   attributes: "Attributes",
+  locations: "Locations",
   settingsIntegrations: "Integrations",
   title: "Units",
   intro: "Manage workspace units used by parts and inventory quantities.",
@@ -137,6 +138,12 @@ export default async function UnitsPage({ params }: UnitsPageProps) {
               href={`/w/${workspaceSlug}/units`}
             >
               {copy.title}
+            </Link>
+            <Link
+              className="flex min-h-10 items-center rounded-md px-3 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+              href={`/w/${workspaceSlug}/locations`}
+            >
+              {copy.locations}
             </Link>
             <Link
               className="flex min-h-10 items-center rounded-md px-3 text-sm font-medium text-slate-700 transition hover:bg-slate-50"

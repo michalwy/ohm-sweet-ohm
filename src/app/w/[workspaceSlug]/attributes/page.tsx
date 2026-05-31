@@ -22,6 +22,7 @@ const copy = {
   parts: "Parts",
   partCategories: "Part categories",
   units: "Units",
+  locations: "Locations",
   settingsIntegrations: "Integrations",
   title: "Attributes",
   intro:
@@ -158,6 +159,12 @@ export default async function AttributesPage({ params }: AttributesPageProps) {
               href={`/w/${workspaceSlug}/units`}
             >
               {copy.units}
+            </Link>
+            <Link
+              className="flex min-h-10 items-center rounded-md px-3 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+              href={`/w/${workspaceSlug}/locations`}
+            >
+              {copy.locations}
             </Link>
             <Link
               className="flex min-h-10 items-center rounded-md px-3 text-sm font-medium text-slate-700 transition hover:bg-slate-50"

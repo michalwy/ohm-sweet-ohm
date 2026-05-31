@@ -23,6 +23,7 @@ const copy = {
   partCategories: "Part categories",
   attributes: "Attributes",
   units: "Units",
+  locations: "Locations",
   settingsIntegrations: "Integrations",
   title: "Integrations",
   intro:
@@ -140,6 +141,12 @@ export default async function IntegrationsPage({ params }: IntegrationsPageProps
               href={`/w/${workspaceSlug}/units`}
             >
               {copy.units}
+            </Link>
+            <Link
+              className="flex min-h-10 items-center rounded-md px-3 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+              href={`/w/${workspaceSlug}/locations`}
+            >
+              {copy.locations}
             </Link>
             <Link
               aria-current="page"

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 
 import { PartsListClient } from "@/app/parts-list-client";
+import { hasWorkspacePermission } from "@/server/access-control/authorize";
 import { signOut } from "@/server/auth/actions";
 import {
   getCurrentSession,
@@ -32,6 +33,7 @@ const copy = {
   partCategories: "Part categories",
   attributes: "Attributes",
   units: "Units",
+  locations: "Locations",
   settingsIntegrations: "Integrations",
   intro: "Parts in this workspace.",
   catalogNumber: "Catalog number",
@@ -72,6 +74,7 @@ const copy = {
   resetListConfiguration: "Reset defaults",
   filteredPartsSummary: "{visible} of {total} parts",
   actions: "Actions",
+  stock: "Stock",
   newPartTitle: "Add part",
   newPartBody: "Create a new part.",
   editPartTitle: "Edit part",
@@ -114,6 +117,22 @@ const copy = {
   deletePart: "Delete",
   saveChanges: "Save changes",
   close: "Close",
+  quantity: "Quantity",
+  location: "Choose location",
+  fromLocation: "From location",
+  toLocation: "To location",
+  note: "Note",
+  addMovement: "Add movement",
+  stockEntryType: "Entry type",
+  receipt: "Receipt",
+  issue: "Issue",
+  transfer: "Transfer",
+  adjustment: "Adjustment",
+  noLocations: "No assignable locations available.",
+  noBalances: "No stock recorded yet.",
+  currentStock: "Current stock by location",
+  stockSaved: "Stock movement saved",
+  stockActionInvalid: "Check stock movement fields and try again.",
   cancelDelete: "Cancel",
   confirmDelete: "Delete",
   deleteConfirmationBody: "This cannot be undone.",
@@ -221,6 +240,20 @@ export default async function PartsPage({
   const activeSupplierProvider = isDatabaseAvailable
     ? await getWorkspaceActiveSupplierProvider(context.workspace.id).catch(() => null)
     : null;
+  const [canReadInventory, canWriteInventory] = isDatabaseAvailable
+    ? await Promise.all([
+        hasWorkspacePermission({
+          userId: context.user.id,
+          workspaceId: context.workspace.id,
+          permission: "inventory:read"
+        }).catch(() => false),
+        hasWorkspacePermission({
+          userId: context.user.id,
+          workspaceId: context.workspace.id,
+          permission: "inventory:write"
+        }).catch(() => false)
+      ])
+    : [false, false];
 
   return (
     <main className="h-screen overflow-hidden bg-slate-100 text-slate-950">
@@ -267,6 +300,12 @@ export default async function PartsPage({
               href={`/w/${workspaceSlug}/units`}
             >
               {copy.units}
+            </Link>
+            <Link
+              className="flex min-h-10 items-center rounded-md px-3 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+              href={`/w/${workspaceSlug}/locations`}
+            >
+              {copy.locations}
             </Link>
             <Link
               className="flex min-h-10 items-center rounded-md px-3 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
@@ -331,6 +370,8 @@ export default async function PartsPage({
               initialPage={page}
               workspaceSlug={workspaceSlug}
               activeSupplierProvider={activeSupplierProvider}
+              canReadInventory={canReadInventory}
+              canWriteInventory={canWriteInventory}
             />
           </div>
         </div>

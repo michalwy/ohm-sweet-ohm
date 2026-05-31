@@ -11,6 +11,7 @@ model Part {
   id                  String   @id @default(cuid())
   workspaceId         String
   unitId              String
+  defaultLocationId   String?
   catalogNumber       String
   description         String?
   manufacturerId      String
@@ -21,14 +22,17 @@ model Part {
 
   workspace         Workspace            @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   unit              Unit                 @relation(fields: [unitId], references: [id], onDelete: Restrict)
+  defaultLocation   StorageLocation?     @relation("PartDefaultLocation", fields: [defaultLocationId], references: [id], onDelete: SetNull)
   manufacturer      Organization         @relation("PartManufacturer", fields: [manufacturerId], references: [id], onDelete: Restrict)
   primaryCategory   PartCategory?        @relation("PartPrimaryCategory", fields: [primaryCategoryId], references: [id], onDelete: SetNull)
   secondaryCategory PartCategory?        @relation("PartSecondaryCategory", fields: [secondaryCategoryId], references: [id], onDelete: SetNull)
   attributeValues   PartAttributeValue[]
+  inventoryEntries  InventoryEntry[]
 
   @@unique([workspaceId, manufacturerId, catalogNumber])
   @@index([workspaceId, catalogNumber])
   @@index([workspaceId, unitId])
+  @@index([workspaceId, defaultLocationId])
   @@index([workspaceId, manufacturerId])
   @@index([workspaceId, primaryCategoryId])
   @@index([workspaceId, secondaryCategoryId])
@@ -49,6 +53,62 @@ model Unit {
 
   @@unique([workspaceId, normalizedName])
   @@index([workspaceId, symbol])
+}
+
+model StorageLocation {
+  id             String   @id @default(cuid())
+  workspaceId    String
+  parentId       String?
+  name           String
+  normalizedName String
+  isAssignable   Boolean  @default(true)
+  isArchived     Boolean  @default(false)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  workspace             Workspace         @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  parent                StorageLocation?  @relation("StorageLocationTree", fields: [parentId], references: [id], onDelete: Restrict)
+  children              StorageLocation[] @relation("StorageLocationTree")
+  defaultForParts       Part[]            @relation("PartDefaultLocation")
+  inventoryEntriesFrom  InventoryEntry[]  @relation("InventoryEntryFromLocation")
+  inventoryEntriesTo    InventoryEntry[]  @relation("InventoryEntryToLocation")
+
+  @@unique([workspaceId, parentId, normalizedName])
+  @@index([workspaceId, parentId])
+  @@index([workspaceId, isArchived])
+  @@index([workspaceId, isAssignable])
+  @@index([workspaceId, name])
+}
+
+enum InventoryEntryType {
+  RECEIPT
+  ISSUE
+  TRANSFER
+  ADJUSTMENT
+}
+
+model InventoryEntry {
+  id                  String             @id @default(cuid())
+  workspaceId         String
+  partId              String
+  entryType           InventoryEntryType
+  quantity            Decimal
+  fromLocationId      String?
+  toLocationId        String?
+  note                String?
+  createdByMemberId   String?
+  createdAt           DateTime           @default(now())
+
+  workspace           Workspace          @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  part                Part               @relation(fields: [partId], references: [id], onDelete: Cascade)
+  fromLocation        StorageLocation?   @relation("InventoryEntryFromLocation", fields: [fromLocationId], references: [id], onDelete: Restrict)
+  toLocation          StorageLocation?   @relation("InventoryEntryToLocation", fields: [toLocationId], references: [id], onDelete: Restrict)
+  createdByMember     WorkspaceMember?   @relation(fields: [createdByMemberId], references: [id], onDelete: SetNull)
+
+  @@index([workspaceId, partId, createdAt])
+  @@index([workspaceId, fromLocationId])
+  @@index([workspaceId, toLocationId])
+  @@index([workspaceId, entryType, createdAt])
 }
 
 enum AttributeType {
@@ -323,6 +383,8 @@ model Workspace {
   partCategoryClosures PartCategoryClosure[]
   attributes           Attribute[]
   units                Unit[]
+  storageLocations     StorageLocation[]
+  inventoryEntries     InventoryEntry[]
   categoryAttributes   CategoryAttribute[]
   workspaceAttributes  WorkspaceAttribute[]
   partAttributeValues  PartAttributeValue[]
@@ -443,6 +505,7 @@ model WorkspaceMember {
   user      User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
   workspace Workspace             @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   roles     WorkspaceMemberRole[]
+  inventoryEntriesCreated InventoryEntry[]
 
   @@unique([workspaceId, userId])
   @@index([userId])

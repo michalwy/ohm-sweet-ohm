@@ -56,6 +56,7 @@ import {
   observeDialogContentHeight,
   openDialog
 } from "@/app/dialog-shell";
+import { PartStockDialog } from "@/app/part-stock-dialog";
 import { useDebouncedValue } from "@/app/use-debounced-value";
 
 type Copy = {
@@ -124,6 +125,7 @@ type Copy = {
   resetListConfiguration: string;
   filteredPartsSummary: string;
   actions: string;
+  stock: string;
   newPartTitle: string;
   newPartBody: string;
   editPartTitle: string;
@@ -141,6 +143,22 @@ type Copy = {
   deletePart: string;
   saveChanges: string;
   close: string;
+  quantity: string;
+  location: string;
+  fromLocation: string;
+  toLocation: string;
+  note: string;
+  addMovement: string;
+  stockEntryType: string;
+  receipt: string;
+  issue: string;
+  transfer: string;
+  adjustment: string;
+  noLocations: string;
+  noBalances: string;
+  currentStock: string;
+  stockSaved: string;
+  stockActionInvalid: string;
   cancelDelete: string;
   confirmDelete: string;
   deleteConfirmationBody: string;
@@ -212,6 +230,8 @@ type PartsListClientProps = {
   initialPage: ListPage<PartsListItem>;
   workspaceSlug: string;
   activeSupplierProvider: SupplierProviderKey | null;
+  canReadInventory: boolean;
+  canWriteInventory: boolean;
 };
 
 export function PartsListClient({
@@ -227,7 +247,9 @@ export function PartsListClient({
   globalWorkspaceAttributesForMatching,
   initialPage,
   workspaceSlug,
-  activeSupplierProvider
+  activeSupplierProvider,
+  canReadInventory,
+  canWriteInventory
 }: PartsListClientProps) {
   const queryClient = useQueryClient();
   const createDialogRef = useRef<HTMLDialogElement>(null);
@@ -289,6 +311,9 @@ export function PartsListClient({
   const [editingPart, setEditingPart] = useState<PartsListItem | null>(null);
   const [partPendingDelete, setPartPendingDelete] =
     useState<PartsListItem | null>(null);
+  const [partForStockDialog, setPartForStockDialog] = useState<PartsListItem | null>(
+    null
+  );
   const [isColumnsMenuOpen, setIsColumnsMenuOpen] = useState(false);
   const [draggedColumnId, setDraggedColumnId] = useState<string | null>(null);
   const [isResizingColumn, setIsResizingColumn] = useState(false);
@@ -688,10 +713,18 @@ export function PartsListClient({
       columnHelper.display({
         id: "actions",
         header: copy.actions,
-        size: 112,
-        minSize: 112,
+        size: 196,
+        minSize: 196,
         cell: ({ row }) => (
-          <div className="text-right">
+          <div className="flex justify-end gap-2">
+            <button
+              className="min-h-8 rounded-md border border-slate-300 bg-white px-2.5 py-1 text-sm font-medium text-slate-700 transition hover:border-slate-400 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400"
+              disabled={!isDatabaseAvailable || !canReadInventory}
+              type="button"
+              onClick={() => setPartForStockDialog(row.original)}
+            >
+              {copy.stock}
+            </button>
             <button
               className="min-h-8 rounded-md border border-slate-300 bg-white px-2.5 py-1 text-sm font-medium text-slate-700 transition hover:border-slate-400 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400"
               disabled={!isDatabaseAvailable}
@@ -705,7 +738,7 @@ export function PartsListClient({
       }),
       ...attributeColumns
     ];
-  }, [copy, isDatabaseAvailable, workspaceAttributes]);
+  }, [canReadInventory, copy, isDatabaseAvailable, workspaceAttributes]);
   const tableColumnOrder = useMemo(
     () => persistedColumnOrder,
     [persistedColumnOrder]
@@ -2173,6 +2206,16 @@ export function PartsListClient({
         open={Boolean(partPendingDelete)}
         onCancel={() => setPartPendingDelete(null)}
         onConfirm={confirmDeletePart}
+      />
+
+      <PartStockDialog
+        canReadInventory={canReadInventory}
+        canWriteInventory={canWriteInventory}
+        copy={copy}
+        open={Boolean(partForStockDialog)}
+        part={partForStockDialog}
+        workspaceSlug={workspaceSlug}
+        onClose={() => setPartForStockDialog(null)}
       />
       <DeleteConfirmationDialog
         body={`${copy.confirmSkipMatchingBody} ${copy.noLearningSaved}`}
