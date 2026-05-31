@@ -154,6 +154,9 @@ const copy = {
   noMatchingPartsBody: "Adjust the search or filters to show more parts.",
   loadingParts: "Loading parts...",
   loadingMoreParts: "Loading more parts...",
+  partDetailsTitle: "Part details",
+  locationsAndStock: "Locations and stock",
+  noAttributes: "No attributes for this part.",
   databaseUnavailable:
     "Database is not available, so the list is shown empty for now."
 };
@@ -165,6 +168,7 @@ type PartsPageProps = {
   searchParams?: Promise<{
     partDialog?: string;
     partEditDialog?: string;
+    selectedPartId?: string;
   }>;
 };
 
@@ -236,6 +240,7 @@ export default async function PartsPage({
   const resolvedSearchParams = await searchParams;
   const partDialogOpen = resolvedSearchParams?.partDialog === "open";
   const partEditDialog = resolvedSearchParams?.partEditDialog;
+  const initialSelectedPartId = resolvedSearchParams?.selectedPartId;
   const activeSupplierProvider = isDatabaseAvailable
     ? await getWorkspaceActiveSupplierProvider(context.workspace.id).catch(() => null)
     : null;
@@ -285,6 +290,7 @@ export default async function PartsPage({
         activeSupplierProvider={activeSupplierProvider}
         canReadInventory={canReadInventory}
         canWriteInventory={canWriteInventory}
+        initialSelectedPartId={initialSelectedPartId}
       />
     </WorkspaceShell>
   );

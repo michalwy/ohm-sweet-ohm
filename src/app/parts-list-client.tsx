@@ -10,6 +10,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import {
   useInfiniteQuery,
   useMutation,
+  useQuery,
   useQueryClient
 } from "@tanstack/react-query";
 import {
@@ -58,6 +59,8 @@ import {
 } from "@/app/dialog-shell";
 import { PartStockDialog } from "@/app/part-stock-dialog";
 import { useDebouncedValue } from "@/app/use-debounced-value";
+import { getPartBalancesForWorkspace } from "@/server/inventory/entryActions";
+import { getLocationsForWorkspace } from "@/server/inventory/locationActions";
 
 type Copy = {
   title: string;
@@ -182,6 +185,9 @@ type Copy = {
   loadingParts: string;
   loadingMoreParts: string;
   databaseUnavailable: string;
+  partDetailsTitle: string;
+  locationsAndStock: string;
+  noAttributes: string;
 };
 
 type ListPage<TItem> = {
@@ -232,6 +238,7 @@ type PartsListClientProps = {
   activeSupplierProvider: SupplierProviderKey | null;
   canReadInventory: boolean;
   canWriteInventory: boolean;
+  initialSelectedPartId?: string;
 };
 
 export function PartsListClient({
@@ -249,7 +256,8 @@ export function PartsListClient({
   workspaceSlug,
   activeSupplierProvider,
   canReadInventory,
-  canWriteInventory
+  canWriteInventory,
+  initialSelectedPartId
 }: PartsListClientProps) {
   const queryClient = useQueryClient();
   const createDialogRef = useRef<HTMLDialogElement>(null);
@@ -314,6 +322,14 @@ export function PartsListClient({
   const [partForStockDialog, setPartForStockDialog] = useState<PartsListItem | null>(
     null
   );
+  const [selectedPartId, setSelectedPartId] = useState<string | null>(
+    initialSelectedPartId ?? null
+  );
+  const detailsPanelWidthStorageKey = `oso:parts-details-panel-width:${workspaceSlug}`;
+  const [detailsPanelWidth, setDetailsPanelWidth] = useState(384);
+  const [hasLoadedDetailsPanelWidth, setHasLoadedDetailsPanelWidth] =
+    useState(false);
+  const [isResizingDetailsPanel, setIsResizingDetailsPanel] = useState(false);
   const [isColumnsMenuOpen, setIsColumnsMenuOpen] = useState(false);
   const [draggedColumnId, setDraggedColumnId] = useState<string | null>(null);
   const [isResizingColumn, setIsResizingColumn] = useState(false);
@@ -466,6 +482,9 @@ export function PartsListClient({
     [currentParts]
   );
   const partsCounts = partsQuery.data?.pages[0] ?? initialPage;
+  const selectedPart = selectedPartId
+    ? currentPartsById.get(selectedPartId) ?? null
+    : null;
   const manufacturerFilterOptions = useMemo(
     () =>
       currentManufacturerSuggestions
@@ -721,7 +740,10 @@ export function PartsListClient({
               className="min-h-8 rounded-md border border-slate-300 bg-white px-2.5 py-1 text-sm font-medium text-slate-700 transition hover:border-slate-400 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400"
               disabled={!isDatabaseAvailable || !canReadInventory}
               type="button"
-              onClick={() => setPartForStockDialog(row.original)}
+              onClick={(event) => {
+                event.stopPropagation();
+                setPartForStockDialog(row.original);
+              }}
             >
               {copy.stock}
             </button>
@@ -729,7 +751,10 @@ export function PartsListClient({
               className="min-h-8 rounded-md border border-slate-300 bg-white px-2.5 py-1 text-sm font-medium text-slate-700 transition hover:border-slate-400 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400"
               disabled={!isDatabaseAvailable}
               type="button"
-              onClick={() => openEditDialog(row.original)}
+              onClick={(event) => {
+                event.stopPropagation();
+                openEditDialog(row.original);
+              }}
             >
               {copy.editPart}
             </button>
@@ -800,6 +825,15 @@ export function PartsListClient({
   }, [editActiveTab, editingPart]);
 
   useEffect(() => {
+    if (!selectedPartId || currentPartsById.has(selectedPartId)) {
+      return;
+    }
+
+    setSelectedPartId(null);
+    syncSelectedPartInUrl(null);
+  }, [currentPartsById, selectedPartId]);
+
+  useEffect(() => {
     if (partDialogOpen) {
       openDialog(createDialogRef.current);
     }
@@ -865,6 +899,76 @@ export function PartsListClient({
     setCreateFormResetKey((currentKey) => currentKey + 1);
     openDialog(createDialogRef.current);
   }
+
+  function syncSelectedPartInUrl(nextPartId: string | null) {
+    const url = new URL(window.location.href);
+    if (nextPartId) {
+      url.searchParams.set("selectedPartId", nextPartId);
+    } else {
+      url.searchParams.delete("selectedPartId");
+    }
+    window.history.replaceState(null, "", url.toString());
+  }
+
+  function openPartDetails(part: PartsListItem) {
+    setSelectedPartId(part.id);
+    syncSelectedPartInUrl(part.id);
+  }
+
+  function closePartDetails() {
+    setSelectedPartId(null);
+    syncSelectedPartInUrl(null);
+  }
+
+  const selectedPartBalancesQuery = useQuery({
+    queryKey: ["part-balances", workspaceSlug, selectedPartId, "details-panel"],
+    enabled: Boolean(selectedPartId) && canReadInventory,
+    queryFn: async () => {
+      const result = await getPartBalancesForWorkspace({
+        workspaceSlug,
+        partId: selectedPartId as string
+      });
+
+      if (!result.ok) {
+        throw new Error(result.error);
+      }
+
+      return result.data;
+    }
+  });
+
+  const detailsPanelLocationsQuery = useQuery({
+    queryKey: ["locations-all", workspaceSlug, "details-panel"],
+    enabled: Boolean(selectedPartId) && canReadInventory,
+    queryFn: async () => {
+      const result = await getLocationsForWorkspace({ workspaceSlug });
+
+      if (!result.ok) {
+        throw new Error(result.error);
+      }
+
+      return result.data;
+    }
+  });
+
+  const selectedPartLocationRows = useMemo(() => {
+    const locationNameById = new Map(
+      (detailsPanelLocationsQuery.data ?? []).map((location) => [
+        location.id,
+        location.name
+      ])
+    );
+
+    return (selectedPartBalancesQuery.data ?? [])
+      .map((row) => ({
+        locationId: row.locationId,
+        locationName: locationNameById.get(row.locationId) ?? row.locationId,
+        quantity: row.quantity
+      }))
+      .sort((left, right) =>
+        left.locationName.localeCompare(right.locationName, "en")
+      );
+  }, [detailsPanelLocationsQuery.data, selectedPartBalancesQuery.data]);
 
   async function openMatchingDialogFromSupplierResult(input: {
     provider: SupplierProviderKey;
@@ -1318,6 +1422,57 @@ export function PartsListClient({
       window.removeEventListener("touchend", handlePointerUp);
     };
   }, [isResizingColumn]);
+
+  useEffect(() => {
+    if (!isResizingDetailsPanel) {
+      return undefined;
+    }
+
+    function handlePointerMove(event: MouseEvent) {
+      const viewportWidth = window.innerWidth;
+      const nextWidth = Math.min(
+        720,
+        Math.max(320, viewportWidth - event.clientX - 24)
+      );
+      setDetailsPanelWidth(nextWidth);
+    }
+
+    function handlePointerUp() {
+      setIsResizingDetailsPanel(false);
+    }
+
+    window.addEventListener("mousemove", handlePointerMove);
+    window.addEventListener("mouseup", handlePointerUp);
+
+    return () => {
+      window.removeEventListener("mousemove", handlePointerMove);
+      window.removeEventListener("mouseup", handlePointerUp);
+    };
+  }, [isResizingDetailsPanel]);
+
+  useEffect(() => {
+    const storedValue = window.localStorage.getItem(detailsPanelWidthStorageKey);
+    const parsedValue = storedValue ? Number(storedValue) : NaN;
+
+    if (Number.isFinite(parsedValue)) {
+      setDetailsPanelWidth(Math.max(320, Math.min(720, parsedValue)));
+    } else {
+      setDetailsPanelWidth(384);
+    }
+
+    setHasLoadedDetailsPanelWidth(true);
+  }, [detailsPanelWidthStorageKey]);
+
+  useEffect(() => {
+    if (!hasLoadedDetailsPanelWidth) {
+      return;
+    }
+
+    window.localStorage.setItem(
+      detailsPanelWidthStorageKey,
+      String(detailsPanelWidth)
+    );
+  }, [detailsPanelWidth, detailsPanelWidthStorageKey, hasLoadedDetailsPanelWidth]);
   const baseConfigurableColumns = useMemo(
     () => configurableColumns.filter((column) => column.group !== "attribute"),
     [configurableColumns]
@@ -1329,10 +1484,11 @@ export function PartsListClient({
 
   return (
     <>
-      <section
-        aria-labelledby="parts-heading"
-        className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm"
-      >
+      <div className="flex min-h-0 flex-1 gap-4">
+        <section
+          aria-labelledby="parts-heading"
+          className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm"
+        >
         <h2 id="parts-heading" className="sr-only">
           {copy.title}
         </h2>
@@ -1630,7 +1786,18 @@ export function PartsListClient({
               {partsTable.getRowModel().rows.map((row) => (
                 <tr
                   key={row.id}
-                  className="border-b border-slate-100 transition hover:bg-slate-50"
+                  className={`border-b border-slate-100 transition hover:bg-slate-50 ${
+                    row.original.id === selectedPartId ? "bg-slate-100" : ""
+                  }`}
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => openPartDetails(row.original)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter" || event.key === " ") {
+                      event.preventDefault();
+                      openPartDetails(row.original);
+                    }
+                  }}
                 >
                   {row.getVisibleCells().map((cell) => (
                     <td
@@ -1658,7 +1825,143 @@ export function PartsListClient({
             </tbody>
           </table>
         </InfiniteListViewport>
-      </section>
+        </section>
+        {selectedPart && hasLoadedDetailsPanelWidth ? (
+          <aside
+            className="relative flex min-h-0 flex-col overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm"
+            style={{ width: detailsPanelWidth }}
+          >
+            <div
+              aria-label="Resize details panel"
+              className="absolute left-0 top-0 z-10 flex h-full w-3 -translate-x-1/2 cursor-col-resize items-center justify-center"
+              role="separator"
+              onMouseDown={(event) => {
+                event.preventDefault();
+                setIsResizingDetailsPanel(true);
+              }}
+            >
+              <div className="h-16 w-1 rounded-full bg-slate-300" />
+            </div>
+            <div className="flex items-start justify-between border-b border-slate-200 px-4 py-3">
+              <div className="min-w-0">
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  {copy.partDetailsTitle}
+                </p>
+                <p className="mt-1 text-sm font-semibold text-slate-950">
+                  {selectedPart.manufacturerName} {selectedPart.catalogNumber}
+                </p>
+                {selectedPart.description ? (
+                  <p className="mt-1 text-sm text-slate-600">
+                    {selectedPart.description}
+                  </p>
+                ) : null}
+              </div>
+              <button
+                aria-label={copy.close}
+                className="ml-3 min-h-8 rounded-md border border-slate-300 bg-white px-2.5 py-1 text-sm font-medium text-slate-700 transition hover:border-slate-400 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2"
+                type="button"
+                onClick={closePartDetails}
+              >
+                ×
+              </button>
+            </div>
+            <div className="grid min-h-0 gap-4 overflow-y-auto px-4 py-4">
+              <section className="grid gap-2">
+                <h3 className="text-sm font-semibold text-slate-900">
+                  {copy.attributes}
+                </h3>
+                {selectedPart.attributeValues.length === 0 ? (
+                  <p className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-600">
+                    {copy.noAttributes}
+                  </p>
+                ) : (
+                  <div className="overflow-hidden rounded-md border border-slate-200">
+                    <table className="w-full table-fixed text-left text-sm">
+                      <thead className="bg-slate-50 text-slate-600">
+                        <tr>
+                          <th className="px-3 py-2 font-semibold">Attribute</th>
+                          <th className="px-3 py-2 font-semibold">Value</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {selectedPart.attributeValues.map((attributeValue) => {
+                          const attributeName =
+                            workspaceAttributes.find(
+                              (attribute) =>
+                                attribute.id === attributeValue.attributeId
+                            )?.name ?? attributeValue.attributeId;
+
+                          return (
+                            <tr
+                              key={attributeValue.attributeId}
+                              className="border-t border-slate-100"
+                            >
+                              <td className="px-3 py-2 text-slate-700">
+                                {attributeName}
+                              </td>
+                              <td className="px-3 py-2 text-slate-900">
+                                {attributeValue.displayValue}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </section>
+              {canReadInventory ? (
+                <section className="grid gap-2">
+                  <h3 className="text-sm font-semibold text-slate-900">
+                    {copy.locationsAndStock}
+                  </h3>
+                  {selectedPartBalancesQuery.isLoading ||
+                  detailsPanelLocationsQuery.isLoading ? (
+                    <p className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-600">
+                      {copy.loadingParts}
+                    </p>
+                  ) : selectedPartBalancesQuery.isError ||
+                    detailsPanelLocationsQuery.isError ? (
+                    <p className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-600">
+                      {copy.databaseUnavailable}
+                    </p>
+                  ) : selectedPartLocationRows.length === 0 ? (
+                    <p className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-600">
+                      {copy.noLocations}
+                    </p>
+                  ) : (
+                    <div className="overflow-hidden rounded-md border border-slate-200">
+                      <table className="w-full table-fixed text-left text-sm">
+                        <thead className="bg-slate-50 text-slate-600">
+                          <tr>
+                            <th className="px-3 py-2 font-semibold">Location</th>
+                            <th className="px-3 py-2 font-semibold">Stock</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {selectedPartLocationRows.map((row) => (
+                            <tr
+                              key={row.locationId}
+                              className="border-t border-slate-100"
+                            >
+                              <td className="px-3 py-2 text-slate-700">
+                                {row.locationName}
+                              </td>
+                              <td className="px-3 py-2 font-semibold text-slate-950">
+                                {row.quantity}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </section>
+              ) : null}
+            </div>
+          </aside>
+        ) : null}
+      </div>
 
       <ToastNotice messages={toastMessages} onDismiss={dismissToastMessage} />
 
