@@ -8,6 +8,7 @@ import type {
 } from "react";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import {
+  keepPreviousData,
   useInfiniteQuery,
   useMutation,
   useQuery,
@@ -474,6 +475,7 @@ export function PartsListClient({
       return result.page;
     },
     getNextPageParam: (lastPage) => lastPage.nextCursor,
+    placeholderData: keepPreviousData,
     initialData:
       !debouncedSearchQuery &&
       !categoryFilterId &&
