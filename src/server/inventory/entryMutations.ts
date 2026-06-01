@@ -24,6 +24,11 @@ export async function createInventoryEntry(input: {
   validateEntryShape(input.entryType, nextEntryShape);
 
   return prisma.$transaction(async (tx) => {
+    await lockPartRow(tx, {
+      workspaceId: input.workspaceId,
+      partId: input.partId
+    });
+
     const part = await tx.part.findFirst({
       where: {
         id: input.partId,
@@ -390,4 +395,24 @@ function addBalance(
 function normalizeOptionalText(value: string | null) {
   const normalized = value?.trim();
   return normalized ? normalized : null;
+}
+
+async function lockPartRow(
+  db: Prisma.TransactionClient,
+  input: {
+    workspaceId: string;
+    partId: string;
+  }
+) {
+  const lockedParts = await db.$queryRaw<Array<{ id: string }>>`
+    SELECT id
+    FROM "Part"
+    WHERE id = ${input.partId}
+      AND "workspaceId" = ${input.workspaceId}
+    FOR UPDATE
+  `;
+
+  if (lockedParts.length === 0) {
+    throw new Error("part-not-found");
+  }
 }

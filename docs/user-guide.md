@@ -135,6 +135,7 @@ OSO currently supports four movement types:
 
 For each movement, you enter quantity and optional note, and select source/destination locations when relevant.  
 The system then updates current stock based on recorded movement history.
+When multiple stock updates for the same part happen at nearly the same time, OSO applies them in a transaction-safe order so stock cannot be driven below zero by race conditions.
 
 ## 8. Configure Supplier Integrations
 
