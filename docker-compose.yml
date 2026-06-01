@@ -3,14 +3,13 @@ services:
     build:
       context: .
       target: runner
-    command: sh -c "pnpm prisma:migrate:deploy && pnpm db:seed:dev && pnpm start"
+    command: sh -c "pnpm prisma:migrate:deploy && pnpm start"
     ports:
       - "3000:3000"
     environment:
-      DATABASE_URL: postgresql://oso:oso_dev_password@db:5432/ohm_sweet_ohm?schema=public
-      BETTER_AUTH_URL: http://localhost:3000
-      BETTER_AUTH_SECRET: ohm-sweet-ohm-local-development-auth-secret
-      OSO_DEV_USER_PASSWORD: ohm-sweet-ohm-owner
+      DATABASE_URL: postgresql://${POSTGRES_USER:-oso}:${POSTGRES_PASSWORD:-oso_dev_password}@db:5432/${POSTGRES_DB:-ohm_sweet_ohm}?schema=public
+      BETTER_AUTH_URL: ${BETTER_AUTH_URL:-http://localhost:3000}
+      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:-ohm-sweet-ohm-local-development-auth-secret}
       NEXT_TELEMETRY_DISABLED: "1"
     depends_on:
       db:
@@ -21,9 +20,9 @@ services:
     ports:
       - "5432:5432"
     environment:
-      POSTGRES_DB: ohm_sweet_ohm
-      POSTGRES_USER: oso
-      POSTGRES_PASSWORD: oso_dev_password
+      POSTGRES_DB: ${POSTGRES_DB:-ohm_sweet_ohm}
+      POSTGRES_USER: ${POSTGRES_USER:-oso}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-oso_dev_password}
     volumes:
       - postgres-data:/var/lib/postgresql/data
     healthcheck:

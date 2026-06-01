@@ -20,6 +20,9 @@ Copy the example environment file:
 cp .env.example .env
 ```
 
+For `docker compose up`, `.env` is optional when you are fine with default local credentials.  
+Use `.env` when you want to override database credentials or auth settings.
+
 ## Local-use Docker Compose
 
 Start the local-use app and database:
@@ -28,10 +31,11 @@ Start the local-use app and database:
 docker compose up
 ```
 
-The app container uses the `runner` Docker image target, applies committed database migrations, seeds the local owner account, and starts the built Next.js app with `next start`.
+The app container uses the `runner` Docker image target, applies committed database migrations, and starts the built Next.js app with `next start`.
+Database credentials come from `.env` if provided, otherwise compose defaults are used.
 
 The app should be available at `http://localhost:3000`.
-The development seed creates an owner account. Sign in with `owner@ohmsweetohm.local` and the password from `OSO_DEV_USER_PASSWORD`; the example value is `ohm-sweet-ohm-owner`.
+Create your own account on the sign-up screen, then sign in.
 
 ## Docker Compose Development
 

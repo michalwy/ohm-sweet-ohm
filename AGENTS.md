@@ -83,7 +83,7 @@ Do not use multiple roles to invent product behavior. Product decisions still re
 - Prefer explicit module boundaries under `src/`.
 - Treat database schema changes as product decisions, not incidental implementation details.
 - Keep Docker Compose suitable for local use and development, not as the only deployment path.
-- Treat `docker compose up` as the user's normal local-use stack: it should run the built app with `next start` against the persistent development database.
+- Treat `docker compose up` as the user's normal local-use stack: it should run the built app with `next start` against the persistent development database, without creating a seeded development user.
 - Use `docker compose -f docker-compose.yml -f docker-compose.dev.yml up` for containerized development with hot reload.
 - Keep dependencies reasonably current; avoid leaving generated scaffolds pinned to old major versions without a documented compatibility reason.
 - DigiKey search payload reference:

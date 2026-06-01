@@ -44,7 +44,10 @@ Start the local-use application and database:
 docker compose up
 ```
 
-This runs the built Next.js app with `next start`, applies committed migrations, and seeds the local owner account.
+This runs the built Next.js app with `next start` and applies committed migrations.
+Database credentials are read from `.env` when provided, with safe local defaults when not provided.
+
+Then open `http://localhost:3000`, create your own account on sign-up, and sign in.
 
 Start the development app with hot reload:
 

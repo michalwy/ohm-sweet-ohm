@@ -17,6 +17,7 @@ If you want to run OSO for your own use, the simplest path is Docker Compose.
 
 - Docker Desktop (or Docker Engine + Docker Compose)
 - Internet connection for the first image/build pull
+- Optional: `.env` file only if you want to override default local credentials/settings
 
 ### Steps
 
@@ -29,9 +30,8 @@ docker compose up
 
 3. Wait until startup finishes.
 4. Open `http://localhost:3000` in your browser.
-5. Sign in with the seeded owner account:
-   - email: `owner@ohmsweetohm.local`
-   - password: value of `OSO_DEV_USER_PASSWORD` (example value from `.env.example`: `ohm-sweet-ohm-owner`)
+5. Create your own account on the sign-up screen.
+6. Sign in with the account you created.
 
 To stop the app, press `Ctrl+C` in the terminal where it is running.
 
