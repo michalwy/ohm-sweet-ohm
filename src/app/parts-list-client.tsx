@@ -387,9 +387,21 @@ export function PartsListClient({
         minWidth: 64,
         sortable: true
       },
+      ...(canReadInventory
+        ? [
+            {
+              id: "currentStock",
+              label: copy.stock,
+              group: "base" as const,
+              defaultWidth: 120,
+              minWidth: 72,
+              sortable: true
+            }
+          ]
+        : []),
       ...attributeColumnDefinitions
     ],
-    [attributeColumnDefinitions, copy]
+    [attributeColumnDefinitions, canReadInventory, copy]
   );
   const fixedListColumnIds = useMemo(() => ["actions"], []);
   const {
@@ -729,6 +741,31 @@ export function PartsListClient({
           );
         }
       }),
+      ...(canReadInventory
+        ? [
+            columnHelper.accessor("currentStock", {
+              header: () => (
+                <span className="block w-full text-right">{copy.stock}</span>
+              ),
+              size: 120,
+              minSize: 72,
+              sortingFn: (rowA, rowB) =>
+                compareNumericDisplayValues(
+                  rowA.original.currentStock ?? "",
+                  rowB.original.currentStock ?? ""
+                ),
+              cell: ({ getValue }) => {
+                const value = getValue();
+
+                return value ? (
+                  <span className="block text-right text-slate-950">{value}</span>
+                ) : (
+                  <span className="block text-right text-slate-400">-</span>
+                );
+              }
+            })
+          ]
+        : []),
       columnHelper.display({
         id: "actions",
         header: "",
@@ -1718,6 +1755,8 @@ export function PartsListClient({
                       className={`relative border-b border-slate-200 px-2 py-2 font-semibold text-slate-600 ${
                         header.column.id === "actions"
                           ? "sticky right-0 z-20 w-28 bg-slate-50 text-right"
+                          : header.column.id === "currentStock"
+                            ? "text-right"
                           : header.column.id.startsWith("attribute:") ||
                               header.column.id === "valueDisplayValue"
                             ? "text-center"
@@ -1750,6 +1789,10 @@ export function PartsListClient({
                       {header.isPlaceholder ? null : (
                         <div
                           className={`flex items-center gap-2 ${
+                            header.column.id === "currentStock"
+                              ? "justify-end"
+                              : ""
+                          } ${
                             header.column.id.startsWith("attribute:") ||
                             header.column.id === "valueDisplayValue"
                               ? "justify-center"
@@ -1761,6 +1804,10 @@ export function PartsListClient({
                               header.column.getCanSort()
                                 ? "cursor-pointer hover:text-slate-900"
                                 : "cursor-default"
+                            } ${
+                              header.column.id === "currentStock"
+                                ? "w-full justify-end text-right"
+                                : ""
                             } ${
                               header.column.id.startsWith("attribute:") ||
                               header.column.id === "valueDisplayValue"

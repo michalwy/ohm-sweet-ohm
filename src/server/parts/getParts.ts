@@ -1,7 +1,10 @@
 import "server-only";
 
 import { Prisma } from "@/generated/prisma/client";
-import { authorizeWorkspacePermission } from "@/server/access-control/authorize";
+import {
+  authorizeWorkspacePermission,
+  hasWorkspacePermission
+} from "@/server/access-control/authorize";
 import { prisma } from "@/server/db/prisma";
 import { getPartCategories } from "@/server/parts/categories";
 import { getEffectivePartCategoryAttributes } from "@/server/parts/attributes";
@@ -23,6 +26,7 @@ export type PartsListItem = {
   primaryCategoryPath: string | null;
   secondaryCategoryId: string | null;
   secondaryCategoryPath: string | null;
+  currentStock: string | null;
   attributeValues: PartAttributeValueListItem[];
 };
 
@@ -87,6 +91,11 @@ type PartListCursor = {
   id: string;
 };
 
+type CurrentStockCursor = {
+  currentStock: string;
+  id: string;
+};
+
 type SortedPartsCursor = {
   offset: number;
 };
@@ -102,6 +111,11 @@ export async function getPartsListPage(
   });
 
   const pageSize = getListPageSize(input.pageSize);
+  const canReadInventory = await hasWorkspacePermission({
+    userId: context.user.id,
+    workspaceId: context.workspace.id,
+    permission: "inventory:read"
+  });
   const [categories, totalCount] = await Promise.all([
     getPartCategories(context.workspace.id),
     prisma.part.count({
@@ -127,9 +141,26 @@ export async function getPartsListPage(
     filterCategoryIds,
     searchCategoryIds
   });
-  const activeSortBy = input.sortBy?.trim() ?? "";
+  const requestedSortBy = input.sortBy?.trim() ?? "";
+  const activeSortBy =
+    requestedSortBy === "currentStock" && !canReadInventory
+      ? ""
+      : requestedSortBy;
   const activeSortDirection: PartsListSortDirection =
     input.sortDirection === "desc" ? "desc" : "asc";
+
+  if (activeSortBy === "currentStock" && canReadInventory) {
+    return getCurrentStockSortedPartsListPage({
+      baseWhere,
+      categoryPathsById,
+      cursor: input.cursor,
+      pageSize,
+      sortDirection: activeSortDirection,
+      totalCount,
+      workspaceId: context.workspace.id,
+      canReadInventory
+    });
+  }
 
   if (activeSortBy) {
     return getSortedPartsListPage({
@@ -140,7 +171,8 @@ export async function getPartsListPage(
       sortDirection: activeSortDirection,
       totalCount,
       workspaceId: context.workspace.id,
-      cursor: input.cursor
+      cursor: input.cursor,
+      canReadInventory
     });
   }
 
@@ -179,7 +211,8 @@ export async function getPartsListPage(
       mapPartListItem({
         part,
         categoryPathsById,
-        valueAttributeIdsByCategoryId
+        valueAttributeIdsByCategoryId,
+        canReadInventory
       })
     ),
     nextCursor:
@@ -200,6 +233,7 @@ const partListSelect = {
   unitId: true,
   catalogNumber: true,
   description: true,
+  currentStock: true,
   manufacturer: {
     select: {
       name: true
@@ -228,6 +262,72 @@ type SortablePartRecord = {
   valueAttributeId: string | null;
 };
 
+async function getCurrentStockSortedPartsListPage({
+  baseWhere,
+  categoryPathsById,
+  cursor,
+  pageSize,
+  sortDirection,
+  totalCount,
+  workspaceId,
+  canReadInventory
+}: {
+  baseWhere: Prisma.PartWhereInput;
+  categoryPathsById: Map<string, string>;
+  cursor?: string | null;
+  pageSize: number;
+  sortDirection: PartsListSortDirection;
+  totalCount: number;
+  workspaceId: string;
+  canReadInventory: boolean;
+}): Promise<ListPage<PartsListItem>> {
+  const decodedCursor = decodeListCursor<CurrentStockCursor>(cursor);
+  const cursorWhere = decodedCursor
+    ? getCurrentStockCursorWhere({
+        cursor: decodedCursor,
+        sortDirection
+      })
+    : null;
+  const where = cursorWhere ? { AND: [baseWhere, cursorWhere] } : baseWhere;
+  const [parts, filteredCount] = await Promise.all([
+    prisma.part.findMany({
+      where,
+      orderBy: [{ currentStock: sortDirection }, { id: "asc" }],
+      take: pageSize + 1,
+      select: partListSelect
+    }),
+    prisma.part.count({ where: baseWhere })
+  ]);
+  const pageParts = parts.slice(0, pageSize);
+  const valueAttributeIdsByCategoryId = await getValueAttributeIdsByCategoryId({
+    workspaceId,
+    categoryIds: pageParts
+      .map((part) => part.primaryCategoryId)
+      .filter((categoryId): categoryId is string => Boolean(categoryId))
+  });
+  const lastPart = pageParts.at(-1);
+
+  return {
+    items: pageParts.map((part) =>
+      mapPartListItem({
+        part,
+        categoryPathsById,
+        valueAttributeIdsByCategoryId,
+        canReadInventory
+      })
+    ),
+    nextCursor:
+      parts.length > pageSize && lastPart
+        ? encodeListCursor<CurrentStockCursor>({
+            currentStock: lastPart.currentStock.toString(),
+            id: lastPart.id
+          })
+        : null,
+    totalCount,
+    filteredCount
+  };
+}
+
 async function getSortedPartsListPage({
   baseWhere,
   categoryPathsById,
@@ -236,7 +336,8 @@ async function getSortedPartsListPage({
   sortBy,
   sortDirection,
   totalCount,
-  workspaceId
+  workspaceId,
+  canReadInventory
 }: {
   baseWhere: Prisma.PartWhereInput;
   categoryPathsById: Map<string, string>;
@@ -246,6 +347,7 @@ async function getSortedPartsListPage({
   sortDirection: PartsListSortDirection;
   totalCount: number;
   workspaceId: string;
+  canReadInventory: boolean;
 }): Promise<ListPage<PartsListItem>> {
   const [filteredParts, filteredCount] = await Promise.all([
     prisma.part.findMany({
@@ -265,7 +367,8 @@ async function getSortedPartsListPage({
     const item = mapPartListItem({
       part,
       categoryPathsById,
-      valueAttributeIdsByCategoryId
+      valueAttributeIdsByCategoryId,
+      canReadInventory
     });
     const valueAttributeId = part.primaryCategoryId
       ? valueAttributeIdsByCategoryId.get(part.primaryCategoryId) ?? null
@@ -341,6 +444,12 @@ function comparePartsBySort({
     const rightValue = getSortableValueForAttribute(right.part, right.valueAttributeId);
 
     return compareSortableValues(leftValue, rightValue);
+  }
+
+  if (sortBy === "currentStock") {
+    const leftValue = Number(left.part.currentStock);
+    const rightValue = Number(right.part.currentStock);
+    return leftValue === rightValue ? 0 : leftValue < rightValue ? -1 : 1;
   }
 
   if (sortBy.startsWith("attribute:")) {
@@ -436,11 +545,13 @@ function compareText(left: string, right: string) {
 function mapPartListItem({
   part,
   categoryPathsById,
-  valueAttributeIdsByCategoryId
+  valueAttributeIdsByCategoryId,
+  canReadInventory
 }: {
   part: SelectedPartListItem;
   categoryPathsById: Map<string, string>;
   valueAttributeIdsByCategoryId: Map<string, string | null>;
+  canReadInventory: boolean;
 }): PartsListItem {
   const attributeValues = part.attributeValues
     .filter((attributeValue) => attributeValue.displayValue !== null)
@@ -471,6 +582,7 @@ function mapPartListItem({
     secondaryCategoryPath: part.secondaryCategoryId
       ? categoryPathsById.get(part.secondaryCategoryId) ?? null
       : null,
+    currentStock: canReadInventory ? part.currentStock.toString() : null,
     attributeValues
   };
 }
@@ -585,6 +697,50 @@ function getPartsCursorWhere(cursor: PartListCursor): Prisma.PartWhereInput {
           name: cursor.manufacturerName
         },
         catalogNumber: cursor.catalogNumber,
+        id: {
+          gt: cursor.id
+        }
+      }
+    ]
+  };
+}
+
+function getCurrentStockCursorWhere({
+  cursor,
+  sortDirection
+}: {
+  cursor: CurrentStockCursor;
+  sortDirection: PartsListSortDirection;
+}): Prisma.PartWhereInput {
+  const stockValue = new Prisma.Decimal(cursor.currentStock);
+
+  if (sortDirection === "desc") {
+    return {
+      OR: [
+        {
+          currentStock: {
+            lt: stockValue
+          }
+        },
+        {
+          currentStock: stockValue,
+          id: {
+            gt: cursor.id
+          }
+        }
+      ]
+    };
+  }
+
+  return {
+    OR: [
+      {
+        currentStock: {
+          gt: stockValue
+        }
+      },
+      {
+        currentStock: stockValue,
         id: {
           gt: cursor.id
         }

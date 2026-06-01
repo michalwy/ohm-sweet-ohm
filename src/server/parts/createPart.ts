@@ -760,6 +760,7 @@ async function getPartListItem({
       select: {
         id: true,
         unitId: true,
+        currentStock: true,
         catalogNumber: true,
         description: true,
         manufacturer: {
@@ -823,6 +824,7 @@ async function getPartListItem({
     secondaryCategoryPath: part.secondaryCategoryId
       ? categoryPathsById.get(part.secondaryCategoryId) ?? null
       : null,
+    currentStock: part.currentStock.toString(),
     attributeValues
   };
 }

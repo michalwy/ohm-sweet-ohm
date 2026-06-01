@@ -15,62 +15,81 @@ export async function createInventoryEntry(input: {
   note?: string | null;
   createdByMemberId?: string | null;
 }) {
-  const part = await prisma.part.findFirst({
-    where: {
-      id: input.partId,
-      workspaceId: input.workspaceId
-    },
-    select: {
-      id: true,
-      unit: {
-        select: {
-          allowsFraction: true
+  const quantity = parseQuantity(input.quantity);
+  const nextEntryShape = {
+    fromLocationId: input.fromLocationId ?? null,
+    toLocationId: input.toLocationId ?? null
+  };
+
+  validateEntryShape(input.entryType, nextEntryShape);
+
+  return prisma.$transaction(async (tx) => {
+    const part = await tx.part.findFirst({
+      where: {
+        id: input.partId,
+        workspaceId: input.workspaceId
+      },
+      select: {
+        id: true,
+        unit: {
+          select: {
+            allowsFraction: true
+          }
         }
       }
+    });
+
+    if (!part) {
+      throw new Error("part-not-found");
     }
-  });
 
-  if (!part) {
-    throw new Error("part-not-found");
-  }
+    if (!part.unit.allowsFraction && !quantity.isInteger()) {
+      throw new Error("fractional-quantity-not-allowed");
+    }
 
-  const quantity = parseQuantity(input.quantity);
+    const locations = await getValidatedLocations(tx, {
+      workspaceId: input.workspaceId,
+      fromLocationId: nextEntryShape.fromLocationId,
+      toLocationId: nextEntryShape.toLocationId
+    });
 
-  if (!part.unit.allowsFraction && !quantity.isInteger()) {
-    throw new Error("fractional-quantity-not-allowed");
-  }
-
-  validateEntryShape(input.entryType, {
-    fromLocationId: input.fromLocationId ?? null,
-    toLocationId: input.toLocationId ?? null
-  });
-
-  const locations = await getValidatedLocations({
-    workspaceId: input.workspaceId,
-    fromLocationId: input.fromLocationId ?? null,
-    toLocationId: input.toLocationId ?? null
-  });
-
-  await assertLocationBalanceRules({
-    workspaceId: input.workspaceId,
-    partId: input.partId,
-    entryType: input.entryType,
-    quantity,
-    fromLocationId: locations.fromLocationId,
-    toLocationId: locations.toLocationId
-  });
-
-  return prisma.inventoryEntry.create({
-    data: {
+    await assertLocationBalanceRules(tx, {
       workspaceId: input.workspaceId,
       partId: input.partId,
       entryType: input.entryType,
       quantity,
       fromLocationId: locations.fromLocationId,
-      toLocationId: locations.toLocationId,
-      note: normalizeOptionalText(input.note ?? null),
-      createdByMemberId: input.createdByMemberId ?? null
-    }
+      toLocationId: locations.toLocationId
+    });
+
+    const entry = await tx.inventoryEntry.create({
+      data: {
+        workspaceId: input.workspaceId,
+        partId: input.partId,
+        entryType: input.entryType,
+        quantity,
+        fromLocationId: locations.fromLocationId,
+        toLocationId: locations.toLocationId,
+        note: normalizeOptionalText(input.note ?? null),
+        createdByMemberId: input.createdByMemberId ?? null
+      }
+    });
+
+    await tx.part.update({
+      where: {
+        id: input.partId
+      },
+      data: {
+        currentStock: {
+          increment: getPartStockDelta({
+            entryType: input.entryType,
+            quantity
+          })
+        }
+      }
+    });
+
+    return entry;
   });
 }
 
@@ -176,11 +195,14 @@ function validateEntryShape(
   }
 }
 
-async function getValidatedLocations(input: {
+async function getValidatedLocations(
+  db: Prisma.TransactionClient,
+  input: {
   workspaceId: string;
   fromLocationId: string | null;
   toLocationId: string | null;
-}) {
+}
+) {
   const ids = [input.fromLocationId, input.toLocationId].filter(
     (id): id is string => Boolean(id)
   );
@@ -192,7 +214,7 @@ async function getValidatedLocations(input: {
     };
   }
 
-  const locations = await prisma.storageLocation.findMany({
+  const locations = await db.storageLocation.findMany({
     where: {
       workspaceId: input.workspaceId,
       id: { in: ids }
@@ -222,16 +244,19 @@ async function getValidatedLocations(input: {
   };
 }
 
-async function assertLocationBalanceRules(input: {
+async function assertLocationBalanceRules(
+  db: Prisma.TransactionClient,
+  input: {
   workspaceId: string;
   partId: string;
   entryType: InventoryEntryType;
   quantity: Prisma.Decimal;
   fromLocationId: string | null;
   toLocationId: string | null;
-}) {
+}
+) {
   if (input.entryType === "ISSUE" && input.fromLocationId) {
-    await assertNonNegativeAfterDelta({
+    await assertNonNegativeAfterDelta(db, {
       workspaceId: input.workspaceId,
       partId: input.partId,
       locationId: input.fromLocationId,
@@ -241,7 +266,7 @@ async function assertLocationBalanceRules(input: {
   }
 
   if (input.entryType === "TRANSFER" && input.fromLocationId) {
-    await assertNonNegativeAfterDelta({
+    await assertNonNegativeAfterDelta(db, {
       workspaceId: input.workspaceId,
       partId: input.partId,
       locationId: input.fromLocationId,
@@ -255,7 +280,7 @@ async function assertLocationBalanceRules(input: {
     input.toLocationId &&
     input.quantity.lessThan(0)
   ) {
-    await assertNonNegativeAfterDelta({
+    await assertNonNegativeAfterDelta(db, {
       workspaceId: input.workspaceId,
       partId: input.partId,
       locationId: input.toLocationId,
@@ -264,13 +289,16 @@ async function assertLocationBalanceRules(input: {
   }
 }
 
-async function assertNonNegativeAfterDelta(input: {
+async function assertNonNegativeAfterDelta(
+  db: Prisma.TransactionClient,
+  input: {
   workspaceId: string;
   partId: string;
   locationId: string;
   delta: Prisma.Decimal;
-}) {
-  const balances = await getPartLocationBalances({
+}
+) {
+  const balances = await getPartLocationBalancesWithDb(db, {
     workspaceId: input.workspaceId,
     partId: input.partId
   });
@@ -280,6 +308,74 @@ async function assertNonNegativeAfterDelta(input: {
   if (next.lessThan(0)) {
     throw new Error("insufficient-stock");
   }
+}
+
+function getPartStockDelta(input: {
+  entryType: InventoryEntryType;
+  quantity: Prisma.Decimal;
+}) {
+  if (input.entryType === "RECEIPT") {
+    return input.quantity;
+  }
+
+  if (input.entryType === "ISSUE") {
+    return input.quantity.negated();
+  }
+
+  if (input.entryType === "TRANSFER") {
+    return new Prisma.Decimal(0);
+  }
+
+  return input.quantity;
+}
+
+async function getPartLocationBalancesWithDb(
+  db: Prisma.TransactionClient | typeof prisma,
+  input: {
+    workspaceId: string;
+    partId: string;
+  }
+) {
+  const entries = await db.inventoryEntry.findMany({
+    where: {
+      workspaceId: input.workspaceId,
+      partId: input.partId
+    },
+    select: {
+      entryType: true,
+      quantity: true,
+      fromLocationId: true,
+      toLocationId: true
+    }
+  });
+
+  const balances = new Map<string, Prisma.Decimal>();
+
+  for (const entry of entries) {
+    const quantity = new Prisma.Decimal(entry.quantity);
+
+    if (entry.entryType === "RECEIPT" && entry.toLocationId) {
+      addBalance(balances, entry.toLocationId, quantity);
+      continue;
+    }
+
+    if (entry.entryType === "ISSUE" && entry.fromLocationId) {
+      addBalance(balances, entry.fromLocationId, quantity.negated());
+      continue;
+    }
+
+    if (entry.entryType === "TRANSFER" && entry.fromLocationId && entry.toLocationId) {
+      addBalance(balances, entry.fromLocationId, quantity.negated());
+      addBalance(balances, entry.toLocationId, quantity);
+      continue;
+    }
+
+    if (entry.entryType === "ADJUSTMENT" && entry.toLocationId) {
+      addBalance(balances, entry.toLocationId, quantity);
+    }
+  }
+
+  return balances;
 }
 
 function addBalance(

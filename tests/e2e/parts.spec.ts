@@ -64,6 +64,9 @@ test.describe("parts list", () => {
     await expect(
       page.getByRole("heading", { level: 1, name: "Parts" })
     ).toBeVisible();
+    await expect(
+      page.getByRole("columnheader", { name: "Stock" })
+    ).toBeVisible();
     await expect(page).toHaveURL(/\/w\/default\/parts$/);
     const seededPartRow = page.getByRole("row", {
       name: /Texas Instruments.*NE555P/

@@ -12,6 +12,7 @@ model Part {
   workspaceId         String
   unitId              String
   defaultLocationId   String?
+  currentStock        Decimal  @default(0)
   catalogNumber       String
   description         String?
   manufacturerId      String
@@ -33,6 +34,7 @@ model Part {
   @@index([workspaceId, catalogNumber])
   @@index([workspaceId, unitId])
   @@index([workspaceId, defaultLocationId])
+  @@index([workspaceId, currentStock, id])
   @@index([workspaceId, manufacturerId])
   @@index([workspaceId, primaryCategoryId])
   @@index([workspaceId, secondaryCategoryId])
