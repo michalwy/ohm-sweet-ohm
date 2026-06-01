@@ -1,109 +1,143 @@
 # OSO User Guide
 
-This guide describes the current user-facing functionality in OhmSweetOhm (OSO).
+Welcome to OhmSweetOhm (OSO).
 
-## Scope And Platform
+This guide explains how to use the current version of the app in everyday work. It focuses on what you can do today, in plain language, without describing internal implementation details.
 
-- OSO is currently designed for desktop browsers.
-- The application UI is currently in English.
-- All data is workspace-scoped.
+## Before You Start
 
-## Sign In And Workspaces
+OSO is currently designed for desktop browsers and the UI is in English.  
+All data is workspace-scoped, so each workspace is its own isolated workshop context.
 
-1. Sign in or sign up to access OSO.
-2. After sign-in, open the **Workspaces** screen.
-3. Create a workspace by entering a workspace name.
-4. Open a workspace from the list to enter the workspace area.
-5. Sign out from the Workspaces screen header.
+## 1. Sign In And Enter A Workspace
 
-## Parts List
+When you open OSO, start by signing in (or signing up if this is your first time).
 
-The Parts screen is the main list of parts in a workspace.
+After sign-in, you land on **Workspaces**. This is your entry point to everything else:
 
-- Add a part in a modal dialog.
-- Edit or delete an existing part.
-- Track part identity by manufacturer and catalog number.
-- Enter part description.
-- Assign unit, primary category, and optional secondary category.
-- Fill attribute values based on effective category attributes.
-- Search and filter parts by text, category, and manufacturer.
-- Configure visible list columns and ordering.
-- Load large lists with endless scrolling.
+- create a new workspace by entering a name
+- open an existing workspace
+- sign out from the header
 
-## Part Categories
+Think of a workspace as one workshop environment with its own parts, categories, attributes, locations, and settings.
 
-Use **Part Categories** to manage the category tree and category-level attribute setup.
+## 2. Work With Parts
 
-- Create, edit, and delete categories.
-- Create category paths with quick path creation.
-- Choose category type: assignable or organizational.
-- Build parent-child category trees.
-- Configure category attributes:
-  - attach/detach attributes
-  - set sort order
-  - set default values
-  - mark primary attributes
-  - choose value attribute for the category
-- Configure global workspace-level attribute defaults used by categories.
+The **Parts** screen is the main operational view.
 
-## Attributes Dictionary
+Here you can create, update, and remove parts. Each part is identified by manufacturer and catalog number, and you can also maintain description, unit, and category assignment.
 
-Use **Attributes** to manage reusable workspace attributes.
+You can also:
 
-- Create, edit, and delete attributes.
-- Supported attribute types:
-  - text
-  - number
-  - quantity
-  - boolean
-  - choice
-- For quantity attributes, define a base unit symbol.
-- For choice attributes, manage options and option order.
+- search by text
+- filter by category
+- filter by manufacturer
+- configure visible columns in the list
+- scroll through large datasets with endless loading
 
-## Units
+### Adding A Part
 
-Use **Units** to manage units available for parts.
+1. Open the add-part dialog.
+2. Fill in manufacturer and catalog number.
+3. Select unit and primary category.
+4. Optionally select a secondary category and fill attribute values.
+5. Save.
 
-- Create, edit, and delete units.
-- Define unit name and symbol.
-- Set whether fractional values are allowed.
+### Editing Or Deleting A Part
 
-## Locations
+- Use row actions to open edit mode for a selected part.
+- Update fields and save, or remove the part if needed.
 
-Use **Locations** to manage storage location structure.
+## 3. Organize Your Category Structure
 
-- Create, edit, and delete locations.
-- Build parent-child location trees.
-- Mark locations as assignable or organizational.
-- Mark locations as archived (for existing locations).
+Use **Part Categories** to build and maintain your category tree.
 
-## Part Stock Movements
+You can create categories one by one or use quick path creation for faster setup. Categories support parent-child hierarchy and can be marked as assignable or organizational.
 
-From the Parts screen, open stock actions for a selected part.
+Inside category configuration, you can manage which attributes are active for that category, including defaults, order, and value-column behavior.
 
-- Add stock movements using:
-  - receipt
-  - issue
-  - transfer
-  - adjustment
-- Enter quantity and optional note.
-- Select source and/or destination location depending on movement type.
-- Current stock values are updated from movement history.
+## 4. Define Attributes Once, Reuse Everywhere
 
-## Supplier Integrations
+Use **Attributes** as your workspace dictionary of reusable part properties.
 
-Use **Settings > Integrations** to manage supplier provider settings per workspace.
+Supported attribute types are:
 
-- Configure DigiKey credentials:
-  - client ID
-  - client secret
-- Configure TME credentials:
-  - API token
-  - application secret
-- Set the active supplier provider (DigiKey or TME).
+- text
+- number
+- quantity
+- boolean
+- choice
 
-## Permissions Behavior
+For quantity attributes, you can define a base unit symbol.  
+For choice attributes, you can manage option lists and option order.
 
-- Features can be visible but non-editable if your workspace role does not include the required permission.
-- Some actions are disabled when access is read-only.
+After attributes exist, categories can attach and configure them for actual part entry workflows.
+
+## 5. Manage Units
+
+Use **Units** to define measurement or counting units used by parts.
+
+For each unit, you can set:
+
+- name
+- symbol
+- whether fractional values are allowed
+
+This helps keep part data consistent when recording quantities and stock operations.
+
+## 6. Build Storage Locations
+
+Use **Locations** to represent physical storage structure in your workshop.
+
+Locations can be hierarchical (for example, area > drawer > bin).  
+You can mark a location as:
+
+- assignable (can hold stock directly)
+- organizational (structural node)
+- archived (no longer active for regular use)
+
+## 7. Record Stock Movements
+
+From the **Parts** screen, open stock actions for a selected part.
+
+OSO currently supports four movement types:
+
+- receipt
+- issue
+- transfer
+- adjustment
+
+For each movement, you enter quantity and optional note, and select source/destination locations when relevant.  
+The system then updates current stock based on recorded movement history.
+
+## 8. Configure Supplier Integrations
+
+In **Settings > Integrations**, you can configure workspace-level supplier settings.
+
+Current providers:
+
+- DigiKey (client ID + client secret)
+- TME (API token + application secret)
+
+You can also choose which provider is active for the workspace.
+
+## 9. Permissions And Read-Only Behavior
+
+What you can edit depends on your workspace permissions.
+
+In some cases, a feature remains visible but actions are disabled.  
+This is expected behavior when your role has read-only access for that area.
+
+## Quick Start Checklist
+
+If you are setting up a new workspace, this sequence usually works best:
+
+1. Create or open workspace.
+2. Define units.
+3. Create attributes.
+4. Build part categories and attach attributes.
+5. Add locations.
+6. Add parts.
+7. Record stock movements.
+8. Configure integrations if needed.
 

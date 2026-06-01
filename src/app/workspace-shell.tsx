@@ -24,6 +24,7 @@ type WorkspaceShellProps = {
 const copy = {
   appShortName: "OSO",
   appName: "OhmSweetOhm",
+  userGuide: "User guide",
   switchWorkspace: "Switch workspace",
   signOut: "Sign out",
   parts: "Parts",
@@ -124,6 +125,22 @@ export function WorkspaceShell({
           </nav>
           <div className="border-t border-slate-200 p-3">
             <p className="mb-2 truncate text-xs leading-5 text-slate-500">{userEmail}</p>
+            <Link
+              className="mb-2 flex min-h-10 items-center gap-2 rounded-md border border-slate-300 bg-white px-3 text-sm font-medium text-slate-700 transition hover:border-slate-400 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2"
+              href="https://github.com/michalwy/ohm-sweet-ohm/blob/main/docs/user-guide.md"
+              target="_blank"
+              rel="noreferrer"
+            >
+              <svg
+                aria-hidden="true"
+                className="h-4 w-4 text-slate-500"
+                viewBox="0 0 20 20"
+                fill="currentColor"
+              >
+                <path d="M5 2.5A1.5 1.5 0 0 0 3.5 4v12A1.5 1.5 0 0 0 5 17.5h10A1.5 1.5 0 0 0 16.5 16V7.879a1.5 1.5 0 0 0-.44-1.06l-3.879-3.88A1.5 1.5 0 0 0 11.12 2.5H5Zm6 1.56c.067.02.13.057.182.11l3.648 3.648a.5.5 0 0 1 .11.182H11.5a.5.5 0 0 1-.5-.5V4.06ZM6.75 10a.75.75 0 0 1 .75-.75h5a.75.75 0 0 1 0 1.5h-5a.75.75 0 0 1-.75-.75Zm0 3a.75.75 0 0 1 .75-.75h5a.75.75 0 0 1 0 1.5h-5a.75.75 0 0 1-.75-.75Z" />
+              </svg>
+              {copy.userGuide}
+            </Link>
             <Link
               className="mb-2 flex min-h-10 items-center rounded-md border border-slate-300 bg-white px-3 text-sm font-medium text-slate-700 transition hover:border-slate-400 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2"
               href="/workspaces"
