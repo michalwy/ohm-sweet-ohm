@@ -57,6 +57,7 @@ http://localhost:3000
 ## Repository Guide
 
 - [AGENTS.md](AGENTS.md): instructions for future coding agents
+- [docs/user-guide.md](docs/user-guide.md): end-user guide for current functionality
 - [docs/product/brief.md](docs/product/brief.md): product direction and open questions
 - [docs/architecture/overview.md](docs/architecture/overview.md): architecture skeleton
 - [docs/development/local-setup.md](docs/development/local-setup.md): local setup notes

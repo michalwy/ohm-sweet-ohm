@@ -22,6 +22,8 @@ This project is intentionally vibe-coded. Future agents must preserve product in
 - Keep user-facing copy in English.
 - Structure new user-facing strings so future localization is possible.
 - Prefer small, reversible changes with clear documentation.
+- When changing user-visible behavior, update `docs/user-guide.md` in the same task so end-user documentation stays current.
+- Keep `docs/user-guide.md` as a single-file guide until it becomes too large to scan comfortably. When it exceeds 400 lines, explicitly recommend splitting it into feature-specific pages in your user-facing response for that task and propose a target structure under `docs/user-guide/`.
 - When introducing a framework, library, or major pattern, add or update an ADR in `docs/decisions`.
 - Update this `AGENTS.md` file when new project knowledge, workflow rules, or collaboration preferences would help future agents work better.
 - Keep the project runnable locally and deployable to cloud infrastructure.
