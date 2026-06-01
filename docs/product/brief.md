@@ -16,7 +16,18 @@ The app starts in English. Additional languages should be possible later.
 
 The first product feature is a parts list.
 
-Parts currently represent real purchasable electronic parts and are tracked by manufacturer organization and catalog number. A part is unique within a workspace by the combination of manufacturer organization and catalog number. The manufacturer organization is a reusable workspace-scoped entity so the same organization can later take other roles if those workflows are defined. No inventory, BOM, purchase, storage, supplier, pricing, or lifecycle behavior has been defined yet.
+Parts currently represent real purchasable electronic parts and are tracked by manufacturer organization and catalog number. A part is unique within a workspace by the combination of manufacturer organization and catalog number. The manufacturer organization is a reusable workspace-scoped entity so the same organization can later take other roles if those workflows are defined.
+
+Current implemented extension scope beyond the base parts list includes:
+
+- workspace-scoped part categories and category attributes
+- workspace-scoped attribute dictionary
+- workspace-scoped units
+- workspace-scoped storage locations
+- stock movements (receipt, issue, transfer, adjustment)
+- supplier integration settings (DigiKey and TME) and active provider selection
+
+BOM workflows, purchase-order workflows, pricing policy, lifecycle states, and import behavior are still intentionally undefined.
 
 ## Open Questions
 

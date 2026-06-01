@@ -4,9 +4,19 @@ OhmSweetOhm, or OSO, is a web application for managing a home electronics worksh
 
 The application language is English by default, with the project structured so additional languages can be added later.
 
+## Start Here (Non-Technical User)
+
+If you want to use OSO (not develop it), start with the user documentation:
+
+- **[OSO User Guide](docs/user-guide.md)** <- first stop for everyday usage
+
+The user guide includes a simple local run section for regular users and a walkthrough of current app features.
+
 ## Project Status
 
-This repository contains the first working OSO application slice: authentication, workspace routing, workspace-scoped access control, a parts list, manufacturer organizations, part categories, and category-driven part parameters. Inventory, storage, supplier, purchase, pricing, lifecycle, import, and filtering workflows are still intentionally undefined until product decisions are made.
+This repository contains a working OSO application slice with authentication, workspace routing, workspace-scoped access control, parts, manufacturer organizations, part categories, attributes, units, storage locations, stock movements, and supplier integration settings (DigiKey and TME).
+
+Purchase-order workflows, pricing policy, lifecycle states, import pipelines, and BOM/project behavior are still intentionally undefined until product decisions are made.
 
 ## Tech Direction
 

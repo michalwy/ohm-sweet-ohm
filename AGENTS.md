@@ -24,6 +24,8 @@ This project is intentionally vibe-coded. Future agents must preserve product in
 - Prefer small, reversible changes with clear documentation.
 - When changing user-visible behavior, update `docs/user-guide.md` in the same task so end-user documentation stays current.
 - Keep `docs/user-guide.md` as a single-file guide until it becomes too large to scan comfortably. When it exceeds 400 lines, explicitly recommend splitting it into feature-specific pages in your user-facing response for that task and propose a target structure under `docs/user-guide/`.
+- When changing behavior, data model, setup flow, or architecture assumptions, update every affected document in the same task (`README.md`, `docs/product/brief.md`, `docs/architecture/overview.md`, relevant ADRs, and `docs/user-guide.md`).
+- Before finishing a task that changes application behavior, explicitly verify documentation consistency by checking whether existing docs still match the implemented state. If any mismatch remains, fix it in the same task.
 - When introducing a framework, library, or major pattern, add or update an ADR in `docs/decisions`.
 - Update this `AGENTS.md` file when new project knowledge, workflow rules, or collaboration preferences would help future agents work better.
 - Keep the project runnable locally and deployable to cloud infrastructure.

@@ -10,7 +10,7 @@ Accepted
 
 Parts were initially identified by catalog number and a free-text manufacturer name. The manufacturer now needs to be stored as a reusable database record, but the product should not introduce a manufacturer-only table or UI because the same real-world entity may later act as a supplier, buyer, or another role.
 
-Supplier, buyer, purchase, pricing, and inventory behavior are still undefined and should not be inferred from this decision.
+Supplier role modeling, buyer workflows, purchase-order behavior, and pricing policy are still undefined and should not be inferred from this decision.
 
 ## Decision
 

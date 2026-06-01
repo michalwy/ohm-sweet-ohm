@@ -9,6 +9,32 @@ This guide explains how to use the current version of the app in everyday work. 
 OSO is currently designed for desktop browsers and the UI is in English.  
 All data is workspace-scoped, so each workspace is its own isolated workshop context.
 
+## Run OSO On Your Computer (Local Use)
+
+If you want to run OSO for your own use, the simplest path is Docker Compose.
+
+### What You Need
+
+- Docker Desktop (or Docker Engine + Docker Compose)
+- Internet connection for the first image/build pull
+
+### Steps
+
+1. Open a terminal in the repository folder.
+2. Run:
+
+```bash
+docker compose up
+```
+
+3. Wait until startup finishes.
+4. Open `http://localhost:3000` in your browser.
+5. Sign in with the seeded owner account:
+   - email: `owner@ohmsweetohm.local`
+   - password: value of `OSO_DEV_USER_PASSWORD` (example value from `.env.example`: `ohm-sweet-ohm-owner`)
+
+To stop the app, press `Ctrl+C` in the terminal where it is running.
+
 ## 1. Sign In And Enter A Workspace
 
 When you open OSO, start by signing in (or signing up if this is your first time).
@@ -140,4 +166,3 @@ If you are setting up a new workspace, this sequence usually works best:
 6. Add parts.
 7. Record stock movements.
 8. Configure integrations if needed.
-
