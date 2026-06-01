@@ -11,6 +11,7 @@ Keep this list focused on product and implementation work that has been explicit
 
 ## Low priority
 
+- [ ] Add UI for managing workspace organizations and roles (for example manufacturer, supplier, and future organization roles).
 - [ ] Import part data from Mouser supplier.
 - [ ] Extend supplier category/attribute matching flow to Mouser once that provider is integrated.
 - [ ] Improve boolean field presentation in UI: replace plain text values like `Yes/No` and `True/False` with clearer graphical indicators.
