@@ -36,6 +36,7 @@ import {
 type Copy = {
   title: string;
   addAttribute: string;
+  actions: string;
   edit: string;
   delete: string;
   close: string;
@@ -274,12 +275,9 @@ export function AttributesClient({
     });
   }
 
-  function handleDeleteAttribute() {
-    if (!editingAttribute) {
-      return;
-    }
-
-    setAttributePendingDelete(editingAttribute);
+  function handleDeleteAttribute(attribute: AttributeListItem) {
+    setAttributeFieldErrors({});
+    setAttributePendingDelete(attribute);
   }
 
   function confirmDeleteAttribute() {
@@ -373,8 +371,8 @@ export function AttributesClient({
                   <th className="border-b border-slate-200 px-4 py-3 font-semibold">
                     {copy.description}
                   </th>
-                  <th className="w-24 border-b border-slate-200 px-4 py-3 font-semibold">
-                    {copy.edit}
+                  <th className="w-36 border-b border-slate-200 px-4 py-3 font-semibold">
+                    {copy.actions}
                   </th>
                 </tr>
               </thead>
@@ -405,29 +403,58 @@ export function AttributesClient({
                       </span>
                     </td>
                     <td className="px-4 py-3">
-                      <button
-                        className="min-h-9 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:border-slate-400 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400"
-                        aria-label={copy.edit}
-                        disabled={!isDatabaseAvailable || !canWriteAttributes}
-                        type="button"
-                        onClick={() => openEditDialog(attribute)}
-                      >
-                        <svg
-                          aria-hidden="true"
-                          className="h-4 w-4"
-                          viewBox="0 0 20 20"
-                          fill="none"
-                          xmlns="http://www.w3.org/2000/svg"
+                      <div className="flex items-center gap-2">
+                        <button
+                          className="min-h-9 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:border-slate-400 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400"
+                          aria-label={copy.edit}
+                          disabled={!isDatabaseAvailable || !canWriteAttributes}
+                          type="button"
+                          onClick={() => openEditDialog(attribute)}
                         >
-                          <path
-                            d="M13.9 3.3a1.5 1.5 0 0 1 2.1 0l.7.7a1.5 1.5 0 0 1 0 2.1l-8.4 8.4-3.3.8.8-3.3 8.4-8.4Z"
-                            stroke="currentColor"
-                            strokeWidth="1.5"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                          />
-                        </svg>
-                      </button>
+                          <svg
+                            aria-hidden="true"
+                            className="h-4 w-4"
+                            viewBox="0 0 20 20"
+                            fill="none"
+                            xmlns="http://www.w3.org/2000/svg"
+                          >
+                            <path
+                              d="M13.9 3.3a1.5 1.5 0 0 1 2.1 0l.7.7a1.5 1.5 0 0 1 0 2.1l-8.4 8.4-3.3.8.8-3.3 8.4-8.4Z"
+                              stroke="currentColor"
+                              strokeWidth="1.5"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            />
+                          </svg>
+                        </button>
+                        <button
+                          className="min-h-9 rounded-md border border-[var(--color-error-border)] bg-white px-3 py-1.5 text-sm font-medium text-[var(--color-error)] transition hover:bg-[var(--color-error-soft)] focus:outline-none focus:ring-2 focus:ring-[var(--color-error-border)] focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400"
+                          aria-label={copy.delete}
+                          disabled={
+                            !isDatabaseAvailable ||
+                            !canWriteAttributes ||
+                            deleteAttributeMutation.isPending
+                          }
+                          type="button"
+                          onClick={() => handleDeleteAttribute(attribute)}
+                        >
+                          <svg
+                            aria-hidden="true"
+                            className="h-4 w-4"
+                            viewBox="0 0 20 20"
+                            fill="none"
+                            xmlns="http://www.w3.org/2000/svg"
+                          >
+                            <path
+                              d="M5.5 6h9m-7.5 0V4.75A1.75 1.75 0 0 1 8.75 3h2.5A1.75 1.75 0 0 1 13 4.75V6m-6.5 0 .6 9.1A1.75 1.75 0 0 0 8.84 16.75h2.32a1.75 1.75 0 0 0 1.74-1.65L13.5 6M8.75 8.5v5m2.5-5v5"
+                              stroke="currentColor"
+                              strokeWidth="1.5"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            />
+                          </svg>
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -435,6 +462,11 @@ export function AttributesClient({
             </table>
         </InfiniteListViewport>
       </section>
+      {attributeFieldErrors.delete ? (
+        <div className="mt-3">
+          <ErrorBubble align="start">{attributeFieldErrors.delete}</ErrorBubble>
+        </div>
+      ) : null}
 
       <ToastNotice messages={toastMessages} onDismiss={dismissToastMessage} />
 
@@ -465,16 +497,15 @@ export function AttributesClient({
             }
             mode={attributeDialogMode}
             attribute={editingAttribute}
-            onDelete={
-              attributeDialogMode === "edit" && editingAttribute
-                ? handleDeleteAttribute
-                : undefined
-            }
             onSubmit={
               attributeDialogMode === "create"
                 ? handleCreateSubmit
                 : handleUpdateSubmit
             }
+            onCancel={() => {
+              setAttributeDialogMode(null);
+              setEditingAttribute(null);
+            }}
           />
         ) : null}
       </DialogShell>
@@ -501,8 +532,8 @@ function AttributeDialogContent({
   isPending,
   mode,
   attribute,
-  onDelete,
-  onSubmit
+  onSubmit,
+  onCancel
 }: {
   copy: Copy;
   errors: AttributeFormErrors;
@@ -510,8 +541,8 @@ function AttributeDialogContent({
   isPending: boolean;
   mode: AttributeDialogMode;
   attribute: AttributeListItem | null;
-  onDelete?: () => void;
   onSubmit: (formData: FormData) => void;
+  onCancel: () => void;
 }) {
   const formId = "attribute-dialog-form";
   const [type, setType] = useState<AttributeValueType>(
@@ -642,24 +673,15 @@ function AttributeDialogContent({
           </div>
         </DialogBody>
         <DialogFooter
-          className={
-            mode === "edit"
-              ? "items-end justify-between"
-              : "items-center justify-end gap-3"
-          }
+          className="items-center justify-between gap-3"
         >
-          {mode === "edit" && onDelete ? (
-            <div className="relative">
-              <ErrorBubble align="start">{errors.delete}</ErrorBubble>
-              <button
-                className="min-h-9 rounded-md border border-[var(--color-error-border)] bg-white px-3 py-1.5 text-sm font-medium text-[var(--color-error)] transition hover:bg-[var(--color-error-soft)] focus:outline-none focus:ring-2 focus:ring-[var(--color-error-border)] focus:ring-offset-2"
-                type="button"
-                onClick={onDelete}
-              >
-                {copy.delete}
-              </button>
-            </div>
-          ) : null}
+          <button
+            className="min-h-9 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:border-slate-400 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2"
+            type="button"
+            onClick={onCancel}
+          >
+            {copy.cancelDelete}
+          </button>
           <div className="relative">
             <ErrorBubble>{errors.submit}</ErrorBubble>
             <button

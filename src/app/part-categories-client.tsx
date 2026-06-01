@@ -519,14 +519,6 @@ export function PartCategoriesClient({
     });
   }
 
-  function handleDeleteCategory() {
-    if (!editingCategory) {
-      return;
-    }
-
-    setCategoryPendingDelete(editingCategory);
-  }
-
   function confirmDeleteCategory() {
     if (!categoryPendingDelete) {
       return;
@@ -661,6 +653,10 @@ export function PartCategoriesClient({
                   isDatabaseAvailable={isDatabaseAvailable}
                   level={0}
                   onAddChild={openCreateDialog}
+                  onDelete={(categoryToDelete) => {
+                    setCategoryFieldErrors({});
+                    setCategoryPendingDelete(categoryToDelete);
+                  }}
                   onEdit={openEditDialog}
                   expandedCategoryIds={expandedCategoryIds}
                   onToggleExpanded={(categoryId) => {
@@ -694,6 +690,11 @@ export function PartCategoriesClient({
           )}
         </div>
       </section>
+      {categoryFieldErrors.delete ? (
+        <div className="mt-3">
+          <ErrorBubble align="start">{categoryFieldErrors.delete}</ErrorBubble>
+        </div>
+      ) : null}
 
       <ToastNotice messages={toastMessages} onDismiss={dismissToastMessage} />
 
@@ -745,11 +746,11 @@ export function PartCategoriesClient({
             onCreateAttributeDraftsChange={setCreateCategoryAttributeDrafts}
             onCreateValueAttributeIdChange={setCreateCategoryValueAttributeId}
             onTabChange={setActiveCategoryDialogTab}
-            onDelete={handleDeleteCategory}
             onError={(error) =>
               setCategoryFieldErrors(getCategoryFormErrors(copy, error))
             }
             onUpdateSubmit={handleUpdateSubmit}
+            onCancel={closeCategoryDialog}
           />
         ) : null}
       </DialogShell>
@@ -876,9 +877,9 @@ function CategoryDialogContent({
   onCreateAttributeDraftsChange,
   onCreateValueAttributeIdChange,
   onTabChange,
-  onDelete,
   onError,
-  onUpdateSubmit
+  onUpdateSubmit,
+  onCancel
 }: {
   activeTab: CategoryDialogTab;
   canWriteCategories: boolean;
@@ -903,13 +904,13 @@ function CategoryDialogContent({
   onCreateAttributeDraftsChange: (drafts: CategoryAttributeDraft[]) => void;
   onCreateValueAttributeIdChange: (attributeId: string) => void;
   onTabChange: (tab: CategoryDialogTab) => void;
-  onDelete: () => void;
   onError: (error: string) => void;
   onUpdateSubmit: (
     event: FormEvent<HTMLFormElement>,
     attributeDrafts: CategoryAttributeDraft[],
     valueAttributeId: string
   ) => void;
+  onCancel: () => void;
 }) {
   const formId = "category-details-form";
   const [editAttributeDrafts, setEditAttributeDrafts] = useState<
@@ -1186,26 +1187,14 @@ function CategoryDialogContent({
           )}
         </div>
       </DialogBody>
-      <DialogFooter
-        className={
-          mode === "edit"
-            ? "items-end justify-between"
-            : "items-center justify-end gap-3"
-        }
-      >
-        {mode === "edit" ? (
-          <div className="relative">
-            <ErrorBubble align="start">{errors.delete}</ErrorBubble>
-            <button
-              className="min-h-9 rounded-md border border-[var(--color-error-border)] bg-white px-3 py-1.5 text-sm font-medium text-[var(--color-error)] transition hover:bg-[var(--color-error-soft)] focus:outline-none focus:ring-2 focus:ring-[var(--color-error-border)] focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400"
-              disabled={isSaveDisabled}
-              type="button"
-              onClick={onDelete}
-            >
-              {copy.delete}
-            </button>
-          </div>
-        ) : null}
+      <DialogFooter className="items-center justify-between gap-3">
+        <button
+          className="min-h-9 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:border-slate-400 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400"
+          type="button"
+          onClick={onCancel}
+        >
+          {copy.cancelDelete}
+        </button>
         <div className="relative">
           <ErrorBubble>{errors.submit}</ErrorBubble>
           <button
@@ -1649,6 +1638,7 @@ function CategoryNode({
   isDatabaseAvailable,
   level,
   onAddChild,
+  onDelete,
   onEdit,
   expandedCategoryIds,
   onToggleExpanded
@@ -1659,6 +1649,7 @@ function CategoryNode({
   isDatabaseAvailable: boolean;
   level: number;
   onAddChild: (parentId: string) => void;
+  onDelete: (category: PartCategoryListItem) => void;
   onEdit: (category: PartCategoryListItem) => void;
   expandedCategoryIds: Set<string>;
   onToggleExpanded: (categoryId: string) => void;
@@ -1736,6 +1727,29 @@ function CategoryNode({
               />
             </svg>
           </button>
+          <button
+            className="min-h-9 rounded-md border border-[var(--color-error-border)] bg-white px-3 py-1.5 text-sm font-medium text-[var(--color-error)] transition hover:bg-[var(--color-error-soft)] focus:outline-none focus:ring-2 focus:ring-[var(--color-error-border)] focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400"
+            aria-label={copy.delete}
+            disabled={!isDatabaseAvailable || !canWriteCategories}
+            type="button"
+            onClick={() => onDelete(category)}
+          >
+            <svg
+              aria-hidden="true"
+              className="h-4 w-4"
+              viewBox="0 0 20 20"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path
+                d="M5.5 6h9m-7.5 0V4.75A1.75 1.75 0 0 1 8.75 3h2.5A1.75 1.75 0 0 1 13 4.75V6m-6.5 0 .6 9.1A1.75 1.75 0 0 0 8.84 16.75h2.32a1.75 1.75 0 0 0 1.74-1.65L13.5 6M8.75 8.5v5m2.5-5v5"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </button>
         </div>
       </div>
       {hasChildren && isExpanded ? (
@@ -1749,6 +1763,7 @@ function CategoryNode({
               isDatabaseAvailable={isDatabaseAvailable}
               level={level + 1}
               onAddChild={onAddChild}
+              onDelete={onDelete}
               onEdit={onEdit}
               expandedCategoryIds={expandedCategoryIds}
               onToggleExpanded={onToggleExpanded}

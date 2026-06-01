@@ -20,3 +20,5 @@ Keep this list focused on product and implementation work that has been explicit
 - [ ] Inventory/Locations: define and implement behavior for archived locations with non-zero stock (visibility, blocking rules, and migration path).
 - [ ] Refactor category and location trees to use shared tree-list UI primitives/components (layout, expand/collapse behavior, row styling, and action alignment) to keep both screens visually and behaviorally consistent.
 - [ ] Add the ability to open a location from the locations tree and see the parts currently stored in that specific location.
+
+- Ujednolicić akcje CRUD w dialogach/listach: wydzielić wspólny komponent/API akcji (np. edit/delete/cancel), aby podobne zmiany UX wykonywać centralnie zamiast w wielu ekranach.

@@ -27,6 +27,7 @@ const copy = {
   intro:
     "Manage the workspace dictionary of typed attributes used by part categories.",
   addAttribute: "Add attribute",
+  actions: "Actions",
   edit: "Edit",
   delete: "Delete",
   close: "Close",

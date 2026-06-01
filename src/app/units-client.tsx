@@ -222,12 +222,9 @@ export function UnitsClient({
     });
   }
 
-  function handleDeleteUnit() {
-    if (!editingUnit) {
-      return;
-    }
-
-    setUnitPendingDelete(editingUnit);
+  function handleDeleteUnit(unit: UnitListItem) {
+    setUnitFieldErrors({});
+    setUnitPendingDelete(unit);
   }
 
   function confirmDeleteUnit() {
@@ -297,29 +294,54 @@ export function UnitsClient({
                     {unit.allowsFraction ? copy.yes : copy.no}
                   </td>
                   <td className="px-4 py-3">
-                    <button
-                      className="min-h-9 rounded-md border border-slate-300 px-3 text-sm font-medium text-slate-700 transition hover:border-slate-400 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
-                      aria-label={copy.edit}
-                      type="button"
-                      disabled={!canWriteUnits}
-                      onClick={() => openEditDialog(unit)}
-                    >
-                      <svg
-                        aria-hidden="true"
-                        className="h-4 w-4"
-                        viewBox="0 0 20 20"
-                        fill="none"
-                        xmlns="http://www.w3.org/2000/svg"
+                    <div className="flex items-center gap-2">
+                      <button
+                        className="min-h-9 rounded-md border border-slate-300 px-3 text-sm font-medium text-slate-700 transition hover:border-slate-400 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+                        aria-label={copy.edit}
+                        type="button"
+                        disabled={!canWriteUnits}
+                        onClick={() => openEditDialog(unit)}
                       >
-                        <path
-                          d="M13.9 3.3a1.5 1.5 0 0 1 2.1 0l.7.7a1.5 1.5 0 0 1 0 2.1l-8.4 8.4-3.3.8.8-3.3 8.4-8.4Z"
-                          stroke="currentColor"
-                          strokeWidth="1.5"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        />
-                      </svg>
-                    </button>
+                        <svg
+                          aria-hidden="true"
+                          className="h-4 w-4"
+                          viewBox="0 0 20 20"
+                          fill="none"
+                          xmlns="http://www.w3.org/2000/svg"
+                        >
+                          <path
+                            d="M13.9 3.3a1.5 1.5 0 0 1 2.1 0l.7.7a1.5 1.5 0 0 1 0 2.1l-8.4 8.4-3.3.8.8-3.3 8.4-8.4Z"
+                            stroke="currentColor"
+                            strokeWidth="1.5"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          />
+                        </svg>
+                      </button>
+                      <button
+                        className="min-h-9 rounded-md border border-[var(--color-error-border)] px-3 text-sm font-medium text-[var(--color-error)] transition hover:bg-[var(--color-error-soft)] disabled:cursor-not-allowed disabled:opacity-60"
+                        aria-label={copy.delete}
+                        type="button"
+                        disabled={!canWriteUnits || deleteUnitMutation.isPending}
+                        onClick={() => handleDeleteUnit(unit)}
+                      >
+                        <svg
+                          aria-hidden="true"
+                          className="h-4 w-4"
+                          viewBox="0 0 20 20"
+                          fill="none"
+                          xmlns="http://www.w3.org/2000/svg"
+                        >
+                          <path
+                            d="M5.5 6h9m-7.5 0V4.75A1.75 1.75 0 0 1 8.75 3h2.5A1.75 1.75 0 0 1 13 4.75V6m-6.5 0 .6 9.1A1.75 1.75 0 0 0 8.84 16.75h2.32a1.75 1.75 0 0 0 1.74-1.65L13.5 6M8.75 8.5v5m2.5-5v5"
+                            stroke="currentColor"
+                            strokeWidth="1.5"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          />
+                        </svg>
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -327,6 +349,11 @@ export function UnitsClient({
           </table>
         )}
       </div>
+      {unitFieldErrors.delete ? (
+        <div className="mt-3">
+          <ErrorBubble align="start">{unitFieldErrors.delete}</ErrorBubble>
+        </div>
+      ) : null}
 
       <DialogShell
         ref={unitDialogRef}
@@ -385,21 +412,13 @@ export function UnitsClient({
               </label>
             </DialogBody>
             <DialogFooter className="items-end justify-between">
-              <div className="relative">
-                {unitDialogMode === "edit" ? (
-                  <button
-                    className="min-h-10 rounded-md border border-red-300 px-3 text-sm font-medium text-red-700 transition hover:border-red-400 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60"
-                    type="button"
-                    disabled={deleteUnitMutation.isPending || !canWriteUnits}
-                    onClick={handleDeleteUnit}
-                  >
-                    {copy.delete}
-                  </button>
-                ) : null}
-                {unitFieldErrors.delete ? (
-                  <ErrorBubble align="start">{unitFieldErrors.delete}</ErrorBubble>
-                ) : null}
-              </div>
+              <button
+                className="min-h-10 rounded-md border border-slate-300 px-3 text-sm font-medium text-slate-700 transition hover:border-slate-400 hover:bg-slate-50"
+                type="button"
+                onClick={closeUnitDialog}
+              >
+                {copy.cancelDelete}
+              </button>
               <div className="flex items-center gap-3">
                 <button
                   className="min-h-10 rounded-md border border-slate-300 px-3 text-sm font-medium text-slate-700 transition hover:border-slate-400 hover:bg-slate-50"

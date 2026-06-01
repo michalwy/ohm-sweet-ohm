@@ -241,6 +241,10 @@ export function LocationsClient({
                   level={0}
                   location={location}
                   onAddChild={(parentId) => openCreateForm(parentId)}
+                  onDelete={(locationToDelete) => {
+                    setErrors({});
+                    setLocationPendingDelete(locationToDelete);
+                  }}
                   onEdit={openEditForm}
                   onToggleExpanded={(locationId) => {
                     const nextIds = new Set(expandedLocationIds);
@@ -257,6 +261,11 @@ export function LocationsClient({
           </div>
         )}
       </div>
+      {errors.delete ? (
+        <div className="mt-3">
+          <ErrorBubble align="start">{errors.delete}</ErrorBubble>
+        </div>
+      ) : null}
 
       <DialogShell
         ref={dialogRef}
@@ -349,19 +358,13 @@ export function LocationsClient({
               ) : null}
             </DialogBody>
             <DialogFooter className="items-end justify-between">
-              <div className="relative">
-                {!isCreateMode ? (
-                  <button
-                    className="min-h-10 rounded-md border border-red-300 px-3 text-sm font-medium text-red-700 transition hover:border-red-400 hover:bg-red-50"
-                    type="button"
-                    disabled={deleteMutation.isPending || !canWriteLocations}
-                    onClick={() => setLocationPendingDelete(editingLocation)}
-                  >
-                    {copy.delete}
-                  </button>
-                ) : null}
-                {errors.delete ? <ErrorBubble align="start">{errors.delete}</ErrorBubble> : null}
-              </div>
+              <button
+                className="min-h-10 rounded-md border border-slate-300 px-3 text-sm font-medium text-slate-700 transition hover:border-slate-400 hover:bg-slate-50"
+                type="button"
+                onClick={closeForm}
+              >
+                {copy.cancelDelete}
+              </button>
               <div className="flex items-center gap-3">
                 <button
                   className="min-h-10 rounded-md border border-slate-300 px-3 text-sm font-medium text-slate-700 transition hover:border-slate-400 hover:bg-slate-50"
@@ -429,6 +432,7 @@ function LocationNode({
   level,
   location,
   onAddChild,
+  onDelete,
   onEdit,
   onToggleExpanded
 }: {
@@ -439,6 +443,7 @@ function LocationNode({
   level: number;
   location: LocationTreeItem;
   onAddChild: (parentId: string) => void;
+  onDelete: (location: StorageLocationListItem) => void;
   onEdit: (location: StorageLocationListItem) => void;
   onToggleExpanded: (locationId: string) => void;
 }) {
@@ -516,6 +521,29 @@ function LocationNode({
               />
             </svg>
           </button>
+          <button
+            className="min-h-9 rounded-md border border-[var(--color-error-border)] bg-white px-3 py-1.5 text-sm font-medium text-[var(--color-error)] transition hover:bg-[var(--color-error-soft)] focus:outline-none focus:ring-2 focus:ring-[var(--color-error-border)] focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400"
+            aria-label={copy.delete}
+            type="button"
+            disabled={!isDatabaseAvailable || !canWriteLocations}
+            onClick={() => onDelete(location)}
+          >
+            <svg
+              aria-hidden="true"
+              className="h-4 w-4"
+              viewBox="0 0 20 20"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path
+                d="M5.5 6h9m-7.5 0V4.75A1.75 1.75 0 0 1 8.75 3h2.5A1.75 1.75 0 0 1 13 4.75V6m-6.5 0 .6 9.1A1.75 1.75 0 0 0 8.84 16.75h2.32a1.75 1.75 0 0 0 1.74-1.65L13.5 6M8.75 8.5v5m2.5-5v5"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </button>
         </div>
       </div>
       {hasChildren && isExpanded ? (
@@ -530,6 +558,7 @@ function LocationNode({
               level={level + 1}
               location={child}
               onAddChild={onAddChild}
+              onDelete={onDelete}
               onEdit={onEdit}
               onToggleExpanded={onToggleExpanded}
             />

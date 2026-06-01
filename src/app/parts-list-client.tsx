@@ -732,9 +732,9 @@ export function PartsListClient({
       columnHelper.display({
         id: "actions",
         header: "",
-        size: 72,
-        minSize: 72,
-        maxSize: 72,
+        size: 104,
+        minSize: 104,
+        maxSize: 104,
         enableResizing: false,
         cell: ({ row }) => (
           <div className="flex justify-end gap-2">
@@ -764,12 +764,44 @@ export function PartsListClient({
                 />
               </svg>
             </button>
+            <button
+              className="min-h-8 rounded-md border border-[var(--color-error-border)] bg-white px-2.5 py-1 text-sm font-medium text-[var(--color-error)] transition hover:bg-[var(--color-error-soft)] focus:outline-none focus:ring-2 focus:ring-[var(--color-error-border)] focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400"
+              aria-label={copy.deletePart}
+              disabled={!isDatabaseAvailable || deletePartMutation.isPending}
+              type="button"
+              onClick={(event) => {
+                event.stopPropagation();
+                handleDeletePart(row.original);
+              }}
+            >
+              <svg
+                aria-hidden="true"
+                className="h-4 w-4"
+                viewBox="0 0 20 20"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path
+                  d="M5.5 6h9m-7.5 0V4.75A1.75 1.75 0 0 1 8.75 3h2.5A1.75 1.75 0 0 1 13 4.75V6m-6.5 0 .6 9.1A1.75 1.75 0 0 0 8.84 16.75h2.32a1.75 1.75 0 0 0 1.74-1.65L13.5 6M8.75 8.5v5m2.5-5v5"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </button>
           </div>
         )
       }),
       ...attributeColumns
     ];
-  }, [canReadInventory, copy, isDatabaseAvailable, workspaceAttributes]);
+  }, [
+    canReadInventory,
+    copy,
+    deletePartMutation.isPending,
+    isDatabaseAvailable,
+    workspaceAttributes
+  ]);
   const tableColumnOrder = useMemo(
     () => persistedColumnOrder,
     [persistedColumnOrder]
@@ -904,6 +936,12 @@ export function PartsListClient({
     setCreateFieldErrors({});
     setCreateFormResetKey((currentKey) => currentKey + 1);
     openDialog(createDialogRef.current);
+  }
+
+  function closeEditPartDialog() {
+    closeDialog(editDialogRef.current);
+    setEditingPart(null);
+    setEditFieldErrors({});
   }
 
   function syncSelectedPartInUrl(nextPartId: string | null) {
@@ -1185,12 +1223,13 @@ export function PartsListClient({
     updatePartMutation.mutate(formData);
   }
 
-  function handleDeletePart() {
-    if (!editingPart) {
-      return;
-    }
-
-    setPartPendingDelete(editingPart);
+  function handleDeletePart(part: PartsListItem) {
+    setEditFieldErrors((currentErrors) => {
+      const nextErrors = { ...currentErrors };
+      delete nextErrors.delete;
+      return nextErrors;
+    });
+    setPartPendingDelete(part);
   }
 
   function confirmDeletePart() {
@@ -2360,6 +2399,7 @@ export function PartsListClient({
         title={copy.editPartTitle}
         titleId="edit-part-dialog-title"
         widthClassName="w-[min(58rem,calc(100vw-3rem))]"
+        onClose={closeEditPartDialog}
       >
           {editingPart ? (
             <form
@@ -2494,18 +2534,15 @@ export function PartsListClient({
                   </div>
                 ) : null}
               </DialogBody>
-              <DialogFooter className="items-end justify-between">
-                <div className="relative">
-                  <ErrorBubble align="start">{editFieldErrors.delete}</ErrorBubble>
-                  <button
-                    className="min-h-9 rounded-md border border-[var(--color-error-border)] bg-white px-3 py-1.5 text-sm font-medium text-[var(--color-error)] transition hover:bg-[var(--color-error-soft)] focus:outline-none focus:ring-2 focus:ring-[var(--color-error-border)] focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400"
-                    disabled={!isDatabaseAvailable || deletePartMutation.isPending}
-                    type="button"
-                    onClick={handleDeletePart}
-                  >
-                    {copy.deletePart}
-                  </button>
-                </div>
+              <DialogFooter className="items-center justify-between gap-3">
+                <button
+                  className="min-h-9 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:border-slate-400 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400"
+                  disabled={!isDatabaseAvailable || deletePartMutation.isPending}
+                  type="button"
+                  onClick={closeEditPartDialog}
+                >
+                  {copy.cancelDelete}
+                </button>
                 <div className="relative">
                   <ErrorBubble>{editFieldErrors.submit}</ErrorBubble>
                   <button
@@ -2524,6 +2561,11 @@ export function PartsListClient({
             </form>
           ) : null}
       </DialogShell>
+      {editFieldErrors.delete ? (
+        <div className="mt-3">
+          <ErrorBubble align="start">{editFieldErrors.delete}</ErrorBubble>
+        </div>
+      ) : null}
       <DeleteConfirmationDialog
         body={copy.deleteConfirmationBody}
         cancelLabel={copy.cancelDelete}
