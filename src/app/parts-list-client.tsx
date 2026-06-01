@@ -185,7 +185,6 @@ type Copy = {
   loadingParts: string;
   loadingMoreParts: string;
   databaseUnavailable: string;
-  partDetailsTitle: string;
   locationsAndStock: string;
   noAttributes: string;
 };
@@ -325,6 +324,7 @@ export function PartsListClient({
   const [selectedPartId, setSelectedPartId] = useState<string | null>(
     initialSelectedPartId ?? null
   );
+  const [hoveredPartId, setHoveredPartId] = useState<string | null>(null);
   const detailsPanelWidthStorageKey = `oso:parts-details-panel-width:${workspaceSlug}`;
   const [detailsPanelWidth, setDetailsPanelWidth] = useState(384);
   const [hasLoadedDetailsPanelWidth, setHasLoadedDetailsPanelWidth] =
@@ -731,13 +731,16 @@ export function PartsListClient({
       }),
       columnHelper.display({
         id: "actions",
-        header: copy.actions,
-        size: 196,
-        minSize: 196,
+        header: "",
+        size: 72,
+        minSize: 72,
+        maxSize: 72,
+        enableResizing: false,
         cell: ({ row }) => (
           <div className="flex justify-end gap-2">
             <button
               className="min-h-8 rounded-md border border-slate-300 bg-white px-2.5 py-1 text-sm font-medium text-slate-700 transition hover:border-slate-400 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400"
+              aria-label={copy.editPart}
               disabled={!isDatabaseAvailable}
               type="button"
               onClick={(event) => {
@@ -745,7 +748,21 @@ export function PartsListClient({
                 openEditDialog(row.original);
               }}
             >
-              {copy.editPart}
+              <svg
+                aria-hidden="true"
+                className="h-4 w-4"
+                viewBox="0 0 20 20"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path
+                  d="M13.9 3.3a1.5 1.5 0 0 1 2.1 0l.7.7a1.5 1.5 0 0 1 0 2.1l-8.4 8.4-3.3.8.8-3.3 8.4-8.4Z"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
             </button>
           </div>
         )
@@ -1661,7 +1678,7 @@ export function PartsListClient({
                       draggable={header.column.id !== "actions" && !isResizingColumn}
                       className={`relative border-b border-slate-200 px-2 py-2 font-semibold text-slate-600 ${
                         header.column.id === "actions"
-                          ? "w-28 text-right"
+                          ? "sticky right-0 z-20 w-28 bg-slate-50 text-right"
                           : header.column.id.startsWith("attribute:") ||
                               header.column.id === "valueDisplayValue"
                             ? "text-center"
@@ -1775,12 +1792,20 @@ export function PartsListClient({
               {partsTable.getRowModel().rows.map((row) => (
                 <tr
                   key={row.id}
-                  className={`border-b border-slate-100 transition hover:bg-slate-50 ${
-                    row.original.id === selectedPartId ? "bg-slate-100" : ""
+                  className={`border-b border-slate-100 ${
+                    row.original.id === selectedPartId
+                      ? "bg-slate-100"
+                      : row.original.id === hoveredPartId
+                        ? "bg-slate-50"
+                        : ""
                   }`}
                   role="button"
                   tabIndex={0}
                   onClick={() => openPartDetails(row.original)}
+                  onMouseEnter={() => setHoveredPartId(row.original.id)}
+                  onMouseLeave={() => setHoveredPartId((current) =>
+                    current === row.original.id ? null : current
+                  )}
                   onKeyDown={(event) => {
                     if (event.key === "Enter" || event.key === " ") {
                       event.preventDefault();
@@ -1793,7 +1818,11 @@ export function PartsListClient({
                       key={cell.id}
                       className={`overflow-hidden border-b border-slate-100 px-2 py-2 text-slate-700 ${
                         cell.column.id === "actions"
-                          ? "py-1.5"
+                          ? row.original.id === selectedPartId
+                            ? "sticky right-0 z-10 bg-slate-100 px-1 py-1.5"
+                            : row.original.id === hoveredPartId
+                              ? "sticky right-0 z-10 bg-slate-50 px-1 py-1.5"
+                              : "sticky right-0 z-10 bg-white px-1 py-1.5"
                           : cell.column.id.startsWith("attribute:") ||
                               cell.column.id === "valueDisplayValue"
                             ? "text-center"
@@ -1833,11 +1862,11 @@ export function PartsListClient({
             </div>
             <div className="flex items-start justify-between border-b border-slate-200 px-4 py-3">
               <div className="min-w-0">
-                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                  {copy.partDetailsTitle}
+                <p className="font-mono text-sm font-semibold text-slate-950">
+                  {selectedPart.catalogNumber}
                 </p>
-                <p className="mt-1 text-sm font-semibold text-slate-950">
-                  {selectedPart.manufacturerName} {selectedPart.catalogNumber}
+                <p className="mt-1 text-sm text-slate-600">
+                  {selectedPart.manufacturerName}
                 </p>
                 {selectedPart.description ? (
                   <p className="mt-1 text-sm text-slate-600">

@@ -154,7 +154,6 @@ const copy = {
   noMatchingPartsBody: "Adjust the search or filters to show more parts.",
   loadingParts: "Loading parts...",
   loadingMoreParts: "Loading more parts...",
-  partDetailsTitle: "Part details",
   locationsAndStock: "Locations and stock",
   noAttributes: "No attributes for this part.",
   databaseUnavailable:
