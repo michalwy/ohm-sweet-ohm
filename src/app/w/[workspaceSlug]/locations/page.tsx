@@ -54,6 +54,8 @@ const copy = {
   duplicateLocationName: "A sibling location with this name already exists.",
   locationInUse: "This location is used and cannot be deleted.",
   locationHasChildren: "Delete child locations before deleting this location.",
+  locationHasStock:
+    "This location still has stock. Move or adjust stock to zero before archiving.",
   databaseUnavailable:
     "Database is not available, so locations cannot be managed right now."
 };

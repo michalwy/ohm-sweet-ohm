@@ -27,6 +27,8 @@ Current implemented extension scope beyond the base parts list includes:
 - stock movements (receipt, issue, transfer, adjustment)
 - supplier integration settings (DigiKey and TME) and active provider selection
 
+Location lifecycle rule: a location can be archived only when its stock balance is zero. Archived locations are read-only for inventory movement purposes and remain visible in stock views when they still hold non-zero balances from earlier history.
+
 BOM workflows, purchase-order workflows, pricing policy, lifecycle states, and import behavior are still intentionally undefined.
 
 ## Open Questions

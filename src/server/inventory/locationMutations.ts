@@ -82,7 +82,8 @@ export async function updateStorageLocation(input: {
       workspaceId: input.workspaceId
     },
     select: {
-      id: true
+      id: true,
+      isArchived: true
     }
   });
 
@@ -115,6 +116,10 @@ export async function updateStorageLocation(input: {
     throw new Error("duplicate-location-name");
   }
 
+  if (!current.isArchived && input.isArchived) {
+    await assertLocationHasZeroStock(input.workspaceId, input.locationId);
+  }
+
   return prisma.storageLocation.update({
     where: {
       id: input.locationId
@@ -134,6 +139,31 @@ export async function updateStorageLocation(input: {
       isArchived: true
     }
   });
+}
+
+async function assertLocationHasZeroStock(workspaceId: string, locationId: string) {
+  const nonZeroRows = await prisma.$queryRaw<Array<{ partId: string }>>`
+    SELECT "partId"
+    FROM "InventoryEntry"
+    WHERE "workspaceId" = ${workspaceId}
+      AND ("fromLocationId" = ${locationId} OR "toLocationId" = ${locationId})
+    GROUP BY "partId"
+    HAVING SUM(
+      CASE
+        WHEN "entryType" = 'RECEIPT' AND "toLocationId" = ${locationId} THEN "quantity"
+        WHEN "entryType" = 'ADJUSTMENT' AND "toLocationId" = ${locationId} THEN "quantity"
+        WHEN "entryType" = 'TRANSFER' AND "toLocationId" = ${locationId} THEN "quantity"
+        WHEN "entryType" = 'ISSUE' AND "fromLocationId" = ${locationId} THEN -"quantity"
+        WHEN "entryType" = 'TRANSFER' AND "fromLocationId" = ${locationId} THEN -"quantity"
+        ELSE 0
+      END
+    ) <> 0
+    LIMIT 1
+  `;
+
+  if (nonZeroRows.length > 0) {
+    throw new Error("location-has-stock");
+  }
 }
 
 export async function deleteStorageLocation(input: {

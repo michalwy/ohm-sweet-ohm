@@ -55,6 +55,7 @@ type Copy = {
   duplicateLocationName: string;
   locationInUse: string;
   locationHasChildren: string;
+  locationHasStock: string;
 };
 
 type LocationFormErrors = Partial<
@@ -420,6 +421,9 @@ function getLocationFormErrors(copy: Copy, error: string): LocationFormErrors {
   }
   if (error === "location-has-children") {
     return { delete: copy.locationHasChildren };
+  }
+  if (error === "location-has-stock") {
+    return { submit: copy.locationHasStock };
   }
   return { submit: copy.invalidInput };
 }

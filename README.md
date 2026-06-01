@@ -16,6 +16,8 @@ The user guide includes a simple local run section for regular users and a walkt
 
 This repository contains a working OSO application slice with authentication, workspace routing, workspace-scoped access control, parts, manufacturer organizations, part categories, attributes, units, storage locations, stock movements, and supplier integration settings (DigiKey and TME).
 
+For location lifecycle safety, archived locations cannot be used in new stock movements, and locations with non-zero stock cannot be archived until stock is moved or adjusted to zero.
+
 Purchase-order workflows, pricing policy, lifecycle states, import pipelines, and BOM/project behavior are still intentionally undefined until product decisions are made.
 
 ## Tech Direction

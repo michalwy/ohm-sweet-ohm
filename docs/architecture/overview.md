@@ -12,6 +12,7 @@ The project is no longer only a scaffold. Core architecture now includes:
 - Permission-based server-side authorization with an `admin` wildcard permission.
 - Prisma migrations for authentication, workspace access control, parts, categories, attributes, units, locations, inventory entries, and supplier settings.
 - Transaction-safe inventory stock validation for issue, transfer, and negative adjustment writes.
+- Storage-location lifecycle guard that blocks archiving locations with non-zero stock balances.
 - Browser-level e2e coverage for authentication and core workspace/parts/category flows.
 
 ## Intended Shape

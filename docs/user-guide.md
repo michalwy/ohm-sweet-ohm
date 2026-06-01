@@ -122,6 +122,12 @@ You can mark a location as:
 - organizational (structural node)
 - archived (no longer active for regular use)
 
+Archived location behavior:
+
+- archived locations cannot be used as source or destination in new stock movements
+- if an archived location still has stock, it remains visible in part stock breakdown with an archived marker
+- archiving is blocked while a location has non-zero stock; move or adjust stock to zero first
+
 ## 7. Record Stock Movements
 
 From the **Parts** screen, open stock actions for a selected part.
