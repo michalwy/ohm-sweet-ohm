@@ -32,7 +32,9 @@ This project is intentionally vibe-coded. Future agents must preserve product in
 - Favor boring, well-supported tools over novelty.
 - Preserve existing user changes. Do not rewrite unrelated files.
 - Use GitHub Issues as the shared backlog for explicitly requested but unfinished work. Before starting related work, check whether an issue already exists; if not, create one. When an item is completed, close the corresponding issue with a short completion note.
-- Keep `TODO.md` only as a deprecation pointer to GitHub Issues, not as an active backlog.
+- When creating or updating backlog issues, always assign appropriate labels during the same task. At minimum, apply `backlog` plus one type label (for example `enhancement`, `bug`, or `question`), and add priority labels when known.
+- Do not maintain a local `TODO.md` backlog file. Keep backlog items only in GitHub Issues.
+- If GitHub connector/integration cannot create or update issues, use `gh` CLI as the required fallback and complete the issue operation there.
 - Do not create git commits unless the user explicitly asks for a commit.
 - This is currently a solo project. When the user asks for a commit, commit directly to `main` by default after appropriate local verification.
 - When pushing to `main`, try `git push origin main` first. If the push is rejected because the remote has new work, then fetch the remote, rebase local commits onto `origin/main`, rerun appropriate verification if the rebase changes the tested code, and push again.
