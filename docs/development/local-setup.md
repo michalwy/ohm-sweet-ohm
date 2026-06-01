@@ -14,14 +14,13 @@ corepack enable
 
 ## Environment
 
-Copy the example environment file:
+The repository includes a default `.env` file for local use.
+
+If you need custom values, copy from `.env.example` and adjust:
 
 ```bash
 cp .env.example .env
 ```
-
-For `docker compose up`, `.env` is optional when you are fine with default local credentials.  
-Use `.env` when you want to override database credentials or auth settings.
 
 ## Local-use Docker Compose
 

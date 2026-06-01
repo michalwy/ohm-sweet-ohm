@@ -17,7 +17,7 @@ If you want to run OSO for your own use, the simplest path is Docker Compose.
 
 - Docker Desktop (or Docker Engine + Docker Compose)
 - Internet connection for the first image/build pull
-- Optional: `.env` file only if you want to override default local credentials/settings
+- The repository includes a ready-to-use default `.env` file
 
 ### Steps
 

@@ -45,7 +45,7 @@ docker compose up
 ```
 
 This runs the built Next.js app with `next start` and applies committed migrations.
-Database credentials are read from `.env` when provided, with safe local defaults when not provided.
+The repository already includes a default local `.env`, so no extra configuration is required for first run.
 
 Then open `http://localhost:3000`, create your own account on sign-up, and sign in.
 
