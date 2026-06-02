@@ -122,7 +122,7 @@ describe("attribute value parsing", () => {
           rawValue: "10 banana",
           baseUnitSymbol: "Ω"
         }),
-      /invalid_quantity_unit/
+      /invalid-quantity-unit/
     );
   });
 

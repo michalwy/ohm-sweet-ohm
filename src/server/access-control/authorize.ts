@@ -56,6 +56,6 @@ export async function authorizeWorkspacePermission(
   const isAllowed = await hasWorkspacePermission(input);
 
   if (!isAllowed) {
-    throw new Error("workspace_permission_denied");
+    throw new Error("workspace-permission-denied");
   }
 }

@@ -14,7 +14,7 @@ import type { SupplierProviderKey } from "@/server/integrations/types";
 type SettingsError =
   | "missing-required-fields"
   | "invalid-provider"
-  | "workspace_permission_denied"
+  | "workspace-permission-denied"
   | "database-unavailable";
 
 type SettingsResult =
@@ -127,8 +127,8 @@ function isSupplierProviderKey(value: string): value is SupplierProviderKey {
 }
 
 function asSettingsError(error: unknown): SettingsResult {
-  if (error instanceof Error && error.message === "workspace_permission_denied") {
-    return { ok: false, error: "workspace_permission_denied" };
+  if (error instanceof Error && error.message === "workspace-permission-denied") {
+    return { ok: false, error: "workspace-permission-denied" };
   }
 
   return { ok: false, error: "database-unavailable" };

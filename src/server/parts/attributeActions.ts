@@ -491,7 +491,7 @@ async function getAuthorizedAttributeContext({
   const context = await getCurrentWorkspaceContextBySlug(workspaceSlug);
 
   if (!context) {
-    throw new Error("workspace_not_found");
+    throw new Error("workspace-not-found");
   }
 
   await authorizeWorkspacePermission({

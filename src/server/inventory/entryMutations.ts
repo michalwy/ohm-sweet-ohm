@@ -102,46 +102,7 @@ export async function getPartLocationBalances(input: {
   workspaceId: string;
   partId: string;
 }) {
-  const entries = await prisma.inventoryEntry.findMany({
-    where: {
-      workspaceId: input.workspaceId,
-      partId: input.partId
-    },
-    select: {
-      entryType: true,
-      quantity: true,
-      fromLocationId: true,
-      toLocationId: true
-    }
-  });
-
-  const balances = new Map<string, Prisma.Decimal>();
-
-  for (const entry of entries) {
-    const quantity = new Prisma.Decimal(entry.quantity);
-
-    if (entry.entryType === "RECEIPT" && entry.toLocationId) {
-      addBalance(balances, entry.toLocationId, quantity);
-      continue;
-    }
-
-    if (entry.entryType === "ISSUE" && entry.fromLocationId) {
-      addBalance(balances, entry.fromLocationId, quantity.negated());
-      continue;
-    }
-
-    if (entry.entryType === "TRANSFER" && entry.fromLocationId && entry.toLocationId) {
-      addBalance(balances, entry.fromLocationId, quantity.negated());
-      addBalance(balances, entry.toLocationId, quantity);
-      continue;
-    }
-
-    if (entry.entryType === "ADJUSTMENT" && entry.toLocationId) {
-      addBalance(balances, entry.toLocationId, quantity);
-    }
-  }
-
-  return balances;
+  return getPartLocationBalancesWithDb(prisma, input);
 }
 
 function parseQuantity(rawValue: string) {

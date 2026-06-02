@@ -103,7 +103,7 @@ export function DigiKeyIntegrationSettingsClient({
           error:
             | "missing-required-fields"
             | "invalid-provider"
-            | "workspace_permission_denied"
+            | "workspace-permission-denied"
             | "database-unavailable";
         }
   ) {
@@ -118,7 +118,7 @@ export function DigiKeyIntegrationSettingsClient({
         return;
       }
 
-      if (result.error === "workspace_permission_denied") {
+      if (result.error === "workspace-permission-denied") {
         setFormMessage(copy.permissionDenied);
         return;
       }

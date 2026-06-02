@@ -86,7 +86,7 @@ export function parseAttributeValue({
       const displayValue = normalizeTextAttributeValue(rawValue);
 
       if (!displayValue) {
-        throw new Error("attribute_value_required");
+        throw new Error("attribute-value-required");
       }
 
       return {
@@ -123,7 +123,7 @@ function parseQuantityValue({
   const unitSymbol = normalizeWhitespace(baseUnitSymbol ?? "");
 
   if (!unitSymbol) {
-    throw new Error("quantity_unit_required");
+    throw new Error("quantity-unit-required");
   }
 
   const isPercentUnit = unitSymbol === "%";
@@ -134,7 +134,7 @@ function parseQuantityValue({
   const match = compactValue.match(/^([+-]?(?:\d+(?:\.\d*)?|\.\d+))\s*(.*)$/);
 
   if (!match) {
-    throw new Error("invalid_quantity_value");
+    throw new Error("invalid-quantity-value");
   }
 
   const numericDisplay = normalizeNumberDisplay(match[1] ?? "");
@@ -146,7 +146,7 @@ function parseQuantityValue({
   const exponent = SI_PREFIX_EXPONENTS.get(prefix);
 
   if (exponent === undefined) {
-    throw new Error("invalid_quantity_prefix");
+    throw new Error("invalid-quantity-prefix");
   }
 
   const quantityBaseValue = multiplyDecimalByPowerOfTen(
@@ -195,7 +195,7 @@ function parseQuantitySuffix({
   const rawUnit = hasPrefix ? suffix.slice(1) : suffix;
 
   if (!isUnitAlias(rawUnit, baseUnitSymbol)) {
-    throw new Error("invalid_quantity_unit");
+    throw new Error("invalid-quantity-unit");
   }
 
   const prefix = canonicalPrefix(rawPrefix);
@@ -331,7 +331,7 @@ function parseBooleanValue(rawValue: string): ParsedAttributeValue {
     };
   }
 
-  throw new Error("invalid_boolean_value");
+  throw new Error("invalid-boolean-value");
 }
 
 function parseChoiceValue({
@@ -347,7 +347,7 @@ function parseChoiceValue({
   );
 
   if (!option) {
-    throw new Error("invalid_choice_value");
+    throw new Error("invalid-choice-value");
   }
 
   return {
@@ -369,7 +369,7 @@ function normalizeDecimalString(value: string) {
   const match = value.match(/^([+-]?)(?:(\d+)(?:\.(\d*))?|\.(\d+))$/);
 
   if (!match) {
-    throw new Error("invalid_number_value");
+    throw new Error("invalid-number-value");
   }
 
   const sign = match[1] === "-" ? "-" : "";

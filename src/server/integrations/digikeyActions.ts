@@ -14,7 +14,7 @@ export type DigiKeyIntegrationSettingsResult =
     }
   | {
       ok: false;
-      error: "missing-required-fields" | "workspace_permission_denied" | "database-unavailable";
+      error: "missing-required-fields" | "workspace-permission-denied" | "database-unavailable";
     };
 
 export async function updateDigiKeyIntegrationSettings(
@@ -59,10 +59,10 @@ export async function updateDigiKeyIntegrationSettings(
       ok: true
     };
   } catch (error) {
-    if (error instanceof Error && error.message === "workspace_permission_denied") {
+    if (error instanceof Error && error.message === "workspace-permission-denied") {
       return {
         ok: false,
-        error: "workspace_permission_denied"
+        error: "workspace-permission-denied"
       };
     }
 

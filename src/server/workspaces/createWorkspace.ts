@@ -135,7 +135,7 @@ async function generateUniqueWorkspaceSlug(tx: DatabaseClient, name: string) {
     candidate = `${baseSlug}-${createSlugSuffix()}`;
   }
 
-  throw new Error("workspace_slug_unavailable");
+  throw new Error("workspace-slug-unavailable");
 }
 
 function slugifyWorkspaceName(name: string) {

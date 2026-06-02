@@ -222,7 +222,7 @@ export async function updateAttribute({
   });
 
   if (!existingAttribute) {
-    throw new Error("attribute_not_found");
+    throw new Error("attribute-not-found");
   }
 
   const normalizedBaseUnitSymbol = normalizeBaseUnitSymbol({ type, baseUnitSymbol });
@@ -612,7 +612,7 @@ async function getAttributeForDefaultParsing({
   });
 
   if (!attribute) {
-    throw new Error("attribute_not_found");
+    throw new Error("attribute-not-found");
   }
 
   return attribute;
@@ -637,7 +637,7 @@ async function assertChoiceAttribute({
   });
 
   if (!attribute) {
-    throw new Error("choice_attribute_not_found");
+    throw new Error("choice_attribute-not-found");
   }
 }
 
@@ -661,7 +661,7 @@ async function getChoiceOptionInWorkspace({
   });
 
   if (!option) {
-    throw new Error("choice_option_not_found");
+    throw new Error("choice-option-not-found");
   }
 
   return option;
@@ -685,7 +685,7 @@ async function getCategoryInWorkspace({
   });
 
   if (!category) {
-    throw new Error("category_not_found");
+    throw new Error("category-not-found");
   }
 
   return category;
@@ -695,7 +695,7 @@ function normalizeAttributeNameInput(name: string) {
   const normalizedName = normalizeDictionaryName(name);
 
   if (!normalizedName) {
-    throw new Error("attribute_name_required");
+    throw new Error("attribute-name-required");
   }
 
   return normalizedName;
@@ -705,7 +705,7 @@ function normalizeChoiceLabelInput(label: string) {
   const normalizedLabel = label.trim().replace(/\s+/g, " ");
 
   if (!normalizedLabel) {
-    throw new Error("choice_option_label_required");
+    throw new Error("choice-option-label-required");
   }
 
   return normalizedLabel;
@@ -723,7 +723,7 @@ function normalizeChoiceOptionInputs(options: AttributeChoiceOptionInput[]) {
 
   for (const option of normalizedOptions) {
     if (seenLabels.has(option.normalizedLabel)) {
-      throw new Error("duplicate_choice_option");
+      throw new Error("duplicate-choice-option");
     }
 
     seenLabels.add(option.normalizedLabel);
@@ -764,7 +764,7 @@ async function syncChoiceOptions({
 
   for (const submittedOptionId of submittedOptionIds) {
     if (!existingOptionIds.has(submittedOptionId)) {
-      throw new Error("choice_option_not_found");
+      throw new Error("choice-option-not-found");
     }
   }
 
@@ -827,7 +827,7 @@ function normalizeBaseUnitSymbol({
   }
 
   if (!normalizedBaseUnitSymbol) {
-    throw new Error("quantity_unit_required");
+    throw new Error("quantity-unit-required");
   }
 
   return normalizedBaseUnitSymbol === "ohm" ? "Ω" : normalizedBaseUnitSymbol;

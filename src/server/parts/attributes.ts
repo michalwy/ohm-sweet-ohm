@@ -248,7 +248,7 @@ export async function assertValueAttributeIsEffectiveForCategory({
   );
 
   if (!isEffective) {
-    throw new Error("primary_attribute_not_effective");
+    throw new Error("primary-attribute-not-effective");
   }
 }
 
@@ -267,7 +267,7 @@ export async function assertCanChangeAttributeShape({
   });
 
   if (partValueCount > 0) {
-    throw new Error("attribute_shape_in_use");
+    throw new Error("attribute-shape-in-use");
   }
 }
 
@@ -303,7 +303,7 @@ export async function assertCanDeleteChoiceOption({
     categoryDefaultValueCount > 0 ||
     workspaceDefaultValueCount > 0
   ) {
-    throw new Error("choice_option_in_use");
+    throw new Error("choice-option-in-use");
   }
 }
 
@@ -352,7 +352,7 @@ export async function assertCanDeleteAttribute({
     valueCategoryCount > 0 ||
     partValueCount > 0
   ) {
-    throw new Error("attribute_in_use");
+    throw new Error("attribute-in-use");
   }
 }
 
@@ -378,7 +378,7 @@ export async function assertCanDetachCategoryAttribute({
   });
 
   if (!category) {
-    throw new Error("category_not_found");
+    throw new Error("category-not-found");
   }
 }
 
@@ -408,7 +408,7 @@ async function getCategoryChain({
   });
 
   if (closures.length === 0) {
-    throw new Error("category_not_found");
+    throw new Error("category-not-found");
   }
 
   return closures.map((closure) => closure.ancestor);

@@ -99,7 +99,7 @@ export async function deleteWorkspaceRole(roleId: string) {
   });
 
   if (role.isSystem) {
-    throw new Error("system_role_cannot_be_deleted");
+    throw new Error("system-role-cannot-be-deleted");
   }
 
   if (
@@ -118,16 +118,16 @@ function validateRoleInput(input: RoleInput) {
   const permissions = [...new Set(input.permissions)];
 
   if (!name) {
-    throw new Error("role_name_required");
+    throw new Error("role-name-required");
   }
 
   if (permissions.length === 0) {
-    throw new Error("role_requires_permission");
+    throw new Error("role-requires-permission");
   }
 
   for (const permission of permissions) {
     if (!permissionSet.has(permission)) {
-      throw new Error("unknown_permission");
+      throw new Error("unknown-permission");
     }
   }
 
@@ -160,6 +160,6 @@ async function assertWorkspaceKeepsAnotherAdmin(
   });
 
   if (!otherAdminMember) {
-    throw new Error("workspace_requires_admin");
+    throw new Error("workspace-requires-admin");
   }
 }

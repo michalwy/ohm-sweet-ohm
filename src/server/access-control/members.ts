@@ -15,7 +15,7 @@ export async function assignWorkspaceMemberRoles({
   const uniqueRoleIds = [...new Set(roleIds)];
 
   if (uniqueRoleIds.length === 0) {
-    throw new Error("member_requires_role");
+    throw new Error("member-requires-role");
   }
 
   const member = await prisma.workspaceMember.findUniqueOrThrow({
@@ -42,7 +42,7 @@ export async function assignWorkspaceMemberRoles({
   });
 
   if (roles.length !== uniqueRoleIds.length) {
-    throw new Error("role_not_in_workspace");
+    throw new Error("role-not-in-workspace");
   }
 
   const currentlyHasAdmin = member.roles.some(({ role }) =>
@@ -104,6 +104,6 @@ async function assertWorkspaceKeepsAdminMember(
   });
 
   if (!otherAdminMember) {
-    throw new Error("workspace_requires_admin");
+    throw new Error("workspace-requires-admin");
   }
 }

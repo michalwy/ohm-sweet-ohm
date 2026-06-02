@@ -71,7 +71,7 @@ export async function updateUnit(input: {
   });
 
   if (updated.count === 0) {
-    throw new Error("unit_not_found");
+    throw new Error("unit-not-found");
   }
 
   return prisma.unit.findUniqueOrThrow({
@@ -95,7 +95,7 @@ export async function deleteUnit(input: {
   });
 
   if (deleted.count === 0) {
-    throw new Error("unit_not_found");
+    throw new Error("unit-not-found");
   }
 }
 

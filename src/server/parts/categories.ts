@@ -64,8 +64,9 @@ export async function getPartCategoriesForPartForm(
     permission: "part-categories:read"
   });
 
+  // Parts writers need to see categories when creating/editing parts, even without explicit categories:read.
   if (!canWriteParts && !canReadCategories) {
-    throw new Error("workspace_permission_denied");
+    throw new Error("workspace-permission-denied");
   }
 
   return getPartCategories(context.workspace.id);
@@ -148,7 +149,7 @@ export async function createPartCategory(input: PartCategoryInput) {
     const name = input.name.trim();
 
     if (!name) {
-      throw new Error("category_name_required");
+      throw new Error("category-name-required");
     }
 
     await validateParentCategory({
@@ -187,7 +188,7 @@ export async function createPartCategoryPath({
     const pathSegments = getCategoryPathSegments(path);
 
     if (pathSegments.length === 0) {
-      throw new Error("category_name_required");
+      throw new Error("category-name-required");
     }
 
     await validateParentCategory({
@@ -280,7 +281,7 @@ async function createPartCategoryPathInTransaction({
   }
 
   if (!lastCategory) {
-    throw new Error("category_name_required");
+    throw new Error("category-name-required");
   }
 
   return tx.partCategory.findUniqueOrThrow({
@@ -311,7 +312,7 @@ export async function updatePartCategory({
     const name = input.name.trim();
 
     if (!name) {
-      throw new Error("category_name_required");
+      throw new Error("category-name-required");
     }
 
     const category = await tx.partCategory.findFirst({
@@ -326,11 +327,11 @@ export async function updatePartCategory({
     });
 
     if (!category) {
-      throw new Error("category_not_found");
+      throw new Error("category-not-found");
     }
 
     if (input.parentId === id) {
-      throw new Error("invalid_parent_category");
+      throw new Error("invalid-parent-category");
     }
 
     await validateParentCategory({
@@ -352,7 +353,7 @@ export async function updatePartCategory({
       });
 
       if (wouldMoveIntoDescendant) {
-        throw new Error("invalid_parent_category");
+        throw new Error("invalid-parent-category");
       }
     }
 
@@ -392,7 +393,7 @@ export async function deletePartCategory({
     });
 
     if (!category) {
-      throw new Error("category_not_found");
+      throw new Error("category-not-found");
     }
 
     const [partCount, childCount] = await Promise.all([
@@ -411,11 +412,11 @@ export async function deletePartCategory({
     ]);
 
     if (partCount > 0) {
-      throw new Error("category_in_use_by_parts");
+      throw new Error("category-in-use-by-parts");
     }
 
     if (childCount > 0) {
-      throw new Error("category_has_children");
+      throw new Error("category-has-children");
     }
 
     await tx.partCategory.delete({
@@ -452,7 +453,7 @@ async function validateParentCategory({
   });
 
   if (!parent) {
-    throw new Error("invalid_parent_category");
+    throw new Error("invalid-parent-category");
   }
 }
 
@@ -493,13 +494,13 @@ async function rebuildPartCategoryClosures(
 
     while (parentId) {
       if (seen.has(parentId)) {
-        throw new Error("category_tree_cycle");
+        throw new Error("category-tree-cycle");
       }
 
       const parent = categoriesById.get(parentId);
 
       if (!parent) {
-        throw new Error("invalid_parent_category");
+        throw new Error("invalid-parent-category");
       }
 
       closureRows.push({

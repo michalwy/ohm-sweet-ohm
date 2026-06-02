@@ -295,13 +295,13 @@ function getPartCategoryFormError(error: unknown) {
   }
 
   if (
-    error.message === "category_name_required" ||
-    error.message === "category_not_found" ||
-    error.message === "invalid_parent_category" ||
-    error.message === "category_tree_cycle" ||
-    error.message === "category_in_use_by_parts" ||
-    error.message === "category_has_children" ||
-    error.message === "workspace_permission_denied"
+    error.message === "category-name-required" ||
+    error.message === "category-not-found" ||
+    error.message === "invalid-parent-category" ||
+    error.message === "category-tree-cycle" ||
+    error.message === "category-in-use-by-parts" ||
+    error.message === "category-has-children" ||
+    error.message === "workspace-permission-denied"
   ) {
     return error.message.replaceAll("_", "-");
   }

@@ -576,7 +576,7 @@ async function getEffectivePartAttributesForCategories({
 }
 
 function getPartWriteError(error: unknown) {
-  if (error instanceof Error && error.message === "invalid_attribute_value") {
+  if (error instanceof Error && error.message === "invalid-attribute-value") {
     return "invalid-attribute-value";
   }
 
