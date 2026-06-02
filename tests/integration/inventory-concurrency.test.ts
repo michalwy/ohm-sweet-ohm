@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
-
-import { test } from "@playwright/test";
+import { describe, test } from "node:test";
+import { randomBytes } from "node:crypto";
 
 import { prisma } from "../../src/server/db/prisma";
 import {
@@ -8,13 +8,13 @@ import {
   getPartLocationBalances
 } from "../../src/server/inventory/entryMutations";
 
-test.describe("inventory concurrency safety", () => {
-  test("prevents concurrent issue entries from driving location stock below zero", async (
-    _context,
-    testInfo
-  ) => {
-    const suffix = `${testInfo.project.name}-${testInfo.retry}-issue`;
-    const { workspaceId, partId, locationAId } = await createFixture(suffix);
+function uniqueSuffix(label: string) {
+  return `${label}-${randomBytes(4).toString("hex")}`;
+}
+
+describe("inventory concurrency safety", () => {
+  test("prevents concurrent issue entries from driving location stock below zero", async () => {
+    const { workspaceId, partId, locationAId } = await createFixture(uniqueSuffix("issue"));
 
     await createInventoryEntry({
       workspaceId,
@@ -41,11 +41,10 @@ test.describe("inventory concurrency safety", () => {
       })
     ]);
 
-    assert.equal(results.filter((result) => result.status === "fulfilled").length, 1);
-    assert.equal(results.filter((result) => result.status === "rejected").length, 1);
+    assert.equal(results.filter((r) => r.status === "fulfilled").length, 1);
+    assert.equal(results.filter((r) => r.status === "rejected").length, 1);
     assert.equal(
-      (results.find((result) => result.status === "rejected") as PromiseRejectedResult)
-        .reason?.message,
+      (results.find((r) => r.status === "rejected") as PromiseRejectedResult).reason?.message,
       "insufficient-stock"
     );
 
@@ -53,12 +52,10 @@ test.describe("inventory concurrency safety", () => {
     assert.equal(balances.get(locationAId)?.toString(), "3");
   });
 
-  test("prevents concurrent transfers from over-drawing the source location", async (
-    _context,
-    testInfo
-  ) => {
-    const suffix = `${testInfo.project.name}-${testInfo.retry}-transfer`;
-    const { workspaceId, partId, locationAId, locationBId } = await createFixture(suffix);
+  test("prevents concurrent transfers from over-drawing the source location", async () => {
+    const { workspaceId, partId, locationAId, locationBId } = await createFixture(
+      uniqueSuffix("transfer")
+    );
 
     await createInventoryEntry({
       workspaceId,
@@ -87,11 +84,10 @@ test.describe("inventory concurrency safety", () => {
       })
     ]);
 
-    assert.equal(results.filter((result) => result.status === "fulfilled").length, 1);
-    assert.equal(results.filter((result) => result.status === "rejected").length, 1);
+    assert.equal(results.filter((r) => r.status === "fulfilled").length, 1);
+    assert.equal(results.filter((r) => r.status === "rejected").length, 1);
     assert.equal(
-      (results.find((result) => result.status === "rejected") as PromiseRejectedResult)
-        .reason?.message,
+      (results.find((r) => r.status === "rejected") as PromiseRejectedResult).reason?.message,
       "insufficient-stock"
     );
 
@@ -100,11 +96,10 @@ test.describe("inventory concurrency safety", () => {
     assert.equal(balances.get(locationBId)?.toString(), "7");
   });
 
-  test(
-    "prevents concurrent negative adjustments from driving location stock below zero",
-    async (_context, testInfo) => {
-    const suffix = `${testInfo.project.name}-${testInfo.retry}-adjustment`;
-    const { workspaceId, partId, locationAId } = await createFixture(suffix);
+  test("prevents concurrent negative adjustments from driving location stock below zero", async () => {
+    const { workspaceId, partId, locationAId } = await createFixture(
+      uniqueSuffix("adjustment")
+    );
 
     await createInventoryEntry({
       workspaceId,
@@ -131,28 +126,22 @@ test.describe("inventory concurrency safety", () => {
       })
     ]);
 
-    assert.equal(results.filter((result) => result.status === "fulfilled").length, 1);
-    assert.equal(results.filter((result) => result.status === "rejected").length, 1);
+    assert.equal(results.filter((r) => r.status === "fulfilled").length, 1);
+    assert.equal(results.filter((r) => r.status === "rejected").length, 1);
     assert.equal(
-      (results.find((result) => result.status === "rejected") as PromiseRejectedResult)
-        .reason?.message,
+      (results.find((r) => r.status === "rejected") as PromiseRejectedResult).reason?.message,
       "insufficient-stock"
     );
 
     const balances = await getPartLocationBalances({ workspaceId, partId });
     assert.equal(balances.get(locationAId)?.toString(), "3");
-    }
-  );
+  });
 });
 
 async function createFixture(suffix: string) {
   const workspace = await prisma.workspace.findFirst({
-    where: {
-      slug: "default"
-    },
-    select: {
-      id: true
-    }
+    where: { slug: "default" },
+    select: { id: true }
   });
 
   if (!workspace) {

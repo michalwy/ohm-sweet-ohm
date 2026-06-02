@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
-
-import { test } from "@playwright/test";
+import { describe, test } from "node:test";
+import { randomBytes } from "node:crypto";
 
 import { prisma } from "../../src/server/db/prisma";
 import {
@@ -8,10 +8,13 @@ import {
   getPartInventoryHistory
 } from "../../src/server/inventory/entryMutations";
 
-test.describe("inventory history (ledger)", () => {
-  test("returns entries in reverse-chronological order", async (_context, testInfo) => {
-    const suffix = `${testInfo.project.name}-${testInfo.retry}-order`;
-    const { workspaceId, partId, locationId } = await createFixture(suffix);
+function uniqueSuffix(label: string) {
+  return `${label}-${randomBytes(4).toString("hex")}`;
+}
+
+describe("inventory history (ledger)", () => {
+  test("returns entries in reverse-chronological order", async () => {
+    const { workspaceId, partId, locationId } = await createFixture(uniqueSuffix("order"));
 
     await createInventoryEntry({
       workspaceId,
@@ -40,9 +43,8 @@ test.describe("inventory history (ledger)", () => {
     assert.ok(firstDate >= secondDate);
   });
 
-  test("returns correct field values for each entry type", async (_context, testInfo) => {
-    const suffix = `${testInfo.project.name}-${testInfo.retry}-fields`;
-    const { workspaceId, partId, locationId } = await createFixture(suffix);
+  test("returns correct field values for each entry type", async () => {
+    const { workspaceId, partId, locationId } = await createFixture(uniqueSuffix("fields"));
 
     await createInventoryEntry({
       workspaceId,
@@ -63,9 +65,10 @@ test.describe("inventory history (ledger)", () => {
     assert.equal(history[0].note, "Initial stock");
   });
 
-  test("records author when createdByUserId is provided", async (_context, testInfo) => {
-    const suffix = `${testInfo.project.name}-${testInfo.retry}-author`;
-    const { workspaceId, partId, locationId, userId } = await createFixture(suffix);
+  test("records author when createdByUserId is provided", async () => {
+    const { workspaceId, partId, locationId, userId } = await createFixture(
+      uniqueSuffix("author")
+    );
 
     await createInventoryEntry({
       workspaceId,
@@ -82,10 +85,9 @@ test.describe("inventory history (ledger)", () => {
     assert.equal(history[0].authorName, "History Test User");
   });
 
-  test("does not return entries from another workspace", async (_context, testInfo) => {
-    const suffix = `${testInfo.project.name}-${testInfo.retry}-isolation`;
-    const fixtureA = await createFixture(`${suffix}-a`);
-    const fixtureB = await createFixture(`${suffix}-b`);
+  test("does not return entries from another workspace", async () => {
+    const fixtureA = await createFixture(uniqueSuffix("isolation-a"));
+    const fixtureB = await createFixture(uniqueSuffix("isolation-b"));
 
     await createInventoryEntry({
       workspaceId: fixtureA.workspaceId,
@@ -103,9 +105,8 @@ test.describe("inventory history (ledger)", () => {
     assert.equal(history.length, 0);
   });
 
-  test("caps results at 50 entries", async (_context, testInfo) => {
-    const suffix = `${testInfo.project.name}-${testInfo.retry}-cap`;
-    const { workspaceId, partId, locationId } = await createFixture(suffix);
+  test("caps results at 50 entries", async () => {
+    const { workspaceId, partId, locationId } = await createFixture(uniqueSuffix("cap"));
 
     for (let i = 0; i < 55; i++) {
       await createInventoryEntry({
