@@ -13,7 +13,7 @@ export async function createInventoryEntry(input: {
   fromLocationId?: string | null;
   toLocationId?: string | null;
   note?: string | null;
-  createdByMemberId?: string | null;
+  createdByUserId?: string | null;
 }) {
   const quantity = parseQuantity(input.quantity);
   const nextEntryShape = {
@@ -76,7 +76,7 @@ export async function createInventoryEntry(input: {
         fromLocationId: locations.fromLocationId,
         toLocationId: locations.toLocationId,
         note: normalizeOptionalText(input.note ?? null),
-        createdByMemberId: input.createdByMemberId ?? null
+        createdByUserId: input.createdByUserId ?? null
       }
     });
 
@@ -356,6 +356,52 @@ function addBalance(
 function normalizeOptionalText(value: string | null) {
   const normalized = value?.trim();
   return normalized ? normalized : null;
+}
+
+export type InventoryHistoryItem = {
+  id: string;
+  entryType: "RECEIPT" | "ISSUE" | "TRANSFER" | "ADJUSTMENT";
+  quantity: string;
+  fromLocationName: string | null;
+  toLocationName: string | null;
+  note: string | null;
+  createdAt: string;
+  authorName: string | null;
+};
+
+export async function getPartInventoryHistory(input: {
+  workspaceId: string;
+  partId: string;
+}): Promise<InventoryHistoryItem[]> {
+  const entries = await prisma.inventoryEntry.findMany({
+    where: {
+      workspaceId: input.workspaceId,
+      partId: input.partId
+    },
+    orderBy: { createdAt: "desc" },
+    take: 50,
+    select: {
+      id: true,
+      entryType: true,
+      quantity: true,
+      note: true,
+      createdAt: true,
+      fromLocation: { select: { name: true } },
+      toLocation: { select: { name: true } },
+      createdByUser: { select: { name: true } }
+    }
+  });
+
+  return entries.map((entry) => ({
+    id: entry.id,
+    entryType: entry.entryType,
+    quantity: entry.quantity.toString(),
+    fromLocationName: entry.fromLocation?.name ?? null,
+    toLocationName: entry.toLocation?.name ?? null,
+    note: entry.note,
+    createdAt: entry.createdAt.toISOString(),
+    authorName: entry.createdByUser?.name ?? null
+  }));
 }
 
 async function lockPartRow(

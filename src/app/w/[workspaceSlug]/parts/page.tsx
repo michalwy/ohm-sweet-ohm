@@ -156,6 +156,12 @@ const copy = {
   loadingMoreParts: "Loading more parts...",
   locationsAndStock: "Locations and stock",
   noAttributes: "No attributes for this part.",
+  movementHistory: "Movement history",
+  noHistory: "No movements recorded yet.",
+  historyColType: "Type",
+  historyColQuantity: "Qty",
+  historyColLocation: "Location",
+  historyColDate: "Date",
   databaseUnavailable:
     "Database is not available, so the list is shown empty for now."
 };

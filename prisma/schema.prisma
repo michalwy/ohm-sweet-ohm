@@ -98,14 +98,14 @@ model InventoryEntry {
   fromLocationId      String?
   toLocationId        String?
   note                String?
-  createdByMemberId   String?
+  createdByUserId     String?
   createdAt           DateTime           @default(now())
 
   workspace           Workspace          @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   part                Part               @relation(fields: [partId], references: [id], onDelete: Cascade)
   fromLocation        StorageLocation?   @relation("InventoryEntryFromLocation", fields: [fromLocationId], references: [id], onDelete: Restrict)
   toLocation          StorageLocation?   @relation("InventoryEntryToLocation", fields: [toLocationId], references: [id], onDelete: Restrict)
-  createdByMember     WorkspaceMember?   @relation(fields: [createdByMemberId], references: [id], onDelete: SetNull)
+  createdByUser       User?              @relation(fields: [createdByUserId], references: [id], onDelete: SetNull)
 
   @@index([workspaceId, partId, createdAt])
   @@index([workspaceId, fromLocationId])
@@ -319,9 +319,10 @@ model User {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
-  memberships WorkspaceMember[]
-  sessions    Session[]
-  accounts    Account[]
+  memberships             WorkspaceMember[]
+  sessions                Session[]
+  accounts                Account[]
+  inventoryEntriesCreated InventoryEntry[]
 }
 
 model Session {
@@ -507,7 +508,6 @@ model WorkspaceMember {
   user      User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
   workspace Workspace             @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   roles     WorkspaceMemberRole[]
-  inventoryEntriesCreated InventoryEntry[]
 
   @@unique([workspaceId, userId])
   @@index([userId])

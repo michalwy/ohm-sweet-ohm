@@ -6,7 +6,9 @@ import { authorizeWorkspacePermission } from "@/server/access-control/authorize"
 import { getCurrentWorkspaceContextBySlug } from "@/server/auth/currentContext";
 import {
   createInventoryEntry,
-  getPartLocationBalances
+  getPartInventoryHistory,
+  getPartLocationBalances,
+  type InventoryHistoryItem
 } from "@/server/inventory/entryMutations";
 
 export type InventoryActionResult<T> =
@@ -43,7 +45,8 @@ export async function createInventoryEntryForWorkspace(input: {
       quantity: input.quantity,
       fromLocationId: input.fromLocationId,
       toLocationId: input.toLocationId,
-      note: input.note
+      note: input.note,
+      createdByUserId: context.user.id
     });
     revalidatePath(getWorkspacePath(input.workspaceSlug));
     return getSuccessState(null);
@@ -73,6 +76,27 @@ export async function getPartBalancesForWorkspace(input: {
         quantity: quantity.toString()
       }))
     );
+  } catch (error) {
+    return getErrorState(getInventoryActionError(error));
+  }
+}
+
+export async function getPartInventoryHistoryForWorkspace(input: {
+  workspaceSlug: string;
+  partId: string;
+}): Promise<InventoryActionResult<InventoryHistoryItem[]>> {
+  try {
+    const context = await getAuthorizedInventoryContext({
+      workspaceSlug: input.workspaceSlug,
+      permission: "inventory:read"
+    });
+
+    const history = await getPartInventoryHistory({
+      workspaceId: context.workspace.id,
+      partId: input.partId
+    });
+
+    return getSuccessState(history);
   } catch (error) {
     return getErrorState(getInventoryActionError(error));
   }

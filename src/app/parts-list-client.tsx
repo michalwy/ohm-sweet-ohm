@@ -60,7 +60,10 @@ import {
 } from "@/app/dialog-shell";
 import { PartStockDialog } from "@/app/part-stock-dialog";
 import { useDebouncedValue } from "@/app/use-debounced-value";
-import { getPartBalancesForWorkspace } from "@/server/inventory/entryActions";
+import {
+  getPartBalancesForWorkspace,
+  getPartInventoryHistoryForWorkspace
+} from "@/server/inventory/entryActions";
 import { getLocationsForWorkspace } from "@/server/inventory/locationActions";
 
 type Copy = {
@@ -188,6 +191,12 @@ type Copy = {
   databaseUnavailable: string;
   locationsAndStock: string;
   noAttributes: string;
+  movementHistory: string;
+  noHistory: string;
+  historyColType: string;
+  historyColQuantity: string;
+  historyColLocation: string;
+  historyColDate: string;
 };
 
 type ListPage<TItem> = {
@@ -1008,6 +1017,23 @@ export function PartsListClient({
     enabled: Boolean(selectedPartId) && canReadInventory,
     queryFn: async () => {
       const result = await getPartBalancesForWorkspace({
+        workspaceSlug,
+        partId: selectedPartId as string
+      });
+
+      if (!result.ok) {
+        throw new Error(result.error);
+      }
+
+      return result.data;
+    }
+  });
+
+  const partInventoryHistoryQuery = useQuery({
+    queryKey: ["part-inventory-history", workspaceSlug, selectedPartId],
+    enabled: Boolean(selectedPartId) && canReadInventory,
+    queryFn: async () => {
+      const result = await getPartInventoryHistoryForWorkspace({
         workspaceSlug,
         partId: selectedPartId as string
       });
@@ -2074,6 +2100,67 @@ export function PartsListClient({
                       </button>
                     </div>
                   ) : null}
+                </section>
+              ) : null}
+              {canReadInventory ? (
+                <section className="grid gap-2">
+                  <h3 className="text-sm font-semibold text-slate-900">
+                    {copy.movementHistory}
+                  </h3>
+                  {partInventoryHistoryQuery.isLoading ? (
+                    <p className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-600">
+                      {copy.loadingParts}
+                    </p>
+                  ) : partInventoryHistoryQuery.isError ? (
+                    <p className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-600">
+                      {copy.databaseUnavailable}
+                    </p>
+                  ) : (partInventoryHistoryQuery.data ?? []).length === 0 ? (
+                    <p className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-600">
+                      {copy.noHistory}
+                    </p>
+                  ) : (
+                    <div className="max-h-64 overflow-y-auto rounded-md border border-slate-200">
+                      <table className="w-full text-left text-sm">
+                        <thead className="sticky top-0 bg-slate-50 text-slate-600">
+                          <tr>
+                            <th className="px-3 py-2 font-semibold">{copy.historyColType}</th>
+                            <th className="px-3 py-2 font-semibold">{copy.historyColQuantity}</th>
+                            <th className="px-3 py-2 font-semibold">{copy.historyColLocation}</th>
+                            <th className="px-3 py-2 font-semibold">{copy.historyColDate}</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {(partInventoryHistoryQuery.data ?? []).map((entry) => (
+                            <tr key={entry.id} className="border-t border-slate-100 first:border-t-0">
+                              <td className="px-3 py-2 align-top">
+                                <span className="inline-block rounded bg-slate-100 px-1.5 py-0.5 font-mono text-xs font-medium text-slate-700">
+                                  {entry.entryType}
+                                </span>
+                              </td>
+                              <td className="px-3 py-2 align-top font-semibold tabular-nums text-slate-950">
+                                {entry.quantity}
+                              </td>
+                              <td className="px-3 py-2 align-top text-slate-600">
+                                {[entry.fromLocationName, entry.toLocationName]
+                                  .filter(Boolean)
+                                  .join(" → ") || null}
+                                {entry.note ? (
+                                  <p className="text-xs text-slate-400">{entry.note}</p>
+                                ) : null}
+                              </td>
+                              <td className="whitespace-nowrap px-3 py-2 align-top text-xs text-slate-400">
+                                {new Date(entry.createdAt).toLocaleDateString()}
+                                {entry.authorName ? (
+                                  <p>{entry.authorName}</p>
+                                ) : null}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
                 </section>
               ) : null}
             </div>

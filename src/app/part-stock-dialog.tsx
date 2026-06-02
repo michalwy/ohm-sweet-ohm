@@ -97,6 +97,9 @@ export function PartStockDialog({
         }),
         queryClient.invalidateQueries({
           queryKey: ["parts-list", workspaceSlug]
+        }),
+        queryClient.invalidateQueries({
+          queryKey: ["part-inventory-history", workspaceSlug, part?.id]
         })
       ]);
     }
