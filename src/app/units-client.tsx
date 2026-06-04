@@ -143,9 +143,7 @@ export function UnitsClient({
     mutationFn: deleteUnitForWorkspace,
     onSuccess: async (result, variables) => {
       if (!result.ok) {
-        setUnitFieldErrors({
-          delete: getErrorMessage(copy, result.error)
-        });
+        setUnitFieldErrors(getUnitFormErrors(copy, result.error));
         return;
       }
 

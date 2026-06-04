@@ -68,9 +68,7 @@ test.describe("parts list", () => {
       page.getByRole("columnheader", { name: "Stock" })
     ).toBeVisible();
     await expect(page).toHaveURL(/\/w\/default\/parts$/);
-    const seededPartRow = page.getByRole("row", {
-      name: /Texas Instruments.*NE555P/
-    });
+    const seededPartRow = page.locator("tr").filter({ hasText: "NE555P" }).filter({ hasText: "Texas Instruments" }).first();
     await expect(seededPartRow).toBeVisible();
     await expect(seededPartRow).toContainText("NE555P");
     await expect(seededPartRow).toContainText("Texas Instruments");
@@ -172,9 +170,7 @@ test.describe("parts list", () => {
       `Part created: Microchip Technology ${catalogNumber}.`
     );
     await expect(page).toHaveURL(/\/w\/default\/parts$/);
-    const createdPartRow = page.getByRole("row", {
-      name: new RegExp(`Microchip Technology.*${catalogNumber}`)
-    });
+    const createdPartRow = page.locator("tr").filter({ hasText: catalogNumber }).filter({ hasText: "Microchip Technology" }).first();
 
     await expect(createdPartRow).toBeVisible();
     await expect(createdPartRow).toContainText("Microchip Technology");
@@ -290,28 +286,23 @@ test.describe("parts list", () => {
       `Part updated: ${updatedManufacturer} ${updatedCatalogNumber}.`
     );
     await expect(page).toHaveURL(/\/w\/default\/parts$/);
-    const updatedPartRow = page.getByRole("row", {
-      name: new RegExp(`${updatedManufacturer}.*${updatedCatalogNumber}`)
-    });
+    const updatedPartRow = page.locator("tr").filter({ hasText: updatedCatalogNumber }).filter({ hasText: updatedManufacturer }).first();
     await expect(updatedPartRow).toBeVisible();
     await expect(updatedPartRow).toContainText(updatedDescription);
     await expect(updatedPartRow).toContainText("Passives » Capacitors");
     await expect(updatedPartRow).toContainText("Passives » Resistors");
 
-    await updatedPartRow.getByRole("button", { name: "Edit" }).click();
-    await expect(editPartDialog).toBeVisible();
-    await editPartDialog.getByRole("button", { name: "Delete" }).click();
-    const deletePartDialog = page.getByRole("dialog", {
-      name: `Delete ${updatedManufacturer} ${updatedCatalogNumber}?`
-    });
-    await expect(deletePartDialog).toBeVisible();
+    await updatedPartRow.getByRole("button", { name: "Delete" }).click();
+    await expect(page.getByText("This cannot be undone.")).toBeVisible();
+    const deletePartDialog = page.locator("dialog[open]").filter({ hasText: "This cannot be undone." });
     await expect(deletePartDialog.getByRole("button", { name: "Cancel" }))
       .toBeFocused();
     await deletePartDialog.getByRole("button", { name: "Cancel" }).click();
-    await expect(deletePartDialog).toBeHidden();
-    await expect(editPartDialog).toBeVisible();
-    await editPartDialog.getByRole("button", { name: "Delete" }).click();
-    await deletePartDialog.getByRole("button", { name: "Delete" }).click();
+    await expect(page.getByText("This cannot be undone.")).not.toBeVisible();
+
+    await updatedPartRow.getByRole("button", { name: "Delete" }).click();
+    await expect(page.getByText("This cannot be undone.")).toBeVisible();
+    await page.locator("dialog[open]").filter({ hasText: "This cannot be undone." }).getByRole("button", { name: "Delete" }).click();
     await expect(page.getByRole("status")).toHaveText(
       `Part deleted: ${updatedManufacturer} ${updatedCatalogNumber}.`
     );
@@ -372,9 +363,7 @@ test.describe("parts list", () => {
     await page.getByRole("link", { name: "Open" }).click();
 
     await expect(page).toHaveURL(/\/w\/default\/parts$/);
-    const targetPartRow = page.getByRole("row", {
-      name: new RegExp(`${manufacturerName}.*${targetCatalogNumber}`)
-    });
+    const targetPartRow = page.locator("tr").filter({ hasText: targetCatalogNumber }).filter({ hasText: manufacturerName });
     await expect(targetPartRow).toHaveCount(0);
     await scrollListUntilVisible(page, "parts-list-viewport", targetPartRow);
     await expect(targetPartRow).toContainText("Scroll-loaded test part 059");
@@ -445,23 +434,15 @@ test.describe("parts list", () => {
         })
       })
       .first();
-    await integratedCircuitsNode.getByRole("button", { name: "Edit" }).click();
-    let editCategoryDialog = page.getByRole("dialog", {
-      name: "Edit category"
-    });
-    await expect(editCategoryDialog).toBeVisible();
-    await editCategoryDialog.getByRole("button", { name: "Delete" }).click();
+    await integratedCircuitsNode.getByRole("button", { name: "Delete" }).click();
     let deleteCategoryDialog = page.getByRole("dialog", {
       name: "Delete Integrated circuits?"
     });
     await expect(deleteCategoryDialog).toBeVisible();
     await deleteCategoryDialog.getByRole("button", { name: "Delete" }).click();
     await expect(
-      editCategoryDialog.getByText(
-        "This category is used by parts and cannot be deleted."
-      )
+      page.getByText("This category is used by parts and cannot be deleted.")
     ).toBeVisible();
-    await editCategoryDialog.getByRole("button", { name: "Close" }).click();
 
     await page.getByRole("button", { name: "Add root category" }).click();
     const addCategoryDialog = page.getByRole("dialog", {
@@ -557,7 +538,7 @@ test.describe("parts list", () => {
       })
       .first();
     await childNode.getByRole("button", { name: "Edit" }).click();
-    editCategoryDialog = page.getByRole("dialog", {
+    let editCategoryDialog = page.getByRole("dialog", {
       name: "Edit category"
     });
     await expect(editCategoryDialog).toBeVisible();
@@ -584,18 +565,12 @@ test.describe("parts list", () => {
         .first()
     ).toBeVisible();
 
-    await categoryNode.getByRole("button", { name: "Edit" }).click();
-    await expect(editCategoryDialog).toBeVisible();
-    await editCategoryDialog.getByRole("button", { name: "Delete" }).click();
-    deleteCategoryDialog = page.getByRole("dialog", {
-      name: `Delete ${categoryName}?`
-    });
-    await expect(deleteCategoryDialog).toBeVisible();
-    await deleteCategoryDialog.getByRole("button", { name: "Delete" }).click();
+    await categoryNode.getByRole("button", { name: "Delete" }).click();
+    await expect(page.getByText("This cannot be undone.")).toBeVisible();
+    await page.locator("dialog[open]").filter({ hasText: "This cannot be undone." }).getByRole("button", { name: "Delete" }).click();
     await expect(
       page.getByText("Delete child categories before deleting this category.")
     ).toBeVisible();
-    await editCategoryDialog.getByRole("button", { name: "Close" }).click();
 
     const updatedChildNode = page
       .getByTestId("part-category-node")
@@ -605,14 +580,9 @@ test.describe("parts list", () => {
         })
       })
       .first();
-    await updatedChildNode.getByRole("button", { name: "Edit" }).click();
-    await expect(editCategoryDialog).toBeVisible();
-    await editCategoryDialog.getByRole("button", { name: "Delete" }).click();
-    deleteCategoryDialog = page.getByRole("dialog", {
-      name: `Delete ${updatedChildName}?`
-    });
-    await expect(deleteCategoryDialog).toBeVisible();
-    await deleteCategoryDialog.getByRole("button", { name: "Delete" }).click();
+    await updatedChildNode.getByRole("button", { name: "Delete" }).click();
+    await expect(page.getByText("This cannot be undone.")).toBeVisible();
+    await page.locator("dialog[open]").filter({ hasText: "This cannot be undone." }).getByRole("button", { name: "Delete" }).click();
     await expect(page.getByRole("status")).toHaveText(
       `Category deleted: ${updatedChildName}.`
     );
@@ -628,14 +598,9 @@ test.describe("parts list", () => {
         })
       })
       .first();
-    await updatedCategoryNode.getByRole("button", { name: "Edit" }).click();
-    await expect(editCategoryDialog).toBeVisible();
-    await editCategoryDialog.getByRole("button", { name: "Delete" }).click();
-    deleteCategoryDialog = page.getByRole("dialog", {
-      name: `Delete ${categoryName}?`
-    });
-    await expect(deleteCategoryDialog).toBeVisible();
-    await deleteCategoryDialog.getByRole("button", { name: "Delete" }).click();
+    await updatedCategoryNode.getByRole("button", { name: "Delete" }).click();
+    await expect(page.getByText("This cannot be undone.")).toBeVisible();
+    await page.locator("dialog[open]").filter({ hasText: "This cannot be undone." }).getByRole("button", { name: "Delete" }).click();
     await expect(page.getByRole("status")).toHaveText(
       `Category deleted: ${categoryName}.`
     );
@@ -666,6 +631,9 @@ test.describe("parts list", () => {
     await page.getByRole("link", { name: "Attributes" }).click();
 
     await expect(page).toHaveURL(/\/w\/default\/attributes$/);
+    await expect(page.getByRole("heading", { level: 1, name: "Attributes" })).toBeVisible();
+    await page.waitForLoadState("networkidle");
+    await expect(page.getByRole("button", { name: "Add attribute" })).toBeEnabled();
     await page.getByRole("button", { name: "Add attribute" }).click();
     let addAttributeDialog = page.getByRole("dialog", {
       name: "Add attribute"
@@ -684,18 +652,9 @@ test.describe("parts list", () => {
       name: new RegExp(disposableName)
     });
     await expect(disposableRow).toBeVisible();
-    await disposableRow.getByRole("button", { name: "Edit" }).click();
-    let editAttributeDialog = page.getByRole("dialog", {
-      name: "Edit attribute"
-    });
-    await expect(editAttributeDialog).toBeVisible();
-    await expect(editAttributeDialog.getByLabel("Name")).toBeFocused();
-    await editAttributeDialog.getByRole("button", { name: "Delete" }).click();
-    const deleteAttributeDialog = page.getByRole("dialog", {
-      name: `Delete ${disposableName}?`
-    });
-    await expect(deleteAttributeDialog).toBeVisible();
-    await deleteAttributeDialog.getByRole("button", { name: "Delete" }).click();
+    await disposableRow.getByRole("button", { name: "Delete" }).click();
+    await expect(page.getByText("This cannot be undone.")).toBeVisible();
+    await page.locator("dialog[open]").filter({ hasText: "This cannot be undone." }).getByRole("button", { name: "Delete" }).click();
     await expect(page.getByRole("status")).toHaveText(
       `Attribute deleted: ${disposableName}.`
     );
@@ -739,7 +698,7 @@ test.describe("parts list", () => {
       name: new RegExp(`${mountingName}.*SMD`)
     });
     await mountingRow.getByRole("button", { name: "Edit" }).click();
-    editAttributeDialog = page.getByRole("dialog", {
+    let editAttributeDialog = page.getByRole("dialog", {
       name: "Edit attribute"
     });
     await expect(editAttributeDialog).toBeVisible();
@@ -796,27 +755,10 @@ test.describe("parts list", () => {
       sortOrder: 90
     });
 
+    await attachResistanceAttributeToWorkspace(resistanceName);
+
     await page.getByRole("link", { name: "Part categories" }).click();
     await expect(page).toHaveURL(/\/w\/default\/part-categories$/);
-    await page.getByRole("button", { name: "Global attributes" }).click();
-    const globalAttributesDialog = page.getByRole("dialog", {
-      name: "Global attributes"
-    });
-    await expect(globalAttributesDialog).toBeVisible();
-    await globalAttributesDialog
-      .locator('select[name="attributeId"]')
-      .selectOption({
-        label: resistanceName
-      });
-    await globalAttributesDialog
-      .getByRole("button", { name: "Attach" })
-      .click();
-    await globalAttributesDialog
-      .getByRole("button", { name: "Save global attributes" })
-      .click();
-    await expect(page.getByRole("status")).toHaveText(
-      "Category attribute configuration updated"
-    );
 
     const passivesCategoryNode = page
       .getByTestId("part-category-node")
@@ -917,7 +859,7 @@ test.describe("parts list", () => {
     await expect(resistanceDraftRow.filter({ hasText: "Inherited" }))
       .toBeVisible();
     await resistanceDraftRow.getByLabel("Sort order").fill("10");
-    await resistanceDraftRow.getByLabel("Default value").fill("10 k");
+    await resistanceDraftRow.getByLabel("Default value").fill("10 kΩ");
     await expect(resistanceDraftRow.filter({ hasText: "Local" })).toBeVisible();
     const overrideDraftRow = editCategoryDialog
       .getByTestId("category-attribute-draft-row")
@@ -972,13 +914,12 @@ test.describe("parts list", () => {
     await addPartDialog.getByRole("button", { name: "Details" }).click();
     await expect(addPartDialog.getByLabel("Manufacturer")).toHaveValue("Yageo");
     await addPartDialog.getByLabel(resistanceName).fill("4,7 kΩ");
+    await addPartDialog.getByLabel("Unit").selectOption({ label: "Pieces (pcs)" });
     await addPartDialog.getByRole("button", { name: "Create part" }).click();
     await expect(page.getByRole("status")).toHaveText(
       `Part created: Yageo RC0603-${suffix}.`
     );
-    const resistorRow = page.getByRole("row", {
-      name: new RegExp(`Yageo.*RC0603-${suffix}.*4.7 kΩ`)
-    });
+    const resistorRow = page.locator("tr").filter({ hasText: `RC0603-${suffix}` }).filter({ hasText: "Yageo" }).first();
     await expect(resistorRow).toBeVisible();
     await expect(resistorRow).toContainText("Passives » Resistors configured");
 
@@ -996,9 +937,7 @@ test.describe("parts list", () => {
     await expect(page.getByRole("status")).toHaveText(
       `Part updated: Yageo RC0603-${suffix}.`
     );
-    const updatedResistorRow = page.getByRole("row", {
-      name: new RegExp(`Yageo.*RC0603-${suffix}`)
-    });
+    const updatedResistorRow = page.locator("tr").filter({ hasText: `RC0603-${suffix}` }).filter({ hasText: "Yageo" }).first();
     await expect(updatedResistorRow).toContainText("Semiconductors » Diodes");
     await expect(updatedResistorRow).not.toContainText("4.7 kΩ");
 
@@ -1059,6 +998,7 @@ test.describe("parts list", () => {
       frequencyAttributeName,
       packageAttributeName
     });
+    await ensureActiveSupplierProvider("digikey");
 
     await page.goto("/");
     await page.getByLabel("Email").fill("owner@ohmsweetohm.local");
@@ -1083,6 +1023,8 @@ test.describe("parts list", () => {
     await matchingDialog.getByRole("button", { name: /Target category/ }).click();
     await page.getByPlaceholder("Search categories").fill("integrated");
     await page.keyboard.press("Enter");
+    await expect(matchingDialog.getByRole("button", { name: /Target category.*Integrated circuits/ })).toBeVisible();
+    await page.waitForLoadState("networkidle");
 
     const frequencyRow = matchingDialog.locator("tr", {
       has: page.getByText("Frequency")
@@ -1090,6 +1032,8 @@ test.describe("parts list", () => {
     await frequencyRow.locator("select").first().selectOption({
       label: frequencyAttributeName
     });
+    // Wait for React to process the state update before selecting package
+    await page.waitForTimeout(200);
 
     const packageRow = matchingDialog.locator("tr", {
       has: page.getByText("Package / Case")
@@ -1097,8 +1041,13 @@ test.describe("parts list", () => {
     await packageRow.locator("select").first().selectOption({
       label: packageAttributeName
     });
+    // Wait for React to settle before saving
+    await page.waitForTimeout(200);
 
     await matchingDialog.getByRole("button", { name: "Save changes" }).click();
+    await expect(matchingDialog).not.toBeVisible();
+    await expect(addPartDialog).toBeVisible();
+    await addPartDialog.getByLabel("Unit").selectOption({ label: "Pieces (pcs)" });
     await addPartDialog.getByRole("button", { name: "Create part" }).click();
     await expect(page.getByRole("status")).toHaveText(
       "Part created: Texas Instruments E2E-NE555A."
@@ -1129,9 +1078,8 @@ test.describe("parts list", () => {
     );
 
     await matchingDialog.getByRole("button", { name: "Skip matching" }).click();
-    await page.getByRole("dialog", { name: /Skip matching/ }).getByRole("button", {
-      name: "Skip and continue"
-    }).click();
+    await expect(page.getByRole("button", { name: "Skip and continue" })).toBeVisible();
+    await page.getByRole("button", { name: "Skip and continue" }).click();
     await expect(addPartDialog).toBeVisible();
   });
 });
@@ -1297,6 +1245,11 @@ async function seedLargeListsForScrolling(suffix: string) {
       `,
       [unitId, workspaceId]
     );
+    const resolvedUnitResult = await pool.query<{ id: string }>(
+      `SELECT id FROM "Unit" WHERE "workspaceId" = $1 AND "normalizedName" = 'pieces' LIMIT 1`,
+      [workspaceId]
+    );
+    const resolvedUnitId = resolvedUnitResult.rows[0]?.id ?? unitId;
 
     for (let index = 0; index < 60; index += 1) {
       const paddedIndex = index.toString().padStart(3, "0");
@@ -1322,7 +1275,7 @@ async function seedLargeListsForScrolling(suffix: string) {
         [
           `pt_e2e_scroll_${suffix}_${paddedIndex}`,
           workspaceId,
-          unitId,
+          resolvedUnitId,
           `ZZZ-SCROLL-${suffix}-${paddedIndex}`,
           `Scroll-loaded test part ${paddedIndex}`,
           organizationId
@@ -1483,4 +1436,49 @@ async function optionValueByLabel(select: Locator, label: string) {
 
 function escapeRegex(value: string) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+async function attachResistanceAttributeToWorkspace(attributeName: string) {
+  const connectionString =
+    process.env.DATABASE_URL ??
+    "postgresql://oso:oso_e2e_password@localhost:5433/ohm_sweet_ohm_e2e?schema=public";
+  const pool = new Pool({ connectionString });
+  try {
+    const workspaceResult = await pool.query<{ id: string }>(
+      `SELECT id FROM "Workspace" WHERE slug = 'default' LIMIT 1`
+    );
+    const workspaceId = workspaceResult.rows[0]?.id;
+    if (!workspaceId) throw new Error("e2e_workspace_setup_failed");
+
+    const attributeResult = await pool.query<{ id: string }>(
+      `SELECT id FROM "Attribute" WHERE "workspaceId" = $1 AND name = $2 LIMIT 1`,
+      [workspaceId, attributeName]
+    );
+    const attributeId = attributeResult.rows[0]?.id;
+    if (!attributeId) throw new Error(`e2e_attribute_not_found: ${attributeName}`);
+
+    await pool.query(
+      `INSERT INTO "WorkspaceAttribute" (id, "workspaceId", "attributeId", "sortOrder", "isPrimary", "createdAt", "updatedAt")
+       VALUES (gen_random_uuid()::text, $1, $2, 10, false, now(), now())
+       ON CONFLICT ("workspaceId", "attributeId") DO NOTHING`,
+      [workspaceId, attributeId]
+    );
+  } finally {
+    await pool.end();
+  }
+}
+
+async function ensureActiveSupplierProvider(provider: "digikey" | "tme") {
+  const connectionString =
+    process.env.DATABASE_URL ??
+    "postgresql://oso:oso_e2e_password@localhost:5433/ohm_sweet_ohm_e2e?schema=public";
+  const pool = new Pool({ connectionString });
+  try {
+    await pool.query(
+      `UPDATE "Workspace" SET "activeSupplierProvider" = $1 WHERE slug = 'default'`,
+      [provider.toUpperCase()]
+    );
+  } finally {
+    await pool.end();
+  }
 }

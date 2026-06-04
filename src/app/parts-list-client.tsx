@@ -1192,10 +1192,9 @@ export function PartsListClient({
       }
 
       const suggestedByKey = new Map(
-        suggestionResult.payload.attributeRows.map((row) => [
-          row.sourceAttributeKey,
-          row.suggestedTargetAttributeId ?? ""
-        ])
+        suggestionResult.payload.attributeRows
+          .filter((row) => row.suggestedTargetAttributeId)
+          .map((row) => [row.sourceAttributeKey, row.suggestedTargetAttributeId!])
       );
 
       setMatchingState((current) => {

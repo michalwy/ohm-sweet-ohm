@@ -120,16 +120,14 @@ export function LocationsClient({
 
   const deleteMutation = useMutation({
     mutationFn: deleteLocationForWorkspace,
-    onSuccess: (result) => {
+    onSuccess: (result, variables) => {
       if (!result.ok) {
         setErrors(getLocationFormErrors(copy, result.error));
         return;
       }
-      if (locationPendingDelete) {
-        setLocations(
-          locations.filter((location) => location.id !== locationPendingDelete.id)
-        );
-      }
+      setLocations((prev) =>
+        prev.filter((location) => location.id !== variables.locationId)
+      );
       setLocationPendingDelete(null);
       setErrors({});
     }
