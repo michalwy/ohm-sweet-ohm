@@ -30,13 +30,14 @@ const copy = {
   userGuide: "User guide",
   switchWorkspace: "Switch workspace",
   signOut: "Sign out",
+  inventorySection: "Inventory",
   parts: "Parts",
-  locations: "Locations",
-  organizations: "Organizations",
+  locations: "Storage Locations",
   purchasesSection: "Purchases",
   shoppingLists: "Shopping Lists",
   purchaseOrders: "Purchase Orders",
   configurationSection: "Configuration",
+  organizations: "Organizations",
   partCategories: "Part categories",
   attributes: "Attributes",
   units: "Units",
@@ -81,6 +82,9 @@ export function WorkspaceShell({
             className="flex min-h-0 flex-1 flex-col gap-1 overflow-auto p-3"
             aria-label="Main navigation"
           >
+            <p className="px-3 pb-1 pt-1 text-xs font-semibold uppercase tracking-wide text-slate-500">
+              {copy.inventorySection}
+            </p>
             <Link
               className={getNavLinkClass(activeNavItem === "parts")}
               href={`/w/${workspaceSlug}/parts`}
@@ -94,13 +98,6 @@ export function WorkspaceShell({
               aria-current={activeNavItem === "locations" ? "page" : undefined}
             >
               {copy.locations}
-            </Link>
-            <Link
-              className={getNavLinkClass(activeNavItem === "organizations")}
-              href={`/w/${workspaceSlug}/organizations`}
-              aria-current={activeNavItem === "organizations" ? "page" : undefined}
-            >
-              {copy.organizations}
             </Link>
             <div className="my-2 border-t border-slate-200" />
             <p className="px-3 pb-1 pt-1 text-xs font-semibold uppercase tracking-wide text-slate-500">
@@ -124,6 +121,13 @@ export function WorkspaceShell({
             <p className="px-3 pb-1 pt-1 text-xs font-semibold uppercase tracking-wide text-slate-500">
               {copy.configurationSection}
             </p>
+            <Link
+              className={getNavLinkClass(activeNavItem === "organizations")}
+              href={`/w/${workspaceSlug}/organizations`}
+              aria-current={activeNavItem === "organizations" ? "page" : undefined}
+            >
+              {copy.organizations}
+            </Link>
             <Link
               className={getNavLinkClass(activeNavItem === "part-categories")}
               href={`/w/${workspaceSlug}/part-categories`}
