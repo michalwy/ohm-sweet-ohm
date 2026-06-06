@@ -25,6 +25,7 @@ import {
   markOrderedForWorkspace,
   receiveItemsForWorkspace,
   removeOrderItemForWorkspace,
+  revertOrderToDraftForWorkspace,
   updateOrderItemForWorkspace,
   updatePurchaseOrderForWorkspace
 } from "@/server/purchase-orders/purchaseOrderActions";
@@ -122,6 +123,10 @@ type Copy = {
   searchParts: string;
   searchPartsPlaceholder: string;
   noMatchingParts: string;
+  revertToDraft: string;
+  revertToDraftConfirmTitle: string;
+  revertToDraftConfirmBody: string;
+  revertedToast: string;
   createdToast: string;
   updatedToast: string;
   deletedToast: string;
@@ -185,6 +190,7 @@ export function PurchaseOrdersClient({
   const [editingOrder, setEditingOrder] = useState<PurchaseOrderSummary | null>(null);
   const [orderPendingDelete, setOrderPendingDelete] = useState<PurchaseOrderSummary | null>(null);
   const [markOrderedPending, setMarkOrderedPending] = useState(false);
+  const [revertToDraftPending, setRevertToDraftPending] = useState(false);
   const [itemDialogMode, setItemDialogMode] = useState<"create" | "edit" | null>(null);
   const [editingItem, setEditingItem] = useState<PurchaseOrderItem | null>(null);
   const [itemPendingRemove, setItemPendingRemove] = useState<PurchaseOrderItem | null>(null);
@@ -204,6 +210,7 @@ export function PurchaseOrdersClient({
   const itemDialogRef = useRef<HTMLDialogElement>(null);
   const receiveDialogRef = useRef<HTMLDialogElement>(null);
   const markOrderedDialogRef = useRef<HTMLDialogElement>(null);
+  const revertToDraftDialogRef = useRef<HTMLDialogElement>(null);
 
   // --- Column configuration ---
 
@@ -342,6 +349,18 @@ export function PurchaseOrdersClient({
       setMarkOrderedPending(false);
       closeDialog(markOrderedDialogRef.current);
       addToast(copy.orderedToast);
+      void refetchDetail();
+      reloadOrders();
+    }
+  });
+
+  const revertToDraftMutation = useMutation({
+    mutationFn: revertOrderToDraftForWorkspace,
+    onSuccess: (result) => {
+      if (!result.ok) { addToast(getErrorMsg(copy, result.error)); return; }
+      setRevertToDraftPending(false);
+      closeDialog(revertToDraftDialogRef.current);
+      addToast(copy.revertedToast);
       void refetchDetail();
       reloadOrders();
     }
@@ -599,7 +618,8 @@ export function PurchaseOrdersClient({
     addItemMutation.isPending ||
     updateItemMutation.isPending ||
     receiveItemsMutation.isPending ||
-    markOrderedMutation.isPending;
+    markOrderedMutation.isPending ||
+    revertToDraftMutation.isPending;
 
   function statusLabel(status: "DRAFT" | "ORDERED" | "RECEIVED") {
     if (status === "DRAFT") return copy.statusDraft;
@@ -683,7 +703,7 @@ export function PurchaseOrdersClient({
             <button
               aria-label={copy.delete}
               className="min-h-8 rounded-md border border-[var(--color-error-border)] bg-white px-2.5 py-1 text-sm font-medium text-[var(--color-error)] transition hover:bg-[var(--color-error-soft)] focus:outline-none focus:ring-2 focus:ring-[var(--color-error-border)] focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400"
-              disabled={!canWrite || row.original.status !== "DRAFT" || deleteOrderMutation.isPending}
+              disabled={!canWrite || row.original.status === "RECEIVED" || deleteOrderMutation.isPending}
               type="button"
               onClick={(e) => {
                 e.stopPropagation();
@@ -892,6 +912,19 @@ export function PurchaseOrdersClient({
                   onClick={openReceiveDialog}
                 >
                   {copy.receiveItems}
+                </button>
+              ) : null}
+              {detail?.status === "ORDERED" ? (
+                <button
+                  className="min-h-8 rounded-md border border-slate-300 bg-white px-3 text-sm font-medium text-slate-700 transition hover:border-slate-400 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+                  type="button"
+                  disabled={!canWrite}
+                  onClick={() => {
+                    setRevertToDraftPending(true);
+                    window.requestAnimationFrame(() => openDialog(revertToDraftDialogRef.current));
+                  }}
+                >
+                  {copy.revertToDraft}
                 </button>
               ) : null}
             </div>
@@ -1322,6 +1355,43 @@ export function PurchaseOrdersClient({
                 disabled={isMutating}
                 onClick={() => {
                   if (selectedOrderId) markOrderedMutation.mutate({ workspaceSlug, orderId: selectedOrderId });
+                }}
+              >
+                {copy.confirm}
+              </button>
+            </DialogFooter>
+          </div>
+        ) : null}
+      </DialogShell>
+
+      {/* Revert to draft confirmation */}
+      <DialogShell
+        ref={revertToDraftDialogRef}
+        closeLabel={copy.close}
+        title={copy.revertToDraftConfirmTitle}
+        titleId="revert-to-draft-dialog-title"
+        widthClassName="w-[min(28rem,calc(100vw-3rem))]"
+        onClose={() => setRevertToDraftPending(false)}
+      >
+        {revertToDraftPending ? (
+          <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+            <DialogBody>
+              <p className="text-sm leading-6 text-slate-600">{copy.revertToDraftConfirmBody}</p>
+            </DialogBody>
+            <DialogFooter className="justify-end gap-2">
+              <button
+                className="min-h-10 rounded-md border border-slate-300 px-3 text-sm font-medium text-slate-700 transition hover:border-slate-400 hover:bg-slate-50"
+                type="button"
+                onClick={() => { closeDialog(revertToDraftDialogRef.current); setRevertToDraftPending(false); }}
+              >
+                {copy.cancel}
+              </button>
+              <button
+                className="min-h-10 rounded-md bg-[var(--color-accent)] px-4 text-sm font-semibold text-white transition hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-60"
+                type="button"
+                disabled={isMutating}
+                onClick={() => {
+                  if (selectedOrderId) revertToDraftMutation.mutate({ workspaceSlug, orderId: selectedOrderId });
                 }}
               >
                 {copy.confirm}

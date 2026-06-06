@@ -14,7 +14,7 @@ import {
   getShoppingListDetail,
   convertShoppingListToOrder
 } from "../../src/server/shopping-lists/shoppingListMutations";
-import { createPurchaseOrder } from "../../src/server/purchase-orders/purchaseOrderMutations";
+import { createPurchaseOrder, markOrdered } from "../../src/server/purchase-orders/purchaseOrderMutations";
 
 function uniqueSuffix(label: string) {
   return `${label}-${randomBytes(4).toString("hex")}`;
@@ -297,6 +297,84 @@ describe("shopping lists — convert to order", () => {
       }),
       { message: "supplier-not-found" }
     );
+  });
+
+  test("rejects items already on a purchase order", async () => {
+    const suffix = uniqueSuffix("convert-already");
+    const { workspaceId, partId, supplierId } = await createFixture(suffix);
+
+    const list = await createShoppingList({ workspaceId, name: "Already Converted" });
+    const item = await addShoppingListItem({ workspaceId, listId: list.id, partId, quantity: "2" });
+
+    await convertShoppingListToOrder({
+      workspaceId,
+      listId: list.id,
+      selectedItemIds: [item.id],
+      supplierId
+    });
+
+    await assert.rejects(
+      () => convertShoppingListToOrder({
+        workspaceId,
+        listId: list.id,
+        selectedItemIds: [item.id],
+        supplierId
+      }),
+      { message: "items-already-on-order" }
+    );
+  });
+
+  test("with existingOrderId adds items to existing draft order", async () => {
+    const suffix = uniqueSuffix("convert-existing");
+    const { workspaceId, partId, supplierId } = await createFixture(suffix);
+
+    const existingOrder = await createPurchaseOrder({ workspaceId, supplierId });
+
+    const list = await createShoppingList({ workspaceId, name: "Existing PO SL" });
+    const item = await addShoppingListItem({ workspaceId, listId: list.id, partId, quantity: "4" });
+
+    const result = await convertShoppingListToOrder({
+      workspaceId,
+      listId: list.id,
+      selectedItemIds: [item.id],
+      existingOrderId: existingOrder.id
+    });
+
+    assert.equal(result.id, existingOrder.id);
+
+    const addedItems = await prisma.purchaseOrderItem.findMany({
+      where: { purchaseOrderId: existingOrder.id }
+    });
+    assert.equal(addedItems.length, 1);
+    assert.equal(addedItems[0].sourceShoppingListItemId, item.id);
+    assert.equal(addedItems[0].quantity.toString(), "4");
+  });
+
+  test("with existingOrderId rejects non-draft target order", async () => {
+    const suffix = uniqueSuffix("convert-existing-ordered");
+    const { workspaceId, partId, supplierId } = await createFixture(suffix);
+
+    const existingOrder = await createPurchaseOrder({ workspaceId, supplierId });
+    const directItem = await prisma.purchaseOrderItem.create({
+      data: { purchaseOrderId: existingOrder.id, partId, quantity: "1" }
+    });
+    await markOrdered({ workspaceId, orderId: existingOrder.id });
+
+    const list = await createShoppingList({ workspaceId, name: "Existing Ordered SL" });
+    const item = await addShoppingListItem({ workspaceId, listId: list.id, partId, quantity: "2" });
+
+    await assert.rejects(
+      () => convertShoppingListToOrder({
+        workspaceId,
+        listId: list.id,
+        selectedItemIds: [item.id],
+        existingOrderId: existingOrder.id
+      }),
+      { message: "order-not-in-draft" }
+    );
+
+    // suppress unused-variable warning
+    void directItem;
   });
 });
 

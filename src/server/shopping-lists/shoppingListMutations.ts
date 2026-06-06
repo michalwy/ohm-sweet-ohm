@@ -18,6 +18,8 @@ export type ShoppingListItem = {
   quantity: string;
   description: string | null;
   orderedInPurchaseOrderId: string | null;
+  orderedInPurchaseOrderNumber: string | null;
+  orderedInPurchaseOrderSupplierName: string | null;
 };
 
 export type ShoppingListDetail = {
@@ -216,7 +218,15 @@ export async function getShoppingListDetail(
             }
           },
           purchaseOrderItems: {
-            select: { purchaseOrderId: true },
+            select: {
+              purchaseOrderId: true,
+              purchaseOrder: {
+                select: {
+                  orderNumber: true,
+                  supplier: { select: { name: true } }
+                }
+              }
+            },
             take: 1
           }
         }
@@ -240,7 +250,9 @@ export async function getShoppingListDetail(
       manufacturerName: item.part.manufacturer.name,
       quantity: item.quantity.toString(),
       description: item.description,
-      orderedInPurchaseOrderId: item.purchaseOrderItems[0]?.purchaseOrderId ?? null
+      orderedInPurchaseOrderId: item.purchaseOrderItems[0]?.purchaseOrderId ?? null,
+      orderedInPurchaseOrderNumber: item.purchaseOrderItems[0]?.purchaseOrder.orderNumber ?? null,
+      orderedInPurchaseOrderSupplierName: item.purchaseOrderItems[0]?.purchaseOrder.supplier.name ?? null
     }))
   };
 }
@@ -408,43 +420,70 @@ export async function convertShoppingListToOrder(input: {
   workspaceId: string;
   listId: string;
   selectedItemIds: string[];
-  supplierId: string;
+  supplierId?: string | null;
+  existingOrderId?: string | null;
 }) {
   if (input.selectedItemIds.length === 0) {
     throw new Error("no-items-selected");
   }
+  if (!input.supplierId && !input.existingOrderId) {
+    throw new Error("supplier-or-order-required");
+  }
 
   await assertListBelongsToWorkspace(input.workspaceId, input.listId);
 
-  const [items, supplier] = await Promise.all([
-    prisma.shoppingListItem.findMany({
-      where: {
-        id: { in: input.selectedItemIds },
-        shoppingListId: input.listId
-      },
-      select: { id: true, partId: true, quantity: true, description: true }
-    }),
-    prisma.organization.findFirst({
-      where: { id: input.supplierId, workspaceId: input.workspaceId }
-    })
-  ]);
+  const items = await prisma.shoppingListItem.findMany({
+    where: {
+      id: { in: input.selectedItemIds },
+      shoppingListId: input.listId
+    },
+    select: {
+      id: true,
+      partId: true,
+      quantity: true,
+      description: true,
+      _count: { select: { purchaseOrderItems: true } }
+    }
+  });
 
   if (items.length === 0) throw new Error("items-not-found");
+
+  const alreadyConverted = items.some((i) => i._count.purchaseOrderItems > 0);
+  if (alreadyConverted) throw new Error("items-already-on-order");
+
+  const newItems = items.map((item) => ({
+    partId: item.partId,
+    sourceShoppingListItemId: item.id,
+    quantity: item.quantity,
+    notes: item.description
+  }));
+
+  if (input.existingOrderId) {
+    const order = await prisma.purchaseOrder.findFirst({
+      where: { id: input.existingOrderId, workspaceId: input.workspaceId },
+      select: { id: true, status: true }
+    });
+    if (!order) throw new Error("purchase-order-not-found");
+    if (order.status !== "DRAFT") throw new Error("order-not-in-draft");
+
+    await prisma.purchaseOrderItem.createMany({
+      data: newItems.map((item) => ({ ...item, purchaseOrderId: input.existingOrderId! }))
+    });
+
+    return prisma.purchaseOrder.findUniqueOrThrow({ where: { id: input.existingOrderId } });
+  }
+
+  const supplier = await prisma.organization.findFirst({
+    where: { id: input.supplierId!, workspaceId: input.workspaceId }
+  });
   if (!supplier) throw new Error("supplier-not-found");
 
   return prisma.purchaseOrder.create({
     data: {
       workspaceId: input.workspaceId,
-      supplierId: input.supplierId,
+      supplierId: input.supplierId!,
       sourceShoppingListId: input.listId,
-      items: {
-        create: items.map((item) => ({
-          partId: item.partId,
-          sourceShoppingListItemId: item.id,
-          quantity: item.quantity,
-          notes: item.description
-        }))
-      }
+      items: { create: newItems }
     }
   });
 }

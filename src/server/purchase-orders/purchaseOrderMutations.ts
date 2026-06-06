@@ -385,8 +385,8 @@ export async function deletePurchaseOrder(input: {
 }) {
   const order = await assertOrderBelongsToWorkspace(input.workspaceId, input.orderId);
 
-  if (order.status !== "DRAFT") {
-    throw new Error("only-draft-orders-can-be-deleted");
+  if (order.status === "RECEIVED") {
+    throw new Error("received-orders-cannot-be-deleted");
   }
 
   await prisma.$transaction(async (tx) => {
@@ -397,17 +397,90 @@ export async function deletePurchaseOrder(input: {
 
     await tx.purchaseOrder.delete({ where: { id: input.orderId } });
 
-    const deltaByPartId = sumQtyByPartId(
-      items.filter((item) => item.sourceShoppingListItemId === null)
-    );
+    if (order.status === "DRAFT") {
+      const deltaByPartId = sumQtyByPartId(
+        items.filter((item) => item.sourceShoppingListItemId === null)
+      );
+      for (const [partId, delta] of deltaByPartId) {
+        await tx.part.update({
+          where: { id: partId },
+          data: { plannedQty: { decrement: delta } }
+        });
+      }
+    } else {
+      // ORDERED: decrement onOrderQty for all items; restore plannedQty for SL-sourced ones
+      for (const item of items) {
+        await tx.part.update({
+          where: { id: item.partId },
+          data: {
+            onOrderQty: { decrement: item.quantity },
+            ...(item.sourceShoppingListItemId !== null
+              ? { plannedQty: { increment: item.quantity } }
+              : {})
+          }
+        });
+      }
+    }
+  });
+}
 
+export async function revertOrderToDraft(input: {
+  workspaceId: string;
+  orderId: string;
+}) {
+  const order = await assertOrderBelongsToWorkspace(input.workspaceId, input.orderId);
+
+  if (order.status !== "ORDERED") {
+    throw new Error("order-not-ordered");
+  }
+
+  const items = await prisma.purchaseOrderItem.findMany({
+    where: { purchaseOrderId: input.orderId },
+    select: { partId: true, quantity: true }
+  });
+
+  await prisma.$transaction(async (tx) => {
+    await tx.purchaseOrder.update({
+      where: { id: input.orderId },
+      data: { status: "DRAFT", orderedAt: null }
+    });
+
+    const deltaByPartId = sumQtyByPartId(items);
     for (const [partId, delta] of deltaByPartId) {
       await tx.part.update({
         where: { id: partId },
-        data: { plannedQty: { decrement: delta } }
+        data: { onOrderQty: { decrement: delta }, plannedQty: { increment: delta } }
       });
     }
   });
+}
+
+export type DraftPurchaseOrderOption = {
+  id: string;
+  orderNumber: string | null;
+  supplierName: string;
+  supplierId: string;
+  itemCount: number;
+};
+
+export async function getDraftPurchaseOrders(workspaceId: string): Promise<DraftPurchaseOrderOption[]> {
+  const orders = await prisma.purchaseOrder.findMany({
+    where: { workspaceId, status: "DRAFT" },
+    orderBy: { createdAt: "desc" },
+    select: {
+      id: true,
+      orderNumber: true,
+      supplier: { select: { id: true, name: true } },
+      _count: { select: { items: true } }
+    }
+  });
+  return orders.map((o) => ({
+    id: o.id,
+    orderNumber: o.orderNumber,
+    supplierId: o.supplier.id,
+    supplierName: o.supplier.name,
+    itemCount: o._count.items
+  }));
 }
 
 export async function addOrderItem(input: {
@@ -529,6 +602,17 @@ export async function removeOrderItem(input: {
     await prisma.part.update({
       where: { id: item.partId },
       data: { plannedQty: { decrement: item.quantity } }
+    });
+  } else if (order.status === "ORDERED") {
+    await prisma.part.update({
+      where: { id: item.partId },
+      data: {
+        onOrderQty: { decrement: item.quantity },
+        // SL item still exists, so restore its plannedQty contribution (markOrdered had decremented it)
+        ...(item.sourceShoppingListItemId !== null
+          ? { plannedQty: { increment: item.quantity } }
+          : {})
+      }
     });
   }
 }

@@ -26,6 +26,8 @@ import {
   updateShoppingListForWorkspace,
   updateShoppingListItemForWorkspace
 } from "@/server/shopping-lists/shoppingListActions";
+import { getDraftPurchaseOrdersForWorkspace } from "@/server/purchase-orders/purchaseOrderActions";
+import type { DraftPurchaseOrderOption } from "@/server/purchase-orders/purchaseOrderMutations";
 import type {
   ShoppingListDetail,
   ShoppingListItem,
@@ -95,12 +97,18 @@ type Copy = {
   loadingParts: string;
   noMatchingParts: string;
   orderedBadge: string;
+  alreadyOnOrder: string;
   convertToOrder: string;
   convertToOrderTitle: string;
   convertToOrderBody: string;
   supplier: string;
   chooseSupplier: string;
   noSuppliers: string;
+  newOrder: string;
+  addToExistingOrder: string;
+  chooseExistingOrder: string;
+  noDraftOrders: string;
+  addedToOrderToast: string;
   selectedItems: string;
   noItemsSelected: string;
   convert: string;
@@ -165,6 +173,7 @@ export function ShoppingListsClient({
   const [editingItem, setEditingItem] = useState<ShoppingListItem | null>(null);
   const [itemPendingRemove, setItemPendingRemove] = useState<ShoppingListItem | null>(null);
   const [convertDialogOpen, setConvertDialogOpen] = useState(false);
+  const [convertMode, setConvertMode] = useState<"new" | "existing">("new");
   const [selectedItemIds, setSelectedItemIds] = useState<Set<string>>(new Set());
   const [partSearchQuery, setPartSearchQuery] = useState("");
   const [selectedPartId, setSelectedPartId] = useState<string | null>(null);
@@ -329,12 +338,21 @@ export function ShoppingListsClient({
 
   const convertMutation = useMutation({
     mutationFn: convertShoppingListToOrderForWorkspace,
-    onSuccess: (result) => {
+    onSuccess: (result, variables) => {
       if (!result.ok) { setConvertFormErrors({ submit: getErrorMsg(copy, result.error) }); return; }
       closeConvertDialog();
-      addToast(copy.convertedToast);
+      addToast(variables.existingOrderId ? copy.addedToOrderToast : copy.convertedToast);
       void refetchDetail();
     }
+  });
+
+  const draftOrdersQuery = useQuery({
+    queryKey: ["draft-purchase-orders", workspaceSlug],
+    queryFn: async () => {
+      const result = await getDraftPurchaseOrdersForWorkspace({ workspaceSlug });
+      return result.ok ? result.data : ([] as DraftPurchaseOrderOption[]);
+    },
+    enabled: convertDialogOpen && convertMode === "existing"
   });
 
   // --- Column drag-and-drop reordering ---
@@ -438,6 +456,7 @@ export function ShoppingListsClient({
 
   function openConvertDialog() {
     setConvertFormErrors({});
+    setConvertMode("new");
     setConvertDialogOpen(true);
     setDialogFormKey((k) => k + 1);
     window.requestAnimationFrame(() => openDialog(convertDialogRef.current));
@@ -495,17 +514,28 @@ export function ShoppingListsClient({
   }
 
   function handleConvertSubmit(formData: FormData) {
-    const supplierId = getString(formData, "supplierId");
-    if (!supplierId) { setConvertFormErrors({ supplier: copy.supplierRequired }); return; }
     if (selectedItemIds.size === 0) { setConvertFormErrors({ items: copy.noItemsSelected }); return; }
     if (!selectedListId) return;
 
-    convertMutation.mutate({
-      workspaceSlug,
-      listId: selectedListId,
-      selectedItemIds: [...selectedItemIds],
-      supplierId
-    });
+    if (convertMode === "existing") {
+      const existingOrderId = getString(formData, "existingOrderId");
+      if (!existingOrderId) { setConvertFormErrors({ order: copy.chooseExistingOrder }); return; }
+      convertMutation.mutate({
+        workspaceSlug,
+        listId: selectedListId,
+        selectedItemIds: [...selectedItemIds],
+        existingOrderId
+      });
+    } else {
+      const supplierId = getString(formData, "supplierId");
+      if (!supplierId) { setConvertFormErrors({ supplier: copy.supplierRequired }); return; }
+      convertMutation.mutate({
+        workspaceSlug,
+        listId: selectedListId,
+        selectedItemIds: [...selectedItemIds],
+        supplierId
+      });
+    }
   }
 
   function toggleItemSelection(itemId: string) {
@@ -837,6 +867,8 @@ export function ShoppingListsClient({
                             <input
                               aria-label={`Select ${item.partCatalogNumber}`}
                               checked={selectedItemIds.has(item.id)}
+                              disabled={Boolean(item.orderedInPurchaseOrderId)}
+                              title={item.orderedInPurchaseOrderId ? copy.alreadyOnOrder : undefined}
                               type="checkbox"
                               onChange={() => toggleItemSelection(item.id)}
                             />
@@ -847,7 +879,11 @@ export function ShoppingListsClient({
                               <span className="text-slate-500">{item.manufacturerName}</span>
                               {item.orderedInPurchaseOrderId ? (
                                 <span className="rounded-full bg-[var(--color-success-soft)] px-2 py-0.5 text-xs font-medium text-[var(--color-success)]">
-                                  {copy.orderedBadge}
+                                  {item.orderedInPurchaseOrderNumber
+                                    ? `${copy.orderedBadge}: #${item.orderedInPurchaseOrderNumber}`
+                                    : item.orderedInPurchaseOrderSupplierName
+                                      ? `${copy.orderedBadge} (${item.orderedInPurchaseOrderSupplierName})`
+                                      : copy.orderedBadge}
                                 </span>
                               ) : null}
                             </div>
@@ -1054,26 +1090,72 @@ export function ShoppingListsClient({
         {convertDialogOpen ? (
           <form key={dialogFormKey} action={handleConvertSubmit} className="flex min-h-0 flex-1 flex-col overflow-hidden">
             <DialogBody className="grid gap-4">
-              <div className="grid gap-2">
-                <LabelWithError error={convertFormErrors.supplier} htmlFor="convert-supplier">
-                  {copy.supplier}
-                </LabelWithError>
-                {organizations.length === 0 ? (
-                  <p className="text-sm text-slate-500">{copy.noSuppliers}</p>
-                ) : (
-                  <select
-                    className="min-h-10 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-950 outline-none transition hover:border-slate-400 focus:border-slate-500 focus:ring-2 focus:ring-slate-200"
-                    defaultValue=""
-                    id="convert-supplier"
-                    name="supplierId"
-                  >
-                    <option disabled value="">{copy.chooseSupplier}</option>
-                    {organizations.map((org) => (
-                      <option key={org.id} value={org.id}>{org.name}</option>
-                    ))}
-                  </select>
-                )}
+              {/* Mode toggle */}
+              <div className="flex rounded-md border border-slate-300 overflow-hidden text-sm font-medium">
+                <button
+                  className={`flex-1 px-3 py-2 transition ${convertMode === "new" ? "bg-slate-100 text-slate-900" : "bg-white text-slate-600 hover:bg-slate-50"}`}
+                  type="button"
+                  onClick={() => setConvertMode("new")}
+                >
+                  {copy.newOrder}
+                </button>
+                <button
+                  className={`flex-1 px-3 py-2 border-l border-slate-300 transition ${convertMode === "existing" ? "bg-slate-100 text-slate-900" : "bg-white text-slate-600 hover:bg-slate-50"}`}
+                  type="button"
+                  onClick={() => setConvertMode("existing")}
+                >
+                  {copy.addToExistingOrder}
+                </button>
               </div>
+
+              {convertMode === "new" ? (
+                <div className="grid gap-2">
+                  <LabelWithError error={convertFormErrors.supplier} htmlFor="convert-supplier">
+                    {copy.supplier}
+                  </LabelWithError>
+                  {organizations.length === 0 ? (
+                    <p className="text-sm text-slate-500">{copy.noSuppliers}</p>
+                  ) : (
+                    <select
+                      className="min-h-10 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-950 outline-none transition hover:border-slate-400 focus:border-slate-500 focus:ring-2 focus:ring-slate-200"
+                      defaultValue=""
+                      id="convert-supplier"
+                      name="supplierId"
+                    >
+                      <option disabled value="">{copy.chooseSupplier}</option>
+                      {organizations.map((org) => (
+                        <option key={org.id} value={org.id}>{org.name}</option>
+                      ))}
+                    </select>
+                  )}
+                </div>
+              ) : (
+                <div className="grid gap-2">
+                  <LabelWithError error={convertFormErrors.order} htmlFor="convert-existing-order">
+                    {copy.addToExistingOrder}
+                  </LabelWithError>
+                  {draftOrdersQuery.isLoading ? (
+                    <p className="text-sm text-slate-500">{copy.loadingParts}</p>
+                  ) : !draftOrdersQuery.data?.length ? (
+                    <p className="text-sm text-slate-500">{copy.noDraftOrders}</p>
+                  ) : (
+                    <select
+                      className="min-h-10 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-950 outline-none transition hover:border-slate-400 focus:border-slate-500 focus:ring-2 focus:ring-slate-200"
+                      defaultValue=""
+                      id="convert-existing-order"
+                      name="existingOrderId"
+                    >
+                      <option disabled value="">{copy.chooseExistingOrder}</option>
+                      {draftOrdersQuery.data.map((order) => (
+                        <option key={order.id} value={order.id}>
+                          {order.supplierName}{order.orderNumber ? ` — #${order.orderNumber}` : ""} ({order.itemCount} {order.itemCount === 1 ? copy.items : copy.itemsPlural})
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                </div>
+              )}
+
               <div className="grid gap-2">
                 <p className="text-sm font-medium text-slate-700">{copy.selectedItems}</p>
                 <p className="text-sm text-slate-600">
@@ -1090,7 +1172,7 @@ export function ShoppingListsClient({
               </button>
               <button
                 className="min-h-10 rounded-md bg-[var(--color-accent)] px-4 text-sm font-semibold text-white transition hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-60"
-                disabled={isMutating || organizations.length === 0}
+                disabled={isMutating || (convertMode === "new" && organizations.length === 0) || (convertMode === "existing" && !draftOrdersQuery.data?.length)}
                 type="submit"
               >
                 {copy.convert}

@@ -6,12 +6,15 @@ import {
   addOrderItem,
   createPurchaseOrder,
   deletePurchaseOrder,
+  getDraftPurchaseOrders,
   getPurchaseOrderDetail,
   getPurchaseOrders,
   lookupSupplierItem,
   markOrdered,
   receiveItems,
   removeOrderItem,
+  revertOrderToDraft,
+  type DraftPurchaseOrderOption,
   type PurchaseOrderDetail,
   type PurchaseOrderSummary,
   type PurchaseOrdersPageInput,
@@ -238,6 +241,32 @@ export async function receiveItemsForWorkspace(input: {
     });
     revalidatePath(workspacePath(input.workspaceSlug));
     return success(null);
+  } catch (error) {
+    return failure(error);
+  }
+}
+
+export async function revertOrderToDraftForWorkspace(input: {
+  workspaceSlug: string;
+  orderId: string;
+}): Promise<PurchaseOrderActionResult<null>> {
+  try {
+    const context = await getAuthorizedContext(input.workspaceSlug, "purchase-orders:write");
+    await revertOrderToDraft({ workspaceId: context.workspace.id, orderId: input.orderId });
+    revalidatePath(workspacePath(input.workspaceSlug));
+    return success(null);
+  } catch (error) {
+    return failure(error);
+  }
+}
+
+export async function getDraftPurchaseOrdersForWorkspace(input: {
+  workspaceSlug: string;
+}): Promise<PurchaseOrderActionResult<DraftPurchaseOrderOption[]>> {
+  try {
+    const context = await getAuthorizedContext(input.workspaceSlug, "purchase-orders:read");
+    const orders = await getDraftPurchaseOrders(context.workspace.id);
+    return success(orders);
   } catch (error) {
     return failure(error);
   }

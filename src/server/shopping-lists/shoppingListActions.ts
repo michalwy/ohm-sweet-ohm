@@ -184,7 +184,8 @@ export async function convertShoppingListToOrderForWorkspace(input: {
   workspaceSlug: string;
   listId: string;
   selectedItemIds: string[];
-  supplierId: string;
+  supplierId?: string | null;
+  existingOrderId?: string | null;
 }): Promise<ShoppingListActionResult<{ purchaseOrderId: string }>> {
   try {
     const context = await getAuthorizedContext(input.workspaceSlug, "shopping-lists:write");
@@ -192,7 +193,8 @@ export async function convertShoppingListToOrderForWorkspace(input: {
       workspaceId: context.workspace.id,
       listId: input.listId,
       selectedItemIds: input.selectedItemIds,
-      supplierId: input.supplierId
+      supplierId: input.supplierId,
+      existingOrderId: input.existingOrderId
     });
     revalidatePath(workspacePath(input.workspaceSlug));
     return success({ purchaseOrderId: order.id });

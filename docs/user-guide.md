@@ -192,15 +192,16 @@ A shopping list has no supplier and no formal status — it is a flexible scratc
 
 1. Click a list row to open the detail panel on the right.
 2. Click **Add item**, search for a part by catalog number or description, set a quantity, and save.
-3. Items show an **On order** badge when they have been included in at least one purchase order.
+3. Items show an **On order** badge when they have been included in a purchase order. The badge shows the order number (e.g. **On order: #PO-2026-001**) when available, or the supplier name as a fallback.
 
 ### Converting Items To A Purchase Order
 
-1. Select one or more items using the checkboxes in the detail panel.
+1. Select one or more items using the checkboxes in the detail panel. Items already on a purchase order have a disabled checkbox and cannot be re-converted.
 2. Click **Convert to order (N)**.
-3. Choose a supplier organization and confirm.
+3. Choose whether to create a **New order** (select a supplier) or **Add to existing order** (select a draft order from the list).
+4. Confirm.
 
-This creates a new purchase order in DRAFT status with the selected items. The original shopping list items remain on the list.
+When creating a new order, a draft purchase order is created with the selected items. When adding to an existing order, the items are appended to the chosen draft order. In both cases the original shopping list items remain on the list.
 
 ## 10. Manage Purchase Orders
 
@@ -224,7 +225,17 @@ Use **Purchase Orders** to track formal orders sent to a supplier.
 
 When you have submitted the order to the supplier, click **Mark as ordered** in the detail panel. This records the order date and advances the status to **Ordered**.
 
-You can still add, edit, or remove items on an ordered order.
+You can still add, edit, or remove items on an ordered order. Removing an item from an ordered order immediately decrements the on-order quantity shown in the parts list.
+
+### Reverting An Order To Draft
+
+If you need to make changes after marking an order as ordered, click **Revert to draft** in the detail panel. This moves the order back to **Draft** status, clears the recorded order date, and returns the on-order quantities to planned.
+
+### Deleting An Order
+
+Draft and ordered orders can be deleted using the delete icon in the order list. Received orders cannot be deleted.
+
+Deleting a draft order returns any quantities it contributed to the **Planned** column in the parts list. Deleting an ordered order decrements the **On order** column; for items that originated from a shopping list, the quantity returns to **Planned** since those shopping list items still exist.
 
 ### Receiving Items
 

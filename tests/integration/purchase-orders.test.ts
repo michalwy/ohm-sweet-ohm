@@ -12,6 +12,7 @@ import {
   removeOrderItem,
   markOrdered,
   receiveItems,
+  revertOrderToDraft,
   getPurchaseOrders,
   getPurchaseOrderDetail
 } from "../../src/server/purchase-orders/purchaseOrderMutations";
@@ -133,26 +134,47 @@ describe("purchase orders — CRUD", () => {
     assert.equal(after.items.length, 0);
   });
 
-  test("rejects delete of non-draft order", async () => {
-    const suffix = uniqueSuffix("delete-ordered");
+  test("rejects delete of received order", async () => {
+    const suffix = uniqueSuffix("delete-received");
     const { workspaceId, supplierId, partId, locationId, userId } = await createFixture(suffix);
 
     const order = await createPurchaseOrder({ workspaceId, supplierId });
     const item = await addOrderItem({ workspaceId, orderId: order.id, partId, quantity: "2" });
     await markOrdered({ workspaceId, orderId: order.id });
-
-    await assert.rejects(
-      () => deletePurchaseOrder({ workspaceId, orderId: order.id }),
-      { message: "only-draft-orders-can-be-deleted" }
-    );
-
-    // cleanup
     await receiveItems({
       workspaceId,
       orderId: order.id,
       createdByUserId: userId,
       items: [{ itemId: item.id, quantity: "2", locationId }]
     });
+
+    await assert.rejects(
+      () => deletePurchaseOrder({ workspaceId, orderId: order.id }),
+      { message: "received-orders-cannot-be-deleted" }
+    );
+  });
+
+  test("allows delete of ordered (non-received) order and restores quantities", async () => {
+    const suffix = uniqueSuffix("delete-ordered");
+    const { workspaceId, supplierId, partId } = await createFixture(suffix);
+
+    const list = await createShoppingList({ workspaceId, name: "Del Ordered SL" });
+    const slItem = await addShoppingListItem({ workspaceId, listId: list.id, partId, quantity: "3" });
+    const poOrder = await convertShoppingListToOrder({
+      workspaceId,
+      listId: list.id,
+      selectedItemIds: [slItem.id],
+      supplierId
+    });
+    await addOrderItem({ workspaceId, orderId: poOrder.id, partId, quantity: "2" });
+    await markOrdered({ workspaceId, orderId: poOrder.id });
+
+    await deletePurchaseOrder({ workspaceId, orderId: poOrder.id });
+
+    const { plannedQty, onOrderQty } = await getPartQtys(partId);
+    // SL item still exists → its qty back in plannedQty; direct item gone
+    assert.equal(plannedQty, 3);
+    assert.equal(onOrderQty, 0);
   });
 
   test("does not return orders from another workspace", async () => {
@@ -597,5 +619,85 @@ describe("plannedQty / onOrderQty maintenance — purchase orders", () => {
     const { plannedQty, onOrderQty } = await getPartQtys(partId);
     assert.equal(plannedQty, 0);
     assert.equal(onOrderQty, 0);
+  });
+
+  test("removeOrderItem (ORDERED) decrements onOrderQty", async () => {
+    const suffix = uniqueSuffix("poq-rm-ordered-direct");
+    const { workspaceId, partId, supplierId } = await createFixture(suffix);
+
+    const order = await createPurchaseOrder({ workspaceId, supplierId });
+    const item = await addOrderItem({ workspaceId, orderId: order.id, partId, quantity: "6" });
+    await markOrdered({ workspaceId, orderId: order.id });
+
+    await removeOrderItem({ workspaceId, orderId: order.id, itemId: item.id });
+
+    const { plannedQty, onOrderQty } = await getPartQtys(partId);
+    assert.equal(plannedQty, 0);
+    assert.equal(onOrderQty, 0);
+  });
+
+  test("removeOrderItem (ORDERED, SL-sourced) decrements onOrderQty and restores plannedQty", async () => {
+    const suffix = uniqueSuffix("poq-rm-ordered-sl");
+    const { workspaceId, partId, supplierId } = await createFixture(suffix);
+
+    const list = await createShoppingList({ workspaceId, name: "PO RM Ordered SL" });
+    const slItem = await addShoppingListItem({ workspaceId, listId: list.id, partId, quantity: "5" });
+    const poOrder = await convertShoppingListToOrder({
+      workspaceId,
+      listId: list.id,
+      selectedItemIds: [slItem.id],
+      supplierId
+    });
+
+    const detail = await prisma.purchaseOrder.findUniqueOrThrow({
+      where: { id: poOrder.id },
+      select: { items: { select: { id: true } } }
+    });
+    const poItemId = detail.items[0].id;
+
+    await markOrdered({ workspaceId, orderId: poOrder.id });
+    await removeOrderItem({ workspaceId, orderId: poOrder.id, itemId: poItemId });
+
+    // onOrderQty should be 0; plannedQty should be restored to 5 (SL item still exists)
+    const { plannedQty, onOrderQty } = await getPartQtys(partId);
+    assert.equal(onOrderQty, 0);
+    assert.equal(plannedQty, 5);
+  });
+});
+
+describe("purchase orders — revert to draft", () => {
+  test("revertOrderToDraft moves onOrderQty back to plannedQty", async () => {
+    const suffix = uniqueSuffix("revert-draft");
+    const { workspaceId, partId, supplierId } = await createFixture(suffix);
+
+    const order = await createPurchaseOrder({ workspaceId, supplierId });
+    await addOrderItem({ workspaceId, orderId: order.id, partId, quantity: "7" });
+    await markOrdered({ workspaceId, orderId: order.id });
+
+    const before = await getPartQtys(partId);
+    assert.equal(before.onOrderQty, 7);
+    assert.equal(before.plannedQty, 0);
+
+    await revertOrderToDraft({ workspaceId, orderId: order.id });
+
+    const after = await getPartQtys(partId);
+    assert.equal(after.onOrderQty, 0);
+    assert.equal(after.plannedQty, 7);
+
+    const reverted = await getPurchaseOrderDetail(workspaceId, order.id);
+    assert.equal(reverted?.status, "DRAFT");
+    assert.equal(reverted?.orderedAt, null);
+  });
+
+  test("revertOrderToDraft rejects non-ordered status", async () => {
+    const suffix = uniqueSuffix("revert-reject");
+    const { workspaceId, supplierId } = await createFixture(suffix);
+
+    const order = await createPurchaseOrder({ workspaceId, supplierId });
+
+    await assert.rejects(
+      () => revertOrderToDraft({ workspaceId, orderId: order.id }),
+      { message: "order-not-ordered" }
+    );
   });
 });
