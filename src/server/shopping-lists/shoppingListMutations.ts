@@ -289,7 +289,30 @@ export async function deleteShoppingList(input: {
   listId: string;
 }) {
   await assertListBelongsToWorkspace(input.workspaceId, input.listId);
-  await prisma.shoppingList.delete({ where: { id: input.listId } });
+
+  await prisma.$transaction(async (tx) => {
+    const items = await tx.shoppingListItem.findMany({
+      where: { shoppingListId: input.listId },
+      select: {
+        partId: true,
+        quantity: true,
+        purchaseOrderItems: { select: { id: true }, take: 1 }
+      }
+    });
+
+    await tx.shoppingList.delete({ where: { id: input.listId } });
+
+    const deltaByPartId = sumQtyByPartId(
+      items.filter((item) => item.purchaseOrderItems.length === 0)
+    );
+
+    for (const [partId, delta] of deltaByPartId) {
+      await tx.part.update({
+        where: { id: partId },
+        data: { plannedQty: { decrement: delta } }
+      });
+    }
+  });
 }
 
 export async function addShoppingListItem(input: {
@@ -305,7 +328,7 @@ export async function addShoppingListItem(input: {
 
   await assertPartBelongsToWorkspace(input.workspaceId, input.partId);
 
-  return prisma.shoppingListItem.create({
+  const item = await prisma.shoppingListItem.create({
     data: {
       shoppingListId: input.listId,
       partId: input.partId,
@@ -313,6 +336,13 @@ export async function addShoppingListItem(input: {
       description: normalizeOptionalText(input.description)
     }
   });
+
+  await prisma.part.update({
+    where: { id: input.partId },
+    data: { plannedQty: { increment: quantity } }
+  });
+
+  return item;
 }
 
 export async function updateShoppingListItem(input: {
@@ -324,15 +354,32 @@ export async function updateShoppingListItem(input: {
 }) {
   await assertItemBelongsToList(input.workspaceId, input.listId, input.itemId);
 
-  const quantity = parseQuantity(input.quantity);
+  const newQuantity = parseQuantity(input.quantity);
 
-  return prisma.shoppingListItem.update({
+  const oldItem = await prisma.shoppingListItem.findUniqueOrThrow({
+    where: { id: input.itemId },
+    select: { partId: true, quantity: true, purchaseOrderItems: { select: { id: true }, take: 1 } }
+  });
+
+  const updated = await prisma.shoppingListItem.update({
     where: { id: input.itemId },
     data: {
-      quantity,
+      quantity: newQuantity,
       description: normalizeOptionalText(input.description)
     }
   });
+
+  if (oldItem.purchaseOrderItems.length === 0) {
+    const delta = newQuantity.minus(oldItem.quantity);
+    if (!delta.isZero()) {
+      await prisma.part.update({
+        where: { id: oldItem.partId },
+        data: { plannedQty: { increment: delta } }
+      });
+    }
+  }
+
+  return updated;
 }
 
 export async function removeShoppingListItem(input: {
@@ -341,7 +388,20 @@ export async function removeShoppingListItem(input: {
   itemId: string;
 }) {
   await assertItemBelongsToList(input.workspaceId, input.listId, input.itemId);
+
+  const item = await prisma.shoppingListItem.findUniqueOrThrow({
+    where: { id: input.itemId },
+    select: { partId: true, quantity: true, purchaseOrderItems: { select: { id: true }, take: 1 } }
+  });
+
   await prisma.shoppingListItem.delete({ where: { id: input.itemId } });
+
+  if (item.purchaseOrderItems.length === 0) {
+    await prisma.part.update({
+      where: { id: item.partId },
+      data: { plannedQty: { decrement: item.quantity } }
+    });
+  }
 }
 
 export async function convertShoppingListToOrder(input: {
@@ -435,6 +495,19 @@ function parseQuantity(rawValue: string) {
   if (quantity.lessThanOrEqualTo(0)) throw new Error("invalid-quantity");
 
   return quantity;
+}
+
+function sumQtyByPartId(
+  items: Array<{ partId: string; quantity: Prisma.Decimal }>
+): Map<string, Prisma.Decimal> {
+  const result = new Map<string, Prisma.Decimal>();
+  for (const item of items) {
+    result.set(
+      item.partId,
+      (result.get(item.partId) ?? new Prisma.Decimal(0)).plus(item.quantity)
+    );
+  }
+  return result;
 }
 
 function normalizeOptionalText(value?: string | null) {

@@ -87,6 +87,13 @@ You can also:
 - configure visible columns in the list
 - scroll through large datasets with endless loading
 
+Two optional columns can be enabled via **Configure list**:
+
+- **Planned** — total quantity of this part currently on shopping lists (items not yet linked to a purchase order) plus any direct draft purchase order line items (added to a PO without originating from a shopping list). Requires Shopping Lists read access. Hidden by default.
+- **On order** — total quantity in purchase orders that have been submitted to a supplier and are awaiting receipt. Requires Purchase Orders read access. Hidden by default.
+
+Both columns support sorting with cursor-based pagination so they work efficiently across large datasets.
+
 ### Adding A Part
 
 1. Open the add-part dialog.

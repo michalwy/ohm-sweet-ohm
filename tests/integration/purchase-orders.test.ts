@@ -15,6 +15,11 @@ import {
   getPurchaseOrders,
   getPurchaseOrderDetail
 } from "../../src/server/purchase-orders/purchaseOrderMutations";
+import {
+  createShoppingList,
+  addShoppingListItem,
+  convertShoppingListToOrder
+} from "../../src/server/shopping-lists/shoppingListMutations";
 
 function uniqueSuffix(label: string) {
   return `${label}-${randomBytes(4).toString("hex")}`;
@@ -408,5 +413,189 @@ describe("purchase orders — receive flow", () => {
         }),
       { message: "order-not-ordered" }
     );
+  });
+});
+
+async function getPartQtys(partId: string) {
+  const part = await prisma.part.findUniqueOrThrow({
+    where: { id: partId },
+    select: { plannedQty: true, onOrderQty: true }
+  });
+  return {
+    plannedQty: part.plannedQty.toNumber(),
+    onOrderQty: part.onOrderQty.toNumber()
+  };
+}
+
+describe("plannedQty / onOrderQty maintenance — purchase orders", () => {
+  test("addOrderItem without source increments plannedQty", async () => {
+    const suffix = uniqueSuffix("poq-add-direct");
+    const { workspaceId, partId, supplierId } = await createFixture(suffix);
+
+    const order = await createPurchaseOrder({ workspaceId, supplierId });
+    await addOrderItem({ workspaceId, orderId: order.id, partId, quantity: "4" });
+
+    const { plannedQty, onOrderQty } = await getPartQtys(partId);
+    assert.equal(plannedQty, 4);
+    assert.equal(onOrderQty, 0);
+  });
+
+  test("addOrderItem with sourceShoppingListItemId does not change plannedQty", async () => {
+    const suffix = uniqueSuffix("poq-add-src");
+    const { workspaceId, partId, supplierId } = await createFixture(suffix);
+
+    const list = await createShoppingList({ workspaceId, name: "PO SL Source" });
+    const slItem = await addShoppingListItem({ workspaceId, listId: list.id, partId, quantity: "5" });
+
+    const qtyBefore = await getPartQtys(partId);
+
+    const order = await createPurchaseOrder({ workspaceId, supplierId });
+    await addOrderItem({
+      workspaceId,
+      orderId: order.id,
+      partId,
+      quantity: "5",
+      sourceShoppingListItemId: slItem.id
+    });
+
+    const { plannedQty } = await getPartQtys(partId);
+    assert.equal(plannedQty, qtyBefore.plannedQty);
+  });
+
+  test("updateOrderItem (DRAFT, no source) adjusts plannedQty", async () => {
+    const suffix = uniqueSuffix("poq-upd-direct");
+    const { workspaceId, partId, supplierId } = await createFixture(suffix);
+
+    const order = await createPurchaseOrder({ workspaceId, supplierId });
+    const item = await addOrderItem({ workspaceId, orderId: order.id, partId, quantity: "4" });
+    await updateOrderItem({ workspaceId, orderId: order.id, itemId: item.id, quantity: "7" });
+
+    const { plannedQty } = await getPartQtys(partId);
+    assert.equal(plannedQty, 7);
+  });
+
+  test("updateOrderItem (DRAFT, from SL) does not change plannedQty", async () => {
+    const suffix = uniqueSuffix("poq-upd-src");
+    const { workspaceId, partId, supplierId } = await createFixture(suffix);
+
+    const list = await createShoppingList({ workspaceId, name: "PO SL Upd" });
+    const slItem = await addShoppingListItem({ workspaceId, listId: list.id, partId, quantity: "5" });
+    const poOrder = await convertShoppingListToOrder({
+      workspaceId,
+      listId: list.id,
+      selectedItemIds: [slItem.id],
+      supplierId
+    });
+
+    const detail = await prisma.purchaseOrder.findUniqueOrThrow({
+      where: { id: poOrder.id },
+      select: { items: { select: { id: true } } }
+    });
+    const poItemId = detail.items[0].id;
+
+    await updateOrderItem({ workspaceId, orderId: poOrder.id, itemId: poItemId, quantity: "10" });
+
+    const { plannedQty } = await getPartQtys(partId);
+    assert.equal(plannedQty, 5);
+  });
+
+  test("removeOrderItem (DRAFT, no source) decrements plannedQty", async () => {
+    const suffix = uniqueSuffix("poq-rm-direct");
+    const { workspaceId, partId, supplierId } = await createFixture(suffix);
+
+    const order = await createPurchaseOrder({ workspaceId, supplierId });
+    const item = await addOrderItem({ workspaceId, orderId: order.id, partId, quantity: "4" });
+    await removeOrderItem({ workspaceId, orderId: order.id, itemId: item.id });
+
+    const { plannedQty } = await getPartQtys(partId);
+    assert.equal(plannedQty, 0);
+  });
+
+  test("removeOrderItem (DRAFT, from SL) does not change plannedQty", async () => {
+    const suffix = uniqueSuffix("poq-rm-src");
+    const { workspaceId, partId, supplierId } = await createFixture(suffix);
+
+    const list = await createShoppingList({ workspaceId, name: "PO SL Rm" });
+    const slItem = await addShoppingListItem({ workspaceId, listId: list.id, partId, quantity: "5" });
+    const poOrder = await convertShoppingListToOrder({
+      workspaceId,
+      listId: list.id,
+      selectedItemIds: [slItem.id],
+      supplierId
+    });
+
+    const detail = await prisma.purchaseOrder.findUniqueOrThrow({
+      where: { id: poOrder.id },
+      select: { items: { select: { id: true } } }
+    });
+    const poItemId = detail.items[0].id;
+
+    await removeOrderItem({ workspaceId, orderId: poOrder.id, itemId: poItemId });
+
+    const { plannedQty } = await getPartQtys(partId);
+    assert.equal(plannedQty, 5);
+  });
+
+  test("deletePurchaseOrder decrements plannedQty for direct items only", async () => {
+    const suffix = uniqueSuffix("poq-del-po");
+    const { workspaceId, partId, supplierId } = await createFixture(suffix);
+
+    const list = await createShoppingList({ workspaceId, name: "PO Del SL" });
+    const slItem = await addShoppingListItem({ workspaceId, listId: list.id, partId, quantity: "5" });
+    const poOrder = await convertShoppingListToOrder({
+      workspaceId,
+      listId: list.id,
+      selectedItemIds: [slItem.id],
+      supplierId
+    });
+
+    await addOrderItem({ workspaceId, orderId: poOrder.id, partId, quantity: "4" });
+
+    await deletePurchaseOrder({ workspaceId, orderId: poOrder.id });
+
+    const { plannedQty } = await getPartQtys(partId);
+    assert.equal(plannedQty, 5);
+  });
+
+  test("markOrdered moves plannedQty to onOrderQty", async () => {
+    const suffix = uniqueSuffix("poq-mark-ordered");
+    const { workspaceId, partId, supplierId } = await createFixture(suffix);
+
+    const list = await createShoppingList({ workspaceId, name: "PO Mark Ordered SL" });
+    const slItem = await addShoppingListItem({ workspaceId, listId: list.id, partId, quantity: "5" });
+    const poOrder = await convertShoppingListToOrder({
+      workspaceId,
+      listId: list.id,
+      selectedItemIds: [slItem.id],
+      supplierId
+    });
+
+    await addOrderItem({ workspaceId, orderId: poOrder.id, partId, quantity: "4" });
+
+    await markOrdered({ workspaceId, orderId: poOrder.id });
+
+    const { plannedQty, onOrderQty } = await getPartQtys(partId);
+    assert.equal(plannedQty, 0);
+    assert.equal(onOrderQty, 9);
+  });
+
+  test("receiveItems decrements onOrderQty", async () => {
+    const suffix = uniqueSuffix("poq-receive");
+    const { workspaceId, partId, supplierId, locationId, userId } = await createFixture(suffix);
+
+    const order = await createPurchaseOrder({ workspaceId, supplierId });
+    const item = await addOrderItem({ workspaceId, orderId: order.id, partId, quantity: "4" });
+    await markOrdered({ workspaceId, orderId: order.id });
+
+    await receiveItems({
+      workspaceId,
+      orderId: order.id,
+      createdByUserId: userId,
+      items: [{ itemId: item.id, quantity: "4", locationId }]
+    });
+
+    const { plannedQty, onOrderQty } = await getPartQtys(partId);
+    assert.equal(plannedQty, 0);
+    assert.equal(onOrderQty, 0);
   });
 });

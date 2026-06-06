@@ -389,7 +389,25 @@ export async function deletePurchaseOrder(input: {
     throw new Error("only-draft-orders-can-be-deleted");
   }
 
-  await prisma.purchaseOrder.delete({ where: { id: input.orderId } });
+  await prisma.$transaction(async (tx) => {
+    const items = await tx.purchaseOrderItem.findMany({
+      where: { purchaseOrderId: input.orderId },
+      select: { partId: true, quantity: true, sourceShoppingListItemId: true }
+    });
+
+    await tx.purchaseOrder.delete({ where: { id: input.orderId } });
+
+    const deltaByPartId = sumQtyByPartId(
+      items.filter((item) => item.sourceShoppingListItemId === null)
+    );
+
+    for (const [partId, delta] of deltaByPartId) {
+      await tx.part.update({
+        where: { id: partId },
+        data: { plannedQty: { decrement: delta } }
+      });
+    }
+  });
 }
 
 export async function addOrderItem(input: {
@@ -414,7 +432,7 @@ export async function addOrderItem(input: {
   const quantity = parseQuantity(input.quantity);
   const unitPrice = input.unitPrice ? parseUnitPrice(input.unitPrice) : null;
 
-  return prisma.purchaseOrderItem.create({
+  const item = await prisma.purchaseOrderItem.create({
     data: {
       purchaseOrderId: input.orderId,
       partId: input.partId,
@@ -426,6 +444,15 @@ export async function addOrderItem(input: {
       sourceShoppingListItemId: input.sourceShoppingListItemId ?? null
     }
   });
+
+  if (!input.sourceShoppingListItemId) {
+    await prisma.part.update({
+      where: { id: input.partId },
+      data: { plannedQty: { increment: quantity } }
+    });
+  }
+
+  return item;
 }
 
 export async function updateOrderItem(input: {
@@ -446,19 +473,36 @@ export async function updateOrderItem(input: {
 
   await assertItemBelongsToOrder(input.orderId, input.itemId);
 
-  const quantity = parseQuantity(input.quantity);
+  const newQuantity = parseQuantity(input.quantity);
   const unitPrice = input.unitPrice ? parseUnitPrice(input.unitPrice) : null;
 
-  return prisma.purchaseOrderItem.update({
+  const oldItem = await prisma.purchaseOrderItem.findUniqueOrThrow({
+    where: { id: input.itemId },
+    select: { partId: true, quantity: true, sourceShoppingListItemId: true }
+  });
+
+  const updated = await prisma.purchaseOrderItem.update({
     where: { id: input.itemId },
     data: {
-      quantity,
+      quantity: newQuantity,
       supplierSku: normalizeOptionalText(input.supplierSku),
       unitPrice,
       currency: normalizeOptionalText(input.currency),
       notes: normalizeOptionalText(input.notes)
     }
   });
+
+  if (order.status === "DRAFT" && oldItem.sourceShoppingListItemId === null) {
+    const delta = newQuantity.minus(oldItem.quantity);
+    if (!delta.isZero()) {
+      await prisma.part.update({
+        where: { id: oldItem.partId },
+        data: { plannedQty: { increment: delta } }
+      });
+    }
+  }
+
+  return updated;
 }
 
 export async function removeOrderItem(input: {
@@ -473,7 +517,20 @@ export async function removeOrderItem(input: {
   }
 
   await assertItemBelongsToOrder(input.orderId, input.itemId);
+
+  const item = await prisma.purchaseOrderItem.findUniqueOrThrow({
+    where: { id: input.itemId },
+    select: { partId: true, quantity: true, sourceShoppingListItemId: true }
+  });
+
   await prisma.purchaseOrderItem.delete({ where: { id: input.itemId } });
+
+  if (order.status === "DRAFT" && item.sourceShoppingListItemId === null) {
+    await prisma.part.update({
+      where: { id: item.partId },
+      data: { plannedQty: { decrement: item.quantity } }
+    });
+  }
 }
 
 export async function markOrdered(input: {
@@ -486,17 +543,31 @@ export async function markOrdered(input: {
     throw new Error("order-not-in-draft");
   }
 
-  const itemCount = await prisma.purchaseOrderItem.count({
-    where: { purchaseOrderId: input.orderId }
+  const items = await prisma.purchaseOrderItem.findMany({
+    where: { purchaseOrderId: input.orderId },
+    select: { partId: true, quantity: true }
   });
 
-  if (itemCount === 0) {
+  if (items.length === 0) {
     throw new Error("order-has-no-items");
   }
 
-  return prisma.purchaseOrder.update({
-    where: { id: input.orderId },
-    data: { status: "ORDERED", orderedAt: new Date() }
+  await prisma.$transaction(async (tx) => {
+    await tx.purchaseOrder.update({
+      where: { id: input.orderId },
+      data: { status: "ORDERED", orderedAt: new Date() }
+    });
+
+    const deltaByPartId = sumQtyByPartId(items);
+    for (const [partId, delta] of deltaByPartId) {
+      await tx.part.update({
+        where: { id: partId },
+        data: {
+          plannedQty: { decrement: delta },
+          onOrderQty: { increment: delta }
+        }
+      });
+    }
   });
 }
 
@@ -565,6 +636,11 @@ export async function receiveItems(input: {
       await tx.purchaseOrderItem.update({
         where: { id: orderItem.id },
         data: { receivedQuantity: { increment: qty } }
+      });
+
+      await tx.part.update({
+        where: { id: orderItem.partId },
+        data: { onOrderQty: { decrement: qty } }
       });
 
       await createInventoryEntry({
@@ -722,4 +798,17 @@ function parseUnitPrice(rawValue: string) {
 function normalizeOptionalText(value?: string | null) {
   const normalized = value?.trim();
   return normalized ? normalized : null;
+}
+
+function sumQtyByPartId(
+  items: Array<{ partId: string; quantity: Prisma.Decimal }>
+): Map<string, Prisma.Decimal> {
+  const result = new Map<string, Prisma.Decimal>();
+  for (const item of items) {
+    result.set(
+      item.partId,
+      (result.get(item.partId) ?? new Prisma.Decimal(0)).plus(item.quantity)
+    );
+  }
+  return result;
 }

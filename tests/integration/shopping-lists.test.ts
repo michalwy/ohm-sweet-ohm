@@ -14,6 +14,7 @@ import {
   getShoppingListDetail,
   convertShoppingListToOrder
 } from "../../src/server/shopping-lists/shoppingListMutations";
+import { createPurchaseOrder } from "../../src/server/purchase-orders/purchaseOrderMutations";
 
 function uniqueSuffix(label: string) {
   return `${label}-${randomBytes(4).toString("hex")}`;
@@ -296,5 +297,144 @@ describe("shopping lists — convert to order", () => {
       }),
       { message: "supplier-not-found" }
     );
+  });
+});
+
+async function getPartQtys(partId: string) {
+  const part = await prisma.part.findUniqueOrThrow({
+    where: { id: partId },
+    select: { plannedQty: true, onOrderQty: true }
+  });
+  return {
+    plannedQty: part.plannedQty.toNumber(),
+    onOrderQty: part.onOrderQty.toNumber()
+  };
+}
+
+describe("plannedQty / onOrderQty maintenance — shopping lists", () => {
+  test("addShoppingListItem increments plannedQty", async () => {
+    const suffix = uniqueSuffix("sq-add");
+    const { workspaceId, partId, supplierId: _s } = await createFixture(suffix);
+
+    const list = await createShoppingList({ workspaceId, name: "SQ Add List" });
+    await addShoppingListItem({ workspaceId, listId: list.id, partId, quantity: "5" });
+
+    const { plannedQty, onOrderQty } = await getPartQtys(partId);
+    assert.equal(plannedQty, 5);
+    assert.equal(onOrderQty, 0);
+  });
+
+  test("updateShoppingListItem with no PO link adjusts plannedQty", async () => {
+    const suffix = uniqueSuffix("sq-upd");
+    const { workspaceId, partId } = await createFixture(suffix);
+
+    const list = await createShoppingList({ workspaceId, name: "SQ Upd List" });
+    const item = await addShoppingListItem({ workspaceId, listId: list.id, partId, quantity: "5" });
+    await updateShoppingListItem({ workspaceId, listId: list.id, itemId: item.id, quantity: "8" });
+
+    const { plannedQty } = await getPartQtys(partId);
+    assert.equal(plannedQty, 8);
+  });
+
+  test("updateShoppingListItem with linked PO item does not change plannedQty", async () => {
+    const suffix = uniqueSuffix("sq-upd-po");
+    const { workspaceId, partId, supplierId } = await createFixture(suffix);
+
+    const list = await createShoppingList({ workspaceId, name: "SQ Upd PO List" });
+    const item = await addShoppingListItem({ workspaceId, listId: list.id, partId, quantity: "5" });
+    await convertShoppingListToOrder({
+      workspaceId,
+      listId: list.id,
+      selectedItemIds: [item.id],
+      supplierId
+    });
+
+    await updateShoppingListItem({ workspaceId, listId: list.id, itemId: item.id, quantity: "10" });
+
+    const { plannedQty } = await getPartQtys(partId);
+    assert.equal(plannedQty, 5);
+  });
+
+  test("removeShoppingListItem with no PO link decrements plannedQty", async () => {
+    const suffix = uniqueSuffix("sq-rm");
+    const { workspaceId, partId } = await createFixture(suffix);
+
+    const list = await createShoppingList({ workspaceId, name: "SQ Rm List" });
+    const item = await addShoppingListItem({ workspaceId, listId: list.id, partId, quantity: "5" });
+    await removeShoppingListItem({ workspaceId, listId: list.id, itemId: item.id });
+
+    const { plannedQty } = await getPartQtys(partId);
+    assert.equal(plannedQty, 0);
+  });
+
+  test("removeShoppingListItem with linked draft PO item does not change plannedQty", async () => {
+    const suffix = uniqueSuffix("sq-rm-po");
+    const { workspaceId, partId, supplierId } = await createFixture(suffix);
+
+    const list = await createShoppingList({ workspaceId, name: "SQ Rm PO List" });
+    const item = await addShoppingListItem({ workspaceId, listId: list.id, partId, quantity: "5" });
+    await convertShoppingListToOrder({
+      workspaceId,
+      listId: list.id,
+      selectedItemIds: [item.id],
+      supplierId
+    });
+
+    await removeShoppingListItem({ workspaceId, listId: list.id, itemId: item.id });
+
+    const { plannedQty } = await getPartQtys(partId);
+    assert.equal(plannedQty, 5);
+  });
+
+  test("deleteShoppingList decrements plannedQty for unconverted items only", async () => {
+    const suffix = uniqueSuffix("sq-del-list");
+    const normalized = suffix.toLowerCase().replace(/[^a-z0-9]+/g, "-");
+    const { workspaceId, partId, supplierId } = await createFixture(suffix);
+
+    const unit = await prisma.unit.findFirstOrThrow({ where: { workspaceId } });
+    const manufacturer = await prisma.organization.findFirstOrThrow({ where: { workspaceId } });
+    const part2 = await prisma.part.create({
+      data: {
+        workspaceId,
+        unitId: unit.id,
+        manufacturerId: manufacturer.id,
+        catalogNumber: `SL-PART2-${normalized}`
+      }
+    });
+
+    const list = await createShoppingList({ workspaceId, name: "SQ Del List" });
+    const item1 = await addShoppingListItem({ workspaceId, listId: list.id, partId, quantity: "5" });
+    await addShoppingListItem({ workspaceId, listId: list.id, partId: part2.id, quantity: "3" });
+
+    await convertShoppingListToOrder({
+      workspaceId,
+      listId: list.id,
+      selectedItemIds: [item1.id],
+      supplierId
+    });
+
+    await deleteShoppingList({ workspaceId, listId: list.id });
+
+    const p1Qtys = await getPartQtys(partId);
+    const p2Qtys = await getPartQtys(part2.id);
+    assert.equal(p1Qtys.plannedQty, 5);
+    assert.equal(p2Qtys.plannedQty, 0);
+  });
+
+  test("convertShoppingListToOrder does not change plannedQty", async () => {
+    const suffix = uniqueSuffix("sq-convert");
+    const { workspaceId, partId, supplierId } = await createFixture(suffix);
+
+    const list = await createShoppingList({ workspaceId, name: "SQ Convert List" });
+    const item = await addShoppingListItem({ workspaceId, listId: list.id, partId, quantity: "5" });
+    await convertShoppingListToOrder({
+      workspaceId,
+      listId: list.id,
+      selectedItemIds: [item.id],
+      supplierId
+    });
+
+    const { plannedQty } = await getPartQtys(partId);
+    assert.equal(plannedQty, 5);
   });
 });

@@ -135,6 +135,8 @@ type Copy = {
   filteredPartsSummary: string;
   actions: string;
   stock: string;
+  planned: string;
+  onOrder: string;
   newPartTitle: string;
   newPartBody: string;
   editPartTitle: string;
@@ -249,6 +251,8 @@ type PartsListClientProps = {
   activeSupplierProvider: SupplierProviderKey | null;
   canReadInventory: boolean;
   canWriteInventory: boolean;
+  canReadShoppingLists: boolean;
+  canReadPurchaseOrders: boolean;
   initialSelectedPartId?: string;
 };
 
@@ -268,6 +272,8 @@ export function PartsListClient({
   activeSupplierProvider,
   canReadInventory,
   canWriteInventory,
+  canReadShoppingLists,
+  canReadPurchaseOrders,
   initialSelectedPartId
 }: PartsListClientProps) {
   const queryClient = useQueryClient();
@@ -412,9 +418,37 @@ export function PartsListClient({
             }
           ]
         : []),
+      ...(canReadShoppingLists
+        ? [
+            {
+              id: "plannedQuantity",
+              label: copy.planned,
+              group: "base" as const,
+              defaultVisible: false,
+              defaultWidth: 120,
+              minWidth: 72,
+              sortable: true,
+              align: "right" as const
+            }
+          ]
+        : []),
+      ...(canReadPurchaseOrders
+        ? [
+            {
+              id: "onOrderQuantity",
+              label: copy.onOrder,
+              group: "base" as const,
+              defaultVisible: false,
+              defaultWidth: 120,
+              minWidth: 72,
+              sortable: true,
+              align: "right" as const
+            }
+          ]
+        : []),
       ...attributeColumnDefinitions
     ],
-    [attributeColumnDefinitions, canReadInventory, copy]
+    [attributeColumnDefinitions, canReadInventory, canReadShoppingLists, canReadPurchaseOrders, copy]
   );
   const fixedListColumnIds = useMemo(() => ["actions"], []);
   const {
@@ -780,6 +814,56 @@ export function PartsListClient({
             })
           ]
         : []),
+      ...(canReadShoppingLists
+        ? [
+            columnHelper.accessor("plannedQuantity", {
+              header: () => (
+                <span className="block w-full text-right">{copy.planned}</span>
+              ),
+              size: 120,
+              minSize: 72,
+              sortingFn: (rowA, rowB) =>
+                compareNumericDisplayValues(
+                  rowA.original.plannedQuantity ?? "",
+                  rowB.original.plannedQuantity ?? ""
+                ),
+              cell: ({ getValue }) => {
+                const value = getValue();
+
+                return value ? (
+                  <span className="block text-right text-slate-950">{value}</span>
+                ) : (
+                  <span className="block text-right text-slate-400">-</span>
+                );
+              }
+            })
+          ]
+        : []),
+      ...(canReadPurchaseOrders
+        ? [
+            columnHelper.accessor("onOrderQuantity", {
+              header: () => (
+                <span className="block w-full text-right">{copy.onOrder}</span>
+              ),
+              size: 120,
+              minSize: 72,
+              sortingFn: (rowA, rowB) =>
+                compareNumericDisplayValues(
+                  rowA.original.onOrderQuantity ?? "",
+                  rowB.original.onOrderQuantity ?? ""
+                ),
+              cell: ({ getValue }) => {
+                const value = getValue();
+
+                return value ? (
+                  <span className="block text-right text-slate-950">{value}</span>
+                ) : (
+                  <span className="block text-right text-slate-400">-</span>
+                );
+              }
+            })
+          ]
+        : []),
       columnHelper.display({
         id: "actions",
         header: "",
@@ -848,6 +932,8 @@ export function PartsListClient({
     ];
   }, [
     canReadInventory,
+    canReadShoppingLists,
+    canReadPurchaseOrders,
     copy,
     deletePartMutation.isPending,
     isDatabaseAvailable,

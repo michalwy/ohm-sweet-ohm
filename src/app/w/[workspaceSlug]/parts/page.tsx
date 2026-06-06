@@ -74,6 +74,8 @@ const copy = {
   filteredPartsSummary: "{visible} of {total} parts",
   actions: "Actions",
   stock: "Stock",
+  planned: "Planned",
+  onOrder: "On order",
   newPartTitle: "Add part",
   newPartBody: "Create a new part.",
   editPartTitle: "Edit part",
@@ -249,20 +251,31 @@ export default async function PartsPage({
   const activeSupplierProvider = isDatabaseAvailable
     ? await getWorkspaceActiveSupplierProvider(context.workspace.id).catch(() => null)
     : null;
-  const [canReadInventory, canWriteInventory] = isDatabaseAvailable
-    ? await Promise.all([
-        hasWorkspacePermission({
-          userId: context.user.id,
-          workspaceId: context.workspace.id,
-          permission: "inventory:read"
-        }).catch(() => false),
-        hasWorkspacePermission({
-          userId: context.user.id,
-          workspaceId: context.workspace.id,
-          permission: "inventory:write"
-        }).catch(() => false)
-      ])
-    : [false, false];
+  const [canReadInventory, canWriteInventory, canReadShoppingLists, canReadPurchaseOrders] =
+    isDatabaseAvailable
+      ? await Promise.all([
+          hasWorkspacePermission({
+            userId: context.user.id,
+            workspaceId: context.workspace.id,
+            permission: "inventory:read"
+          }).catch(() => false),
+          hasWorkspacePermission({
+            userId: context.user.id,
+            workspaceId: context.workspace.id,
+            permission: "inventory:write"
+          }).catch(() => false),
+          hasWorkspacePermission({
+            userId: context.user.id,
+            workspaceId: context.workspace.id,
+            permission: "shopping-lists:read"
+          }).catch(() => false),
+          hasWorkspacePermission({
+            userId: context.user.id,
+            workspaceId: context.workspace.id,
+            permission: "purchase-orders:read"
+          }).catch(() => false)
+        ])
+      : [false, false, false, false];
 
   return (
     <WorkspaceShell
@@ -295,6 +308,8 @@ export default async function PartsPage({
         activeSupplierProvider={activeSupplierProvider}
         canReadInventory={canReadInventory}
         canWriteInventory={canWriteInventory}
+        canReadShoppingLists={canReadShoppingLists}
+        canReadPurchaseOrders={canReadPurchaseOrders}
         initialSelectedPartId={initialSelectedPartId}
       />
     </WorkspaceShell>
