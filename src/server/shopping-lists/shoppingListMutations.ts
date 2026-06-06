@@ -2,6 +2,12 @@ import "server-only";
 
 import { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/server/db/prisma";
+import {
+  decodeListCursor,
+  encodeListCursor,
+  getListPageSize,
+  type ListPage
+} from "@/server/pagination";
 
 export type ShoppingListItem = {
   id: string;
@@ -32,28 +38,151 @@ export type ShoppingListSummary = {
   updatedAt: string;
 };
 
-export async function getShoppingLists(workspaceId: string): Promise<ShoppingListSummary[]> {
-  const lists = await prisma.shoppingList.findMany({
-    where: { workspaceId },
-    orderBy: { createdAt: "desc" },
-    select: {
-      id: true,
-      name: true,
-      notes: true,
-      createdAt: true,
-      updatedAt: true,
-      _count: { select: { items: true } }
-    }
+export type ShoppingListSortBy = "name" | "itemCount" | "createdAt";
+export type ShoppingListSortDirection = "asc" | "desc";
+
+export type ShoppingListsPageInput = {
+  cursor?: string | null;
+  pageSize?: number | null;
+  sortBy?: ShoppingListSortBy | null;
+  sortDirection?: ShoppingListSortDirection | null;
+};
+
+type NameCursor = { name: string; id: string };
+type CreatedAtCursor = { createdAt: string; id: string };
+type OffsetCursor = { offset: number };
+
+export async function getShoppingLists(
+  workspaceId: string,
+  input: ShoppingListsPageInput = {}
+): Promise<ListPage<ShoppingListSummary>> {
+  const size = getListPageSize(input.pageSize);
+  const sortBy = input.sortBy ?? "createdAt";
+  const dir = input.sortDirection ?? (sortBy === "createdAt" ? "desc" : "asc");
+
+  const selectShape = {
+    id: true,
+    name: true,
+    notes: true,
+    createdAt: true,
+    updatedAt: true,
+    _count: { select: { items: true } }
+  } as const;
+
+  const totalCount = await prisma.shoppingList.count({ where: { workspaceId } });
+
+  function toSummary(list: {
+    id: string;
+    name: string;
+    notes: string | null;
+    createdAt: Date;
+    updatedAt: Date;
+    _count: { items: number };
+  }): ShoppingListSummary {
+    return {
+      id: list.id,
+      name: list.name,
+      notes: list.notes,
+      itemCount: list._count.items,
+      createdAt: list.createdAt.toISOString(),
+      updatedAt: list.updatedAt.toISOString()
+    };
+  }
+
+  if (sortBy === "itemCount") {
+    // Load all, sort in-memory, slice with offset cursor
+    const cursor = decodeListCursor<OffsetCursor>(input.cursor);
+    const offset = cursor?.offset ?? 0;
+
+    const all = await prisma.shoppingList.findMany({
+      where: { workspaceId },
+      select: selectShape
+    });
+
+    all.sort((a, b) => {
+      const diff = a._count.items - b._count.items;
+      return dir === "asc" ? diff : -diff;
+    });
+
+    const sliced = all.slice(offset, offset + size + 1);
+    const hasMore = sliced.length > size;
+    const items = sliced.slice(0, size).map(toSummary);
+    const nextCursor = hasMore
+      ? encodeListCursor<OffsetCursor>({ offset: offset + size })
+      : null;
+
+    return { items, nextCursor, totalCount, filteredCount: totalCount };
+  }
+
+  if (sortBy === "name") {
+    const cursor = decodeListCursor<NameCursor>(input.cursor);
+
+    const rows = await prisma.shoppingList.findMany({
+      where: {
+        workspaceId,
+        ...(cursor
+          ? {
+              OR: [
+                { name: dir === "asc" ? { gt: cursor.name } : { lt: cursor.name } },
+                { name: cursor.name, id: dir === "asc" ? { gt: cursor.id } : { lt: cursor.id } }
+              ]
+            }
+          : {})
+      },
+      orderBy: [{ name: dir }, { id: dir }],
+      take: size + 1,
+      select: selectShape
+    });
+
+    const hasMore = rows.length > size;
+    const items = rows.slice(0, size).map(toSummary);
+    const last = items[items.length - 1];
+    const nextCursor =
+      hasMore && last
+        ? encodeListCursor<NameCursor>({ name: last.name, id: last.id })
+        : null;
+
+    return { items, nextCursor, totalCount, filteredCount: totalCount };
+  }
+
+  // Default: createdAt sort
+  const cursor = decodeListCursor<CreatedAtCursor>(input.cursor);
+  const createdAtDir = dir === "asc" ? "asc" : "desc";
+
+  const rows = await prisma.shoppingList.findMany({
+    where: {
+      workspaceId,
+      ...(cursor
+        ? {
+            OR: [
+              {
+                createdAt:
+                  createdAtDir === "desc"
+                    ? { lt: new Date(cursor.createdAt) }
+                    : { gt: new Date(cursor.createdAt) }
+              },
+              {
+                createdAt: new Date(cursor.createdAt),
+                id: createdAtDir === "desc" ? { lt: cursor.id } : { gt: cursor.id }
+              }
+            ]
+          }
+        : {})
+    },
+    orderBy: [{ createdAt: createdAtDir }, { id: createdAtDir === "desc" ? "asc" : "desc" }],
+    take: size + 1,
+    select: selectShape
   });
 
-  return lists.map((list) => ({
-    id: list.id,
-    name: list.name,
-    notes: list.notes,
-    itemCount: list._count.items,
-    createdAt: list.createdAt.toISOString(),
-    updatedAt: list.updatedAt.toISOString()
-  }));
+  const hasMore = rows.length > size;
+  const items = rows.slice(0, size).map(toSummary);
+  const last = items[items.length - 1];
+  const nextCursor =
+    hasMore && last
+      ? encodeListCursor<CreatedAtCursor>({ createdAt: last.createdAt, id: last.id })
+      : null;
+
+  return { items, nextCursor, totalCount, filteredCount: totalCount };
 }
 
 export async function getShoppingListDetail(

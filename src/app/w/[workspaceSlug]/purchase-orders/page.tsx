@@ -37,7 +37,9 @@ const copy = {
   deleteConfirmationBody: "Only draft orders can be deleted. This cannot be undone.",
   deleteOrder: "Delete order",
   noOrders: "No purchase orders yet. Create one to start ordering parts.",
-  openOrder: "Open",
+  loadError: "Failed to load orders.",
+  loadingOrders: "Loading orders...",
+  loadingMoreOrders: "Loading more...",
   status: "Status",
   statusDraft: "Draft",
   statusOrdered: "Ordered",
@@ -89,17 +91,28 @@ const copy = {
   invalidInput: "Check the fields and try again.",
   permissionDenied: "You do not have permission to perform this action.",
   databaseUnavailable: "Database is not available.",
-  actions: "Actions",
   orderedAt: "Ordered",
-  noAttribute: "—"
+  noAttribute: "—",
+  configureList: "Configure list",
+  configureListTitle: "Configure list",
+  configureListBody: "Choose visible columns, order, sorting, and widths.",
+  visibleColumns: "Columns",
+  moveUp: "Up",
+  moveDown: "Down",
+  columnWidthPx: "Width",
+  sortingLabel: "Sort",
+  clearSorting: "None",
+  resetListConfiguration: "Reset defaults"
 };
 
 type PurchaseOrdersPageProps = {
   params: Promise<{ workspaceSlug: string }>;
+  searchParams?: Promise<{ selectedOrderId?: string }>;
 };
 
-export default async function PurchaseOrdersPage({ params }: PurchaseOrdersPageProps) {
+export default async function PurchaseOrdersPage({ params, searchParams }: PurchaseOrdersPageProps) {
   const { workspaceSlug } = await params;
+  const resolvedSearchParams = await searchParams;
   const session = await getCurrentSession();
 
   if (!session) {
@@ -112,8 +125,10 @@ export default async function PurchaseOrdersPage({ params }: PurchaseOrdersPageP
     notFound();
   }
 
-  const [orders, organizations, locations, canWrite] = await Promise.all([
-    getPurchaseOrders(context.workspace.id).catch(() => []),
+  const emptyPage = { items: [], nextCursor: null, totalCount: 0, filteredCount: 0 };
+
+  const [initialPage, organizations, locations, canWrite] = await Promise.all([
+    getPurchaseOrders(context.workspace.id).catch(() => emptyPage),
     prisma.organization
       .findMany({
         where: { workspaceId: context.workspace.id },
@@ -143,7 +158,8 @@ export default async function PurchaseOrdersPage({ params }: PurchaseOrdersPageP
       <PurchaseOrdersClient
         copy={copy}
         canWrite={canWrite}
-        initialOrders={orders}
+        initialPage={initialPage}
+        initialSelectedOrderId={resolvedSearchParams?.selectedOrderId}
         organizations={organizations}
         assignableLocations={assignableLocations}
         workspaceSlug={workspaceSlug}

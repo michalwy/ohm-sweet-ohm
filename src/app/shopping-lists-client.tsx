@@ -1,7 +1,19 @@
 "use client";
 
-import { useRef, useState } from "react";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMemo, useRef, useState } from "react";
+import {
+  createColumnHelper,
+  flexRender,
+  getCoreRowModel,
+  useReactTable
+} from "@tanstack/react-table";
+import {
+  keepPreviousData,
+  useInfiniteQuery,
+  useMutation,
+  useQuery,
+  useQueryClient
+} from "@tanstack/react-query";
 
 import {
   addShoppingListItemForWorkspace,
@@ -9,6 +21,7 @@ import {
   createShoppingListForWorkspace,
   deleteShoppingListForWorkspace,
   getShoppingListDetailForWorkspace,
+  getShoppingListsForWorkspace,
   removeShoppingListItemForWorkspace,
   updateShoppingListForWorkspace,
   updateShoppingListItemForWorkspace
@@ -18,6 +31,8 @@ import type {
   ShoppingListItem,
   ShoppingListSummary
 } from "@/server/shopping-lists/shoppingListMutations";
+import type { ShoppingListSortBy } from "@/server/shopping-lists/shoppingListMutations";
+import type { ListPage } from "@/server/pagination";
 import { getPartsListPageForWorkspace } from "@/server/parts/listActions";
 import {
   closeDialog,
@@ -31,6 +46,13 @@ import {
   openDialog
 } from "@/app/dialog-shell";
 import { getNextToastId, ToastNotice, type ToastMessage } from "@/app/toast-notice";
+import { InfiniteListViewport } from "@/app/infinite-list";
+import {
+  ListConfigurationDialog,
+  useListTableConfiguration,
+  type ListColumnDefinition
+} from "@/app/list-table-config";
+import { DetailPanel, useDetailsPanelWidth } from "@/app/detail-panel";
 
 type Organization = { id: string; name: string };
 
@@ -55,9 +77,11 @@ type Copy = {
   deleteConfirmationBody: string;
   deleteList: string;
   noLists: string;
+  loadError: string;
+  loadingLists: string;
+  loadingMoreLists: string;
   items: string;
   itemsPlural: string;
-  openList: string;
   listItems: string;
   addItem: string;
   editItem: string;
@@ -93,26 +117,43 @@ type Copy = {
   invalidInput: string;
   permissionDenied: string;
   databaseUnavailable: string;
-  actions: string;
+  configureList: string;
+  configureListTitle: string;
+  configureListBody: string;
+  visibleColumns: string;
+  moveUp: string;
+  moveDown: string;
+  columnWidthPx: string;
+  sortingLabel: string;
+  clearSorting: string;
+  resetListConfiguration: string;
 };
 
 type ShoppingListsClientProps = {
   canWrite: boolean;
   copy: Copy;
-  initialLists: ShoppingListSummary[];
+  initialPage: ListPage<ShoppingListSummary>;
+  initialSelectedListId?: string;
   organizations: Organization[];
   workspaceSlug: string;
 };
 
+const columnHelper = createColumnHelper<ShoppingListSummary>();
+
 export function ShoppingListsClient({
   canWrite,
   copy,
-  initialLists,
+  initialPage,
+  initialSelectedListId,
   organizations,
   workspaceSlug
 }: ShoppingListsClientProps) {
-  const [lists, setLists] = useState(initialLists);
-  const [selectedListId, setSelectedListId] = useState<string | null>(null);
+  const queryClient = useQueryClient();
+
+  const [selectedListId, setSelectedListId] = useState<string | null>(
+    initialSelectedListId ?? null
+  );
+  const [hoveredListId, setHoveredListId] = useState<string | null>(null);
   const [listDialogMode, setListDialogMode] = useState<"create" | "edit" | null>(null);
   const [editingList, setEditingList] = useState<ShoppingListSummary | null>(null);
   const [listPendingDelete, setListPendingDelete] = useState<ShoppingListSummary | null>(null);
@@ -127,11 +168,84 @@ export function ShoppingListsClient({
   const [itemFormErrors, setItemFormErrors] = useState<Record<string, string>>({});
   const [convertFormErrors, setConvertFormErrors] = useState<Record<string, string>>({});
   const [dialogFormKey, setDialogFormKey] = useState(0);
+  const [isColumnsMenuOpen, setIsColumnsMenuOpen] = useState(false);
+  const [isResizingColumn, setIsResizingColumn] = useState(false);
   const [toastMessages, setToastMessages] = useState<ToastMessage[]>([]);
   const nextToastIdRef = useRef(0);
   const listDialogRef = useRef<HTMLDialogElement>(null);
   const itemDialogRef = useRef<HTMLDialogElement>(null);
   const convertDialogRef = useRef<HTMLDialogElement>(null);
+  const listConfigDialogRef = useRef<HTMLDialogElement>(null);
+
+  // --- Column configuration ---
+
+  const listColumns = useMemo<ListColumnDefinition[]>(
+    () => [
+      { id: "name", label: copy.name, group: "base", defaultWidth: 240, minWidth: 120, sortable: true },
+      { id: "notes", label: copy.notes, group: "base", defaultWidth: 320, minWidth: 96 },
+      { id: "itemCount", label: copy.items, group: "base", defaultWidth: 100, minWidth: 64, sortable: true }
+    ],
+    [copy]
+  );
+  const fixedListColumnIds = useMemo(() => ["actions"], []);
+
+  const {
+    columnSizing,
+    columnVisibility,
+    configurableColumns,
+    setColumnWidth,
+    setColumnSorting,
+    setColumnVisible,
+    setColumnOrder,
+    setColumnSizing,
+    setColumnVisibility,
+    setSorting,
+    sorting,
+    columnOrder: persistedColumnOrder,
+    isLoaded: isListConfigLoaded,
+    moveColumn,
+    resetConfiguration
+  } = useListTableConfiguration({
+    storageKey: `oso:list-config:shopping-lists:${workspaceSlug}`,
+    columns: listColumns,
+    fixedColumnIds: fixedListColumnIds
+  });
+
+  // --- Lists data ---
+
+  const activeSorting = sorting[0] ?? null;
+
+  const listsQuery = useInfiniteQuery({
+    queryKey: ["shopping-lists", workspaceSlug, { sorting }] as const,
+    initialPageParam: null as string | null,
+    queryFn: async ({ pageParam }) => {
+      const result = await getShoppingListsForWorkspace({
+        workspaceSlug,
+        cursor: pageParam,
+        sortBy: (activeSorting?.id ?? null) as ShoppingListSortBy | null,
+        sortDirection: activeSorting ? (activeSorting.desc ? "desc" : "asc") : null
+      });
+      if (!result.ok) throw new Error(result.error);
+      return result.data;
+    },
+    getNextPageParam: (lastPage) => lastPage.nextCursor,
+    placeholderData: keepPreviousData,
+    initialData:
+      sorting.length === 0
+        ? { pages: [initialPage], pageParams: [null] }
+        : undefined
+  });
+
+  const lists = useMemo(
+    () => listsQuery.data?.pages.flatMap((p) => p.items) ?? [],
+    [listsQuery.data]
+  );
+
+  function reloadLists() {
+    void queryClient.invalidateQueries({ queryKey: ["shopping-lists", workspaceSlug] });
+  }
+
+  // --- Detail query ---
 
   const { data: listDetail, refetch: refetchDetail } = useQuery({
     queryKey: ["shopping-list-detail", workspaceSlug, selectedListId],
@@ -160,13 +274,15 @@ export function ShoppingListsClient({
     placeholderData: (prev) => prev
   });
 
+  // --- Mutations ---
+
   const createListMutation = useMutation({
     mutationFn: createShoppingListForWorkspace,
     onSuccess: (result) => {
       if (!result.ok) { setListFormErrors({ submit: getErrorMsg(copy, result.error) }); return; }
       closeListDialog();
       addToast(copy.createdToast);
-      void reloadLists();
+      reloadLists();
     }
   });
 
@@ -176,7 +292,7 @@ export function ShoppingListsClient({
       if (!result.ok) { setListFormErrors({ submit: getErrorMsg(copy, result.error) }); return; }
       closeListDialog();
       addToast(copy.updatedToast);
-      void reloadLists();
+      reloadLists();
     }
   });
 
@@ -184,10 +300,10 @@ export function ShoppingListsClient({
     mutationFn: deleteShoppingListForWorkspace,
     onSuccess: (result) => {
       if (!result.ok) { addToast(getErrorMsg(copy, result.error)); return; }
-      if (selectedListId === listPendingDelete?.id) setSelectedListId(null);
+      if (selectedListId === listPendingDelete?.id) closeListDetails();
       setListPendingDelete(null);
       addToast(copy.deletedToast);
-      void reloadLists();
+      reloadLists();
     }
   });
 
@@ -198,7 +314,7 @@ export function ShoppingListsClient({
       closeItemDialog();
       addToast(copy.itemAddedToast);
       void refetchDetail();
-      void reloadLists();
+      reloadLists();
     }
   });
 
@@ -219,7 +335,7 @@ export function ShoppingListsClient({
       setItemPendingRemove(null);
       addToast(copy.itemRemovedToast);
       void refetchDetail();
-      void reloadLists();
+      reloadLists();
     }
   });
 
@@ -233,13 +349,35 @@ export function ShoppingListsClient({
     }
   });
 
-  async function reloadLists() {
-    const { getShoppingListsForWorkspace } = await import(
-      "@/server/shopping-lists/shoppingListActions"
-    );
-    const result = await getShoppingListsForWorkspace({ workspaceSlug });
-    if (result.ok) setLists(result.data);
+  // --- URL sync & panel ---
+
+  function openListDetails(list: ShoppingListSummary) {
+    setSelectedListId(list.id);
+    setSelectedItemIds(new Set());
+    const url = new URL(window.location.href);
+    url.searchParams.set("selectedListId", list.id);
+    window.history.replaceState(null, "", url.toString());
   }
+
+  function closeListDetails() {
+    setSelectedListId(null);
+    setSelectedItemIds(new Set());
+    const url = new URL(window.location.href);
+    url.searchParams.delete("selectedListId");
+    window.history.replaceState(null, "", url.toString());
+  }
+
+  const {
+    width: detailsPanelWidth,
+    hasLoaded: hasLoadedDetailsPanelWidth,
+    startResizing: startResizingDetailsPanel
+  } = useDetailsPanelWidth(`oso:shopping-lists-details-panel-width:${workspaceSlug}`, 400);
+
+  const selectedList = selectedListId
+    ? (lists.find((l) => l.id === selectedListId) ?? null)
+    : null;
+
+  // --- Dialog helpers ---
 
   function openCreateListDialog() {
     setEditingList(null);
@@ -305,6 +443,8 @@ export function ShoppingListsClient({
     setConvertDialogOpen(false);
     setConvertFormErrors({});
   }
+
+  // --- Form handlers ---
 
   function handleListSubmit(formData: FormData) {
     const name = getString(formData, "name");
@@ -376,7 +516,103 @@ export function ShoppingListsClient({
     setToastMessages((msgs) => [...msgs, { id: getNextToastId(nextToastIdRef), message }]);
   }
 
-  const items = (listDetail as ShoppingListDetail | null | undefined)?.items ?? [];
+  // --- TanStack Table ---
+
+  const columns = useMemo(
+    () => [
+      columnHelper.accessor("name", {
+        header: copy.name,
+        size: 240,
+        minSize: 120,
+        cell: ({ getValue }) => (
+          <span className="font-medium text-slate-950">{getValue()}</span>
+        )
+      }),
+      columnHelper.accessor("notes", {
+        header: copy.notes,
+        size: 320,
+        minSize: 96,
+        cell: ({ getValue }) => {
+          const v = getValue();
+          return v
+            ? <span className="text-slate-700">{v}</span>
+            : <span className="text-slate-400">—</span>;
+        }
+      }),
+      columnHelper.accessor("itemCount", {
+        header: copy.items,
+        size: 100,
+        minSize: 64,
+        cell: ({ getValue }) => (
+          <span className="text-slate-700">{getValue()}</span>
+        )
+      }),
+      columnHelper.display({
+        id: "actions",
+        header: "",
+        size: 104,
+        minSize: 104,
+        maxSize: 104,
+        enableResizing: false,
+        cell: ({ row }) => (
+          <div className="flex justify-end gap-2">
+            <button
+              aria-label={copy.edit}
+              className="min-h-8 rounded-md border border-slate-300 bg-white px-2.5 py-1 text-sm font-medium text-slate-700 transition hover:border-slate-400 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400"
+              disabled={!canWrite}
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                openEditListDialog(row.original);
+              }}
+            >
+              <svg aria-hidden="true" className="h-4 w-4" fill="none" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+                <path d="M13.9 3.3a1.5 1.5 0 0 1 2.1 0l.7.7a1.5 1.5 0 0 1 0 2.1l-8.4 8.4-3.3.8.8-3.3 8.4-8.4Z" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" />
+              </svg>
+            </button>
+            <button
+              aria-label={copy.delete}
+              className="min-h-8 rounded-md border border-[var(--color-error-border)] bg-white px-2.5 py-1 text-sm font-medium text-[var(--color-error)] transition hover:bg-[var(--color-error-soft)] focus:outline-none focus:ring-2 focus:ring-[var(--color-error-border)] focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400"
+              disabled={!canWrite || deleteListMutation.isPending}
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setListPendingDelete(row.original);
+              }}
+            >
+              <svg aria-hidden="true" className="h-4 w-4" fill="none" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+                <path d="M5.5 6h9m-7.5 0V4.75A1.75 1.75 0 0 1 8.75 3h2.5A1.75 1.75 0 0 1 13 4.75V6m-6.5 0 .6 9.1A1.75 1.75 0 0 0 8.84 16.75h2.32a1.75 1.75 0 0 0 1.74-1.65L13.5 6M8.75 8.5v5m2.5-5v5" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" />
+              </svg>
+            </button>
+          </div>
+        )
+      })
+    ],
+    [canWrite, copy, deleteListMutation.isPending]
+  );
+
+  const tableColumnOrder = useMemo(() => persistedColumnOrder, [persistedColumnOrder]);
+
+  // eslint-disable-next-line react-hooks/incompatible-library
+  const listsTable = useReactTable({
+    data: lists,
+    columns,
+    state: {
+      columnVisibility,
+      columnOrder: tableColumnOrder,
+      sorting,
+      columnSizing
+    },
+    onColumnVisibilityChange: setColumnVisibility,
+    onColumnOrderChange: setColumnOrder,
+    onSortingChange: setSorting,
+    onColumnSizingChange: setColumnSizing,
+    columnResizeMode: "onChange",
+    enableColumnResizing: true,
+    manualSorting: true,
+    getCoreRowModel: getCoreRowModel()
+  });
+
   const isMutating =
     createListMutation.isPending ||
     updateListMutation.isPending ||
@@ -384,176 +620,320 @@ export function ShoppingListsClient({
     updateItemMutation.isPending ||
     convertMutation.isPending;
 
+  const items = (listDetail as ShoppingListDetail | null | undefined)?.items ?? [];
+
+  const listConfigCopy = {
+    close: copy.close,
+    saveChanges: copy.saveChanges,
+    configureListTitle: copy.configureListTitle,
+    configureListBody: copy.configureListBody,
+    visibleColumns: copy.visibleColumns,
+    moveUp: copy.moveUp,
+    moveDown: copy.moveDown,
+    columnWidthPx: copy.columnWidthPx,
+    sortingLabel: copy.sortingLabel,
+    clearSorting: copy.clearSorting,
+    resetListConfiguration: copy.resetListConfiguration
+  };
+
   return (
-    <section className="flex min-h-0 flex-1 flex-col gap-4">
-      {/* Lists table */}
-      <div className="flex items-center justify-between">
-        <h2 className="text-sm font-semibold text-slate-700">{copy.title}</h2>
-        <button
-          className="inline-flex min-h-9 items-center rounded-md bg-[var(--color-accent)] px-4 text-sm font-semibold text-white transition hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-60"
-          disabled={!canWrite}
-          type="button"
-          onClick={openCreateListDialog}
-        >
-          {copy.newList}
-        </button>
-      </div>
-
-      <div className="rounded-md border border-slate-200 bg-white">
-        {lists.length === 0 ? (
-          <p className="px-4 py-6 text-sm text-slate-600">{copy.noLists}</p>
-        ) : (
-          <table className="w-full border-collapse text-left text-sm">
-            <thead>
-              <tr className="border-b border-slate-200 bg-slate-50">
-                <th className="px-4 py-3 font-semibold text-slate-700">{copy.name}</th>
-                <th className="px-4 py-3 font-semibold text-slate-700">{copy.notes}</th>
-                <th className="w-24 px-4 py-3 font-semibold text-slate-700">{copy.items}</th>
-                <th className="px-4 py-3 font-semibold text-slate-700">{copy.actions}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {lists.map((list) => (
-                <tr
-                  key={list.id}
-                  className={`border-b border-slate-100 last:border-b-0 ${selectedListId === list.id ? "bg-[var(--color-accent-soft)]" : ""}`}
-                >
-                  <td className="px-4 py-3 font-medium text-slate-900">{list.name}</td>
-                  <td className="px-4 py-3 text-slate-600">{list.notes ?? "—"}</td>
-                  <td className="px-4 py-3 text-slate-600">
-                    {list.itemCount} {list.itemCount === 1 ? copy.items : copy.itemsPlural}
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-2">
-                      <button
-                        className="min-h-9 rounded-md border border-slate-300 px-3 text-sm font-medium text-slate-700 transition hover:border-slate-400 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
-                        type="button"
-                        onClick={() => setSelectedListId(list.id === selectedListId ? null : list.id)}
-                      >
-                        {copy.openList}
-                      </button>
-                      <button
-                        className="min-h-9 rounded-md border border-slate-300 px-3 text-sm font-medium text-slate-700 transition hover:border-slate-400 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
-                        type="button"
-                        disabled={!canWrite}
-                        onClick={() => openEditListDialog(list)}
-                      >
-                        {copy.edit}
-                      </button>
-                      <button
-                        className="min-h-9 rounded-md border border-[var(--color-error-border)] px-3 text-sm font-medium text-[var(--color-error)] transition hover:bg-[var(--color-error-soft)] disabled:cursor-not-allowed disabled:opacity-60"
-                        type="button"
-                        disabled={!canWrite || deleteListMutation.isPending}
-                        onClick={() => setListPendingDelete(list)}
-                      >
-                        {copy.delete}
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </div>
-
-      {/* Items panel */}
-      {selectedListId ? (
-        <div className="flex min-h-0 flex-1 flex-col gap-3">
-          <div className="flex items-center justify-between">
-            <h2 className="text-sm font-semibold text-slate-700">
-              {lists.find((l) => l.id === selectedListId)?.name ?? copy.listItems}
-            </h2>
-            <div className="flex items-center gap-2">
-              {selectedItemIds.size > 0 ? (
-                <button
-                  className="min-h-9 rounded-md border border-slate-300 bg-white px-3 text-sm font-medium text-slate-700 transition hover:border-slate-400 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
-                  type="button"
-                  disabled={!canWrite || organizations.length === 0}
-                  onClick={openConvertDialog}
-                >
-                  {copy.convertToOrder} ({selectedItemIds.size})
-                </button>
-              ) : null}
+    <>
+      <div
+        className={`flex min-h-0 flex-1 gap-4 ${isResizingColumn ? "cursor-col-resize select-none" : ""}`}
+      >
+        {/* Main list */}
+        <section className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
+          {/* Toolbar */}
+          <div className="flex items-center gap-3 border-b border-slate-200 bg-white px-4 py-3">
+            <button
+              className="min-h-9 rounded-md border border-slate-300 bg-white px-3 text-sm font-medium text-slate-700 transition hover:border-slate-400 hover:bg-slate-50"
+              type="button"
+              onClick={() => openDialog(listConfigDialogRef.current)}
+            >
+              {copy.configureList}
+            </button>
+            <div className="ml-auto">
               <button
-                className="inline-flex min-h-9 items-center rounded-md bg-[var(--color-accent)] px-3 text-sm font-semibold text-white transition hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-60"
-                type="button"
+                className="inline-flex min-h-9 items-center rounded-md bg-[var(--color-accent)] px-4 text-sm font-semibold text-white transition hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-60"
                 disabled={!canWrite}
-                onClick={openCreateItemDialog}
+                type="button"
+                onClick={openCreateListDialog}
               >
-                {copy.addItem}
+                {copy.newList}
               </button>
             </div>
           </div>
-          <div className="rounded-md border border-slate-200 bg-white">
-            {items.length === 0 ? (
-              <p className="px-4 py-6 text-sm text-slate-600">{copy.noItems}</p>
-            ) : (
-              <table className="w-full border-collapse text-left text-sm">
-                <thead>
-                  <tr className="border-b border-slate-200 bg-slate-50">
-                    <th className="w-10 px-4 py-3" />
-                    <th className="px-4 py-3 font-semibold text-slate-700">{copy.part}</th>
-                    <th className="px-4 py-3 font-semibold text-slate-700">{copy.quantity}</th>
-                    <th className="px-4 py-3 font-semibold text-slate-700">{copy.notes}</th>
-                    <th className="px-4 py-3 font-semibold text-slate-700">{copy.actions}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {items.map((item) => (
-                    <tr key={item.id} className="border-b border-slate-100 last:border-b-0">
-                      <td className="px-4 py-3">
-                        <input
-                          type="checkbox"
-                          aria-label={`Select ${item.partCatalogNumber}`}
-                          checked={selectedItemIds.has(item.id)}
-                          onChange={() => toggleItemSelection(item.id)}
-                        />
-                      </td>
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-2">
-                          <span className="font-medium text-slate-900">{item.partCatalogNumber}</span>
-                          <span className="text-slate-500">{item.manufacturerName}</span>
-                          {item.orderedInPurchaseOrderId ? (
-                            <span className="rounded-full bg-[var(--color-success-soft)] px-2 py-0.5 text-xs font-medium text-[var(--color-success)]">
-                              {copy.orderedBadge}
-                            </span>
-                          ) : null}
-                        </div>
-                        {item.partDescription ? (
-                          <p className="text-xs text-slate-500">{item.partDescription}</p>
+
+          <InfiniteListViewport
+            emptyState={
+              <p className="px-4 py-10 text-sm text-slate-500">{copy.noLists}</p>
+            }
+            errorState={
+              <p className="px-4 py-10 text-sm text-[var(--color-error)]">{copy.loadError}</p>
+            }
+            hasNextPage={listsQuery.hasNextPage}
+            isEmpty={lists.length === 0}
+            isError={listsQuery.isError}
+            isFetchingNextPage={listsQuery.isFetchingNextPage}
+            isInitialLoading={!isListConfigLoaded || listsQuery.isLoading}
+            loadMore={() => void listsQuery.fetchNextPage()}
+            loadingLabel={copy.loadingLists}
+            loadingMoreLabel={copy.loadingMoreLists}
+          >
+            <table
+              className="table-fixed border-separate border-spacing-0 text-left text-sm"
+              style={{ width: listsTable.getTotalSize() }}
+            >
+              <colgroup>
+                {listsTable.getVisibleLeafColumns().map((col) => (
+                  <col key={col.id} style={{ width: col.getSize() }} />
+                ))}
+              </colgroup>
+              <thead className="sticky top-0 z-10 bg-slate-50">
+                {listsTable.getHeaderGroups().map((headerGroup) => (
+                  <tr key={headerGroup.id}>
+                    {headerGroup.headers.map((header) => (
+                      <th
+                        key={header.id}
+                        className="relative border-b border-slate-200 px-2 py-2.5 text-left text-xs font-semibold text-slate-700"
+                        style={{ width: header.getSize() }}
+                      >
+                        {header.column.id !== "actions" ? (
+                          <div className="flex items-center gap-1 overflow-hidden">
+                            {header.column.getCanSort() ? (
+                              <button
+                                className="flex items-center gap-1 overflow-hidden text-left hover:text-slate-900"
+                                type="button"
+                                onClick={() => {
+                                  const current = header.column.getIsSorted();
+                                  const columnDef = listColumns.find((c) => c.id === header.column.id);
+                                  if (!columnDef?.sortable) return;
+                                  if (!current) {
+                                    setColumnSorting(header.column.id, "asc");
+                                  } else if (current === "asc") {
+                                    setColumnSorting(header.column.id, "desc");
+                                  } else {
+                                    setColumnSorting(header.column.id, "none");
+                                  }
+                                }}
+                              >
+                                <span>{flexRender(header.column.columnDef.header, header.getContext())}</span>
+                                {header.column.getIsSorted() ? (
+                                  <span className="text-xs text-slate-400">
+                                    {header.column.getIsSorted() === "asc" ? "▲" : "▼"}
+                                  </span>
+                                ) : null}
+                              </button>
+                            ) : (
+                              <span>{flexRender(header.column.columnDef.header, header.getContext())}</span>
+                            )}
+                          </div>
                         ) : null}
-                      </td>
-                      <td className="px-4 py-3 text-slate-700">{item.quantity}</td>
-                      <td className="px-4 py-3 text-slate-600">{item.notes ?? "—"}</td>
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-2">
-                          <button
-                            className="min-h-9 rounded-md border border-slate-300 px-3 text-sm font-medium text-slate-700 transition hover:border-slate-400 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
-                            type="button"
-                            disabled={!canWrite}
-                            onClick={() => openEditItemDialog(item)}
+                        {header.column.getCanResize() ? (
+                          <div
+                            className={`absolute right-0 top-0 h-full w-3 cursor-col-resize select-none ${header.column.getIsResizing() ? "bg-slate-200" : "bg-transparent"}`}
+                            onDoubleClick={() =>
+                              setColumnWidth(
+                                header.column.id,
+                                Number(listColumns.find((c) => c.id === header.column.id)?.defaultWidth ?? 160)
+                              )
+                            }
+                            onMouseDown={(e) => {
+                              e.stopPropagation();
+                              setIsResizingColumn(true);
+                              header.getResizeHandler()(e);
+                            }}
                           >
-                            {copy.edit}
-                          </button>
-                          <button
-                            className="min-h-9 rounded-md border border-[var(--color-error-border)] px-3 text-sm font-medium text-[var(--color-error)] transition hover:bg-[var(--color-error-soft)] disabled:cursor-not-allowed disabled:opacity-60"
-                            type="button"
-                            disabled={!canWrite || removeItemMutation.isPending}
-                            onClick={() => setItemPendingRemove(item)}
-                          >
-                            {copy.delete}
-                          </button>
+                            <div className="ml-auto h-full w-px bg-slate-300" />
+                          </div>
+                        ) : null}
+                      </th>
+                    ))}
+                  </tr>
+                ))}
+              </thead>
+              <tbody className="bg-white">
+                {listsTable.getRowModel().rows.map((row) => (
+                  <tr
+                    key={row.id}
+                    className={`border-b border-slate-100 ${
+                      row.original.id === selectedListId
+                        ? "bg-slate-100"
+                        : row.original.id === hoveredListId
+                          ? "bg-slate-50"
+                          : ""
+                    }`}
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => openListDetails(row.original)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        openListDetails(row.original);
+                      }
+                    }}
+                    onMouseEnter={() => setHoveredListId(row.original.id)}
+                    onMouseLeave={() =>
+                      setHoveredListId((cur) =>
+                        cur === row.original.id ? null : cur
+                      )
+                    }
+                  >
+                    {row.getVisibleCells().map((cell) => (
+                      <td
+                        key={cell.id}
+                        className={`overflow-hidden border-b border-slate-100 px-2 py-2 text-slate-700 ${
+                          cell.column.id === "actions"
+                            ? row.original.id === selectedListId
+                              ? "sticky right-0 z-10 bg-slate-100 px-1 py-1.5"
+                              : row.original.id === hoveredListId
+                                ? "sticky right-0 z-10 bg-slate-50 px-1 py-1.5"
+                                : "sticky right-0 z-10 bg-white px-1 py-1.5"
+                            : ""
+                        }`}
+                        style={{ width: cell.column.getSize() }}
+                      >
+                        <div className="overflow-hidden text-ellipsis">
+                          {flexRender(cell.column.columnDef.cell, cell.getContext())}
                         </div>
                       </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
-          </div>
-        </div>
-      ) : null}
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </InfiniteListViewport>
+        </section>
+
+        {/* Detail panel */}
+        {selectedList && hasLoadedDetailsPanelWidth ? (
+          <DetailPanel
+            closeLabel={copy.close}
+            subtitle={selectedList.notes ?? undefined}
+            title={selectedList.name}
+            width={detailsPanelWidth}
+            onClose={closeListDetails}
+            onStartResize={startResizingDetailsPanel}
+          >
+            <section className="grid gap-2">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-semibold text-slate-900">{copy.listItems}</h3>
+                <div className="flex items-center gap-2">
+                  {selectedItemIds.size > 0 ? (
+                    <button
+                      className="min-h-8 rounded-md border border-slate-300 bg-white px-3 text-sm font-medium text-slate-700 transition hover:border-slate-400 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+                      disabled={!canWrite || organizations.length === 0}
+                      type="button"
+                      onClick={openConvertDialog}
+                    >
+                      {copy.convertToOrder} ({selectedItemIds.size})
+                    </button>
+                  ) : null}
+                  <button
+                    className="inline-flex min-h-8 items-center rounded-md bg-[var(--color-accent)] px-3 text-sm font-semibold text-white transition hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-60"
+                    disabled={!canWrite}
+                    type="button"
+                    onClick={openCreateItemDialog}
+                  >
+                    {copy.addItem}
+                  </button>
+                </div>
+              </div>
+
+              {items.length === 0 ? (
+                <p className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-600">
+                  {copy.noItems}
+                </p>
+              ) : (
+                <div className="overflow-hidden rounded-md border border-slate-200">
+                  <table className="w-full border-collapse text-left text-sm">
+                    <thead>
+                      <tr className="border-b border-slate-200 bg-slate-50">
+                        <th className="w-8 px-3 py-2" />
+                        <th className="px-3 py-2 font-semibold text-slate-700">{copy.part}</th>
+                        <th className="w-20 px-3 py-2 font-semibold text-slate-700">{copy.quantity}</th>
+                        <th className="px-3 py-2 font-semibold text-slate-700">{copy.notes}</th>
+                        <th className="w-20 px-3 py-2" />
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {items.map((item) => (
+                        <tr key={item.id} className="border-b border-slate-100 last:border-b-0">
+                          <td className="px-3 py-2">
+                            <input
+                              aria-label={`Select ${item.partCatalogNumber}`}
+                              checked={selectedItemIds.has(item.id)}
+                              type="checkbox"
+                              onChange={() => toggleItemSelection(item.id)}
+                            />
+                          </td>
+                          <td className="px-3 py-2">
+                            <div className="flex flex-wrap items-center gap-1.5">
+                              <span className="font-medium text-slate-900">{item.partCatalogNumber}</span>
+                              <span className="text-slate-500">{item.manufacturerName}</span>
+                              {item.orderedInPurchaseOrderId ? (
+                                <span className="rounded-full bg-[var(--color-success-soft)] px-2 py-0.5 text-xs font-medium text-[var(--color-success)]">
+                                  {copy.orderedBadge}
+                                </span>
+                              ) : null}
+                            </div>
+                            {item.partDescription ? (
+                              <p className="text-xs text-slate-500">{item.partDescription}</p>
+                            ) : null}
+                          </td>
+                          <td className="px-3 py-2 text-slate-700">{item.quantity}</td>
+                          <td className="px-3 py-2 text-slate-600">{item.notes ?? "—"}</td>
+                          <td className="px-3 py-2">
+                            <div className="flex justify-end gap-1">
+                              <button
+                                aria-label={copy.editItem}
+                                className="min-h-7 rounded border border-slate-300 bg-white px-2 py-0.5 text-xs font-medium text-slate-700 transition hover:border-slate-400 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+                                disabled={!canWrite}
+                                type="button"
+                                onClick={() => openEditItemDialog(item)}
+                              >
+                                <svg aria-hidden="true" className="h-3.5 w-3.5" fill="none" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+                                  <path d="M13.9 3.3a1.5 1.5 0 0 1 2.1 0l.7.7a1.5 1.5 0 0 1 0 2.1l-8.4 8.4-3.3.8.8-3.3 8.4-8.4Z" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" />
+                                </svg>
+                              </button>
+                              <button
+                                aria-label={copy.removeItem}
+                                className="min-h-7 rounded border border-[var(--color-error-border)] bg-white px-2 py-0.5 text-xs font-medium text-[var(--color-error)] transition hover:bg-[var(--color-error-soft)] disabled:cursor-not-allowed disabled:opacity-60"
+                                disabled={!canWrite || removeItemMutation.isPending}
+                                type="button"
+                                onClick={() => setItemPendingRemove(item)}
+                              >
+                                <svg aria-hidden="true" className="h-3.5 w-3.5" fill="none" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+                                  <path d="M5.5 6h9m-7.5 0V4.75A1.75 1.75 0 0 1 8.75 3h2.5A1.75 1.75 0 0 1 13 4.75V6m-6.5 0 .6 9.1A1.75 1.75 0 0 0 8.84 16.75h2.32a1.75 1.75 0 0 0 1.74-1.65L13.5 6M8.75 8.5v5m2.5-5v5" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" />
+                                </svg>
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </section>
+          </DetailPanel>
+        ) : null}
+      </div>
+
+      {/* List configuration dialog */}
+      <ListConfigurationDialog
+        dialogRef={listConfigDialogRef}
+        columns={configurableColumns}
+        copy={listConfigCopy}
+        sizing={columnSizing}
+        sorting={sorting}
+        visibleColumns={columnVisibility}
+        onColumnVisibleChange={setColumnVisible}
+        onMoveColumn={moveColumn}
+        onReset={resetConfiguration}
+        onSortingChange={setColumnSorting}
+        onWidthChange={setColumnWidth}
+      />
 
       {/* Add/edit list dialog */}
       <DialogShell
@@ -572,14 +952,14 @@ export function ShoppingListsClient({
                   {copy.name}
                 </LabelWithError>
                 <input
-                  id="list-name"
-                  name="name"
-                  placeholder={copy.namePlaceholder}
-                  defaultValue={editingList?.name ?? ""}
                   className={getFieldInputClassName(
                     "min-h-10 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-950 outline-none transition hover:border-slate-400 focus:border-slate-500 focus:ring-2 focus:ring-slate-200",
                     Boolean(listFormErrors.name)
                   )}
+                  defaultValue={editingList?.name ?? ""}
+                  id="list-name"
+                  name="name"
+                  placeholder={copy.namePlaceholder}
                 />
               </div>
               <div className="grid gap-2">
@@ -587,11 +967,11 @@ export function ShoppingListsClient({
                   {copy.notes}
                 </label>
                 <input
+                  className="min-h-10 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-950 outline-none transition hover:border-slate-400 focus:border-slate-500 focus:ring-2 focus:ring-slate-200"
+                  defaultValue={editingList?.notes ?? ""}
                   id="list-notes"
                   name="notes"
                   placeholder={copy.notesPlaceholder}
-                  defaultValue={editingList?.notes ?? ""}
-                  className="min-h-10 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-950 outline-none transition hover:border-slate-400 focus:border-slate-500 focus:ring-2 focus:ring-slate-200"
                 />
               </div>
             </DialogBody>
@@ -601,8 +981,8 @@ export function ShoppingListsClient({
               </button>
               <button
                 className="min-h-10 rounded-md bg-[var(--color-accent)] px-4 text-sm font-semibold text-white transition hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-60"
-                type="submit"
                 disabled={isMutating}
+                type="submit"
               >
                 {listDialogMode === "create" ? copy.createList : copy.saveChanges}
               </button>
@@ -624,29 +1004,28 @@ export function ShoppingListsClient({
         {itemDialogMode ? (
           <form key={dialogFormKey} action={handleItemSubmit} className="flex min-h-0 flex-1 flex-col overflow-hidden">
             <DialogBody className="grid gap-4">
-              {/* Part picker (create mode only) */}
               {itemDialogMode === "create" ? (
                 <div className="grid gap-2">
                   <LabelWithError error={itemFormErrors.part}>
                     {copy.part}
                   </LabelWithError>
                   <input
-                    type="text"
+                    className="min-h-10 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-950 outline-none transition hover:border-slate-400 focus:border-slate-500 focus:ring-2 focus:ring-slate-200"
                     placeholder={copy.searchPartsPlaceholder}
+                    type="text"
                     value={partSearchQuery}
                     onChange={(e) => {
                       setPartSearchQuery(e.target.value);
                       setSelectedPartId(null);
                     }}
-                    className="min-h-10 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-950 outline-none transition hover:border-slate-400 focus:border-slate-500 focus:ring-2 focus:ring-slate-200"
                   />
                   {partsSearchResult && partsSearchResult.length > 0 ? (
                     <div className="max-h-48 overflow-auto rounded-md border border-slate-200 bg-white">
                       {partsSearchResult.map((part) => (
                         <button
                           key={part.id}
-                          type="button"
                           className={`flex w-full items-center gap-2 px-3 py-2 text-left text-sm transition hover:bg-slate-50 ${selectedPartId === part.id ? "bg-[var(--color-accent-soft)] font-medium" : ""}`}
+                          type="button"
                           onClick={() => {
                             setSelectedPartId(part.id);
                             setPartSearchQuery(`${part.catalogNumber} — ${part.manufacturerName}`);
@@ -672,34 +1051,32 @@ export function ShoppingListsClient({
                   </p>
                 </div>
               )}
-
               <div className="grid gap-2">
                 <LabelWithError error={itemFormErrors.quantity} htmlFor="item-quantity">
                   {copy.quantity}
                 </LabelWithError>
                 <input
-                  id="item-quantity"
-                  name="quantity"
-                  type="text"
-                  inputMode="decimal"
-                  defaultValue={editingItem?.quantity ?? ""}
-                  placeholder="1"
                   className={getFieldInputClassName(
                     "min-h-10 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-950 outline-none transition hover:border-slate-400 focus:border-slate-500 focus:ring-2 focus:ring-slate-200",
                     Boolean(itemFormErrors.quantity)
                   )}
+                  defaultValue={editingItem?.quantity ?? ""}
+                  id="item-quantity"
+                  inputMode="decimal"
+                  name="quantity"
+                  placeholder="1"
+                  type="text"
                 />
               </div>
-
               <div className="grid gap-2">
                 <label className="text-sm font-medium text-slate-700" htmlFor="item-notes">
                   {copy.notes}
                 </label>
                 <input
+                  className="min-h-10 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-950 outline-none transition hover:border-slate-400 focus:border-slate-500 focus:ring-2 focus:ring-slate-200"
+                  defaultValue={editingItem?.notes ?? ""}
                   id="item-notes"
                   name="notes"
-                  defaultValue={editingItem?.notes ?? ""}
-                  className="min-h-10 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-950 outline-none transition hover:border-slate-400 focus:border-slate-500 focus:ring-2 focus:ring-slate-200"
                 />
               </div>
             </DialogBody>
@@ -709,8 +1086,8 @@ export function ShoppingListsClient({
               </button>
               <button
                 className="min-h-10 rounded-md bg-[var(--color-accent)] px-4 text-sm font-semibold text-white transition hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-60"
-                type="submit"
                 disabled={isMutating}
+                type="submit"
               >
                 {itemDialogMode === "create" ? copy.addItem : copy.saveChanges}
               </button>
@@ -724,9 +1101,9 @@ export function ShoppingListsClient({
       <DialogShell
         ref={convertDialogRef}
         closeLabel={copy.close}
+        description={copy.convertToOrderBody}
         title={copy.convertToOrderTitle}
         titleId="convert-dialog-title"
-        description={copy.convertToOrderBody}
         widthClassName="w-[min(32rem,calc(100vw-3rem))]"
         onClose={closeConvertDialog}
       >
@@ -741,12 +1118,12 @@ export function ShoppingListsClient({
                   <p className="text-sm text-slate-500">{copy.noSuppliers}</p>
                 ) : (
                   <select
+                    className="min-h-10 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-950 outline-none transition hover:border-slate-400 focus:border-slate-500 focus:ring-2 focus:ring-slate-200"
+                    defaultValue=""
                     id="convert-supplier"
                     name="supplierId"
-                    defaultValue=""
-                    className="min-h-10 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-950 outline-none transition hover:border-slate-400 focus:border-slate-500 focus:ring-2 focus:ring-slate-200"
                   >
-                    <option value="" disabled>{copy.chooseSupplier}</option>
+                    <option disabled value="">{copy.chooseSupplier}</option>
                     {organizations.map((org) => (
                       <option key={org.id} value={org.id}>{org.name}</option>
                     ))}
@@ -769,8 +1146,8 @@ export function ShoppingListsClient({
               </button>
               <button
                 className="min-h-10 rounded-md bg-[var(--color-accent)] px-4 text-sm font-semibold text-white transition hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-60"
-                type="submit"
                 disabled={isMutating || organizations.length === 0}
+                type="submit"
               >
                 {copy.convert}
               </button>
@@ -820,8 +1197,11 @@ export function ShoppingListsClient({
         }}
       />
 
-      <ToastNotice messages={toastMessages} onDismiss={(id) => setToastMessages((msgs) => msgs.filter((m) => m.id !== id))} />
-    </section>
+      <ToastNotice
+        messages={toastMessages}
+        onDismiss={(id) => setToastMessages((msgs) => msgs.filter((m) => m.id !== id))}
+      />
+    </>
   );
 }
 

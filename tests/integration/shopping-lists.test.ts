@@ -86,9 +86,9 @@ describe("shopping lists — CRUD", () => {
     assert.equal(list.notes, "Caps and resistors");
 
     const lists = await getShoppingLists(workspaceId);
-    assert.equal(lists.length, 1);
-    assert.equal(lists[0].name, "Weekend Order");
-    assert.equal(lists[0].itemCount, 0);
+    assert.equal(lists.items.length, 1);
+    assert.equal(lists.items[0].name, "Weekend Order");
+    assert.equal(lists.items[0].itemCount, 0);
 
     await updateShoppingList({
       workspaceId,
@@ -98,13 +98,13 @@ describe("shopping lists — CRUD", () => {
     });
 
     const updated = await getShoppingLists(workspaceId);
-    assert.equal(updated[0].name, "Weekend Order Updated");
-    assert.equal(updated[0].notes, null);
+    assert.equal(updated.items[0].name, "Weekend Order Updated");
+    assert.equal(updated.items[0].notes, null);
 
     await deleteShoppingList({ workspaceId, listId: list.id });
 
     const after = await getShoppingLists(workspaceId);
-    assert.equal(after.length, 0);
+    assert.equal(after.items.length, 0);
   });
 
   test("rejects blank name on create", async () => {
@@ -139,7 +139,7 @@ describe("shopping lists — CRUD", () => {
     await createShoppingList({ workspaceId: wsA, name: "List A" });
 
     const listsB = await getShoppingLists(wsB);
-    assert.equal(listsB.length, 0);
+    assert.equal(listsB.items.length, 0);
   });
 });
 
@@ -166,7 +166,7 @@ describe("shopping lists — items", () => {
     assert.equal(detail.items[0].notes, "Initial stock");
 
     const lists = await getShoppingLists(workspaceId);
-    assert.equal(lists[0].itemCount, 1);
+    assert.equal(lists.items[0].itemCount, 1);
 
     await updateShoppingListItem({
       workspaceId,

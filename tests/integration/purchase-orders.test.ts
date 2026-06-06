@@ -108,9 +108,9 @@ describe("purchase orders — CRUD", () => {
     assert.equal(order.notes, "Urgent");
 
     const orders = await getPurchaseOrders(workspaceId);
-    assert.equal(orders.length, 1);
-    assert.equal(orders[0].supplierName.startsWith("PO Supplier"), true);
-    assert.equal(orders[0].status, "DRAFT");
+    assert.equal(orders.items.length, 1);
+    assert.equal(orders.items[0].supplierName.startsWith("PO Supplier"), true);
+    assert.equal(orders.items[0].status, "DRAFT");
 
     await updatePurchaseOrder({
       workspaceId,
@@ -120,12 +120,12 @@ describe("purchase orders — CRUD", () => {
     });
 
     const updated = await getPurchaseOrders(workspaceId);
-    assert.equal(updated[0].orderNumber, "PO-2026-002");
+    assert.equal(updated.items[0].orderNumber, "PO-2026-002");
 
     await deletePurchaseOrder({ workspaceId, orderId: order.id });
 
     const after = await getPurchaseOrders(workspaceId);
-    assert.equal(after.length, 0);
+    assert.equal(after.items.length, 0);
   });
 
   test("rejects delete of non-draft order", async () => {
@@ -159,7 +159,7 @@ describe("purchase orders — CRUD", () => {
     await createPurchaseOrder({ workspaceId: wsA, supplierId: supA });
 
     const ordersB = await getPurchaseOrders(wsB);
-    assert.equal(ordersB.length, 0);
+    assert.equal(ordersB.items.length, 0);
   });
 });
 
@@ -190,7 +190,7 @@ describe("purchase orders — items", () => {
     assert.equal(detail.items[0].receivedQuantity, "0");
 
     const orders = await getPurchaseOrders(workspaceId);
-    assert.equal(orders[0].itemCount, 1);
+    assert.equal(orders.items[0].itemCount, 1);
 
     await updateOrderItem({
       workspaceId,

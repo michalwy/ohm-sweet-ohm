@@ -12,9 +12,11 @@ import {
   removeShoppingListItem,
   type ShoppingListDetail,
   type ShoppingListSummary,
+  type ShoppingListsPageInput,
   updateShoppingList,
   updateShoppingListItem
 } from "@/server/shopping-lists/shoppingListMutations";
+import type { ListPage } from "@/server/pagination";
 import { revalidatePath } from "next/cache";
 
 export type ShoppingListActionResult<T> =
@@ -23,13 +25,18 @@ export type ShoppingListActionResult<T> =
 
 // --- Queries ---
 
-export async function getShoppingListsForWorkspace(input: {
-  workspaceSlug: string;
-}): Promise<ShoppingListActionResult<ShoppingListSummary[]>> {
+export async function getShoppingListsForWorkspace(
+  input: { workspaceSlug: string } & ShoppingListsPageInput
+): Promise<ShoppingListActionResult<ListPage<ShoppingListSummary>>> {
   try {
     const context = await getAuthorizedContext(input.workspaceSlug, "shopping-lists:read");
-    const lists = await getShoppingLists(context.workspace.id);
-    return success(lists);
+    const page = await getShoppingLists(context.workspace.id, {
+      cursor: input.cursor,
+      pageSize: input.pageSize,
+      sortBy: input.sortBy,
+      sortDirection: input.sortDirection
+    });
+    return success(page);
   } catch (error) {
     return failure(error);
   }

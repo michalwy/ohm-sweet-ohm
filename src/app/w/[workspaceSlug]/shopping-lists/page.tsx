@@ -33,9 +33,11 @@ const copy = {
   deleteConfirmationBody: "This cannot be undone.",
   deleteList: "Delete list",
   noLists: "No shopping lists yet. Create one to start collecting parts to buy.",
+  loadError: "Failed to load lists.",
+  loadingLists: "Loading lists...",
+  loadingMoreLists: "Loading more...",
   items: "item",
   itemsPlural: "items",
-  openList: "Open",
   listItems: "Items",
   addItem: "Add item",
   editItem: "Edit item",
@@ -71,15 +73,29 @@ const copy = {
   invalidInput: "Check the fields and try again.",
   permissionDenied: "You do not have permission to perform this action.",
   databaseUnavailable: "Database is not available.",
-  actions: "Actions"
+  configureList: "Configure list",
+  configureListTitle: "Configure list",
+  configureListBody: "Choose visible columns, order, sorting, and widths.",
+  visibleColumns: "Columns",
+  moveUp: "Up",
+  moveDown: "Down",
+  columnWidthPx: "Width",
+  sortingLabel: "Sort",
+  clearSorting: "None",
+  resetListConfiguration: "Reset defaults"
 };
 
 type ShoppingListsPageProps = {
   params: Promise<{ workspaceSlug: string }>;
+  searchParams?: Promise<{ selectedListId?: string }>;
 };
 
-export default async function ShoppingListsPage({ params }: ShoppingListsPageProps) {
+export default async function ShoppingListsPage({
+  params,
+  searchParams
+}: ShoppingListsPageProps) {
   const { workspaceSlug } = await params;
+  const resolvedSearchParams = await searchParams;
   const session = await getCurrentSession();
 
   if (!session) {
@@ -92,8 +108,10 @@ export default async function ShoppingListsPage({ params }: ShoppingListsPagePro
     notFound();
   }
 
-  const [lists, organizations, canWrite] = await Promise.all([
-    getShoppingLists(context.workspace.id).catch(() => []),
+  const emptyPage = { items: [], nextCursor: null, totalCount: 0, filteredCount: 0 };
+
+  const [initialPage, organizations, canWrite] = await Promise.all([
+    getShoppingLists(context.workspace.id).catch(() => emptyPage),
     prisma.organization
       .findMany({
         where: { workspaceId: context.workspace.id },
@@ -118,9 +136,10 @@ export default async function ShoppingListsPage({ params }: ShoppingListsPagePro
       workspaceSlug={workspaceSlug}
     >
       <ShoppingListsClient
-        copy={copy}
         canWrite={canWrite}
-        initialLists={lists}
+        copy={copy}
+        initialPage={initialPage}
+        initialSelectedListId={resolvedSearchParams?.selectedListId}
         organizations={organizations}
         workspaceSlug={workspaceSlug}
       />

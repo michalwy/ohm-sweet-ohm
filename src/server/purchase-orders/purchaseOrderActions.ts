@@ -14,11 +14,13 @@ import {
   removeOrderItem,
   type PurchaseOrderDetail,
   type PurchaseOrderSummary,
+  type PurchaseOrdersPageInput,
   type ReceiveItemInput,
   type SupplierLookupResult,
   updateOrderItem,
   updatePurchaseOrder
 } from "@/server/purchase-orders/purchaseOrderMutations";
+import type { ListPage } from "@/server/pagination";
 import { revalidatePath } from "next/cache";
 
 export type PurchaseOrderActionResult<T> =
@@ -27,12 +29,18 @@ export type PurchaseOrderActionResult<T> =
 
 // --- Queries ---
 
-export async function getPurchaseOrdersForWorkspace(input: {
-  workspaceSlug: string;
-}): Promise<PurchaseOrderActionResult<PurchaseOrderSummary[]>> {
+export async function getPurchaseOrdersForWorkspace(
+  input: { workspaceSlug: string } & PurchaseOrdersPageInput
+): Promise<PurchaseOrderActionResult<ListPage<PurchaseOrderSummary>>> {
   try {
     const context = await getAuthorizedContext(input.workspaceSlug, "purchase-orders:read");
-    return success(await getPurchaseOrders(context.workspace.id));
+    const page = await getPurchaseOrders(context.workspace.id, {
+      cursor: input.cursor,
+      pageSize: input.pageSize,
+      sortBy: input.sortBy,
+      sortDirection: input.sortDirection
+    });
+    return success(page);
   } catch (error) {
     return failure(error);
   }

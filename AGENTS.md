@@ -47,6 +47,26 @@ This project is intentionally vibe-coded. Future agents must preserve product in
 - Include a GitHub issue reference in every commit message when an issue exists for the work (for example `Refs #11` in the commit body, or `(#11)` in the title).
 - When a commit title alone would omit useful context, include an extended commit message body with concise details about motivation, scope, or notable tradeoffs.
 
+## Multi-Step Implementation Plans
+
+When a task spans more than one logical area or cannot be safely completed in a single session, write an implementation plan before starting. Store it as a Markdown file under `.claude/plans/` (create the directory if needed). Plans must follow these rules:
+
+- Steps are always executed in order. Step N is only started once step N-1 is complete, but each step may be done in a separate session.
+- Begin with a `## Progress` section containing a checkbox list of numbered steps.
+- Mark a step `[~]` (in progress) at the start of that step, and `[x]` (done) immediately after finishing it — before ending the session. Never batch status updates.
+- Each step must be atomic: completable in one session and independently verifiable (e.g. `pnpm typecheck` passes after that step alone).
+- Each step must state a **Done when** criterion so a future agent knows exactly when it can mark the step complete.
+- Later steps should not assume context from earlier sessions — all necessary detail must be in the plan file itself.
+- When picking up work in a new session, read the plan file first, find the first unchecked step, mark it `[~]`, execute it, mark it `[x]`, then **stop and wait for the user to ask to continue** before moving to the next step.
+
+Example progress block:
+```
+## Progress
+- [x] Step 1 — Create shared component
+- [~] Step 2 — Refactor existing component to use it
+- [ ] Step 3 — Update page files
+```
+
 ## Agent Collaboration
 
 Use specialized roles only when the task benefits from them. Small, localized documentation, copy, styling, or bug-fix tasks can be handled by one careful agent.

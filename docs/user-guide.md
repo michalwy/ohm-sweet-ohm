@@ -153,18 +153,17 @@ A shopping list has no supplier and no formal status — it is a flexible scratc
 
 1. Open **Shopping Lists** from the sidebar.
 2. Click **New list**, enter a name and optional notes, and save.
-3. Use the **Edit** button to rename or update notes.
-4. Use **Delete** to remove a list (this deletes its items too).
+3. Click a list row to open the detail panel on the right. Use the **Edit** and **Delete** icon buttons in the row to rename, update notes, or remove a list.
 
 ### Adding Items To A List
 
-1. Click **Open** on a list row to expand the items panel.
+1. Click a list row to open the detail panel on the right.
 2. Click **Add item**, search for a part by catalog number or description, set a quantity, and save.
 3. Items show an **On order** badge when they have been included in at least one purchase order.
 
 ### Converting Items To A Purchase Order
 
-1. Select one or more items using the checkboxes in the items panel.
+1. Select one or more items using the checkboxes in the detail panel.
 2. Click **Convert to order (N)**.
 3. Choose a supplier organization and confirm.
 
@@ -184,13 +183,13 @@ Use **Purchase Orders** to track formal orders sent to a supplier.
 
 ### Adding Items
 
-1. Click **Open** on an order row to expand the detail panel.
+1. Click an order row to open the detail panel on the right.
 2. Click **Add item**, search for a part, enter a quantity, and optionally fill in a supplier SKU, unit price, and currency.
 3. Click **Look up** next to the supplier SKU field to auto-fill the SKU from the active DigiKey or TME integration.
 
 ### Marking An Order As Ordered
 
-When you have submitted the order to the supplier, click **Mark as ordered** in the order detail panel. This records the order date and advances the status to **Ordered**.
+When you have submitted the order to the supplier, click **Mark as ordered** in the detail panel. This records the order date and advances the status to **Ordered**.
 
 You can still add, edit, or remove items on an ordered order.
 
@@ -198,7 +197,7 @@ You can still add, edit, or remove items on an ordered order.
 
 When parts arrive:
 
-1. Click **Receive items** in the order detail panel.
+1. Click **Receive items** in the detail panel.
 2. For each item, enter the quantity received and choose a destination storage location.
 3. Save.
 

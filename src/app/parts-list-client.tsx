@@ -37,6 +37,7 @@ import type { AttributeListItem } from "@/server/parts/attributeMutations";
 import type { SupplierProviderKey } from "@/server/integrations/types";
 import type { UnitListItem } from "@/server/units/getUnits";
 import { InfiniteListViewport } from "@/app/infinite-list";
+import { DetailPanel, useDetailsPanelWidth } from "@/app/detail-panel";
 import {
   useListTableConfiguration
 } from "@/app/list-table-config";
@@ -335,11 +336,11 @@ export function PartsListClient({
     initialSelectedPartId ?? null
   );
   const [hoveredPartId, setHoveredPartId] = useState<string | null>(null);
-  const detailsPanelWidthStorageKey = `oso:parts-details-panel-width:${workspaceSlug}`;
-  const [detailsPanelWidth, setDetailsPanelWidth] = useState(384);
-  const [hasLoadedDetailsPanelWidth, setHasLoadedDetailsPanelWidth] =
-    useState(false);
-  const [isResizingDetailsPanel, setIsResizingDetailsPanel] = useState(false);
+  const {
+    width: detailsPanelWidth,
+    hasLoaded: hasLoadedDetailsPanelWidth,
+    startResizing: startResizingDetailsPanel
+  } = useDetailsPanelWidth(`oso:parts-details-panel-width:${workspaceSlug}`, 384);
   const [isColumnsMenuOpen, setIsColumnsMenuOpen] = useState(false);
   const [draggedColumnId, setDraggedColumnId] = useState<string | null>(null);
   const [isResizingColumn, setIsResizingColumn] = useState(false);
@@ -1532,56 +1533,6 @@ export function PartsListClient({
     };
   }, [isResizingColumn]);
 
-  useEffect(() => {
-    if (!isResizingDetailsPanel) {
-      return undefined;
-    }
-
-    function handlePointerMove(event: MouseEvent) {
-      const viewportWidth = window.innerWidth;
-      const nextWidth = Math.min(
-        720,
-        Math.max(320, viewportWidth - event.clientX - 24)
-      );
-      setDetailsPanelWidth(nextWidth);
-    }
-
-    function handlePointerUp() {
-      setIsResizingDetailsPanel(false);
-    }
-
-    window.addEventListener("mousemove", handlePointerMove);
-    window.addEventListener("mouseup", handlePointerUp);
-
-    return () => {
-      window.removeEventListener("mousemove", handlePointerMove);
-      window.removeEventListener("mouseup", handlePointerUp);
-    };
-  }, [isResizingDetailsPanel]);
-
-  useEffect(() => {
-    const storedValue = window.localStorage.getItem(detailsPanelWidthStorageKey);
-    const parsedValue = storedValue ? Number(storedValue) : NaN;
-
-    if (Number.isFinite(parsedValue)) {
-      setDetailsPanelWidth(Math.max(320, Math.min(720, parsedValue)));
-    } else {
-      setDetailsPanelWidth(384);
-    }
-
-    setHasLoadedDetailsPanelWidth(true);
-  }, [detailsPanelWidthStorageKey]);
-
-  useEffect(() => {
-    if (!hasLoadedDetailsPanelWidth) {
-      return;
-    }
-
-    window.localStorage.setItem(
-      detailsPanelWidthStorageKey,
-      String(detailsPanelWidth)
-    );
-  }, [detailsPanelWidth, detailsPanelWidthStorageKey, hasLoadedDetailsPanelWidth]);
   const baseConfigurableColumns = useMemo(
     () => configurableColumns.filter((column) => column.group !== "attribute"),
     [configurableColumns]
@@ -1958,45 +1909,23 @@ export function PartsListClient({
         </InfiniteListViewport>
         </section>
         {selectedPart && hasLoadedDetailsPanelWidth ? (
-          <aside
-            className="relative flex min-h-0 flex-col overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm"
-            style={{ width: detailsPanelWidth }}
-          >
-            <div
-              aria-label="Resize details panel"
-              className="absolute left-0 top-0 z-10 flex h-full w-3 -translate-x-1/2 cursor-col-resize items-center justify-center"
-              role="separator"
-              onMouseDown={(event) => {
-                event.preventDefault();
-                setIsResizingDetailsPanel(true);
-              }}
-            >
-              <div className="h-16 w-1 rounded-full bg-slate-300" />
-            </div>
-            <div className="flex items-start justify-between border-b border-slate-200 px-4 py-3">
-              <div className="min-w-0">
-                <p className="font-mono text-sm font-semibold text-slate-950">
-                  {selectedPart.catalogNumber}
-                </p>
-                <p className="mt-1 text-sm text-slate-600">
-                  {selectedPart.manufacturerName}
-                </p>
+          <DetailPanel
+            closeLabel={copy.close}
+            subtitle={
+              <>
+                <span>{selectedPart.manufacturerName}</span>
                 {selectedPart.description ? (
-                  <p className="mt-1 text-sm text-slate-600">
-                    {selectedPart.description}
-                  </p>
+                  <span className="mt-1 block">{selectedPart.description}</span>
                 ) : null}
-              </div>
-              <button
-                aria-label={copy.close}
-                className="ml-3 min-h-8 rounded-md border border-slate-300 bg-white px-2.5 py-1 text-sm font-medium text-slate-700 transition hover:border-slate-400 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2"
-                type="button"
-                onClick={closePartDetails}
-              >
-                ×
-              </button>
-            </div>
-            <div className="grid min-h-0 gap-4 overflow-y-auto px-4 py-4">
+              </>
+            }
+            title={
+              <span className="font-mono">{selectedPart.catalogNumber}</span>
+            }
+            width={detailsPanelWidth}
+            onClose={closePartDetails}
+            onStartResize={startResizingDetailsPanel}
+          >
               <section className="grid gap-2">
                 <h3 className="text-sm font-semibold text-slate-900">
                   {copy.attributes}
@@ -2162,8 +2091,7 @@ export function PartsListClient({
                   )}
                 </section>
               ) : null}
-            </div>
-          </aside>
+          </DetailPanel>
         ) : null}
       </div>
 
