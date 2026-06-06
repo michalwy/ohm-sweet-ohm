@@ -51,10 +51,10 @@ import { getNextToastId, ToastNotice, type ToastMessage } from "@/app/toast-noti
 import type { StorageLocationListItem } from "@/server/inventory/locationMutations";
 import { InfiniteListViewport } from "@/app/infinite-list";
 import {
-  ListConfigurationDialog,
   useListTableConfiguration,
   type ListColumnDefinition
 } from "@/app/list-table-config";
+import { ListPageToolbar, useColumnResizeCursor } from "@/app/list-page-toolbar";
 import { DetailPanel, useDetailsPanelWidth } from "@/app/detail-panel";
 
 type Organization = { id: string; name: string };
@@ -149,6 +149,7 @@ type Copy = {
   sortingLabel: string;
   clearSorting: string;
   resetListConfiguration: string;
+  orderCountSummary: string;
 };
 
 type PurchaseOrdersClientProps = {
@@ -196,14 +197,13 @@ export function PurchaseOrdersClient({
   const [itemFormErrors, setItemFormErrors] = useState<Record<string, string>>({});
   const [receiveFormErrors, setReceiveFormErrors] = useState<Record<string, string>>({});
   const [dialogFormKey, setDialogFormKey] = useState(0);
-  const [isResizingColumn, setIsResizingColumn] = useState(false);
+  const { setIsResizingColumn, containerClassName } = useColumnResizeCursor();
   const [toastMessages, setToastMessages] = useState<ToastMessage[]>([]);
   const nextToastIdRef = useRef(0);
   const orderDialogRef = useRef<HTMLDialogElement>(null);
   const itemDialogRef = useRef<HTMLDialogElement>(null);
   const receiveDialogRef = useRef<HTMLDialogElement>(null);
   const markOrderedDialogRef = useRef<HTMLDialogElement>(null);
-  const orderConfigDialogRef = useRef<HTMLDialogElement>(null);
 
   // --- Column configuration ---
 
@@ -231,9 +231,7 @@ export function PurchaseOrdersClient({
     setSorting,
     sorting,
     columnOrder: persistedColumnOrder,
-    isLoaded: isOrderConfigLoaded,
-    moveColumn,
-    resetConfiguration
+    isLoaded: isOrderConfigLoaded
   } = useListTableConfiguration({
     storageKey: `oso:list-config:purchase-orders:${workspaceSlug}`,
     columns: orderColumns,
@@ -726,37 +724,28 @@ export function PurchaseOrdersClient({
     getCoreRowModel: getCoreRowModel()
   });
 
-  const orderConfigCopy = {
-    close: copy.close,
-    saveChanges: copy.saveChanges,
-    configureListTitle: copy.configureListTitle,
-    configureListBody: copy.configureListBody,
-    visibleColumns: copy.visibleColumns,
-    moveUp: copy.moveUp,
-    moveDown: copy.moveDown,
-    columnWidthPx: copy.columnWidthPx,
-    sortingLabel: copy.sortingLabel,
-    clearSorting: copy.clearSorting,
-    resetListConfiguration: copy.resetListConfiguration
-  };
-
   return (
     <>
       <div
-        className={`flex min-h-0 flex-1 gap-4 ${isResizingColumn ? "cursor-col-resize select-none" : ""}`}
+        className={`flex min-h-0 flex-1 gap-4 ${containerClassName}`}
       >
         {/* Main list */}
         <section className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
           {/* Toolbar */}
-          <div className="flex items-center gap-3 border-b border-slate-200 bg-white px-4 py-3">
-            <button
-              className="min-h-9 rounded-md border border-slate-300 bg-white px-3 text-sm font-medium text-slate-700 transition hover:border-slate-400 hover:bg-slate-50"
-              type="button"
-              onClick={() => openDialog(orderConfigDialogRef.current)}
-            >
-              {copy.configureList}
-            </button>
-            <div className="ml-auto">
+          <ListPageToolbar
+            columnVisibility={columnVisibility}
+            configurableColumns={configurableColumns}
+            configureListLabel={copy.configureList}
+            filteredCount={ordersQuery.data?.pages[0]?.filteredCount}
+            formatCount={(visible, total) =>
+              copy.orderCountSummary
+                .replace("{visible}", String(visible))
+                .replace("{total}", String(total))
+            }
+            totalCount={ordersQuery.data?.pages[0]?.totalCount}
+            visibleColumnsLabel={copy.visibleColumns}
+            setColumnVisible={setColumnVisible}
+            primaryAction={
               <button
                 className="inline-flex min-h-9 items-center rounded-md bg-[var(--color-accent)] px-4 text-sm font-semibold text-white transition hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-60"
                 disabled={!canWrite || organizations.length === 0}
@@ -765,8 +754,8 @@ export function PurchaseOrdersClient({
               >
                 {copy.newOrder}
               </button>
-            </div>
-          </div>
+            }
+          />
 
           {organizations.length === 0 ? (
             <p className="border-b border-slate-200 px-4 py-2 text-sm text-amber-700">{copy.noSuppliers}</p>
@@ -1048,21 +1037,6 @@ export function PurchaseOrdersClient({
           </DetailPanel>
         ) : null}
       </div>
-
-      {/* Order configuration dialog */}
-      <ListConfigurationDialog
-        dialogRef={orderConfigDialogRef}
-        columns={configurableColumns}
-        copy={orderConfigCopy}
-        sizing={columnSizing}
-        sorting={sorting}
-        visibleColumns={columnVisibility}
-        onColumnVisibleChange={setColumnVisible}
-        onMoveColumn={moveColumn}
-        onReset={resetConfiguration}
-        onSortingChange={setColumnSorting}
-        onWidthChange={setColumnWidth}
-      />
 
       {/* Create/edit order dialog */}
       <DialogShell

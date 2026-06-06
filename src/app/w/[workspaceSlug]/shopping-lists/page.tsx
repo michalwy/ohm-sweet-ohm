@@ -82,7 +82,8 @@ const copy = {
   columnWidthPx: "Width",
   sortingLabel: "Sort",
   clearSorting: "None",
-  resetListConfiguration: "Reset defaults"
+  resetListConfiguration: "Reset defaults",
+  listCountSummary: "{visible} of {total} lists"
 };
 
 type ShoppingListsPageProps = {

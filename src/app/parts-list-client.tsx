@@ -41,6 +41,7 @@ import { DetailPanel, useDetailsPanelWidth } from "@/app/detail-panel";
 import {
   useListTableConfiguration
 } from "@/app/list-table-config";
+import { ListPageToolbar, useColumnResizeCursor } from "@/app/list-page-toolbar";
 import {
   getNextToastId,
   ToastNotice,
@@ -273,7 +274,6 @@ export function PartsListClient({
   const createDialogRef = useRef<HTMLDialogElement>(null);
   const editDialogRef = useRef<HTMLDialogElement>(null);
   const matchingDialogRef = useRef<HTMLDialogElement>(null);
-  const listColumnsMenuRef = useRef<HTMLDivElement>(null);
   const createDetailsContentRef = useRef<HTMLDivElement>(null);
   const editDetailsContentRef = useRef<HTMLDivElement>(null);
   const nextToastIdRef = useRef(0);
@@ -341,9 +341,8 @@ export function PartsListClient({
     hasLoaded: hasLoadedDetailsPanelWidth,
     startResizing: startResizingDetailsPanel
   } = useDetailsPanelWidth(`oso:parts-details-panel-width:${workspaceSlug}`, 384);
-  const [isColumnsMenuOpen, setIsColumnsMenuOpen] = useState(false);
+  const { isResizingColumn, setIsResizingColumn } = useColumnResizeCursor();
   const [draggedColumnId, setDraggedColumnId] = useState<string | null>(null);
-  const [isResizingColumn, setIsResizingColumn] = useState(false);
   const attributeColumnDefinitions = useMemo(
     () =>
       workspaceAttributes.map((attribute) => ({
@@ -1496,52 +1495,6 @@ export function PartsListClient({
     });
   }
 
-  useEffect(() => {
-    if (!isColumnsMenuOpen) {
-      return undefined;
-    }
-
-    function handlePointerDown(event: MouseEvent) {
-      if (!listColumnsMenuRef.current) {
-        return;
-      }
-
-      if (!listColumnsMenuRef.current.contains(event.target as Node)) {
-        setIsColumnsMenuOpen(false);
-      }
-    }
-
-    window.addEventListener("mousedown", handlePointerDown);
-    return () => window.removeEventListener("mousedown", handlePointerDown);
-  }, [isColumnsMenuOpen]);
-
-  useEffect(() => {
-    if (!isResizingColumn) {
-      return undefined;
-    }
-
-    function handlePointerUp() {
-      setIsResizingColumn(false);
-    }
-
-    window.addEventListener("mouseup", handlePointerUp);
-    window.addEventListener("touchend", handlePointerUp);
-
-    return () => {
-      window.removeEventListener("mouseup", handlePointerUp);
-      window.removeEventListener("touchend", handlePointerUp);
-    };
-  }, [isResizingColumn]);
-
-  const baseConfigurableColumns = useMemo(
-    () => configurableColumns.filter((column) => column.group !== "attribute"),
-    [configurableColumns]
-  );
-  const attributeConfigurableColumns = useMemo(
-    () => configurableColumns.filter((column) => column.group === "attribute"),
-    [configurableColumns]
-  );
-
   return (
     <>
       <div className="flex min-h-0 flex-1 gap-4">
@@ -1552,129 +1505,70 @@ export function PartsListClient({
         <h2 id="parts-heading" className="sr-only">
           {copy.title}
         </h2>
-        <div className="flex items-end gap-3 border-b border-slate-200 bg-white px-4 py-3">
-          <label className="grid min-w-72 gap-1.5 text-sm font-medium text-slate-700">
-            {copy.searchParts}
-            <input
-              className="min-h-9 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-950 outline-none transition placeholder:text-slate-400 hover:border-slate-400 focus:border-slate-500 focus:ring-2 focus:ring-slate-200"
-              placeholder={copy.searchPartsPlaceholder}
-              type="search"
-              value={searchQuery}
-              onChange={(event) => setSearchQuery(event.currentTarget.value)}
-            />
-          </label>
-          <div className="min-w-56">
-            <CategoryTreeSelect
-              allowOrganizationalCategories
-              buttonClassName={compactCategorySelectButtonClassName}
-              categories={partCategories}
-              categoryTree={categoryTree}
-              copy={copy}
-              disabled={!isDatabaseAvailable}
-              label={copy.filterByCategory}
-              name="categoryFilterId"
-              noSelectionLabel={copy.allCategories}
-              selectedId={categoryFilterId}
-              onSelectedIdChange={setCategoryFilterId}
-            />
-          </div>
-          <ManufacturerAutocomplete
-            compact
-            copy={copy}
-            disabled={!isDatabaseAvailable}
-            inputId="manufacturer-filter"
-            label={copy.filterByManufacturer}
-            name="manufacturerFilter"
-            placeholder={copy.allManufacturers}
-            suggestions={manufacturerFilterOptions.map((manufacturerName) => ({
-              id: manufacturerName,
-              name: manufacturerName
-            }))}
-            value={manufacturerFilter}
-            onValueChange={setManufacturerFilter}
-          />
-          <div className="ml-auto flex min-h-9 items-center gap-3 pb-0.5">
-            <p className="min-w-28 text-sm text-slate-500">
-              {formatFilteredPartsSummary(copy, {
-                total: partsCounts.totalCount,
-                visible: partsCounts.filteredCount
-              })}
-            </p>
-            {hasActiveFilters ? (
-              <button
-                className="min-h-9 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:border-slate-400 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2"
-                type="button"
-                onClick={() => {
-                  setSearchQuery("");
-                  setCategoryFilterId("");
-                  setManufacturerFilter("");
-                }}
-              >
-                {copy.clearFilters}
-              </button>
-            ) : null}
-            <div ref={listColumnsMenuRef} className="relative">
-              <button
-                className="min-h-9 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:border-slate-400 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2"
-                type="button"
-                onClick={() => setIsColumnsMenuOpen((current) => !current)}
-              >
-                {copy.configureList}
-              </button>
-              {isColumnsMenuOpen ? (
-                <div
-                  aria-label={copy.visibleColumns}
-                  role="menu"
-                  className="absolute right-0 z-20 mt-2 min-w-64 rounded-md border border-slate-200 bg-white p-2 shadow-lg"
-                >
-                  <p className="px-2 py-1 text-xs font-semibold uppercase tracking-wide text-slate-500">
-                    {copy.visibleColumns}
-                  </p>
-                  <div className="grid gap-1">
-                    {baseConfigurableColumns.map((column) => (
-                      <label
-                        key={column.id}
-                        className="inline-flex min-h-8 items-center gap-2 rounded px-2 text-sm text-slate-700 hover:bg-slate-50"
-                      >
-                        <input
-                          checked={columnVisibility[column.id] !== false}
-                          type="checkbox"
-                          onChange={(event) =>
-                            setColumnVisible(column.id, event.currentTarget.checked)
-                          }
-                        />
-                        <span>{column.label}</span>
-                      </label>
-                    ))}
-                  </div>
-                  {attributeConfigurableColumns.length > 0 ? (
-                    <>
-                      <div className="my-2 border-t border-slate-200" />
-                      <p className="px-2 py-1 text-xs font-semibold uppercase tracking-wide text-slate-500">
-                        {copy.attributeColumns}
-                      </p>
-                      <div className="grid max-h-56 gap-1 overflow-auto">
-                        {attributeConfigurableColumns.map((column) => (
-                          <label
-                            key={column.id}
-                            className="inline-flex min-h-8 items-center gap-2 rounded px-2 text-sm text-slate-700 hover:bg-slate-50"
-                          >
-                            <input
-                              checked={columnVisibility[column.id] !== false}
-                              type="checkbox"
-                              onChange={(event) =>
-                                setColumnVisible(column.id, event.currentTarget.checked)
-                              }
-                            />
-                            <span>{column.label}</span>
-                          </label>
-                        ))}
-                      </div>
-                    </>
-                  ) : null}
-                </div>
-              ) : null}
-            </div>
+        <ListPageToolbar
+          columnGroups={[{ groupId: "attribute", label: copy.attributeColumns }]}
+          clearFiltersLabel={copy.clearFilters}
+          columnVisibility={columnVisibility}
+          configurableColumns={configurableColumns}
+          configureListLabel={copy.configureList}
+          filteredCount={partsCounts.filteredCount}
+          formatCount={(visible, total) =>
+            formatFilteredPartsSummary(copy, { visible, total })
+          }
+          hasActiveFilters={hasActiveFilters}
+          totalCount={partsCounts.totalCount}
+          visibleColumnsLabel={copy.visibleColumns}
+          setColumnVisible={setColumnVisible}
+          onClearFilters={() => {
+            setSearchQuery("");
+            setCategoryFilterId("");
+            setManufacturerFilter("");
+          }}
+          filterContent={
+            <>
+              <label className="grid min-w-72 gap-1.5 text-sm font-medium text-slate-700">
+                {copy.searchParts}
+                <input
+                  className="min-h-9 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-950 outline-none transition placeholder:text-slate-400 hover:border-slate-400 focus:border-slate-500 focus:ring-2 focus:ring-slate-200"
+                  placeholder={copy.searchPartsPlaceholder}
+                  type="search"
+                  value={searchQuery}
+                  onChange={(event) => setSearchQuery(event.currentTarget.value)}
+                />
+              </label>
+              <div className="min-w-56">
+                <CategoryTreeSelect
+                  allowOrganizationalCategories
+                  buttonClassName={compactCategorySelectButtonClassName}
+                  categories={partCategories}
+                  categoryTree={categoryTree}
+                  copy={copy}
+                  disabled={!isDatabaseAvailable}
+                  label={copy.filterByCategory}
+                  name="categoryFilterId"
+                  noSelectionLabel={copy.allCategories}
+                  selectedId={categoryFilterId}
+                  onSelectedIdChange={setCategoryFilterId}
+                />
+              </div>
+              <ManufacturerAutocomplete
+                compact
+                copy={copy}
+                disabled={!isDatabaseAvailable}
+                inputId="manufacturer-filter"
+                label={copy.filterByManufacturer}
+                name="manufacturerFilter"
+                placeholder={copy.allManufacturers}
+                suggestions={manufacturerFilterOptions.map((manufacturerName) => ({
+                  id: manufacturerName,
+                  name: manufacturerName
+                }))}
+                value={manufacturerFilter}
+                onValueChange={setManufacturerFilter}
+              />
+            </>
+          }
+          primaryAction={
             <button
               className={primaryButtonClassName}
               disabled={!isDatabaseAvailable}
@@ -1683,8 +1577,8 @@ export function PartsListClient({
             >
               {copy.addPart}
             </button>
-          </div>
-        </div>
+          }
+        />
         <InfiniteListViewport
           emptyState={
             <div className="px-4 py-10">

@@ -102,7 +102,8 @@ const copy = {
   columnWidthPx: "Width",
   sortingLabel: "Sort",
   clearSorting: "None",
-  resetListConfiguration: "Reset defaults"
+  resetListConfiguration: "Reset defaults",
+  orderCountSummary: "{visible} of {total} orders"
 };
 
 type PurchaseOrdersPageProps = {

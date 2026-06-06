@@ -48,10 +48,10 @@ import {
 import { getNextToastId, ToastNotice, type ToastMessage } from "@/app/toast-notice";
 import { InfiniteListViewport } from "@/app/infinite-list";
 import {
-  ListConfigurationDialog,
   useListTableConfiguration,
   type ListColumnDefinition
 } from "@/app/list-table-config";
+import { ListPageToolbar, useColumnResizeCursor } from "@/app/list-page-toolbar";
 import { DetailPanel, useDetailsPanelWidth } from "@/app/detail-panel";
 
 type Organization = { id: string; name: string };
@@ -127,6 +127,7 @@ type Copy = {
   sortingLabel: string;
   clearSorting: string;
   resetListConfiguration: string;
+  listCountSummary: string;
 };
 
 type ShoppingListsClientProps = {
@@ -168,14 +169,12 @@ export function ShoppingListsClient({
   const [itemFormErrors, setItemFormErrors] = useState<Record<string, string>>({});
   const [convertFormErrors, setConvertFormErrors] = useState<Record<string, string>>({});
   const [dialogFormKey, setDialogFormKey] = useState(0);
-  const [isColumnsMenuOpen, setIsColumnsMenuOpen] = useState(false);
-  const [isResizingColumn, setIsResizingColumn] = useState(false);
+  const { setIsResizingColumn, containerClassName } = useColumnResizeCursor();
   const [toastMessages, setToastMessages] = useState<ToastMessage[]>([]);
   const nextToastIdRef = useRef(0);
   const listDialogRef = useRef<HTMLDialogElement>(null);
   const itemDialogRef = useRef<HTMLDialogElement>(null);
   const convertDialogRef = useRef<HTMLDialogElement>(null);
-  const listConfigDialogRef = useRef<HTMLDialogElement>(null);
 
   // --- Column configuration ---
 
@@ -202,9 +201,7 @@ export function ShoppingListsClient({
     setSorting,
     sorting,
     columnOrder: persistedColumnOrder,
-    isLoaded: isListConfigLoaded,
-    moveColumn,
-    resetConfiguration
+    isLoaded: isListConfigLoaded
   } = useListTableConfiguration({
     storageKey: `oso:list-config:shopping-lists:${workspaceSlug}`,
     columns: listColumns,
@@ -622,37 +619,28 @@ export function ShoppingListsClient({
 
   const items = (listDetail as ShoppingListDetail | null | undefined)?.items ?? [];
 
-  const listConfigCopy = {
-    close: copy.close,
-    saveChanges: copy.saveChanges,
-    configureListTitle: copy.configureListTitle,
-    configureListBody: copy.configureListBody,
-    visibleColumns: copy.visibleColumns,
-    moveUp: copy.moveUp,
-    moveDown: copy.moveDown,
-    columnWidthPx: copy.columnWidthPx,
-    sortingLabel: copy.sortingLabel,
-    clearSorting: copy.clearSorting,
-    resetListConfiguration: copy.resetListConfiguration
-  };
-
   return (
     <>
       <div
-        className={`flex min-h-0 flex-1 gap-4 ${isResizingColumn ? "cursor-col-resize select-none" : ""}`}
+        className={`flex min-h-0 flex-1 gap-4 ${containerClassName}`}
       >
         {/* Main list */}
         <section className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
           {/* Toolbar */}
-          <div className="flex items-center gap-3 border-b border-slate-200 bg-white px-4 py-3">
-            <button
-              className="min-h-9 rounded-md border border-slate-300 bg-white px-3 text-sm font-medium text-slate-700 transition hover:border-slate-400 hover:bg-slate-50"
-              type="button"
-              onClick={() => openDialog(listConfigDialogRef.current)}
-            >
-              {copy.configureList}
-            </button>
-            <div className="ml-auto">
+          <ListPageToolbar
+            columnVisibility={columnVisibility}
+            configurableColumns={configurableColumns}
+            configureListLabel={copy.configureList}
+            filteredCount={listsQuery.data?.pages[0]?.filteredCount}
+            formatCount={(visible, total) =>
+              copy.listCountSummary
+                .replace("{visible}", String(visible))
+                .replace("{total}", String(total))
+            }
+            totalCount={listsQuery.data?.pages[0]?.totalCount}
+            visibleColumnsLabel={copy.visibleColumns}
+            setColumnVisible={setColumnVisible}
+            primaryAction={
               <button
                 className="inline-flex min-h-9 items-center rounded-md bg-[var(--color-accent)] px-4 text-sm font-semibold text-white transition hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-60"
                 disabled={!canWrite}
@@ -661,8 +649,8 @@ export function ShoppingListsClient({
               >
                 {copy.newList}
               </button>
-            </div>
-          </div>
+            }
+          />
 
           <InfiniteListViewport
             emptyState={
@@ -919,21 +907,6 @@ export function ShoppingListsClient({
           </DetailPanel>
         ) : null}
       </div>
-
-      {/* List configuration dialog */}
-      <ListConfigurationDialog
-        dialogRef={listConfigDialogRef}
-        columns={configurableColumns}
-        copy={listConfigCopy}
-        sizing={columnSizing}
-        sorting={sorting}
-        visibleColumns={columnVisibility}
-        onColumnVisibleChange={setColumnVisible}
-        onMoveColumn={moveColumn}
-        onReset={resetConfiguration}
-        onSortingChange={setColumnSorting}
-        onWidthChange={setColumnWidth}
-      />
 
       {/* Add/edit list dialog */}
       <DialogShell

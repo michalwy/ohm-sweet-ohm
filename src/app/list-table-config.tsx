@@ -1,6 +1,6 @@
 "use client";
 
-import type { Dispatch, RefObject, SetStateAction } from "react";
+import type { Dispatch, SetStateAction } from "react";
 import { useEffect, useLayoutEffect, useMemo, useState } from "react";
 import type {
   ColumnOrderState,
@@ -8,8 +8,6 @@ import type {
   SortingState,
   VisibilityState
 } from "@tanstack/react-table";
-
-import { DialogBody, DialogFooter, DialogShell } from "@/app/dialog-shell";
 
 export type ListColumnId = string;
 
@@ -285,153 +283,4 @@ export function useListTableConfiguration({
     setColumnSizing,
     isLoaded
   };
-}
-
-type ListConfigurationDialogCopy = {
-  close: string;
-  saveChanges: string;
-  configureListTitle: string;
-  configureListBody: string;
-  visibleColumns: string;
-  moveUp: string;
-  moveDown: string;
-  columnWidthPx: string;
-  sortingLabel: string;
-  clearSorting: string;
-  resetListConfiguration: string;
-};
-
-type ListConfigurationDialogProps = {
-  copy: ListConfigurationDialogCopy;
-  dialogRef: RefObject<HTMLDialogElement | null>;
-  columns: ListColumnDefinition[];
-  visibleColumns: VisibilityState;
-  sorting: SortingState;
-  sizing: ColumnSizingState;
-  onColumnVisibleChange: (columnId: ListColumnId, isVisible: boolean) => void;
-  onMoveColumn: (columnId: ListColumnId, direction: "up" | "down") => void;
-  onWidthChange: (columnId: ListColumnId, widthPx: number) => void;
-  onSortingChange: (columnId: ListColumnId, mode: "none" | "asc" | "desc") => void;
-  onReset: () => void;
-};
-
-export function ListConfigurationDialog({
-  copy,
-  dialogRef,
-  columns,
-  visibleColumns,
-  sorting,
-  sizing,
-  onColumnVisibleChange,
-  onMoveColumn,
-  onWidthChange,
-  onSortingChange,
-  onReset
-}: ListConfigurationDialogProps) {
-  return (
-    <DialogShell
-      ref={dialogRef}
-      closeLabel={copy.close}
-      description={copy.configureListBody}
-      title={copy.configureListTitle}
-      titleId="list-config-dialog-title"
-      widthClassName="w-[min(48rem,calc(100vw-3rem))]"
-    >
-      <DialogBody>
-        <div className="grid gap-3">
-          <p className="text-sm font-medium text-slate-700">{copy.visibleColumns}</p>
-          {columns.map((column) => {
-            const sortState = sorting.find((item) => item.id === column.id);
-            const widthValue = Math.round(
-              Number(sizing[column.id] ?? column.defaultWidth ?? 160)
-            );
-
-            return (
-              <div
-                key={column.id}
-                className="grid grid-cols-[minmax(0,1fr)_auto_auto_auto_auto] items-center gap-2 rounded-md border border-slate-200 bg-white p-2"
-              >
-                <label className="inline-flex items-center gap-2 text-sm text-slate-700">
-                  <input
-                    checked={visibleColumns[column.id] !== false}
-                    type="checkbox"
-                    onChange={(event) =>
-                      onColumnVisibleChange(column.id, event.currentTarget.checked)
-                    }
-                  />
-                  <span>{column.label}</span>
-                </label>
-                <button
-                  className="min-h-8 rounded-md border border-slate-300 bg-white px-2 py-1 text-xs text-slate-700"
-                  type="button"
-                  onClick={() => onMoveColumn(column.id, "up")}
-                >
-                  {copy.moveUp}
-                </button>
-                <button
-                  className="min-h-8 rounded-md border border-slate-300 bg-white px-2 py-1 text-xs text-slate-700"
-                  type="button"
-                  onClick={() => onMoveColumn(column.id, "down")}
-                >
-                  {copy.moveDown}
-                </button>
-                <label className="inline-flex items-center gap-2 text-xs text-slate-600">
-                  <span>{copy.columnWidthPx}</span>
-                  <input
-                    className="w-20 rounded border border-slate-300 px-2 py-1 text-xs text-slate-900"
-                    max={column.maxWidth ?? 640}
-                    min={column.minWidth ?? 80}
-                    type="number"
-                    value={widthValue}
-                    onChange={(event) =>
-                      onWidthChange(column.id, Number(event.currentTarget.value))
-                    }
-                  />
-                </label>
-                {column.sortable ? (
-                  <label className="inline-flex items-center gap-2 text-xs text-slate-600">
-                    <span>{copy.sortingLabel}</span>
-                    <select
-                      className="rounded border border-slate-300 px-2 py-1 text-xs text-slate-900"
-                      value={
-                        sortState ? (sortState.desc ? "desc" : "asc") : "none"
-                      }
-                      onChange={(event) =>
-                        onSortingChange(
-                          column.id,
-                          event.currentTarget.value as "none" | "asc" | "desc"
-                        )
-                      }
-                    >
-                      <option value="none">{copy.clearSorting}</option>
-                      <option value="asc">Asc</option>
-                      <option value="desc">Desc</option>
-                    </select>
-                  </label>
-                ) : (
-                  <span />
-                )}
-              </div>
-            );
-          })}
-        </div>
-      </DialogBody>
-      <DialogFooter className="items-center justify-between">
-        <button
-          className="min-h-9 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700"
-          type="button"
-          onClick={onReset}
-        >
-          {copy.resetListConfiguration}
-        </button>
-        <button
-          className="min-h-9 rounded-md border border-slate-900 bg-slate-900 px-3 py-1.5 text-sm font-medium text-white"
-          type="button"
-          onClick={() => dialogRef.current?.close()}
-        >
-          {copy.saveChanges}
-        </button>
-      </DialogFooter>
-    </DialogShell>
-  );
 }
