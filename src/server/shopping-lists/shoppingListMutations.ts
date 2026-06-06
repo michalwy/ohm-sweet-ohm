@@ -16,14 +16,14 @@ export type ShoppingListItem = {
   partDescription: string | null;
   manufacturerName: string;
   quantity: string;
-  notes: string | null;
+  description: string | null;
   orderedInPurchaseOrderId: string | null;
 };
 
 export type ShoppingListDetail = {
   id: string;
   name: string;
-  notes: string | null;
+  description: string | null;
   createdAt: string;
   updatedAt: string;
   items: ShoppingListItem[];
@@ -32,10 +32,11 @@ export type ShoppingListDetail = {
 export type ShoppingListSummary = {
   id: string;
   name: string;
-  notes: string | null;
+  description: string | null;
   itemCount: number;
   createdAt: string;
   updatedAt: string;
+  createdByName: string | null;
 };
 
 export type ShoppingListSortBy = "name" | "itemCount" | "createdAt";
@@ -63,9 +64,10 @@ export async function getShoppingLists(
   const selectShape = {
     id: true,
     name: true,
-    notes: true,
+    description: true,
     createdAt: true,
     updatedAt: true,
+    createdByUser: { select: { name: true } },
     _count: { select: { items: true } }
   } as const;
 
@@ -74,18 +76,20 @@ export async function getShoppingLists(
   function toSummary(list: {
     id: string;
     name: string;
-    notes: string | null;
+    description: string | null;
     createdAt: Date;
     updatedAt: Date;
+    createdByUser: { name: string | null } | null;
     _count: { items: number };
   }): ShoppingListSummary {
     return {
       id: list.id,
       name: list.name,
-      notes: list.notes,
+      description: list.description,
       itemCount: list._count.items,
       createdAt: list.createdAt.toISOString(),
-      updatedAt: list.updatedAt.toISOString()
+      updatedAt: list.updatedAt.toISOString(),
+      createdByName: list.createdByUser?.name ?? null
     };
   }
 
@@ -194,7 +198,7 @@ export async function getShoppingListDetail(
     select: {
       id: true,
       name: true,
-      notes: true,
+      description: true,
       createdAt: true,
       updatedAt: true,
       items: {
@@ -203,7 +207,7 @@ export async function getShoppingListDetail(
           id: true,
           partId: true,
           quantity: true,
-          notes: true,
+          description: true,
           part: {
             select: {
               catalogNumber: true,
@@ -225,7 +229,7 @@ export async function getShoppingListDetail(
   return {
     id: list.id,
     name: list.name,
-    notes: list.notes,
+    description: list.description,
     createdAt: list.createdAt.toISOString(),
     updatedAt: list.updatedAt.toISOString(),
     items: list.items.map((item) => ({
@@ -235,7 +239,7 @@ export async function getShoppingListDetail(
       partDescription: item.part.description,
       manufacturerName: item.part.manufacturer.name,
       quantity: item.quantity.toString(),
-      notes: item.notes,
+      description: item.description,
       orderedInPurchaseOrderId: item.purchaseOrderItems[0]?.purchaseOrderId ?? null
     }))
   };
@@ -244,7 +248,8 @@ export async function getShoppingListDetail(
 export async function createShoppingList(input: {
   workspaceId: string;
   name: string;
-  notes?: string | null;
+  description?: string | null;
+  createdByUserId?: string | null;
 }) {
   const name = input.name.trim();
   if (!name) throw new Error("name-required");
@@ -253,7 +258,8 @@ export async function createShoppingList(input: {
     data: {
       workspaceId: input.workspaceId,
       name,
-      notes: normalizeOptionalText(input.notes)
+      description: normalizeOptionalText(input.description),
+      createdByUserId: input.createdByUserId ?? null
     }
   });
 }
@@ -262,7 +268,7 @@ export async function updateShoppingList(input: {
   workspaceId: string;
   listId: string;
   name: string;
-  notes?: string | null;
+  description?: string | null;
 }) {
   const name = input.name.trim();
   if (!name) throw new Error("name-required");
@@ -273,7 +279,7 @@ export async function updateShoppingList(input: {
     where: { id: input.listId },
     data: {
       name,
-      notes: normalizeOptionalText(input.notes)
+      description: normalizeOptionalText(input.description)
     }
   });
 }
@@ -291,7 +297,7 @@ export async function addShoppingListItem(input: {
   listId: string;
   partId: string;
   quantity: string;
-  notes?: string | null;
+  description?: string | null;
 }) {
   await assertListBelongsToWorkspace(input.workspaceId, input.listId);
 
@@ -304,7 +310,7 @@ export async function addShoppingListItem(input: {
       shoppingListId: input.listId,
       partId: input.partId,
       quantity,
-      notes: normalizeOptionalText(input.notes)
+      description: normalizeOptionalText(input.description)
     }
   });
 }
@@ -314,7 +320,7 @@ export async function updateShoppingListItem(input: {
   listId: string;
   itemId: string;
   quantity: string;
-  notes?: string | null;
+  description?: string | null;
 }) {
   await assertItemBelongsToList(input.workspaceId, input.listId, input.itemId);
 
@@ -324,7 +330,7 @@ export async function updateShoppingListItem(input: {
     where: { id: input.itemId },
     data: {
       quantity,
-      notes: normalizeOptionalText(input.notes)
+      description: normalizeOptionalText(input.description)
     }
   });
 }
@@ -356,7 +362,7 @@ export async function convertShoppingListToOrder(input: {
         id: { in: input.selectedItemIds },
         shoppingListId: input.listId
       },
-      select: { id: true, partId: true, quantity: true, notes: true }
+      select: { id: true, partId: true, quantity: true, description: true }
     }),
     prisma.organization.findFirst({
       where: { id: input.supplierId, workspaceId: input.workspaceId }
@@ -376,7 +382,7 @@ export async function convertShoppingListToOrder(input: {
           partId: item.partId,
           sourceShoppingListItemId: item.id,
           quantity: item.quantity,
-          notes: item.notes
+          notes: item.description
         }))
       }
     }

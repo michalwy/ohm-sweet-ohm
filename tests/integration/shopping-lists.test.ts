@@ -79,11 +79,11 @@ describe("shopping lists — CRUD", () => {
     const list = await createShoppingList({
       workspaceId,
       name: "Weekend Order",
-      notes: "Caps and resistors"
+      description: "Caps and resistors"
     });
 
     assert.equal(list.name, "Weekend Order");
-    assert.equal(list.notes, "Caps and resistors");
+    assert.equal(list.description, "Caps and resistors");
 
     const lists = await getShoppingLists(workspaceId);
     assert.equal(lists.items.length, 1);
@@ -94,12 +94,12 @@ describe("shopping lists — CRUD", () => {
       workspaceId,
       listId: list.id,
       name: "Weekend Order Updated",
-      notes: null
+      description: null
     });
 
     const updated = await getShoppingLists(workspaceId);
     assert.equal(updated.items[0].name, "Weekend Order Updated");
-    assert.equal(updated.items[0].notes, null);
+    assert.equal(updated.items[0].description, null);
 
     await deleteShoppingList({ workspaceId, listId: list.id });
 
@@ -155,7 +155,7 @@ describe("shopping lists — items", () => {
       listId: list.id,
       partId,
       quantity: "10",
-      notes: "Initial stock"
+      description: "Initial stock"
     });
 
     const detail = await getShoppingListDetail(workspaceId, list.id);
@@ -163,7 +163,7 @@ describe("shopping lists — items", () => {
     assert.equal(detail.items.length, 1);
     assert.equal(detail.items[0].partId, partId);
     assert.equal(detail.items[0].quantity, "10");
-    assert.equal(detail.items[0].notes, "Initial stock");
+    assert.equal(detail.items[0].description, "Initial stock");
 
     const lists = await getShoppingLists(workspaceId);
     assert.equal(lists.items[0].itemCount, 1);
@@ -173,13 +173,13 @@ describe("shopping lists — items", () => {
       listId: list.id,
       itemId: item.id,
       quantity: "20",
-      notes: null
+      description: null
     });
 
     const detailAfterUpdate = await getShoppingListDetail(workspaceId, list.id);
     assert.ok(detailAfterUpdate);
     assert.equal(detailAfterUpdate.items[0].quantity, "20");
-    assert.equal(detailAfterUpdate.items[0].notes, null);
+    assert.equal(detailAfterUpdate.items[0].description, null);
 
     await removeShoppingListItem({ workspaceId, listId: list.id, itemId: item.id });
 

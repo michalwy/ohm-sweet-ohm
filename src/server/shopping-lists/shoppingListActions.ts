@@ -60,14 +60,15 @@ export async function getShoppingListDetailForWorkspace(input: {
 export async function createShoppingListForWorkspace(input: {
   workspaceSlug: string;
   name: string;
-  notes?: string | null;
+  description?: string | null;
 }): Promise<ShoppingListActionResult<null>> {
   try {
     const context = await getAuthorizedContext(input.workspaceSlug, "shopping-lists:write");
     await createShoppingList({
       workspaceId: context.workspace.id,
       name: input.name,
-      notes: input.notes
+      description: input.description,
+      createdByUserId: context.user.id
     });
     revalidatePath(workspacePath(input.workspaceSlug));
     return success(null);
@@ -80,7 +81,7 @@ export async function updateShoppingListForWorkspace(input: {
   workspaceSlug: string;
   listId: string;
   name: string;
-  notes?: string | null;
+  description?: string | null;
 }): Promise<ShoppingListActionResult<null>> {
   try {
     const context = await getAuthorizedContext(input.workspaceSlug, "shopping-lists:write");
@@ -88,7 +89,7 @@ export async function updateShoppingListForWorkspace(input: {
       workspaceId: context.workspace.id,
       listId: input.listId,
       name: input.name,
-      notes: input.notes
+      description: input.description
     });
     revalidatePath(workspacePath(input.workspaceSlug));
     return success(null);
@@ -119,7 +120,7 @@ export async function addShoppingListItemForWorkspace(input: {
   listId: string;
   partId: string;
   quantity: string;
-  notes?: string | null;
+  description?: string | null;
 }): Promise<ShoppingListActionResult<null>> {
   try {
     const context = await getAuthorizedContext(input.workspaceSlug, "shopping-lists:write");
@@ -128,7 +129,7 @@ export async function addShoppingListItemForWorkspace(input: {
       listId: input.listId,
       partId: input.partId,
       quantity: input.quantity,
-      notes: input.notes
+      description: input.description
     });
     revalidatePath(workspacePath(input.workspaceSlug));
     return success(null);
@@ -142,7 +143,7 @@ export async function updateShoppingListItemForWorkspace(input: {
   listId: string;
   itemId: string;
   quantity: string;
-  notes?: string | null;
+  description?: string | null;
 }): Promise<ShoppingListActionResult<null>> {
   try {
     const context = await getAuthorizedContext(input.workspaceSlug, "shopping-lists:write");
@@ -151,7 +152,7 @@ export async function updateShoppingListItemForWorkspace(input: {
       listId: input.listId,
       itemId: input.itemId,
       quantity: input.quantity,
-      notes: input.notes
+      description: input.description
     });
     revalidatePath(workspacePath(input.workspaceSlug));
     return success(null);

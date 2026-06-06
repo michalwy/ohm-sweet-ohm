@@ -12,8 +12,9 @@ export function useDetailsPanelWidth(storageKey: string, defaultWidth = 384) {
     const storedValue = window.localStorage.getItem(storageKey);
     const parsedValue = storedValue ? Number(storedValue) : NaN;
 
+    const maxWidth = Math.floor(window.innerWidth * 0.5);
     if (Number.isFinite(parsedValue)) {
-      setWidth(Math.max(320, Math.min(720, parsedValue)));
+      setWidth(Math.max(320, Math.min(maxWidth, parsedValue)));
     } else {
       setWidth(defaultWidth);
     }
@@ -36,7 +37,8 @@ export function useDetailsPanelWidth(storageKey: string, defaultWidth = 384) {
 
     function handlePointerMove(event: MouseEvent) {
       const viewportWidth = window.innerWidth;
-      const nextWidth = Math.min(720, Math.max(320, viewportWidth - event.clientX - 24));
+      const maxWidth = Math.floor(viewportWidth * 0.5);
+      const nextWidth = Math.min(maxWidth, Math.max(320, viewportWidth - event.clientX - 24));
       setWidth(nextWidth);
     }
 

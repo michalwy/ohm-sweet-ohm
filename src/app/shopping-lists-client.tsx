@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import {
   createColumnHelper,
   flexRender,
@@ -63,9 +64,9 @@ type Copy = {
   newListTitle: string;
   editListTitle: string;
   name: string;
-  notes: string;
+  description: string;
   namePlaceholder: string;
-  notesPlaceholder: string;
+  descriptionPlaceholder: string;
   createList: string;
   saveChanges: string;
   edit: string;
@@ -103,6 +104,8 @@ type Copy = {
   selectedItems: string;
   noItemsSelected: string;
   convert: string;
+  created: string;
+  createdBy: string;
   createdToast: string;
   updatedToast: string;
   deletedToast: string;
@@ -169,7 +172,7 @@ export function ShoppingListsClient({
   const [itemFormErrors, setItemFormErrors] = useState<Record<string, string>>({});
   const [convertFormErrors, setConvertFormErrors] = useState<Record<string, string>>({});
   const [dialogFormKey, setDialogFormKey] = useState(0);
-  const { setIsResizingColumn, containerClassName } = useColumnResizeCursor();
+  const { isResizingColumn, setIsResizingColumn, containerClassName } = useColumnResizeCursor();
   const [toastMessages, setToastMessages] = useState<ToastMessage[]>([]);
   const nextToastIdRef = useRef(0);
   const listDialogRef = useRef<HTMLDialogElement>(null);
@@ -181,8 +184,10 @@ export function ShoppingListsClient({
   const listColumns = useMemo<ListColumnDefinition[]>(
     () => [
       { id: "name", label: copy.name, group: "base", defaultWidth: 240, minWidth: 120, sortable: true },
-      { id: "notes", label: copy.notes, group: "base", defaultWidth: 320, minWidth: 96 },
-      { id: "itemCount", label: copy.items, group: "base", defaultWidth: 100, minWidth: 64, sortable: true }
+      { id: "description", label: copy.description, group: "base", defaultWidth: 320, minWidth: 96 },
+      { id: "itemCount", label: copy.items, group: "base", defaultWidth: 100, minWidth: 64, sortable: true },
+      { id: "createdAt", label: copy.created, group: "base", defaultWidth: 160, minWidth: 100, defaultVisible: false, sortable: true },
+      { id: "createdBy", label: copy.createdBy, group: "base", defaultWidth: 160, minWidth: 100, defaultVisible: false }
     ],
     [copy]
   );
@@ -263,7 +268,7 @@ export function ShoppingListsClient({
       const result = await getPartsListPageForWorkspace({
         workspaceSlug,
         searchQuery: partSearchQuery || undefined,
-        pageSize: 8
+        pageSize: 12
       });
       return result.ok ? result.page.items : [];
     },
@@ -345,6 +350,23 @@ export function ShoppingListsClient({
       void refetchDetail();
     }
   });
+
+  // --- Column drag-and-drop reordering ---
+
+  const [draggedColumnId, setDraggedColumnId] = useState<string | null>(null);
+
+  function moveColumnByDrag(targetColumnId: string) {
+    if (!draggedColumnId || draggedColumnId === targetColumnId) return;
+    setColumnOrder((currentOrder) => {
+      const sourceIndex = currentOrder.indexOf(draggedColumnId);
+      const targetIndex = currentOrder.indexOf(targetColumnId);
+      if (sourceIndex < 0 || targetIndex < 0) return currentOrder;
+      const nextOrder = [...currentOrder];
+      const [sourceItem] = nextOrder.splice(sourceIndex, 1);
+      nextOrder.splice(targetIndex, 0, sourceItem);
+      return nextOrder;
+    });
+  }
 
   // --- URL sync & panel ---
 
@@ -448,9 +470,9 @@ export function ShoppingListsClient({
     if (!name) { setListFormErrors({ name: copy.nameRequired }); return; }
 
     if (listDialogMode === "create") {
-      createListMutation.mutate({ workspaceSlug, name, notes: getString(formData, "notes") || null });
+      createListMutation.mutate({ workspaceSlug, name, description: getString(formData, "description") || null });
     } else if (editingList) {
-      updateListMutation.mutate({ workspaceSlug, listId: editingList.id, name, notes: getString(formData, "notes") || null });
+      updateListMutation.mutate({ workspaceSlug, listId: editingList.id, name, description: getString(formData, "description") || null });
     }
   }
 
@@ -473,7 +495,7 @@ export function ShoppingListsClient({
         listId: selectedListId,
         partId,
         quantity,
-        notes: getString(formData, "notes") || null
+        description: getString(formData, "description") || null
       });
     } else if (editingItem && selectedListId) {
       updateItemMutation.mutate({
@@ -481,7 +503,7 @@ export function ShoppingListsClient({
         listId: selectedListId,
         itemId: editingItem.id,
         quantity,
-        notes: getString(formData, "notes") || null
+        description: getString(formData, "description") || null
       });
     }
   }
@@ -525,8 +547,8 @@ export function ShoppingListsClient({
           <span className="font-medium text-slate-950">{getValue()}</span>
         )
       }),
-      columnHelper.accessor("notes", {
-        header: copy.notes,
+      columnHelper.accessor("description", {
+        header: copy.description,
         size: 320,
         minSize: 96,
         cell: ({ getValue }) => {
@@ -541,8 +563,28 @@ export function ShoppingListsClient({
         size: 100,
         minSize: 64,
         cell: ({ getValue }) => (
-          <span className="text-slate-700">{getValue()}</span>
+          <span className="block text-right text-slate-700">{getValue()}</span>
         )
+      }),
+      columnHelper.accessor("createdAt", {
+        header: copy.created,
+        size: 160,
+        minSize: 100,
+        cell: ({ getValue }) => (
+          <span className="text-slate-600">{new Date(getValue()).toLocaleDateString()}</span>
+        )
+      }),
+      columnHelper.accessor("createdByName", {
+        id: "createdBy",
+        header: copy.createdBy,
+        size: 160,
+        minSize: 100,
+        cell: ({ getValue }) => {
+          const v = getValue();
+          return v
+            ? <span className="text-slate-700">{v}</span>
+            : <span className="text-slate-400">—</span>;
+        }
       }),
       columnHelper.display({
         id: "actions",
@@ -683,11 +725,24 @@ export function ShoppingListsClient({
                     {headerGroup.headers.map((header) => (
                       <th
                         key={header.id}
-                        className="relative border-b border-slate-200 px-2 py-2.5 text-left text-xs font-semibold text-slate-700"
+                        draggable={header.column.id !== "actions" && !isResizingColumn}
+                        className={`relative border-b border-slate-200 px-2 py-2.5 text-xs font-semibold text-slate-700 ${header.column.id === "itemCount" ? "text-right" : "text-left"}`}
                         style={{ width: header.getSize() }}
+                        onDragStart={(e) => {
+                          if (isResizingColumn) { e.preventDefault(); return; }
+                          if (header.column.id !== "actions") setDraggedColumnId(header.column.id);
+                        }}
+                        onDragOver={(e) => {
+                          if (draggedColumnId && header.column.id !== "actions") e.preventDefault();
+                        }}
+                        onDrop={() => {
+                          if (header.column.id !== "actions") moveColumnByDrag(header.column.id);
+                          setDraggedColumnId(null);
+                        }}
+                        onDragEnd={() => setDraggedColumnId(null)}
                       >
                         {header.column.id !== "actions" ? (
-                          <div className="flex items-center gap-1 overflow-hidden">
+                          <div className={`flex items-center gap-1 overflow-hidden ${header.column.id === "itemCount" ? "justify-end" : ""}`}>
                             {header.column.getCanSort() ? (
                               <button
                                 className="flex items-center gap-1 overflow-hidden text-left hover:text-slate-900"
@@ -797,7 +852,7 @@ export function ShoppingListsClient({
         {selectedList && hasLoadedDetailsPanelWidth ? (
           <DetailPanel
             closeLabel={copy.close}
-            subtitle={selectedList.notes ?? undefined}
+            subtitle={selectedList.description ?? undefined}
             title={selectedList.name}
             width={detailsPanelWidth}
             onClose={closeListDetails}
@@ -839,8 +894,8 @@ export function ShoppingListsClient({
                       <tr className="border-b border-slate-200 bg-slate-50">
                         <th className="w-8 px-3 py-2" />
                         <th className="px-3 py-2 font-semibold text-slate-700">{copy.part}</th>
-                        <th className="w-20 px-3 py-2 font-semibold text-slate-700">{copy.quantity}</th>
-                        <th className="px-3 py-2 font-semibold text-slate-700">{copy.notes}</th>
+                        <th className="w-20 px-3 py-2 text-right font-semibold text-slate-700">{copy.quantity}</th>
+                        <th className="px-3 py-2 font-semibold text-slate-700">{copy.description}</th>
                         <th className="w-20 px-3 py-2" />
                       </tr>
                     </thead>
@@ -869,8 +924,8 @@ export function ShoppingListsClient({
                               <p className="text-xs text-slate-500">{item.partDescription}</p>
                             ) : null}
                           </td>
-                          <td className="px-3 py-2 text-slate-700">{item.quantity}</td>
-                          <td className="px-3 py-2 text-slate-600">{item.notes ?? "—"}</td>
+                          <td className="w-20 px-3 py-2 text-right text-slate-700">{item.quantity}</td>
+                          <td className="px-3 py-2 text-slate-600">{item.description ?? "—"}</td>
                           <td className="px-3 py-2">
                             <div className="flex justify-end gap-1">
                               <button
@@ -936,15 +991,16 @@ export function ShoppingListsClient({
                 />
               </div>
               <div className="grid gap-2">
-                <label className="text-sm font-medium text-slate-700" htmlFor="list-notes">
-                  {copy.notes}
+                <label className="text-sm font-medium text-slate-700" htmlFor="list-description">
+                  {copy.description}
                 </label>
-                <input
-                  className="min-h-10 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-950 outline-none transition hover:border-slate-400 focus:border-slate-500 focus:ring-2 focus:ring-slate-200"
-                  defaultValue={editingList?.notes ?? ""}
-                  id="list-notes"
-                  name="notes"
-                  placeholder={copy.notesPlaceholder}
+                <textarea
+                  className="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-950 outline-none transition hover:border-slate-400 focus:border-slate-500 focus:ring-2 focus:ring-slate-200 resize-none"
+                  defaultValue={editingList?.description ?? ""}
+                  id="list-description"
+                  name="description"
+                  placeholder={copy.descriptionPlaceholder}
+                  rows={3}
                 />
               </div>
             </DialogBody>
@@ -982,36 +1038,21 @@ export function ShoppingListsClient({
                   <LabelWithError error={itemFormErrors.part}>
                     {copy.part}
                   </LabelWithError>
-                  <input
-                    className="min-h-10 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-950 outline-none transition hover:border-slate-400 focus:border-slate-500 focus:ring-2 focus:ring-slate-200"
+                  <PartAutocomplete
+                    noMatchingPartsLabel={copy.noMatchingParts}
+                    options={partsSearchResult ?? []}
                     placeholder={copy.searchPartsPlaceholder}
-                    type="text"
-                    value={partSearchQuery}
-                    onChange={(e) => {
-                      setPartSearchQuery(e.target.value);
+                    searchQuery={partSearchQuery}
+                    selectedPartId={selectedPartId}
+                    onSearchQueryChange={(q) => {
+                      setPartSearchQuery(q);
                       setSelectedPartId(null);
                     }}
+                    onSelect={(part) => {
+                      setSelectedPartId(part.id);
+                      setPartSearchQuery(`${part.catalogNumber} — ${part.manufacturerName}`);
+                    }}
                   />
-                  {partsSearchResult && partsSearchResult.length > 0 ? (
-                    <div className="max-h-48 overflow-auto rounded-md border border-slate-200 bg-white">
-                      {partsSearchResult.map((part) => (
-                        <button
-                          key={part.id}
-                          className={`flex w-full items-center gap-2 px-3 py-2 text-left text-sm transition hover:bg-slate-50 ${selectedPartId === part.id ? "bg-[var(--color-accent-soft)] font-medium" : ""}`}
-                          type="button"
-                          onClick={() => {
-                            setSelectedPartId(part.id);
-                            setPartSearchQuery(`${part.catalogNumber} — ${part.manufacturerName}`);
-                          }}
-                        >
-                          <span className="font-medium text-slate-900">{part.catalogNumber}</span>
-                          <span className="text-slate-500">{part.manufacturerName}</span>
-                        </button>
-                      ))}
-                    </div>
-                  ) : partSearchQuery && partsSearchResult?.length === 0 ? (
-                    <p className="text-xs text-slate-500">{copy.noMatchingParts}</p>
-                  ) : null}
                   {selectedPartId ? (
                     <p className="text-xs text-[var(--color-success)]">✓ Part selected</p>
                   ) : null}
@@ -1042,14 +1083,15 @@ export function ShoppingListsClient({
                 />
               </div>
               <div className="grid gap-2">
-                <label className="text-sm font-medium text-slate-700" htmlFor="item-notes">
-                  {copy.notes}
+                <label className="text-sm font-medium text-slate-700" htmlFor="item-description">
+                  {copy.description}
                 </label>
-                <input
-                  className="min-h-10 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-950 outline-none transition hover:border-slate-400 focus:border-slate-500 focus:ring-2 focus:ring-slate-200"
-                  defaultValue={editingItem?.notes ?? ""}
-                  id="item-notes"
-                  name="notes"
+                <textarea
+                  className="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-950 outline-none transition hover:border-slate-400 focus:border-slate-500 focus:ring-2 focus:ring-slate-200 resize-none"
+                  defaultValue={editingItem?.description ?? ""}
+                  id="item-description"
+                  name="description"
+                  rows={3}
                 />
               </div>
             </DialogBody>
@@ -1175,6 +1217,161 @@ export function ShoppingListsClient({
         onDismiss={(id) => setToastMessages((msgs) => msgs.filter((m) => m.id !== id))}
       />
     </>
+  );
+}
+
+type PartOption = {
+  id: string;
+  catalogNumber: string;
+  manufacturerName: string;
+  description: string | null;
+  primaryCategoryPath: string | null;
+};
+
+function scorePartMatch(query: string, part: PartOption): number {
+  const q = query.toLowerCase();
+  const cn = part.catalogNumber.toLowerCase();
+  const mfr = part.manufacturerName.toLowerCase();
+  const desc = (part.description ?? "").toLowerCase();
+
+  if (cn === q) return 200;
+  if (cn.startsWith(q)) return 150;
+  if (cn.includes(q)) return 100;
+  if (mfr.startsWith(q)) return 80;
+  if (mfr.includes(q)) return 60;
+  if (desc.includes(q)) return 40;
+
+  let ci = 0;
+  for (let i = 0; i < cn.length && ci < q.length; i++) {
+    if (cn[i] === q[ci]) ci++;
+  }
+  if (ci === q.length) return 30;
+
+  return 0;
+}
+
+type PartAutocompleteProps = {
+  searchQuery: string;
+  onSearchQueryChange: (q: string) => void;
+  options: PartOption[];
+  selectedPartId: string | null;
+  onSelect: (part: PartOption) => void;
+  placeholder: string;
+  noMatchingPartsLabel: string;
+};
+
+function PartAutocomplete({
+  searchQuery,
+  onSearchQueryChange,
+  options,
+  selectedPartId,
+  onSelect,
+  placeholder,
+  noMatchingPartsLabel
+}: PartAutocompleteProps) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [isOpen, setIsOpen] = useState(false);
+  const [activeIndex, setActiveIndex] = useState(0);
+  const [dropdownStyle, setDropdownStyle] = useState<React.CSSProperties>({});
+
+  const sortedOptions = useMemo(() => {
+    if (!searchQuery) return options;
+    return [...options]
+      .map((p) => ({ part: p, score: scorePartMatch(searchQuery, p) }))
+      .filter((x) => x.score > 0)
+      .sort((a, b) => b.score - a.score)
+      .map((x) => x.part);
+  }, [options, searchQuery]);
+
+  const shouldShowDropdown = isOpen && searchQuery.length > 0 && !selectedPartId;
+
+  useEffect(() => {
+    if (!shouldShowDropdown || !inputRef.current) return;
+    const rect = inputRef.current.getBoundingClientRect();
+    setDropdownStyle({
+      position: "fixed",
+      top: rect.bottom + 4,
+      left: rect.left,
+      width: rect.width,
+      zIndex: 9999
+    });
+  }, [shouldShowDropdown, searchQuery]);
+
+  useEffect(() => {
+    setActiveIndex(0);
+  }, [searchQuery]);
+
+  function handleKeyDown(e: React.KeyboardEvent) {
+    if (!shouldShowDropdown) return;
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setActiveIndex((i) => Math.min(i + 1, sortedOptions.length - 1));
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setActiveIndex((i) => Math.max(i - 1, 0));
+    } else if (e.key === "Enter") {
+      e.preventDefault();
+      const part = sortedOptions[activeIndex];
+      if (part) onSelect(part);
+    } else if (e.key === "Escape") {
+      setIsOpen(false);
+    }
+  }
+
+  return (
+    <div>
+      <input
+        ref={inputRef}
+        autoComplete="off"
+        className="min-h-10 w-full rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-950 outline-none transition hover:border-slate-400 focus:border-slate-500 focus:ring-2 focus:ring-slate-200"
+        placeholder={placeholder}
+        type="text"
+        value={searchQuery}
+        onBlur={() => setTimeout(() => setIsOpen(false), 150)}
+        onChange={(e) => {
+          onSearchQueryChange(e.target.value);
+          setIsOpen(true);
+        }}
+        onFocus={() => setIsOpen(true)}
+        onKeyDown={handleKeyDown}
+      />
+      {shouldShowDropdown && sortedOptions.length === 0 ? (
+        <p className="mt-1 text-xs text-slate-500">{noMatchingPartsLabel}</p>
+      ) : null}
+      {shouldShowDropdown && sortedOptions.length > 0
+        ? createPortal(
+            <div
+              className="max-h-64 overflow-auto rounded-md border border-slate-200 bg-white shadow-lg"
+              style={dropdownStyle}
+            >
+              {sortedOptions.map((part, i) => (
+                <button
+                  key={part.id}
+                  className={`flex w-full flex-col px-3 py-2 text-left text-sm transition hover:bg-slate-50 ${i === activeIndex ? "bg-slate-100" : ""}`}
+                  type="button"
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    onSelect(part);
+                  }}
+                  onMouseEnter={() => setActiveIndex(i)}
+                >
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium text-slate-900">{part.catalogNumber}</span>
+                    <span className="text-slate-500">{part.manufacturerName}</span>
+                  </div>
+                  {part.description ? (
+                    <p className="truncate text-xs text-slate-500">{part.description}</p>
+                  ) : null}
+                  {part.primaryCategoryPath ? (
+                    <p className="truncate text-xs text-slate-400">{part.primaryCategoryPath}</p>
+                  ) : null}
+                </button>
+              ))}
+            </div>,
+            document.body
+          )
+        : null}
+    </div>
   );
 }
 
