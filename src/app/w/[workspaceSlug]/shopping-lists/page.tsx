@@ -48,6 +48,7 @@ const copy = {
   noItems: "No items yet. Add parts to this list.",
   searchParts: "Search parts",
   searchPartsPlaceholder: "Search by catalog number or description",
+  loadingParts: "Loading parts…",
   noMatchingParts: "No matching parts",
   orderedBadge: "On order",
   convertToOrder: "Convert to order",

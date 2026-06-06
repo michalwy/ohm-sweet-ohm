@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { createPortal } from "react-dom";
 import {
   createColumnHelper,
   flexRender,
@@ -34,7 +33,7 @@ import type {
 } from "@/server/shopping-lists/shoppingListMutations";
 import type { ShoppingListSortBy } from "@/server/shopping-lists/shoppingListMutations";
 import type { ListPage } from "@/server/pagination";
-import { getPartsListPageForWorkspace } from "@/server/parts/listActions";
+import { PartPickerCombobox } from "@/app/part-picker-combobox";
 import {
   closeDialog,
   DeleteConfirmationDialog,
@@ -93,6 +92,7 @@ type Copy = {
   noItems: string;
   searchParts: string;
   searchPartsPlaceholder: string;
+  loadingParts: string;
   noMatchingParts: string;
   orderedBadge: string;
   convertToOrder: string;
@@ -260,20 +260,6 @@ export function ShoppingListsClient({
       return result.ok ? result.data : null;
     },
     enabled: Boolean(selectedListId)
-  });
-
-  const { data: partsSearchResult } = useQuery({
-    queryKey: ["parts-search", workspaceSlug, partSearchQuery],
-    queryFn: async () => {
-      const result = await getPartsListPageForWorkspace({
-        workspaceSlug,
-        searchQuery: partSearchQuery || undefined,
-        pageSize: 12
-      });
-      return result.ok ? result.page.items : [];
-    },
-    enabled: itemDialogMode !== null,
-    placeholderData: (prev) => prev
   });
 
   // --- Mutations ---
@@ -983,13 +969,14 @@ export function ShoppingListsClient({
                   <LabelWithError error={itemFormErrors.part}>
                     {copy.part}
                   </LabelWithError>
-                  <PartAutocomplete
-                    noMatchingPartsLabel={copy.noMatchingParts}
-                    options={partsSearchResult ?? []}
-                    placeholder={copy.searchPartsPlaceholder}
-                    searchQuery={partSearchQuery}
+                  <PartPickerCombobox
+                    workspaceSlug={workspaceSlug}
+                    inputValue={partSearchQuery}
                     selectedPartId={selectedPartId}
-                    onSearchQueryChange={(q) => {
+                    placeholder={copy.searchPartsPlaceholder}
+                    loadingLabel={copy.loadingParts}
+                    noMatchesLabel={copy.noMatchingParts}
+                    onInputChange={(q) => {
                       setPartSearchQuery(q);
                       setSelectedPartId(null);
                     }}
@@ -998,9 +985,6 @@ export function ShoppingListsClient({
                       setPartSearchQuery(`${part.catalogNumber} — ${part.manufacturerName}`);
                     }}
                   />
-                  {selectedPartId ? (
-                    <p className="text-xs text-[var(--color-success)]">✓ Part selected</p>
-                  ) : null}
                 </div>
               ) : (
                 <div className="grid gap-1">
@@ -1162,161 +1146,6 @@ export function ShoppingListsClient({
         onDismiss={(id) => setToastMessages((msgs) => msgs.filter((m) => m.id !== id))}
       />
     </>
-  );
-}
-
-type PartOption = {
-  id: string;
-  catalogNumber: string;
-  manufacturerName: string;
-  description: string | null;
-  primaryCategoryPath: string | null;
-};
-
-function scorePartMatch(query: string, part: PartOption): number {
-  const q = query.toLowerCase();
-  const cn = part.catalogNumber.toLowerCase();
-  const mfr = part.manufacturerName.toLowerCase();
-  const desc = (part.description ?? "").toLowerCase();
-
-  if (cn === q) return 200;
-  if (cn.startsWith(q)) return 150;
-  if (cn.includes(q)) return 100;
-  if (mfr.startsWith(q)) return 80;
-  if (mfr.includes(q)) return 60;
-  if (desc.includes(q)) return 40;
-
-  let ci = 0;
-  for (let i = 0; i < cn.length && ci < q.length; i++) {
-    if (cn[i] === q[ci]) ci++;
-  }
-  if (ci === q.length) return 30;
-
-  return 0;
-}
-
-type PartAutocompleteProps = {
-  searchQuery: string;
-  onSearchQueryChange: (q: string) => void;
-  options: PartOption[];
-  selectedPartId: string | null;
-  onSelect: (part: PartOption) => void;
-  placeholder: string;
-  noMatchingPartsLabel: string;
-};
-
-function PartAutocomplete({
-  searchQuery,
-  onSearchQueryChange,
-  options,
-  selectedPartId,
-  onSelect,
-  placeholder,
-  noMatchingPartsLabel
-}: PartAutocompleteProps) {
-  const inputRef = useRef<HTMLInputElement>(null);
-  const [isOpen, setIsOpen] = useState(false);
-  const [activeIndex, setActiveIndex] = useState(0);
-  const [dropdownStyle, setDropdownStyle] = useState<React.CSSProperties>({});
-
-  const sortedOptions = useMemo(() => {
-    if (!searchQuery) return options;
-    return [...options]
-      .map((p) => ({ part: p, score: scorePartMatch(searchQuery, p) }))
-      .filter((x) => x.score > 0)
-      .sort((a, b) => b.score - a.score)
-      .map((x) => x.part);
-  }, [options, searchQuery]);
-
-  const shouldShowDropdown = isOpen && searchQuery.length > 0 && !selectedPartId;
-
-  useEffect(() => {
-    if (!shouldShowDropdown || !inputRef.current) return;
-    const rect = inputRef.current.getBoundingClientRect();
-    setDropdownStyle({
-      position: "fixed",
-      top: rect.bottom + 4,
-      left: rect.left,
-      width: rect.width,
-      zIndex: 9999
-    });
-  }, [shouldShowDropdown, searchQuery]);
-
-  useEffect(() => {
-    setActiveIndex(0);
-  }, [searchQuery]);
-
-  function handleKeyDown(e: React.KeyboardEvent) {
-    if (!shouldShowDropdown) return;
-    if (e.key === "ArrowDown") {
-      e.preventDefault();
-      setActiveIndex((i) => Math.min(i + 1, sortedOptions.length - 1));
-    } else if (e.key === "ArrowUp") {
-      e.preventDefault();
-      setActiveIndex((i) => Math.max(i - 1, 0));
-    } else if (e.key === "Enter") {
-      e.preventDefault();
-      const part = sortedOptions[activeIndex];
-      if (part) onSelect(part);
-    } else if (e.key === "Escape") {
-      setIsOpen(false);
-    }
-  }
-
-  return (
-    <div>
-      <input
-        ref={inputRef}
-        autoComplete="off"
-        className="min-h-10 w-full rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-950 outline-none transition hover:border-slate-400 focus:border-slate-500 focus:ring-2 focus:ring-slate-200"
-        placeholder={placeholder}
-        type="text"
-        value={searchQuery}
-        onBlur={() => setTimeout(() => setIsOpen(false), 150)}
-        onChange={(e) => {
-          onSearchQueryChange(e.target.value);
-          setIsOpen(true);
-        }}
-        onFocus={() => setIsOpen(true)}
-        onKeyDown={handleKeyDown}
-      />
-      {shouldShowDropdown && sortedOptions.length === 0 ? (
-        <p className="mt-1 text-xs text-slate-500">{noMatchingPartsLabel}</p>
-      ) : null}
-      {shouldShowDropdown && sortedOptions.length > 0
-        ? createPortal(
-            <div
-              className="max-h-64 overflow-auto rounded-md border border-slate-200 bg-white shadow-lg"
-              style={dropdownStyle}
-            >
-              {sortedOptions.map((part, i) => (
-                <button
-                  key={part.id}
-                  className={`flex w-full flex-col px-3 py-2 text-left text-sm transition hover:bg-slate-50 ${i === activeIndex ? "bg-slate-100" : ""}`}
-                  type="button"
-                  onMouseDown={(e) => {
-                    e.preventDefault();
-                    onSelect(part);
-                  }}
-                  onMouseEnter={() => setActiveIndex(i)}
-                >
-                  <div className="flex items-center gap-2">
-                    <span className="font-medium text-slate-900">{part.catalogNumber}</span>
-                    <span className="text-slate-500">{part.manufacturerName}</span>
-                  </div>
-                  {part.description ? (
-                    <p className="truncate text-xs text-slate-500">{part.description}</p>
-                  ) : null}
-                  {part.primaryCategoryPath ? (
-                    <p className="truncate text-xs text-slate-400">{part.primaryCategoryPath}</p>
-                  ) : null}
-                </button>
-              ))}
-            </div>,
-            document.body
-          )
-        : null}
-    </div>
   );
 }
 
