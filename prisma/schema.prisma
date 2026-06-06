@@ -27,8 +27,10 @@ model Part {
   manufacturer      Organization         @relation("PartManufacturer", fields: [manufacturerId], references: [id], onDelete: Restrict)
   primaryCategory   PartCategory?        @relation("PartPrimaryCategory", fields: [primaryCategoryId], references: [id], onDelete: SetNull)
   secondaryCategory PartCategory?        @relation("PartSecondaryCategory", fields: [secondaryCategoryId], references: [id], onDelete: SetNull)
-  attributeValues   PartAttributeValue[]
-  inventoryEntries  InventoryEntry[]
+  attributeValues    PartAttributeValue[]
+  inventoryEntries   InventoryEntry[]
+  shoppingListItems  ShoppingListItem[]
+  purchaseOrderItems PurchaseOrderItem[]
 
   @@unique([workspaceId, manufacturerId, catalogNumber])
   @@index([workspaceId, catalogNumber])
@@ -175,6 +177,7 @@ model Organization {
   workspace         Workspace          @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   roles             OrganizationRole[]
   manufacturedParts Part[]             @relation("PartManufacturer")
+  purchaseOrders    PurchaseOrder[]    @relation("PurchaseOrderSupplier")
   supplierManufacturerMappingStats SupplierManufacturerMappingStat[]
 
   @@unique([workspaceId, normalizedName])
@@ -398,6 +401,8 @@ model Workspace {
   supplierCategoryMappingStats SupplierCategoryMappingStat[]
   supplierAttributeMappingStats SupplierAttributeMappingStat[]
   supplierManufacturerMappingStats SupplierManufacturerMappingStat[]
+  shoppingLists    ShoppingList[]
+  purchaseOrders   PurchaseOrder[]
 }
 
 enum SupplierProvider {
@@ -559,4 +564,89 @@ model WorkspaceMemberRole {
 
   @@id([workspaceMemberId, roleId])
   @@index([roleId])
+}
+
+model ShoppingList {
+  id          String             @id @default(cuid())
+  workspaceId String
+  name        String
+  notes       String?
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+
+  workspace      Workspace          @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  items          ShoppingListItem[]
+  purchaseOrders PurchaseOrder[]
+
+  @@index([workspaceId])
+  @@index([workspaceId, name])
+}
+
+model ShoppingListItem {
+  id             String   @id @default(cuid())
+  shoppingListId String
+  partId         String
+  quantity       Decimal
+  notes          String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  shoppingList       ShoppingList        @relation(fields: [shoppingListId], references: [id], onDelete: Cascade)
+  part               Part                @relation(fields: [partId], references: [id], onDelete: Restrict)
+  purchaseOrderItems PurchaseOrderItem[]
+
+  @@index([shoppingListId])
+  @@index([partId])
+}
+
+enum PurchaseOrderStatus {
+  DRAFT
+  ORDERED
+  RECEIVED
+}
+
+model PurchaseOrder {
+  id                   String              @id @default(cuid())
+  workspaceId          String
+  supplierId           String
+  sourceShoppingListId String?
+  status               PurchaseOrderStatus @default(DRAFT)
+  orderNumber          String?
+  orderedAt            DateTime?
+  notes                String?
+  createdAt            DateTime            @default(now())
+  updatedAt            DateTime            @updatedAt
+
+  workspace          Workspace           @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  supplier           Organization        @relation("PurchaseOrderSupplier", fields: [supplierId], references: [id], onDelete: Restrict)
+  sourceShoppingList ShoppingList?       @relation(fields: [sourceShoppingListId], references: [id], onDelete: SetNull)
+  items              PurchaseOrderItem[]
+
+  @@index([workspaceId])
+  @@index([workspaceId, supplierId])
+  @@index([workspaceId, status])
+  @@index([workspaceId, sourceShoppingListId])
+}
+
+model PurchaseOrderItem {
+  id                       String   @id @default(cuid())
+  purchaseOrderId          String
+  partId                   String
+  sourceShoppingListItemId String?
+  quantity                 Decimal
+  receivedQuantity         Decimal  @default(0)
+  supplierSku              String?
+  unitPrice                Decimal?
+  currency                 String?
+  notes                    String?
+  createdAt                DateTime @default(now())
+  updatedAt                DateTime @updatedAt
+
+  purchaseOrder          PurchaseOrder     @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
+  part                   Part              @relation(fields: [partId], references: [id], onDelete: Restrict)
+  sourceShoppingListItem ShoppingListItem? @relation(fields: [sourceShoppingListItemId], references: [id], onDelete: SetNull)
+
+  @@index([purchaseOrderId])
+  @@index([partId])
+  @@index([sourceShoppingListItemId])
 }

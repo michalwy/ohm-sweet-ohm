@@ -2,7 +2,7 @@
 
 ## Current State
 
-This repository contains a Next.js App Router application with TypeScript, Tailwind CSS, Prisma, PostgreSQL, Better Auth authentication, workspace routing, workspace-scoped access control, parts, part categories, attributes, units, storage locations, stock movements, and supplier integration settings.
+This repository contains a Next.js App Router application with TypeScript, Tailwind CSS, Prisma, PostgreSQL, Better Auth authentication, workspace routing, workspace-scoped access control, parts, part categories, attributes, units, storage locations, stock movements, supplier integration settings, shopping lists, and purchase orders.
 
 The project is no longer only a scaffold. Core architecture now includes:
 
@@ -10,9 +10,10 @@ The project is no longer only a scaffold. Core architecture now includes:
 - Workspace-scoped domain data using internal `workspaceId` values.
 - Public workspace routes under `/w/[workspaceSlug]/...`.
 - Permission-based server-side authorization with an `admin` wildcard permission.
-- Prisma migrations for authentication, workspace access control, parts, categories, attributes, units, locations, inventory entries, and supplier settings.
+- Prisma migrations for authentication, workspace access control, parts, categories, attributes, units, locations, inventory entries, supplier settings, and purchases workflow.
 - Transaction-safe inventory stock validation for issue, transfer, and negative adjustment writes.
 - Storage-location lifecycle guard that blocks archiving locations with non-zero stock balances.
+- Purchases workflow: shopping lists (informal, no supplier, no status) and purchase orders (per-supplier, DRAFT → ORDERED → RECEIVED, with automatic RECEIPT inventory entry on receive).
 - Browser-level e2e coverage for authentication and core workspace/parts/category flows.
 
 ## Intended Shape

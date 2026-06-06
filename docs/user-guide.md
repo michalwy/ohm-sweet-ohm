@@ -143,7 +143,72 @@ For each movement, you enter quantity and optional note, and select source/desti
 The system then updates current stock based on recorded movement history.
 When multiple stock updates for the same part happen at nearly the same time, OSO applies them in a transaction-safe order so stock cannot be driven below zero by race conditions.
 
-## 8. Configure Supplier Integrations
+## 8. Manage Shopping Lists
+
+Use **Shopping Lists** to keep an informal running list of parts you want to buy.
+
+A shopping list has no supplier and no formal status — it is a flexible scratchpad.
+
+### Creating And Managing Lists
+
+1. Open **Shopping Lists** from the sidebar.
+2. Click **New list**, enter a name and optional notes, and save.
+3. Use the **Edit** button to rename or update notes.
+4. Use **Delete** to remove a list (this deletes its items too).
+
+### Adding Items To A List
+
+1. Click **Open** on a list row to expand the items panel.
+2. Click **Add item**, search for a part by catalog number or description, set a quantity, and save.
+3. Items show an **On order** badge when they have been included in at least one purchase order.
+
+### Converting Items To A Purchase Order
+
+1. Select one or more items using the checkboxes in the items panel.
+2. Click **Convert to order (N)**.
+3. Choose a supplier organization and confirm.
+
+This creates a new purchase order in DRAFT status with the selected items. The original shopping list items remain on the list.
+
+## 9. Manage Purchase Orders
+
+Use **Purchase Orders** to track formal orders sent to a supplier.
+
+### Creating An Order
+
+1. Open **Purchase Orders** from the sidebar.
+2. Click **New order**, choose a supplier organization, optionally enter an order number and notes, and save.
+3. The order starts in **Draft** status.
+
+> **Note:** The supplier must be an organization in your workspace. Create organizations from parts management (manufacturer field) or use a shopping list conversion which creates an order automatically.
+
+### Adding Items
+
+1. Click **Open** on an order row to expand the detail panel.
+2. Click **Add item**, search for a part, enter a quantity, and optionally fill in a supplier SKU, unit price, and currency.
+3. Click **Look up** next to the supplier SKU field to auto-fill the SKU from the active DigiKey or TME integration.
+
+### Marking An Order As Ordered
+
+When you have submitted the order to the supplier, click **Mark as ordered** in the order detail panel. This records the order date and advances the status to **Ordered**.
+
+You can still add, edit, or remove items on an ordered order.
+
+### Receiving Items
+
+When parts arrive:
+
+1. Click **Receive items** in the order detail panel.
+2. For each item, enter the quantity received and choose a destination storage location.
+3. Save.
+
+Each received item creates a **Receipt** inventory movement automatically. Items with a checkmark (✓) are fully received.
+
+When all items reach their full ordered quantity the order status advances to **Received** automatically.
+
+Partial receives are supported — you can receive in multiple sessions until the order is complete.
+
+## 10. Configure Supplier Integrations
 
 In **Settings > Integrations**, you can configure workspace-level supplier settings.
 
@@ -154,7 +219,7 @@ Current providers:
 
 You can also choose which provider is active for the workspace.
 
-## 9. Permissions And Read-Only Behavior
+## 11. Permissions And Read-Only Behavior
 
 What you can edit depends on your workspace permissions.
 
@@ -173,3 +238,5 @@ If you are setting up a new workspace, this sequence usually works best:
 6. Add parts.
 7. Record stock movements.
 8. Configure integrations if needed.
+9. Use shopping lists to collect parts to buy.
+10. Create purchase orders and receive deliveries to update inventory automatically.

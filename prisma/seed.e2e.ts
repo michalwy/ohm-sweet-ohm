@@ -34,6 +34,12 @@ async function main() {
   await prisma.rolePermission.deleteMany();
   await prisma.role.deleteMany();
   await prisma.workspaceMember.deleteMany();
+  await prisma.purchaseOrderItem.deleteMany();
+  await prisma.purchaseOrder.deleteMany();
+  await prisma.shoppingListItem.deleteMany();
+  await prisma.shoppingList.deleteMany();
+  await prisma.inventoryEntry.deleteMany();
+  await prisma.partAttributeValue.deleteMany();
   await prisma.part.deleteMany();
   await prisma.unit.deleteMany();
   await prisma.organizationRole.deleteMany();

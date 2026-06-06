@@ -26,14 +26,17 @@ Current implemented extension scope beyond the base parts list includes:
 - workspace-scoped storage locations
 - stock movements (receipt, issue, transfer, adjustment)
 - supplier integration settings (DigiKey and TME) and active provider selection
+- shopping lists (informal lists of parts to buy)
+- purchase orders (formal per-supplier orders with item-level receive flow)
 
 Location lifecycle rule: a location can be archived only when its stock balance is zero. Archived locations are read-only for inventory movement purposes and remain visible in stock views when they still hold non-zero balances from earlier history.
 
-BOM workflows, purchase-order workflows, pricing policy, lifecycle states, and import behavior are still intentionally undefined.
+Purchases workflow decisions (see ADR-0014): shopping lists are informal and ad-hoc with no supplier or status; purchase orders are formal per-supplier documents with states DRAFT → ORDERED → RECEIVED; receiving items automatically creates RECEIPT inventory entries; shopping list items can be converted into a purchase order; suppliers are Organizations with a `"supplier"` role; DigiKey/TME integration is used to look up supplier SKU when adding items to a purchase order.
+
+BOM workflows, pricing policy, lifecycle states, and import behavior are still intentionally undefined.
 
 ## Open Questions
 
-- What is the first workflow OSO should support?
 - Should parts later include optional descriptive fields such as category, package, attributes, datasheets, or vendor links?
 - Should the app optimize for a single-user home lab first, or prepare for multi-user/team usage from the beginning?
 - Should OSO support offline-first usage?

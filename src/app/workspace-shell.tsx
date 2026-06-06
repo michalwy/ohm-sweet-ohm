@@ -6,6 +6,8 @@ import { signOut } from "@/server/auth/actions";
 type WorkspaceNavItem =
   | "parts"
   | "locations"
+  | "shopping-lists"
+  | "purchase-orders"
   | "part-categories"
   | "attributes"
   | "units"
@@ -29,6 +31,9 @@ const copy = {
   signOut: "Sign out",
   parts: "Parts",
   locations: "Locations",
+  purchasesSection: "Purchases",
+  shoppingLists: "Shopping Lists",
+  purchaseOrders: "Purchase Orders",
   configurationSection: "Configuration",
   partCategories: "Part categories",
   attributes: "Attributes",
@@ -87,6 +92,24 @@ export function WorkspaceShell({
               aria-current={activeNavItem === "locations" ? "page" : undefined}
             >
               {copy.locations}
+            </Link>
+            <div className="my-2 border-t border-slate-200" />
+            <p className="px-3 pb-1 pt-1 text-xs font-semibold uppercase tracking-wide text-slate-500">
+              {copy.purchasesSection}
+            </p>
+            <Link
+              className={getNavLinkClass(activeNavItem === "shopping-lists")}
+              href={`/w/${workspaceSlug}/shopping-lists`}
+              aria-current={activeNavItem === "shopping-lists" ? "page" : undefined}
+            >
+              {copy.shoppingLists}
+            </Link>
+            <Link
+              className={getNavLinkClass(activeNavItem === "purchase-orders")}
+              href={`/w/${workspaceSlug}/purchase-orders`}
+              aria-current={activeNavItem === "purchase-orders" ? "page" : undefined}
+            >
+              {copy.purchaseOrders}
             </Link>
             <div className="my-2 border-t border-slate-200" />
             <p className="px-3 pb-1 pt-1 text-xs font-semibold uppercase tracking-wide text-slate-500">
