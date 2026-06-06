@@ -2,7 +2,8 @@
 
 import type { ReactNode } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { VisibilityState } from "@tanstack/react-table";
+import type { Header, VisibilityState } from "@tanstack/react-table";
+import { flexRender } from "@tanstack/react-table";
 
 import type { ListColumnDefinition } from "@/app/list-table-config";
 
@@ -192,6 +193,129 @@ export function ListPageToolbar({
         {primaryAction}
       </div>
     </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Shared resizable / draggable table header cell
+// ---------------------------------------------------------------------------
+
+type ListTableHeaderCellProps = {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  header: Header<any, any>;
+  columnDefs: ListColumnDefinition[];
+  isResizingColumn: boolean;
+  setColumnSorting: (id: string, dir: "asc" | "desc" | "none") => void;
+  setColumnWidth: (id: string, width: number) => void;
+  setIsResizingColumn: (v: boolean) => void;
+  /** Extra className appended to the <th> element (e.g. sticky positioning). */
+  className?: string;
+  // Drag-and-drop — omit to disable
+  draggedColumnId?: string | null;
+  onStartDrag?: (columnId: string) => void;
+  onDropOnto?: (columnId: string) => void;
+  onDragEnd?: () => void;
+};
+
+export function ListTableHeaderCell({
+  header,
+  columnDefs,
+  isResizingColumn,
+  setColumnSorting,
+  setColumnWidth,
+  setIsResizingColumn,
+  className,
+  draggedColumnId,
+  onStartDrag,
+  onDropOnto,
+  onDragEnd
+}: ListTableHeaderCellProps) {
+  const columnId = header.column.id;
+  const isActionsColumn = columnId === "actions";
+  const colDef = columnDefs.find((c) => c.id === columnId);
+  const align = colDef?.align ?? "left";
+
+  const dragEnabled = !isActionsColumn && onStartDrag != null;
+  const dropEnabled = !isActionsColumn && onDropOnto != null;
+
+  const alignClass =
+    align === "right" ? "text-right" : align === "center" ? "text-center" : "text-left";
+  const flexJustify =
+    align === "right" ? "justify-end" : align === "center" ? "justify-center" : "";
+
+  return (
+    <th
+      key={header.id}
+      draggable={dragEnabled && !isResizingColumn}
+      className={`relative border-b border-slate-200 px-2 py-2.5 text-xs font-semibold text-slate-700 ${alignClass}${className ? ` ${className}` : ""}`}
+      style={{ width: header.getSize() }}
+      onDragStart={(e) => {
+        if (!dragEnabled) return;
+        if (isResizingColumn) { e.preventDefault(); return; }
+        onStartDrag(columnId);
+      }}
+      onDragOver={(e) => {
+        if (dropEnabled && draggedColumnId != null) e.preventDefault();
+      }}
+      onDrop={() => {
+        if (dropEnabled) onDropOnto(columnId);
+        onDragEnd?.();
+      }}
+      onDragEnd={() => onDragEnd?.()}
+    >
+      {!isActionsColumn && !header.isPlaceholder ? (
+        <div className={`flex items-center gap-1 overflow-hidden ${flexJustify}`}>
+          {header.column.getCanSort() ? (
+            <button
+              className="flex items-center gap-1 overflow-hidden text-left hover:text-slate-900"
+              type="button"
+              onClick={() => {
+                const current = header.column.getIsSorted();
+                if (!colDef?.sortable) return;
+                if (!current) {
+                  setColumnSorting(columnId, "asc");
+                } else if (current === "asc") {
+                  setColumnSorting(columnId, "desc");
+                } else {
+                  setColumnSorting(columnId, "none");
+                }
+              }}
+            >
+              <span>{flexRender(header.column.columnDef.header, header.getContext())}</span>
+              {header.column.getIsSorted() ? (
+                <span className="text-xs text-slate-400">
+                  {header.column.getIsSorted() === "asc" ? "▲" : "▼"}
+                </span>
+              ) : null}
+            </button>
+          ) : (
+            <span>{flexRender(header.column.columnDef.header, header.getContext())}</span>
+          )}
+        </div>
+      ) : null}
+      {header.column.getCanResize() ? (
+        <div
+          className={`absolute right-0 top-0 h-full w-3 cursor-col-resize select-none ${
+            header.column.getIsResizing() ? "bg-slate-200" : "bg-transparent"
+          }`}
+          onDoubleClick={() =>
+            setColumnWidth(columnId, Number(colDef?.defaultWidth ?? 160))
+          }
+          onMouseDown={(e) => {
+            e.stopPropagation();
+            setIsResizingColumn(true);
+            header.getResizeHandler()(e);
+          }}
+          onTouchStart={(e) => {
+            e.stopPropagation();
+            setIsResizingColumn(true);
+            header.getResizeHandler()(e);
+          }}
+        >
+          <div className="ml-auto h-full w-px bg-slate-300" />
+        </div>
+      ) : null}
+    </th>
   );
 }
 

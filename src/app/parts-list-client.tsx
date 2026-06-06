@@ -41,7 +41,7 @@ import { DetailPanel, useDetailsPanelWidth } from "@/app/detail-panel";
 import {
   useListTableConfiguration
 } from "@/app/list-table-config";
-import { ListPageToolbar, useColumnResizeCursor } from "@/app/list-page-toolbar";
+import { ListPageToolbar, ListTableHeaderCell, useColumnResizeCursor } from "@/app/list-page-toolbar";
 import {
   getNextToastId,
   ToastNotice,
@@ -352,7 +352,8 @@ export function PartsListClient({
         defaultVisible: false,
         defaultWidth: 160,
         minWidth: 80,
-        sortable: true
+        sortable: true,
+        align: "center" as const
       })),
     [workspaceAttributes]
   );
@@ -395,7 +396,8 @@ export function PartsListClient({
         group: "base" as const,
         defaultWidth: 110,
         minWidth: 64,
-        sortable: true
+        sortable: true,
+        align: "center" as const
       },
       ...(canReadInventory
         ? [
@@ -405,7 +407,8 @@ export function PartsListClient({
               group: "base" as const,
               defaultWidth: 120,
               minWidth: 72,
-              sortable: true
+              sortable: true,
+              align: "right" as const
             }
           ]
         : []),
@@ -1620,128 +1623,24 @@ export function PartsListClient({
               {partsTable.getHeaderGroups().map((headerGroup) => (
                 <tr key={headerGroup.id}>
                   {headerGroup.headers.map((header) => (
-                    <th
+                    <ListTableHeaderCell
                       key={header.id}
-                      scope="col"
-                      draggable={header.column.id !== "actions" && !isResizingColumn}
-                      className={`relative border-b border-slate-200 px-2 py-2 font-semibold text-slate-600 ${
+                      columnDefs={listColumns}
+                      className={
                         header.column.id === "actions"
-                          ? "sticky right-0 z-20 w-28 bg-slate-50 text-right"
-                          : header.column.id === "currentStock"
-                            ? "text-right"
-                          : header.column.id.startsWith("attribute:") ||
-                              header.column.id === "valueDisplayValue"
-                            ? "text-center"
-                            : ""
-                      }`}
-                      style={{ width: header.getSize() }}
-                      onDragStart={(event) => {
-                        if (isResizingColumn) {
-                          event.preventDefault();
-                          return;
-                        }
-
-                        if (header.column.id !== "actions") {
-                          setDraggedColumnId(header.column.id);
-                        }
-                      }}
-                      onDragOver={(event) => {
-                        if (draggedColumnId && header.column.id !== "actions") {
-                          event.preventDefault();
-                        }
-                      }}
-                      onDrop={() => {
-                        if (header.column.id !== "actions") {
-                          moveColumnByDrag(header.column.id);
-                        }
-                        setDraggedColumnId(null);
-                      }}
+                          ? "sticky right-0 z-20 bg-slate-50"
+                          : undefined
+                      }
+                      draggedColumnId={draggedColumnId}
+                      header={header}
+                      isResizingColumn={isResizingColumn}
+                      setColumnSorting={setColumnSorting}
+                      setColumnWidth={setColumnWidth}
+                      setIsResizingColumn={setIsResizingColumn}
                       onDragEnd={() => setDraggedColumnId(null)}
-                    >
-                      {header.isPlaceholder ? null : (
-                        <div
-                          className={`flex items-center gap-2 ${
-                            header.column.id === "currentStock"
-                              ? "justify-end"
-                              : ""
-                          } ${
-                            header.column.id.startsWith("attribute:") ||
-                            header.column.id === "valueDisplayValue"
-                              ? "justify-center"
-                              : ""
-                          }`}
-                        >
-                          <button
-                            className={`inline-flex items-center gap-1 text-left ${
-                              header.column.getCanSort()
-                                ? "cursor-pointer hover:text-slate-900"
-                                : "cursor-default"
-                            } ${
-                              header.column.id === "currentStock"
-                                ? "w-full justify-end text-right"
-                                : ""
-                            } ${
-                              header.column.id.startsWith("attribute:") ||
-                              header.column.id === "valueDisplayValue"
-                                ? "w-full justify-center text-center"
-                                : ""
-                            }`}
-                            type="button"
-                            onClick={() => {
-                              if (header.column.getCanSort()) {
-                                toggleColumnSorting(header.column.id);
-                              }
-                            }}
-                          >
-                            <span>
-                              {flexRender(
-                                header.column.columnDef.header,
-                                header.getContext()
-                              )}
-                            </span>
-                            {header.column.getCanSort() &&
-                            header.column.getIsSorted() ? (
-                              <span className="text-xs text-slate-400">
-                                {header.column.getIsSorted() === "asc"
-                                  ? "▲"
-                                  : "▼"}
-                              </span>
-                            ) : null}
-                          </button>
-                        </div>
-                      )}
-                      {header.column.getCanResize() ? (
-                        <div
-                          className={`absolute right-0 top-0 h-full w-3 cursor-col-resize select-none ${
-                            header.column.getIsResizing()
-                              ? "bg-slate-200"
-                              : "bg-transparent"
-                          }`}
-                          onMouseDown={(event) => {
-                            event.stopPropagation();
-                            setIsResizingColumn(true);
-                            header.getResizeHandler()(event);
-                          }}
-                          onTouchStart={(event) => {
-                            event.stopPropagation();
-                            setIsResizingColumn(true);
-                            header.getResizeHandler()(event);
-                          }}
-                          onDoubleClick={() =>
-                            setColumnWidth(
-                              header.column.id,
-                              Number(
-                                listColumns.find(
-                                  (column) => column.id === header.column.id
-                                )?.defaultWidth ?? 160
-                              )
-                            )
-                          }
-                        >
-                          <div className="ml-auto h-full w-px bg-slate-300" />
-                        </div>
-                      ) : null}
-                    </th>
+                      onDropOnto={(id) => moveColumnByDrag(id)}
+                      onStartDrag={(id) => setDraggedColumnId(id)}
+                    />
                   ))}
                 </tr>
               ))}

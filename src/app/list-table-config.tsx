@@ -20,6 +20,7 @@ export type ListColumnDefinition = {
   minWidth?: number;
   maxWidth?: number;
   sortable?: boolean;
+  align?: "left" | "right" | "center";
 };
 
 type StoredListConfiguration = {

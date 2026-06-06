@@ -52,7 +52,7 @@ import {
   useListTableConfiguration,
   type ListColumnDefinition
 } from "@/app/list-table-config";
-import { ListPageToolbar, useColumnResizeCursor } from "@/app/list-page-toolbar";
+import { ListPageToolbar, ListTableHeaderCell, useColumnResizeCursor } from "@/app/list-page-toolbar";
 import { DetailPanel, useDetailsPanelWidth } from "@/app/detail-panel";
 
 type Organization = { id: string; name: string };
@@ -185,7 +185,7 @@ export function ShoppingListsClient({
     () => [
       { id: "name", label: copy.name, group: "base", defaultWidth: 240, minWidth: 120, sortable: true },
       { id: "description", label: copy.description, group: "base", defaultWidth: 320, minWidth: 96 },
-      { id: "itemCount", label: copy.items, group: "base", defaultWidth: 100, minWidth: 64, sortable: true },
+      { id: "itemCount", label: copy.items, group: "base", defaultWidth: 100, minWidth: 64, sortable: true, align: "right" as const },
       { id: "createdAt", label: copy.created, group: "base", defaultWidth: 160, minWidth: 100, defaultVisible: false, sortable: true },
       { id: "createdBy", label: copy.createdBy, group: "base", defaultWidth: 160, minWidth: 100, defaultVisible: false }
     ],
@@ -723,74 +723,19 @@ export function ShoppingListsClient({
                 {listsTable.getHeaderGroups().map((headerGroup) => (
                   <tr key={headerGroup.id}>
                     {headerGroup.headers.map((header) => (
-                      <th
+                      <ListTableHeaderCell
                         key={header.id}
-                        draggable={header.column.id !== "actions" && !isResizingColumn}
-                        className={`relative border-b border-slate-200 px-2 py-2.5 text-xs font-semibold text-slate-700 ${header.column.id === "itemCount" ? "text-right" : "text-left"}`}
-                        style={{ width: header.getSize() }}
-                        onDragStart={(e) => {
-                          if (isResizingColumn) { e.preventDefault(); return; }
-                          if (header.column.id !== "actions") setDraggedColumnId(header.column.id);
-                        }}
-                        onDragOver={(e) => {
-                          if (draggedColumnId && header.column.id !== "actions") e.preventDefault();
-                        }}
-                        onDrop={() => {
-                          if (header.column.id !== "actions") moveColumnByDrag(header.column.id);
-                          setDraggedColumnId(null);
-                        }}
+                        columnDefs={listColumns}
+                        draggedColumnId={draggedColumnId}
+                        header={header}
+                        isResizingColumn={isResizingColumn}
+                        setColumnSorting={setColumnSorting}
+                        setColumnWidth={setColumnWidth}
+                        setIsResizingColumn={setIsResizingColumn}
                         onDragEnd={() => setDraggedColumnId(null)}
-                      >
-                        {header.column.id !== "actions" ? (
-                          <div className={`flex items-center gap-1 overflow-hidden ${header.column.id === "itemCount" ? "justify-end" : ""}`}>
-                            {header.column.getCanSort() ? (
-                              <button
-                                className="flex items-center gap-1 overflow-hidden text-left hover:text-slate-900"
-                                type="button"
-                                onClick={() => {
-                                  const current = header.column.getIsSorted();
-                                  const columnDef = listColumns.find((c) => c.id === header.column.id);
-                                  if (!columnDef?.sortable) return;
-                                  if (!current) {
-                                    setColumnSorting(header.column.id, "asc");
-                                  } else if (current === "asc") {
-                                    setColumnSorting(header.column.id, "desc");
-                                  } else {
-                                    setColumnSorting(header.column.id, "none");
-                                  }
-                                }}
-                              >
-                                <span>{flexRender(header.column.columnDef.header, header.getContext())}</span>
-                                {header.column.getIsSorted() ? (
-                                  <span className="text-xs text-slate-400">
-                                    {header.column.getIsSorted() === "asc" ? "▲" : "▼"}
-                                  </span>
-                                ) : null}
-                              </button>
-                            ) : (
-                              <span>{flexRender(header.column.columnDef.header, header.getContext())}</span>
-                            )}
-                          </div>
-                        ) : null}
-                        {header.column.getCanResize() ? (
-                          <div
-                            className={`absolute right-0 top-0 h-full w-3 cursor-col-resize select-none ${header.column.getIsResizing() ? "bg-slate-200" : "bg-transparent"}`}
-                            onDoubleClick={() =>
-                              setColumnWidth(
-                                header.column.id,
-                                Number(listColumns.find((c) => c.id === header.column.id)?.defaultWidth ?? 160)
-                              )
-                            }
-                            onMouseDown={(e) => {
-                              e.stopPropagation();
-                              setIsResizingColumn(true);
-                              header.getResizeHandler()(e);
-                            }}
-                          >
-                            <div className="ml-auto h-full w-px bg-slate-300" />
-                          </div>
-                        ) : null}
-                      </th>
+                        onDropOnto={(id) => moveColumnByDrag(id)}
+                        onStartDrag={(id) => setDraggedColumnId(id)}
+                      />
                     ))}
                   </tr>
                 ))}

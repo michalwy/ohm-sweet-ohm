@@ -40,7 +40,7 @@ import {
   useListTableConfiguration,
   type ListColumnDefinition
 } from "@/app/list-table-config";
-import { ListPageToolbar, useColumnResizeCursor } from "@/app/list-page-toolbar";
+import { ListPageToolbar, ListTableHeaderCell, useColumnResizeCursor } from "@/app/list-page-toolbar";
 
 type Copy = {
   title: string;
@@ -130,7 +130,7 @@ export function OrganizationsClient({
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [dialogFormKey, setDialogFormKey] = useState(0);
   const [toastMessages, setToastMessages] = useState<ToastMessage[]>([]);
-  const { setIsResizingColumn, containerClassName } = useColumnResizeCursor();
+  const { isResizingColumn, setIsResizingColumn, containerClassName } = useColumnResizeCursor();
 
   // --- Column configuration ---
 
@@ -468,61 +468,15 @@ export function OrganizationsClient({
                 {table.getHeaderGroups().map((headerGroup) => (
                   <tr key={headerGroup.id}>
                     {headerGroup.headers.map((header) => (
-                      <th
+                      <ListTableHeaderCell
                         key={header.id}
-                        className="relative border-b border-slate-200 px-2 py-2.5 text-left text-xs font-semibold text-slate-700"
-                        style={{ width: header.getSize() }}
-                      >
-                        {header.column.id !== "actions" ? (
-                          <div className="flex items-center gap-1 overflow-hidden">
-                            {header.column.getCanSort() ? (
-                              <button
-                                className="flex items-center gap-1 overflow-hidden text-left hover:text-slate-900"
-                                type="button"
-                                onClick={() => {
-                                  const current = header.column.getIsSorted();
-                                  const colDef = orgColumns.find((c) => c.id === header.column.id);
-                                  if (!colDef?.sortable) return;
-                                  if (!current) {
-                                    setColumnSorting(header.column.id, "asc");
-                                  } else if (current === "asc") {
-                                    setColumnSorting(header.column.id, "desc");
-                                  } else {
-                                    setColumnSorting(header.column.id, "none");
-                                  }
-                                }}
-                              >
-                                <span>{flexRender(header.column.columnDef.header, header.getContext())}</span>
-                                {header.column.getIsSorted() ? (
-                                  <span className="text-xs text-slate-400">
-                                    {header.column.getIsSorted() === "asc" ? "▲" : "▼"}
-                                  </span>
-                                ) : null}
-                              </button>
-                            ) : (
-                              <span>{flexRender(header.column.columnDef.header, header.getContext())}</span>
-                            )}
-                          </div>
-                        ) : null}
-                        {header.column.getCanResize() ? (
-                          <div
-                            className={`absolute right-0 top-0 h-full w-3 cursor-col-resize select-none ${header.column.getIsResizing() ? "bg-slate-200" : "bg-transparent"}`}
-                            onDoubleClick={() =>
-                              setColumnWidth(
-                                header.column.id,
-                                Number(orgColumns.find((c) => c.id === header.column.id)?.defaultWidth ?? 160)
-                              )
-                            }
-                            onMouseDown={(e) => {
-                              e.stopPropagation();
-                              setIsResizingColumn(true);
-                              header.getResizeHandler()(e);
-                            }}
-                          >
-                            <div className="ml-auto h-full w-px bg-slate-300" />
-                          </div>
-                        ) : null}
-                      </th>
+                        columnDefs={orgColumns}
+                        header={header}
+                        isResizingColumn={isResizingColumn}
+                        setColumnSorting={setColumnSorting}
+                        setColumnWidth={setColumnWidth}
+                        setIsResizingColumn={setIsResizingColumn}
+                      />
                     ))}
                   </tr>
                 ))}
