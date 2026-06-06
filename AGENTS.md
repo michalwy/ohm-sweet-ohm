@@ -36,6 +36,7 @@ This project is intentionally vibe-coded. Future agents must preserve product in
 - When creating or updating backlog issues, always assign appropriate labels during the same task. At minimum, apply `backlog` plus one type label (for example `enhancement`, `bug`, or `question`), and add priority labels when known.
 - Do not maintain a local `TODO.md` backlog file. Keep backlog items only in GitHub Issues.
 - If GitHub connector/integration cannot create or update issues, use `gh` CLI as the required fallback and complete the issue operation there.
+- All GitHub content must be in English: issue titles, issue comments, PR titles, PR descriptions, and commit messages.
 - Do not create git commits unless the user explicitly asks for a commit. Do not push unless the user explicitly asks to push. Never commit or push automatically at the end of a task.
 - This is currently a solo project. When the user asks for a commit, commit directly to `main` by default after appropriate local verification.
 - When pushing to `main`, try `git push origin main` first. If the push is rejected because the remote has new work, then fetch the remote, rebase local commits onto `origin/main`, rerun appropriate verification if the rebase changes the tested code, and push again.
