@@ -47,7 +47,33 @@ After sign-in, you land on **Workspaces**. This is your entry point to everythin
 
 Think of a workspace as one workshop environment with its own parts, categories, attributes, locations, and settings.
 
-## 2. Work With Parts
+## 2. Manage Organizations
+
+Use **Organizations** to manage the manufacturers, suppliers, and other external entities you work with. Each organization can hold one or more roles:
+
+- **Manufacturer** — an organization that makes parts. Referenced when creating or editing a part.
+- **Supplier** — an organization you order from. Required when creating a purchase order or converting a shopping list to an order.
+
+One organization can have both roles at the same time.
+
+### Creating An Organization
+
+1. Open **Organizations** from the sidebar.
+2. Click **Add organization**.
+3. Enter a name and check at least one role.
+4. Save.
+
+### Editing An Organization
+
+Use the pencil icon on any row to open the edit dialog. You can rename the organization or add/remove roles.
+
+### Deleting An Organization
+
+Use the delete icon on any row. An organization cannot be deleted if it is still referenced by parts (as a manufacturer) or by purchase orders (as a supplier). Remove those references first.
+
+> **Note:** Organizations with the **Manufacturer** role are also created automatically when you type a new manufacturer name in the part form. You can then open the organization in the Organizations screen to assign the Supplier role if the same company also sells parts to you.
+
+## 3. Work With Parts
 
 The **Parts** screen is the main operational view.
 
@@ -74,7 +100,7 @@ You can also:
 - Use row actions to open edit mode for a selected part.
 - Update fields and save, or remove the part if needed.
 
-## 3. Organize Your Category Structure
+## 4. Organize Your Category Structure
 
 Use **Part Categories** to build and maintain your category tree.
 
@@ -82,7 +108,7 @@ You can create categories one by one or use quick path creation for faster setup
 
 Inside category configuration, you can manage which attributes are active for that category, including defaults, order, and value-column behavior.
 
-## 4. Define Attributes Once, Reuse Everywhere
+## 5. Define Attributes Once, Reuse Everywhere
 
 Use **Attributes** as your workspace dictionary of reusable part properties.
 
@@ -99,7 +125,7 @@ For choice attributes, you can manage option lists and option order.
 
 After attributes exist, categories can attach and configure them for actual part entry workflows.
 
-## 5. Manage Units
+## 6. Manage Units
 
 Use **Units** to define measurement or counting units used by parts.
 
@@ -111,7 +137,7 @@ For each unit, you can set:
 
 This helps keep part data consistent when recording quantities and stock operations.
 
-## 6. Build Storage Locations
+## 7. Build Storage Locations
 
 Use **Locations** to represent physical storage structure in your workshop.
 
@@ -128,7 +154,7 @@ Archived location behavior:
 - if an archived location still has stock, it remains visible in part stock breakdown with an archived marker
 - archiving is blocked while a location has non-zero stock; move or adjust stock to zero first
 
-## 7. Record Stock Movements
+## 8. Record Stock Movements
 
 From the **Parts** screen, open stock actions for a selected part.
 
@@ -143,7 +169,7 @@ For each movement, you enter quantity and optional note, and select source/desti
 The system then updates current stock based on recorded movement history.
 When multiple stock updates for the same part happen at nearly the same time, OSO applies them in a transaction-safe order so stock cannot be driven below zero by race conditions.
 
-## 8. Manage Shopping Lists
+## 9. Manage Shopping Lists
 
 Use **Shopping Lists** to keep an informal running list of parts you want to buy.
 
@@ -169,7 +195,7 @@ A shopping list has no supplier and no formal status — it is a flexible scratc
 
 This creates a new purchase order in DRAFT status with the selected items. The original shopping list items remain on the list.
 
-## 9. Manage Purchase Orders
+## 10. Manage Purchase Orders
 
 Use **Purchase Orders** to track formal orders sent to a supplier.
 
@@ -179,7 +205,7 @@ Use **Purchase Orders** to track formal orders sent to a supplier.
 2. Click **New order**, choose a supplier organization, optionally enter an order number and notes, and save.
 3. The order starts in **Draft** status.
 
-> **Note:** The supplier must be an organization in your workspace. Create organizations from parts management (manufacturer field) or use a shopping list conversion which creates an order automatically.
+> **Note:** The supplier dropdown only shows organizations with the **Supplier** role. If the list is empty, open **Organizations** from the sidebar and assign the Supplier role to the relevant organization.
 
 ### Adding Items
 
@@ -207,7 +233,7 @@ When all items reach their full ordered quantity the order status advances to **
 
 Partial receives are supported — you can receive in multiple sessions until the order is complete.
 
-## 10. Configure Supplier Integrations
+## 11. Configure Supplier Integrations
 
 In **Settings > Integrations**, you can configure workspace-level supplier settings.
 
@@ -218,7 +244,7 @@ Current providers:
 
 You can also choose which provider is active for the workspace.
 
-## 11. Permissions And Read-Only Behavior
+## 12. Permissions And Read-Only Behavior
 
 What you can edit depends on your workspace permissions.
 
@@ -234,8 +260,9 @@ If you are setting up a new workspace, this sequence usually works best:
 3. Create attributes.
 4. Build part categories and attach attributes.
 5. Add locations.
-6. Add parts.
-7. Record stock movements.
-8. Configure integrations if needed.
-9. Use shopping lists to collect parts to buy.
-10. Create purchase orders and receive deliveries to update inventory automatically.
+6. Add organizations (at least one Manufacturer, one Supplier if you plan to create purchase orders).
+7. Add parts.
+8. Record stock movements.
+9. Configure integrations if needed.
+10. Use shopping lists to collect parts to buy.
+11. Create purchase orders and receive deliveries to update inventory automatically.

@@ -6,6 +6,7 @@ import { signOut } from "@/server/auth/actions";
 type WorkspaceNavItem =
   | "parts"
   | "locations"
+  | "organizations"
   | "shopping-lists"
   | "purchase-orders"
   | "part-categories"
@@ -31,6 +32,7 @@ const copy = {
   signOut: "Sign out",
   parts: "Parts",
   locations: "Locations",
+  organizations: "Organizations",
   purchasesSection: "Purchases",
   shoppingLists: "Shopping Lists",
   purchaseOrders: "Purchase Orders",
@@ -92,6 +94,13 @@ export function WorkspaceShell({
               aria-current={activeNavItem === "locations" ? "page" : undefined}
             >
               {copy.locations}
+            </Link>
+            <Link
+              className={getNavLinkClass(activeNavItem === "organizations")}
+              href={`/w/${workspaceSlug}/organizations`}
+              aria-current={activeNavItem === "organizations" ? "page" : undefined}
+            >
+              {copy.organizations}
             </Link>
             <div className="my-2 border-t border-slate-200" />
             <p className="px-3 pb-1 pt-1 text-xs font-semibold uppercase tracking-wide text-slate-500">

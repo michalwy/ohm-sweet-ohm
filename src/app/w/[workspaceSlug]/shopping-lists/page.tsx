@@ -7,7 +7,7 @@ import {
   getCurrentSession,
   getCurrentWorkspaceContextBySlug
 } from "@/server/auth/currentContext";
-import { prisma } from "@/server/db/prisma";
+import { getSupplierOrganizationsForWorkspace } from "@/server/organizations/organizations";
 import { getShoppingLists } from "@/server/shopping-lists/shoppingListMutations";
 
 export const dynamic = "force-dynamic";
@@ -55,7 +55,7 @@ const copy = {
   convertToOrderBody: "Select items to include and choose a supplier.",
   supplier: "Supplier",
   chooseSupplier: "Choose a supplier",
-  noSuppliers: "No organizations found. Create an organization first.",
+  noSuppliers: "No supplier organizations found. Add an organization with the Supplier role first.",
   selectedItems: "Selected items",
   noItemsSelected: "Select at least one item to convert.",
   convert: "Convert",
@@ -113,13 +113,10 @@ export default async function ShoppingListsPage({
 
   const [initialPage, organizations, canWrite] = await Promise.all([
     getShoppingLists(context.workspace.id).catch(() => emptyPage),
-    prisma.organization
-      .findMany({
-        where: { workspaceId: context.workspace.id },
-        orderBy: { name: "asc" },
-        select: { id: true, name: true }
-      })
-      .catch(() => []),
+    getSupplierOrganizationsForWorkspace({
+      userId: context.user.id,
+      workspaceId: context.workspace.id
+    }).catch(() => []),
     hasWorkspacePermission({
       userId: context.user.id,
       workspaceId: context.workspace.id,

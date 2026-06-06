@@ -7,8 +7,8 @@ import {
   getCurrentSession,
   getCurrentWorkspaceContextBySlug
 } from "@/server/auth/currentContext";
-import { prisma } from "@/server/db/prisma";
 import { getPurchaseOrders } from "@/server/purchase-orders/purchaseOrderMutations";
+import { getSupplierOrganizationsForWorkspace } from "@/server/organizations/organizations";
 import { getStorageLocations } from "@/server/inventory/locationMutations";
 
 export const dynamic = "force-dynamic";
@@ -21,7 +21,7 @@ const copy = {
   editOrderTitle: "Edit purchase order",
   supplier: "Supplier",
   chooseSupplier: "Choose a supplier",
-  noSuppliers: "No organizations found. Create an organization first.",
+  noSuppliers: "No supplier organizations found. Add an organization with the Supplier role first.",
   orderNumber: "Order number",
   orderNumberPlaceholder: "PO-2026-001",
   notes: "Notes",
@@ -130,13 +130,10 @@ export default async function PurchaseOrdersPage({ params, searchParams }: Purch
 
   const [initialPage, organizations, locations, canWrite] = await Promise.all([
     getPurchaseOrders(context.workspace.id).catch(() => emptyPage),
-    prisma.organization
-      .findMany({
-        where: { workspaceId: context.workspace.id },
-        orderBy: { name: "asc" },
-        select: { id: true, name: true }
-      })
-      .catch(() => []),
+    getSupplierOrganizationsForWorkspace({
+      userId: context.user.id,
+      workspaceId: context.workspace.id
+    }).catch(() => []),
     getStorageLocations(context.workspace.id).catch(() => []),
     hasWorkspacePermission({
       userId: context.user.id,
