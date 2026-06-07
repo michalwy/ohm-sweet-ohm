@@ -17,7 +17,6 @@ import {
 
 import {
   addOrderItemForWorkspace,
-  createPurchaseOrderForWorkspace,
   deletePurchaseOrderForWorkspace,
   getPurchaseOrderDetailForWorkspace,
   getPurchaseOrdersForWorkspace,
@@ -29,6 +28,10 @@ import {
   updateOrderItemForWorkspace,
   updatePurchaseOrderForWorkspace
 } from "@/server/purchase-orders/purchaseOrderActions";
+import {
+  CreatePurchaseOrderDialog,
+  type CreatePurchaseOrderDialogCopy,
+} from "@/app/create-purchase-order-dialog";
 import type {
   PurchaseOrderDetail,
   PurchaseOrderItem,
@@ -186,7 +189,8 @@ export function PurchaseOrdersClient({
     initialSelectedOrderId ?? null
   );
   const [hoveredOrderId, setHoveredOrderId] = useState<string | null>(null);
-  const [orderDialogMode, setOrderDialogMode] = useState<"create" | "edit" | null>(null);
+  const [orderDialogMode, setOrderDialogMode] = useState<"edit" | null>(null);
+  const [createOrderDialogOpen, setCreateOrderDialogOpen] = useState(false);
   const [editingOrder, setEditingOrder] = useState<PurchaseOrderSummary | null>(null);
   const [orderPendingDelete, setOrderPendingDelete] = useState<PurchaseOrderSummary | null>(null);
   const [markOrderedPending, setMarkOrderedPending] = useState(false);
@@ -207,6 +211,7 @@ export function PurchaseOrdersClient({
   const [toastMessages, setToastMessages] = useState<ToastMessage[]>([]);
   const nextToastIdRef = useRef(0);
   const orderDialogRef = useRef<HTMLDialogElement>(null);
+  const createOrderDialogRef = useRef<HTMLDialogElement>(null);
   const itemDialogRef = useRef<HTMLDialogElement>(null);
   const receiveDialogRef = useRef<HTMLDialogElement>(null);
   const markOrderedDialogRef = useRef<HTMLDialogElement>(null);
@@ -309,17 +314,6 @@ export function PurchaseOrdersClient({
   });
 
   // --- Mutations ---
-
-  const createOrderMutation = useMutation({
-    mutationFn: createPurchaseOrderForWorkspace,
-    onSuccess: (result) => {
-      if (!result.ok) { setOrderFormErrors({ submit: getErrorMsg(copy, result.error) }); return; }
-      closeOrderDialog();
-      addToast(copy.createdToast);
-      openOrderDetails(result.data.orderId);
-      reloadOrders();
-    }
-  });
 
   const updateOrderMutation = useMutation({
     mutationFn: updatePurchaseOrderForWorkspace,
@@ -438,11 +432,13 @@ export function PurchaseOrdersClient({
   // --- Dialog helpers ---
 
   function openCreateOrderDialog() {
-    setEditingOrder(null);
-    setOrderDialogMode("create");
-    setOrderFormErrors({});
-    setDialogFormKey((k) => k + 1);
-    window.requestAnimationFrame(() => openDialog(orderDialogRef.current));
+    setCreateOrderDialogOpen(true);
+    window.requestAnimationFrame(() => openDialog(createOrderDialogRef.current));
+  }
+
+  function closeCreateOrderDialog() {
+    closeDialog(createOrderDialogRef.current);
+    setCreateOrderDialogOpen(false);
   }
 
   function openEditOrderDialog(order: PurchaseOrderSummary) {
@@ -521,14 +517,7 @@ export function PurchaseOrdersClient({
     const supplierId = getString(formData, "supplierId");
     if (!supplierId) { setOrderFormErrors({ supplier: copy.nameRequired }); return; }
 
-    if (orderDialogMode === "create") {
-      createOrderMutation.mutate({
-        workspaceSlug,
-        supplierId,
-        orderNumber: getString(formData, "orderNumber") || null,
-        notes: getString(formData, "notes") || null
-      });
-    } else if (editingOrder) {
+    if (editingOrder) {
       updateOrderMutation.mutate({
         workspaceSlug,
         orderId: editingOrder.id,
@@ -613,7 +602,6 @@ export function PurchaseOrdersClient({
     (item) => parseFloat(item.receivedQuantity) < parseFloat(item.quantity)
   );
   const isMutating =
-    createOrderMutation.isPending ||
     updateOrderMutation.isPending ||
     addItemMutation.isPending ||
     updateItemMutation.isPending ||
@@ -1025,11 +1013,11 @@ export function PurchaseOrdersClient({
         ) : null}
       </div>
 
-      {/* Create/edit order dialog */}
+      {/* Edit order dialog */}
       <DialogShell
         ref={orderDialogRef}
         closeLabel={copy.close}
-        title={orderDialogMode === "create" ? copy.newOrderTitle : copy.editOrderTitle}
+        title={copy.editOrderTitle}
         titleId="order-dialog-title"
         widthClassName="w-[min(32rem,calc(100vw-3rem))]"
         onClose={closeOrderDialog}
@@ -1093,13 +1081,45 @@ export function PurchaseOrdersClient({
                 type="submit"
                 disabled={isMutating}
               >
-                {orderDialogMode === "create" ? copy.createOrder : copy.saveChanges}
+                {copy.saveChanges}
               </button>
             </DialogFooter>
             {orderFormErrors.submit ? <ErrorBubble>{orderFormErrors.submit}</ErrorBubble> : null}
           </form>
         ) : null}
       </DialogShell>
+
+      {/* Create order dialog (shared component) */}
+      <CreatePurchaseOrderDialog
+        dialogRef={createOrderDialogRef}
+        isOpen={createOrderDialogOpen}
+        workspaceSlug={workspaceSlug}
+        organizations={organizations}
+        copy={{
+          title: copy.newOrderTitle,
+          supplier: copy.supplier,
+          chooseSupplier: copy.chooseSupplier,
+          noSuppliers: copy.noSuppliers,
+          orderNumber: copy.orderNumber,
+          orderNumberPlaceholder: copy.orderNumberPlaceholder,
+          notes: copy.notes,
+          notesPlaceholder: copy.notesPlaceholder,
+          createOrder: copy.createOrder,
+          cancel: copy.cancel,
+          close: copy.close,
+          supplierRequired: copy.nameRequired,
+          permissionDenied: copy.permissionDenied,
+          databaseUnavailable: copy.databaseUnavailable,
+          invalidInput: copy.invalidInput,
+        }}
+        onClose={closeCreateOrderDialog}
+        onSuccess={(orderId) => {
+          closeCreateOrderDialog();
+          reloadOrders();
+          openOrderDetails(orderId);
+          addToast(copy.createdToast);
+        }}
+      />
 
       {/* Add/edit item dialog */}
       <DialogShell

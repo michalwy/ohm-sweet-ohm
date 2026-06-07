@@ -198,10 +198,10 @@ A shopping list has no supplier and no formal status — it is a flexible scratc
 
 1. Select one or more items using the checkboxes in the detail panel. Items already on a purchase order have a disabled checkbox and cannot be re-converted.
 2. Click **Convert to order (N)**.
-3. Choose whether to create a **New order** (select a supplier) or **Add to existing order** (select a draft order from the list).
-4. Confirm.
+3. A dialog lists all your draft purchase orders. Select one and click **Add to order** to append the items to that order.
+4. To create a new purchase order instead, click **New order**. Fill in the supplier (required), optional order number, and optional notes, then click **Create order**. The selected items are added to the new order automatically.
 
-When creating a new order, a draft purchase order is created with the selected items. When adding to an existing order, the items are appended to the chosen draft order. In both cases the original shopping list items remain on the list.
+In both cases the original shopping list items remain on the list and show an **On order** badge.
 
 ## 10. Manage Purchase Orders
 

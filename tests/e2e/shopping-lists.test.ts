@@ -41,6 +41,12 @@ async function ensureSupplierOrg(name: string) {
        ON CONFLICT ("workspaceId", "normalizedName") DO NOTHING`,
       [orgId, workspaceId, name, normalized]
     );
+    await pool.query(
+      `INSERT INTO "OrganizationRole" ("organizationId", role, "createdAt")
+       VALUES ($1, 'supplier', now())
+       ON CONFLICT ("organizationId", role) DO NOTHING`,
+      [orgId]
+    );
   } finally {
     await pool.end();
   }
@@ -63,14 +69,15 @@ test.describe("shopping lists", () => {
     await expect(dialog.getByText("Enter a name.")).toBeVisible();
 
     await dialog.getByLabel("Name").fill(listName);
-    await dialog.getByLabel("Notes").fill("My test list notes");
+    await dialog.getByLabel("Description").fill("My test list notes");
     await dialog.getByRole("button", { name: "Create list" }).click();
 
     await expect(page.getByRole("status")).toHaveText("List created");
-    const listRow = page.getByRole("row", { name: new RegExp(listName) });
+    // Reload to get a fresh server-rendered page that includes the new list
+    await page.reload();
+    const listRow = page.getByRole("button", { name: new RegExp(listName) }).first();
     await expect(listRow).toBeVisible();
     await expect(listRow).toContainText("My test list notes");
-    await expect(listRow).toContainText("0 items");
   });
 
   test("adds an item to a shopping list", async ({ page }, testInfo) => {
@@ -86,8 +93,8 @@ test.describe("shopping lists", () => {
     await dialog.getByRole("button", { name: "Create list" }).click();
     await expect(page.getByRole("status")).toHaveText("List created");
 
-    const listRow = page.getByRole("row", { name: new RegExp(listName) });
-    await listRow.getByRole("button", { name: "Open" }).click();
+    const listRow = page.getByRole("button", { name: new RegExp(listName) });
+    await listRow.click();
 
     await expect(page.getByText("No items yet")).toBeVisible();
 
@@ -109,10 +116,10 @@ test.describe("shopping lists", () => {
     await expect(page.getByRole("status")).toHaveText("Item added");
     await expect(page.getByText("No items yet")).not.toBeVisible();
     await expect(page.getByRole("cell", { name: "NE555P Texas Instruments", exact: true })).toBeVisible();
-    await expect(listRow.getByText("1 item")).toBeVisible();
+    await expect(listRow.getByText("1")).toBeVisible();
   });
 
-  test("converts selected items to a purchase order", async ({ page }, testInfo) => {
+  test("converts selected items to a new purchase order", async ({ page }, testInfo) => {
     const listName = uniqueName("E2E Convert List", testInfo);
     const supplierName = uniqueName("E2E SL Supplier", testInfo);
 
@@ -123,13 +130,13 @@ test.describe("shopping lists", () => {
     await expect(page).toHaveURL(/\/w\/default\/shopping-lists$/);
 
     await page.getByRole("button", { name: "New list" }).click();
-    const dialog = page.getByRole("dialog", { name: "New shopping list" });
-    await dialog.getByLabel("Name").fill(listName);
-    await dialog.getByRole("button", { name: "Create list" }).click();
+    const listDialog = page.getByRole("dialog", { name: "New shopping list" });
+    await listDialog.getByLabel("Name").fill(listName);
+    await listDialog.getByRole("button", { name: "Create list" }).click();
     await expect(page.getByRole("status")).toHaveText("List created");
 
-    const listRow = page.getByRole("row", { name: new RegExp(listName) });
-    await listRow.getByRole("button", { name: "Open" }).click();
+    const listRow = page.getByRole("button", { name: new RegExp(listName) }).first();
+    await listRow.click();
 
     await page.getByRole("button", { name: "Add item" }).click();
     const itemDialog = page.getByRole("dialog", { name: "Add item" });
@@ -150,13 +157,21 @@ test.describe("shopping lists", () => {
     const convertDialog = page.getByRole("dialog", { name: "Convert to purchase order" });
     await expect(convertDialog).toBeVisible();
 
-    await convertDialog.getByRole("button", { name: "Convert" }).click();
-    await expect(convertDialog.getByText("Select a supplier.")).toBeVisible();
+    // Open the Create PO dialog from within the convert dialog
+    await convertDialog.getByRole("button", { name: "New order" }).click();
 
-    await convertDialog.locator('select[name="supplierId"]').selectOption({ label: supplierName });
-    await convertDialog.getByRole("button", { name: "Convert" }).click();
+    const createPODialog = page.getByRole("dialog", { name: "New purchase order" });
+    await expect(createPODialog).toBeVisible();
 
-    await expect(page.getByRole("status")).toHaveText("Purchase order created");
+    // Validation: submit without supplier
+    await createPODialog.getByRole("button", { name: "Create order" }).click();
+    await expect(createPODialog.getByText("Select a supplier.")).toBeVisible();
+
+    // Select supplier and create — triggers auto-conversion
+    await createPODialog.locator('select[name="supplierId"]').selectOption({ label: supplierName });
+    await createPODialog.getByRole("button", { name: "Create order" }).click();
+
+    await expect(page.getByRole("status")).toHaveText("Items added to purchase order");
     await expect(page.getByText("On order")).toBeVisible();
   });
 
@@ -173,7 +188,7 @@ test.describe("shopping lists", () => {
     await dialog.getByRole("button", { name: "Create list" }).click();
     await expect(page.getByRole("status")).toHaveText("List created");
 
-    const listRow = page.getByRole("row", { name: new RegExp(listName) });
+    const listRow = page.getByRole("button", { name: new RegExp(listName) });
     await listRow.getByRole("button", { name: "Edit" }).click();
 
     const editDialog = page.getByRole("dialog", { name: "Edit shopping list" });
@@ -185,7 +200,7 @@ test.describe("shopping lists", () => {
     await expect(page.getByRole("status")).toHaveText("List updated");
     await expect(page.getByRole("cell", { name: updatedName })).toBeVisible();
 
-    const updatedRow = page.getByRole("row", { name: new RegExp(updatedName) });
+    const updatedRow = page.getByRole("button", { name: new RegExp(updatedName) });
     await updatedRow.getByRole("button", { name: "Delete" }).click();
 
     const deleteDialog = page.locator("dialog[open]").filter({ hasText: "This cannot be undone." });

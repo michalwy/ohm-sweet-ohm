@@ -717,6 +717,17 @@ export async function receiveItems(input: {
         throw new Error("receive-exceeds-ordered-quantity");
       }
 
+      // createInventoryEntry runs in its own nested transaction; call it BEFORE
+      // tx.part.update so both don't compete for a lock on the same Part row.
+      await createInventoryEntry({
+        workspaceId: input.workspaceId,
+        partId: orderItem.partId,
+        entryType: "RECEIPT",
+        quantity: qty.toString(),
+        toLocationId: receiveInput.locationId,
+        createdByUserId: input.createdByUserId
+      });
+
       await tx.purchaseOrderItem.update({
         where: { id: orderItem.id },
         data: { receivedQuantity: { increment: qty } }
@@ -725,15 +736,6 @@ export async function receiveItems(input: {
       await tx.part.update({
         where: { id: orderItem.partId },
         data: { onOrderQty: { decrement: qty } }
-      });
-
-      await createInventoryEntry({
-        workspaceId: input.workspaceId,
-        partId: orderItem.partId,
-        entryType: "RECEIPT",
-        quantity: qty.toString(),
-        toLocationId: receiveInput.locationId,
-        createdByUserId: input.createdByUserId
       });
     }
 

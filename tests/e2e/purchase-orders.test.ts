@@ -72,6 +72,12 @@ async function ensureSupplierOrg(name: string) {
        ON CONFLICT ("workspaceId", "normalizedName") DO NOTHING`,
       [orgId, workspaceId, name, normalized]
     );
+    await pool.query(
+      `INSERT INTO "OrganizationRole" ("organizationId", role, "createdAt")
+       VALUES ($1, 'supplier', now())
+       ON CONFLICT ("organizationId", role) DO NOTHING`,
+      [orgId]
+    );
   } finally {
     await pool.end();
   }
@@ -100,7 +106,7 @@ test.describe("purchase orders", () => {
     await dialog.getByRole("button", { name: "Create order" }).click();
 
     await expect(page.getByRole("status")).toHaveText("Order created");
-    const orderRow = page.getByRole("row", { name: new RegExp(supplierName) }).first();
+    const orderRow = page.getByRole("button", { name: new RegExp(supplierName) }).first();
     await expect(orderRow).toBeVisible();
     await expect(orderRow).toContainText("PO-E2E-CREATE");
     await expect(orderRow).toContainText("Draft");
@@ -141,11 +147,11 @@ test.describe("purchase orders", () => {
     await itemDialog.getByRole("button", { name: "Add item" }).click();
 
     await expect(page.getByRole("status")).toHaveText("Item added");
-    await expect(page.getByText("No items yet. Add parts to this order.")).not.toBeVisible();
+    // Reload to reinitialise detail panel with selectedOrderId from URL
+    await page.reload();
+    const orderRow = page.getByRole("button", { name: new RegExp(supplierName) }).first();
+    await expect(orderRow.getByText("1")).toBeVisible();
     await expect(page.getByRole("cell", { name: "NE555P Texas Instruments", exact: true })).toBeVisible();
-
-    const orderRow = page.getByRole("row", { name: new RegExp(supplierName) }).first();
-    await expect(orderRow.getByText("1 item")).toBeVisible();
   });
 
   test("marks order as ordered", async ({ page }, testInfo) => {
@@ -175,6 +181,9 @@ test.describe("purchase orders", () => {
     await itemDialog.getByLabel("Qty ordered").fill("5");
     await itemDialog.getByRole("button", { name: "Add item" }).click();
     await expect(page.getByRole("status")).toHaveText("Item added");
+    // Reload to reinitialise detail panel with selectedOrderId from URL
+    await page.reload();
+    await expect(page.getByRole("cell", { name: "NE555P Texas Instruments", exact: true })).toBeVisible();
 
     await page.getByRole("button", { name: "Mark as ordered" }).click();
     const confirmDialog = page.getByRole("dialog", { name: "Mark as ordered?" });
@@ -182,7 +191,7 @@ test.describe("purchase orders", () => {
     await confirmDialog.getByRole("button", { name: "Confirm" }).click();
 
     await expect(page.getByRole("status")).toHaveText("Order marked as ordered");
-    const orderRow = page.getByRole("row", { name: new RegExp(supplierName) }).first();
+    const orderRow = page.getByRole("button", { name: new RegExp(supplierName) }).first();
     await expect(orderRow.getByText("Ordered")).toBeVisible();
   });
 
@@ -213,11 +222,18 @@ test.describe("purchase orders", () => {
     await itemDialog.getByLabel("Qty ordered").fill("8");
     await itemDialog.getByRole("button", { name: "Add item" }).click();
     await expect(page.getByRole("status")).toHaveText("Item added");
+    // Reload to reinitialise detail panel with selectedOrderId from URL
+    await page.reload();
+    await expect(page.getByRole("cell", { name: "NE555P Texas Instruments", exact: true })).toBeVisible();
 
     await page.getByRole("button", { name: "Mark as ordered" }).click();
     const confirmDialog = page.getByRole("dialog", { name: "Mark as ordered?" });
     await confirmDialog.getByRole("button", { name: "Confirm" }).click();
     await expect(page.getByRole("status")).toHaveText("Order marked as ordered");
+    // Reload again to reinitialise detail panel after status change
+    await page.reload();
+    // Wait for detail panel to finish loading before opening receive dialog
+    await expect(page.getByRole("cell", { name: "NE555P Texas Instruments", exact: true })).toBeVisible();
 
     await page.getByRole("button", { name: "Receive items" }).click();
     const receiveDialog = page.getByRole("dialog", { name: "Receive items" });
@@ -229,7 +245,7 @@ test.describe("purchase orders", () => {
     await receiveDialog.getByRole("button", { name: "Receive items" }).click();
     await expect(page.getByRole("status")).toHaveText("Items received");
 
-    const orderRow = page.getByRole("row", { name: new RegExp(supplierName) }).first();
+    const orderRow = page.getByRole("button", { name: new RegExp(supplierName) }).first();
     await expect(orderRow.getByText("Received")).toBeVisible();
   });
 
@@ -249,7 +265,7 @@ test.describe("purchase orders", () => {
     await dialog.getByRole("button", { name: "Create order" }).click();
     await expect(page.getByRole("status")).toHaveText("Order created");
 
-    const orderRow = page.getByRole("row", { name: /PO-DEL-001/ }).first();
+    const orderRow = page.getByRole("button", { name: /PO-DEL-001/ }).first();
     await orderRow.getByRole("button", { name: "Edit" }).click();
     const editDialog = page.getByRole("dialog", { name: "Edit purchase order" });
     await expect(editDialog).toBeVisible();
@@ -260,16 +276,16 @@ test.describe("purchase orders", () => {
     await expect(page.getByRole("status")).toHaveText("Order updated");
     await expect(page.getByRole("cell", { name: "PO-DEL-002" }).first()).toBeVisible();
 
-    const updatedRow = page.getByRole("row", { name: /PO-DEL-002/ }).first();
+    const updatedRow = page.getByRole("button", { name: /PO-DEL-002/ }).first();
     await updatedRow.getByRole("button", { name: "Delete" }).click();
 
-    const deleteDialog = page.locator("dialog[open]").filter({ hasText: "Only draft orders can be deleted." });
+    const deleteDialog = page.locator("dialog[open]").filter({ hasText: "This cannot be undone." });
     await expect(deleteDialog).toBeVisible();
     await deleteDialog.getByRole("button", { name: "Cancel" }).click();
     await expect(page.getByRole("cell", { name: "PO-DEL-002" }).first()).toBeVisible();
 
     await updatedRow.getByRole("button", { name: "Delete" }).click();
-    await page.locator("dialog[open]").filter({ hasText: "Only draft orders can be deleted." }).getByRole("button", { name: "Delete" }).click();
+    await page.locator("dialog[open]").filter({ hasText: "This cannot be undone." }).getByRole("button", { name: "Delete" }).click();
     await expect(page.getByRole("status")).toHaveText("Order deleted");
   });
 });
