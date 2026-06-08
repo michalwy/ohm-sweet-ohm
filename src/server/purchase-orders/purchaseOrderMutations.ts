@@ -32,6 +32,7 @@ export type PurchaseOrderDetail = {
   sourceShoppingListId: string | null;
   status: "DRAFT" | "ORDERED" | "RECEIVED";
   orderNumber: string | null;
+  supplierOrderNumber: string | null;
   orderedAt: string | null;
   notes: string | null;
   createdAt: string;
@@ -45,6 +46,10 @@ export type PurchaseOrderSummary = {
   supplierName: string;
   status: "DRAFT" | "ORDERED" | "RECEIVED";
   orderNumber: string | null;
+  supplierOrderNumber: string | null;
+  orderedAt: string | null;
+  notes: string | null;
+  createdByName: string | null;
   itemCount: number;
   createdAt: string;
   updatedAt: string;
@@ -76,9 +81,13 @@ const orderSelectShape = {
   id: true,
   status: true,
   orderNumber: true,
+  supplierOrderNumber: true,
+  orderedAt: true,
+  notes: true,
   createdAt: true,
   updatedAt: true,
   supplier: { select: { name: true, id: true } },
+  createdByUser: { select: { name: true } },
   _count: { select: { items: true } }
 } as const;
 
@@ -86,9 +95,13 @@ function toOrderSummary(order: {
   id: string;
   status: "DRAFT" | "ORDERED" | "RECEIVED";
   orderNumber: string | null;
+  supplierOrderNumber: string | null;
+  orderedAt: Date | null;
+  notes: string | null;
   createdAt: Date;
   updatedAt: Date;
   supplier: { id: string; name: string };
+  createdByUser: { name: string | null } | null;
   _count: { items: number };
 }): PurchaseOrderSummary {
   return {
@@ -97,6 +110,10 @@ function toOrderSummary(order: {
     supplierName: order.supplier.name,
     status: order.status,
     orderNumber: order.orderNumber,
+    supplierOrderNumber: order.supplierOrderNumber,
+    orderedAt: order.orderedAt?.toISOString() ?? null,
+    notes: order.notes,
+    createdByName: order.createdByUser?.name ?? null,
     itemCount: order._count.items,
     createdAt: order.createdAt.toISOString(),
     updatedAt: order.updatedAt.toISOString()
@@ -275,6 +292,7 @@ export async function getPurchaseOrderDetail(
       sourceShoppingListId: true,
       status: true,
       orderNumber: true,
+      supplierOrderNumber: true,
       orderedAt: true,
       notes: true,
       createdAt: true,
@@ -313,6 +331,7 @@ export async function getPurchaseOrderDetail(
     sourceShoppingListId: order.sourceShoppingListId,
     status: order.status,
     orderNumber: order.orderNumber,
+    supplierOrderNumber: order.supplierOrderNumber,
     orderedAt: order.orderedAt?.toISOString() ?? null,
     notes: order.notes,
     createdAt: order.createdAt.toISOString(),
@@ -334,19 +353,30 @@ export async function getPurchaseOrderDetail(
   };
 }
 
+export async function generateOrderNumber(workspaceId: string): Promise<string> {
+  const year = new Date().getFullYear();
+  const count = await prisma.purchaseOrder.count({ where: { workspaceId } });
+  return `PO-${year}-${String(count + 1).padStart(3, "0")}`;
+}
+
 export async function createPurchaseOrder(input: {
   workspaceId: string;
   supplierId: string;
+  createdByUserId?: string | null;
   orderNumber?: string | null;
   notes?: string | null;
 }) {
   await assertSupplierBelongsToWorkspace(input.workspaceId, input.supplierId);
 
+  const orderNumber =
+    normalizeOptionalText(input.orderNumber) ?? (await generateOrderNumber(input.workspaceId));
+
   return prisma.purchaseOrder.create({
     data: {
       workspaceId: input.workspaceId,
       supplierId: input.supplierId,
-      orderNumber: normalizeOptionalText(input.orderNumber),
+      createdByUserId: input.createdByUserId ?? null,
+      orderNumber,
       notes: normalizeOptionalText(input.notes)
     }
   });
@@ -357,6 +387,8 @@ export async function updatePurchaseOrder(input: {
   orderId: string;
   supplierId?: string;
   orderNumber?: string | null;
+  supplierOrderNumber?: string | null;
+  orderedAt?: Date | null;
   notes?: string | null;
 }) {
   const order = await assertOrderBelongsToWorkspace(input.workspaceId, input.orderId);
@@ -374,6 +406,8 @@ export async function updatePurchaseOrder(input: {
     data: {
       ...(input.supplierId ? { supplierId: input.supplierId } : {}),
       orderNumber: normalizeOptionalText(input.orderNumber),
+      supplierOrderNumber: normalizeOptionalText(input.supplierOrderNumber),
+      ...(input.orderedAt !== undefined ? { orderedAt: input.orderedAt } : {}),
       notes: normalizeOptionalText(input.notes)
     }
   });

@@ -32,6 +32,8 @@ import {
   CreatePurchaseOrderDialog,
   type CreatePurchaseOrderDialogCopy,
 } from "@/app/create-purchase-order-dialog";
+import { SupplierPickerCombobox } from "@/app/supplier-picker-combobox";
+import { PartPickerCombobox, type PartPickerOption } from "@/app/part-picker-combobox";
 import type {
   PurchaseOrderDetail,
   PurchaseOrderItem,
@@ -39,7 +41,6 @@ import type {
 } from "@/server/purchase-orders/purchaseOrderMutations";
 import type { PurchaseOrderSortBy } from "@/server/purchase-orders/purchaseOrderMutations";
 import type { ListPage } from "@/server/pagination";
-import { getPartsListPageForWorkspace } from "@/server/parts/listActions";
 import {
   closeDialog,
   DeleteConfirmationDialog,
@@ -58,10 +59,8 @@ import {
   useListTableConfiguration,
   type ListColumnDefinition
 } from "@/app/list-table-config";
-import { ListPageToolbar, ListTableHeaderCell, useColumnResizeCursor } from "@/app/list-page-toolbar";
+import { ListPageToolbar, ListTableHeaderCell, useColumnDragReorder, useColumnResizeCursor } from "@/app/list-page-toolbar";
 import { DetailPanel, useDetailsPanelWidth } from "@/app/detail-panel";
-
-type Organization = { id: string; name: string };
 
 type Copy = {
   title: string;
@@ -72,6 +71,7 @@ type Copy = {
   supplier: string;
   chooseSupplier: string;
   noSuppliers: string;
+  loadingSuppliers: string;
   orderNumber: string;
   orderNumberPlaceholder: string;
   notes: string;
@@ -124,6 +124,7 @@ type Copy = {
   removeItemConfirmBody: string;
   noItems: string;
   searchParts: string;
+  loadingParts: string;
   searchPartsPlaceholder: string;
   noMatchingParts: string;
   revertToDraft: string;
@@ -146,6 +147,10 @@ type Copy = {
   permissionDenied: string;
   databaseUnavailable: string;
   orderedAt: string;
+  created: string;
+  createdBy: string;
+  supplierOrderNumber: string;
+  supplierOrderNumberPlaceholder: string;
   noAttribute: string;
   configureList: string;
   configureListTitle: string;
@@ -165,7 +170,6 @@ type PurchaseOrdersClientProps = {
   copy: Copy;
   initialPage: ListPage<PurchaseOrderSummary>;
   initialSelectedOrderId?: string;
-  organizations: Organization[];
   assignableLocations: StorageLocationListItem[];
   workspaceSlug: string;
 };
@@ -179,7 +183,6 @@ export function PurchaseOrdersClient({
   copy,
   initialPage,
   initialSelectedOrderId,
-  organizations,
   assignableLocations,
   workspaceSlug
 }: PurchaseOrdersClientProps) {
@@ -224,7 +227,11 @@ export function PurchaseOrdersClient({
       { id: "supplierName", label: copy.supplier, group: "base", defaultWidth: 200, minWidth: 100, sortable: true },
       { id: "orderNumber", label: copy.orderNumber, group: "base", defaultWidth: 160, minWidth: 80 },
       { id: "status", label: copy.status, group: "base", defaultWidth: 120, minWidth: 80, sortable: true },
-      { id: "itemCount", label: copy.items, group: "base", defaultWidth: 100, minWidth: 64, sortable: true }
+      { id: "itemCount", label: copy.items, group: "base", defaultWidth: 100, minWidth: 64, sortable: true, align: "right" as const },
+      { id: "supplierOrderNumber", label: copy.supplierOrderNumber, group: "base", defaultWidth: 160, minWidth: 80, defaultVisible: false },
+      { id: "createdAt", label: copy.created, group: "base", defaultWidth: 160, minWidth: 100, defaultVisible: false, sortable: true },
+      { id: "createdBy", label: copy.createdBy, group: "base", defaultWidth: 160, minWidth: 100, defaultVisible: false },
+      { id: "orderedAt", label: copy.orderedAt, group: "base", defaultWidth: 160, minWidth: 100, defaultVisible: false }
     ],
     [copy]
   );
@@ -297,20 +304,6 @@ export function PurchaseOrdersClient({
       return result.ok ? result.data : null;
     },
     enabled: Boolean(selectedOrderId)
-  });
-
-  const { data: partsSearchResult } = useQuery({
-    queryKey: ["parts-search-po", workspaceSlug, partSearchQuery],
-    queryFn: async () => {
-      const result = await getPartsListPageForWorkspace({
-        workspaceSlug,
-        searchQuery: partSearchQuery || undefined,
-        pageSize: 8
-      });
-      return result.ok ? result.page.items : [];
-    },
-    enabled: itemDialogMode !== null,
-    placeholderData: (prev) => prev
   });
 
   // --- Mutations ---
@@ -523,6 +516,8 @@ export function PurchaseOrdersClient({
         orderId: editingOrder.id,
         supplierId,
         orderNumber: getString(formData, "orderNumber") || null,
+        supplierOrderNumber: getString(formData, "supplierOrderNumber") || null,
+        orderedAt: editingOrder.status === "ORDERED" ? (getString(formData, "orderedAt") || null) : undefined,
         notes: getString(formData, "notes") || null
       });
     }
@@ -658,12 +653,57 @@ export function PurchaseOrdersClient({
         }
       }),
       columnHelper.accessor("itemCount", {
-        header: copy.items,
+        header: () => <span className="block text-right">{copy.items}</span>,
         size: 100,
         minSize: 64,
         cell: ({ getValue }) => (
-          <span className="text-slate-700">{getValue()}</span>
+          <span className="block text-right text-slate-700">{getValue()}</span>
         )
+      }),
+      columnHelper.accessor("supplierOrderNumber", {
+        id: "supplierOrderNumber",
+        header: copy.supplierOrderNumber,
+        size: 160,
+        minSize: 80,
+        cell: ({ getValue }) => {
+          const v = getValue();
+          return v
+            ? <span className="text-slate-700">{v}</span>
+            : <span className="text-slate-400">—</span>;
+        }
+      }),
+      columnHelper.accessor("createdAt", {
+        id: "createdAt",
+        header: copy.created,
+        size: 160,
+        minSize: 100,
+        cell: ({ getValue }) => (
+          <span className="text-slate-700">{new Date(getValue()).toLocaleDateString()}</span>
+        )
+      }),
+      columnHelper.accessor("createdByName", {
+        id: "createdBy",
+        header: copy.createdBy,
+        size: 160,
+        minSize: 100,
+        cell: ({ getValue }) => {
+          const v = getValue();
+          return v
+            ? <span className="text-slate-700">{v}</span>
+            : <span className="text-slate-400">—</span>;
+        }
+      }),
+      columnHelper.accessor("orderedAt", {
+        id: "orderedAt",
+        header: copy.orderedAt,
+        size: 160,
+        minSize: 100,
+        cell: ({ getValue }) => {
+          const v = getValue();
+          return v
+            ? <span className="text-slate-700">{new Date(v).toLocaleDateString()}</span>
+            : <span className="text-slate-400">—</span>;
+        }
       }),
       columnHelper.display({
         id: "actions",
@@ -709,6 +749,8 @@ export function PurchaseOrdersClient({
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [canWrite, copy, deleteOrderMutation.isPending]
   );
+
+  const { draggedColumnId, onDragEnd, onStartDrag, onDropOnto } = useColumnDragReorder(setColumnOrder);
 
   const tableColumnOrder = useMemo(() => persistedColumnOrder, [persistedColumnOrder]);
 
@@ -756,7 +798,7 @@ export function PurchaseOrdersClient({
             primaryAction={
               <button
                 className="inline-flex min-h-9 items-center rounded-md bg-[var(--color-accent)] px-4 text-sm font-semibold text-white transition hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-60"
-                disabled={!canWrite || organizations.length === 0}
+                disabled={!canWrite}
                 type="button"
                 onClick={openCreateOrderDialog}
               >
@@ -764,10 +806,6 @@ export function PurchaseOrdersClient({
               </button>
             }
           />
-
-          {organizations.length === 0 ? (
-            <p className="border-b border-slate-200 px-4 py-2 text-sm text-amber-700">{copy.noSuppliers}</p>
-          ) : null}
 
           <InfiniteListViewport
             emptyState={
@@ -801,11 +839,15 @@ export function PurchaseOrdersClient({
                       <ListTableHeaderCell
                         key={header.id}
                         columnDefs={orderColumns}
+                        draggedColumnId={draggedColumnId}
                         header={header}
                         isResizingColumn={isResizingColumn}
                         setColumnSorting={setColumnSorting}
                         setColumnWidth={setColumnWidth}
                         setIsResizingColumn={setIsResizingColumn}
+                        onDragEnd={onDragEnd}
+                        onDropOnto={onDropOnto}
+                        onStartDrag={onStartDrag}
                       />
                     ))}
                   </tr>
@@ -943,8 +985,8 @@ export function PurchaseOrdersClient({
                     <thead>
                       <tr className="border-b border-slate-200 bg-slate-50">
                         <th className="px-3 py-2 font-semibold text-slate-700">{copy.part}</th>
-                        <th className="w-16 px-3 py-2 font-semibold text-slate-700">{copy.quantity}</th>
-                        <th className="w-16 px-3 py-2 font-semibold text-slate-700">{copy.received}</th>
+                        <th className="w-16 px-3 py-2 text-right font-semibold text-slate-700">{copy.quantity}</th>
+                        <th className="w-16 px-3 py-2 text-right font-semibold text-slate-700">{copy.received}</th>
                         <th className="px-3 py-2 font-semibold text-slate-700">{copy.supplierSku}</th>
                         {detail?.status !== "RECEIVED" ? (
                           <th className="w-20 px-3 py-2" />
@@ -965,8 +1007,8 @@ export function PurchaseOrdersClient({
                                 </div>
                               ) : null}
                             </td>
-                            <td className="px-3 py-2 text-slate-700">{item.quantity}</td>
-                            <td className="px-3 py-2 text-slate-700">
+                            <td className="px-3 py-2 text-right text-slate-700">{item.quantity}</td>
+                            <td className="px-3 py-2 text-right text-slate-700">
                               {item.receivedQuantity}
                               {isFullyReceived ? (
                                 <span className="ml-1 text-xs text-[var(--color-success)]">✓</span>
@@ -1029,24 +1071,14 @@ export function PurchaseOrdersClient({
                 <LabelWithError error={orderFormErrors.supplier} htmlFor="order-supplier">
                   {copy.supplier}
                 </LabelWithError>
-                {organizations.length === 0 ? (
-                  <p className="text-sm text-slate-500">{copy.noSuppliers}</p>
-                ) : (
-                  <select
-                    id="order-supplier"
-                    name="supplierId"
-                    defaultValue={editingOrder?.supplierId ?? ""}
-                    className={getFieldInputClassName(
-                      "min-h-10 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-950 outline-none transition hover:border-slate-400 focus:border-slate-500 focus:ring-2 focus:ring-slate-200",
-                      Boolean(orderFormErrors.supplier)
-                    )}
-                  >
-                    <option value="" disabled>{copy.chooseSupplier}</option>
-                    {organizations.map((org) => (
-                      <option key={org.id} value={org.id}>{org.name}</option>
-                    ))}
-                  </select>
-                )}
+                <SupplierPickerCombobox
+                  workspaceSlug={workspaceSlug}
+                  inputId="order-supplier"
+                  placeholder={copy.chooseSupplier}
+                  noItemsLabel={copy.noSuppliers}
+                  loadingLabel={copy.loadingSuppliers}
+                  initialValue={editingOrder ? { id: editingOrder.supplierId, name: editingOrder.supplierName } : null}
+                />
               </div>
               <div className="grid gap-2">
                 <label className="text-sm font-medium text-slate-700" htmlFor="order-number">
@@ -1061,14 +1093,42 @@ export function PurchaseOrdersClient({
                 />
               </div>
               <div className="grid gap-2">
+                <label className="text-sm font-medium text-slate-700" htmlFor="order-supplier-order-number">
+                  {copy.supplierOrderNumber}
+                </label>
+                <input
+                  id="order-supplier-order-number"
+                  name="supplierOrderNumber"
+                  placeholder={copy.supplierOrderNumberPlaceholder}
+                  defaultValue={editingOrder?.supplierOrderNumber ?? ""}
+                  className="min-h-10 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-950 outline-none transition hover:border-slate-400 focus:border-slate-500 focus:ring-2 focus:ring-slate-200"
+                />
+              </div>
+              {editingOrder?.status === "ORDERED" ? (
+                <div className="grid gap-2">
+                  <label className="text-sm font-medium text-slate-700" htmlFor="order-ordered-at">
+                    {copy.orderedAt}
+                  </label>
+                  <input
+                    type="datetime-local"
+                    id="order-ordered-at"
+                    name="orderedAt"
+                    defaultValue={editingOrder.orderedAt ? new Date(editingOrder.orderedAt).toISOString().slice(0, 16) : ""}
+                    className="min-h-10 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-950 outline-none transition hover:border-slate-400 focus:border-slate-500 focus:ring-2 focus:ring-slate-200"
+                  />
+                </div>
+              ) : null}
+              <div className="grid gap-2">
                 <label className="text-sm font-medium text-slate-700" htmlFor="order-notes">
                   {copy.notes}
                 </label>
-                <input
+                <textarea
                   id="order-notes"
                   name="notes"
+                  rows={3}
                   placeholder={copy.notesPlaceholder}
-                  className="min-h-10 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-950 outline-none transition hover:border-slate-400 focus:border-slate-500 focus:ring-2 focus:ring-slate-200"
+                  defaultValue={editingOrder?.notes ?? ""}
+                  className="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-950 outline-none transition hover:border-slate-400 focus:border-slate-500 focus:ring-2 focus:ring-slate-200 resize-none"
                 />
               </div>
             </DialogBody>
@@ -1094,12 +1154,12 @@ export function PurchaseOrdersClient({
         dialogRef={createOrderDialogRef}
         isOpen={createOrderDialogOpen}
         workspaceSlug={workspaceSlug}
-        organizations={organizations}
         copy={{
           title: copy.newOrderTitle,
           supplier: copy.supplier,
           chooseSupplier: copy.chooseSupplier,
           noSuppliers: copy.noSuppliers,
+          loadingSuppliers: copy.loadingSuppliers,
           orderNumber: copy.orderNumber,
           orderNumberPlaceholder: copy.orderNumberPlaceholder,
           notes: copy.notes,
@@ -1136,30 +1196,16 @@ export function PurchaseOrdersClient({
               {itemDialogMode === "create" ? (
                 <div className="grid gap-2">
                   <LabelWithError error={itemFormErrors.part}>{copy.part}</LabelWithError>
-                  <input
-                    type="text"
+                  <PartPickerCombobox
+                    workspaceSlug={workspaceSlug}
+                    inputValue={partSearchQuery}
+                    selectedPartId={selectedPartId}
                     placeholder={copy.searchPartsPlaceholder}
-                    value={partSearchQuery}
-                    onChange={(e) => { setPartSearchQuery(e.target.value); setSelectedPartId(null); setLookupState("idle"); }}
-                    className="min-h-10 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-950 outline-none transition hover:border-slate-400 focus:border-slate-500 focus:ring-2 focus:ring-slate-200"
+                    loadingLabel={copy.loadingParts}
+                    noMatchesLabel={copy.noMatchingParts}
+                    onInputChange={(value) => { setPartSearchQuery(value); setSelectedPartId(null); setLookupState("idle"); }}
+                    onSelect={(part: PartPickerOption) => { setSelectedPartId(part.id); setPartSearchQuery(`${part.catalogNumber} — ${part.manufacturerName}`); setLookupState("idle"); }}
                   />
-                  {partsSearchResult && partsSearchResult.length > 0 ? (
-                    <div className="max-h-40 overflow-auto rounded-md border border-slate-200 bg-white">
-                      {partsSearchResult.map((part) => (
-                        <button
-                          key={part.id}
-                          type="button"
-                          className={`flex w-full items-center gap-2 px-3 py-2 text-left text-sm transition hover:bg-slate-50 ${selectedPartId === part.id ? "bg-[var(--color-accent-soft)] font-medium" : ""}`}
-                          onClick={() => { setSelectedPartId(part.id); setPartSearchQuery(`${part.catalogNumber} — ${part.manufacturerName}`); setLookupState("idle"); }}
-                        >
-                          <span className="font-medium text-slate-900">{part.catalogNumber}</span>
-                          <span className="text-slate-500">{part.manufacturerName}</span>
-                        </button>
-                      ))}
-                    </div>
-                  ) : partSearchQuery && partsSearchResult?.length === 0 ? (
-                    <p className="text-xs text-slate-500">{copy.noMatchingParts}</p>
-                  ) : null}
                 </div>
               ) : (
                 <div className="grid gap-1">

@@ -331,6 +331,7 @@ model User {
   accounts                Account[]
   inventoryEntriesCreated InventoryEntry[]
   shoppingListsCreated    ShoppingList[]
+  purchaseOrdersCreated   PurchaseOrder[]
 }
 
 model Session {
@@ -617,8 +618,10 @@ model PurchaseOrder {
   workspaceId          String
   supplierId           String
   sourceShoppingListId String?
+  createdByUserId      String?
   status               PurchaseOrderStatus @default(DRAFT)
   orderNumber          String?
+  supplierOrderNumber  String?
   orderedAt            DateTime?
   notes                String?
   createdAt            DateTime            @default(now())
@@ -627,6 +630,7 @@ model PurchaseOrder {
   workspace          Workspace           @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   supplier           Organization        @relation("PurchaseOrderSupplier", fields: [supplierId], references: [id], onDelete: Restrict)
   sourceShoppingList ShoppingList?       @relation(fields: [sourceShoppingListId], references: [id], onDelete: SetNull)
+  createdByUser      User?               @relation(fields: [createdByUserId], references: [id], onDelete: SetNull)
   items              PurchaseOrderItem[]
 
   @@index([workspaceId])

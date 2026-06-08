@@ -40,7 +40,7 @@ import {
   useListTableConfiguration,
   type ListColumnDefinition
 } from "@/app/list-table-config";
-import { ListPageToolbar, ListTableHeaderCell, useColumnResizeCursor } from "@/app/list-page-toolbar";
+import { ListPageToolbar, ListTableHeaderCell, useColumnDragReorder, useColumnResizeCursor } from "@/app/list-page-toolbar";
 
 type Copy = {
   title: string;
@@ -163,6 +163,8 @@ export function OrganizationsClient({
     columns: orgColumns,
     fixedColumnIds
   });
+
+  const { draggedColumnId, onDragEnd, onStartDrag, onDropOnto } = useColumnDragReorder(setColumnOrder);
 
   // --- Data ---
 
@@ -471,11 +473,15 @@ export function OrganizationsClient({
                       <ListTableHeaderCell
                         key={header.id}
                         columnDefs={orgColumns}
+                        draggedColumnId={draggedColumnId}
                         header={header}
                         isResizingColumn={isResizingColumn}
                         setColumnSorting={setColumnSorting}
                         setColumnWidth={setColumnWidth}
                         setIsResizingColumn={setIsResizingColumn}
+                        onDragEnd={onDragEnd}
+                        onDropOnto={onDropOnto}
+                        onStartDrag={onStartDrag}
                       />
                     ))}
                   </tr>

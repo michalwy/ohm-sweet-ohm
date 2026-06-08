@@ -8,7 +8,6 @@ import {
   getCurrentWorkspaceContextBySlug
 } from "@/server/auth/currentContext";
 import { getPurchaseOrders } from "@/server/purchase-orders/purchaseOrderMutations";
-import { getSupplierOrganizationsForWorkspace } from "@/server/organizations/organizations";
 import { getStorageLocations } from "@/server/inventory/locationMutations";
 
 export const dynamic = "force-dynamic";
@@ -21,7 +20,8 @@ const copy = {
   editOrderTitle: "Edit purchase order",
   supplier: "Supplier",
   chooseSupplier: "Choose a supplier",
-  noSuppliers: "No supplier organizations found. Add an organization with the Supplier role first.",
+  noSuppliers: "No matching suppliers",
+  loadingSuppliers: "Loading suppliers...",
   orderNumber: "Order number",
   orderNumberPlaceholder: "PO-2026-001",
   notes: "Notes",
@@ -55,8 +55,12 @@ const copy = {
   receiveItems: "Receive items",
   receiveItemsTitle: "Receive items",
   receiveItemsBody: "Enter quantities received and the destination location.",
-  items: "item",
+  items: "Items",
   itemsPlural: "items",
+  created: "Created",
+  createdBy: "Created by",
+  supplierOrderNumber: "Supplier order number",
+  supplierOrderNumberPlaceholder: "Supplier's reference",
   ordered: "Ordered",
   received: "Received",
   remaining: "Remaining",
@@ -79,6 +83,7 @@ const copy = {
   noItems: "No items yet. Add parts to this order.",
   searchParts: "Search parts",
   searchPartsPlaceholder: "Search by catalog number or description",
+  loadingParts: "Loading parts…",
   noMatchingParts: "No matching parts",
   createdToast: "Order created",
   updatedToast: "Order updated",
@@ -132,12 +137,8 @@ export default async function PurchaseOrdersPage({ params, searchParams }: Purch
 
   const emptyPage = { items: [], nextCursor: null, totalCount: 0, filteredCount: 0 };
 
-  const [initialPage, organizations, locations, canWrite] = await Promise.all([
+  const [initialPage, locations, canWrite] = await Promise.all([
     getPurchaseOrders(context.workspace.id).catch(() => emptyPage),
-    getSupplierOrganizationsForWorkspace({
-      userId: context.user.id,
-      workspaceId: context.workspace.id
-    }).catch(() => []),
     getStorageLocations(context.workspace.id).catch(() => []),
     hasWorkspacePermission({
       userId: context.user.id,
@@ -162,7 +163,6 @@ export default async function PurchaseOrdersPage({ params, searchParams }: Purch
         canWrite={canWrite}
         initialPage={initialPage}
         initialSelectedOrderId={resolvedSearchParams?.selectedOrderId}
-        organizations={organizations}
         assignableLocations={assignableLocations}
         workspaceSlug={workspaceSlug}
       />

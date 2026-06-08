@@ -29,7 +29,7 @@ import {
 } from "@/server/integrations/supplierActions";
 import { getSupplierMatchingSuggestionsForWorkspace } from "@/server/integrations/matching";
 import { getPartsListPageForWorkspace } from "@/server/parts/listActions";
-import type { ManufacturerSuggestion } from "@/server/organizations/organizations";
+import { ManufacturerAutocomplete, type ManufacturerSuggestion } from "@/app/manufacturer-autocomplete";
 import type { PartCategoryListItem } from "@/server/parts/categories";
 import type { PartsListItem } from "@/server/parts/getParts";
 import type { EffectiveCategoryAttribute } from "@/server/parts/attributes";
@@ -41,7 +41,7 @@ import { DetailPanel, useDetailsPanelWidth } from "@/app/detail-panel";
 import {
   useListTableConfiguration
 } from "@/app/list-table-config";
-import { ListPageToolbar, ListTableHeaderCell, useColumnResizeCursor } from "@/app/list-page-toolbar";
+import { ListPageToolbar, ListTableHeaderCell, useColumnDragReorder, useColumnResizeCursor } from "@/app/list-page-toolbar";
 import {
   getNextToastId,
   ToastNotice,
@@ -348,7 +348,6 @@ export function PartsListClient({
     startResizing: startResizingDetailsPanel
   } = useDetailsPanelWidth(`oso:parts-details-panel-width:${workspaceSlug}`, 384);
   const { isResizingColumn, setIsResizingColumn } = useColumnResizeCursor();
-  const [draggedColumnId, setDraggedColumnId] = useState<string | null>(null);
   const attributeColumnDefinitions = useMemo(
     () =>
       workspaceAttributes.map((attribute) => ({
@@ -470,6 +469,9 @@ export function PartsListClient({
     columns: listColumns,
     fixedColumnIds: fixedListColumnIds
   });
+
+  const { draggedColumnId, onDragEnd, onStartDrag, onDropOnto } = useColumnDragReorder(setColumnOrder);
+
   const createHasAttributesTab =
     getPartAttributeGroups({
       categoryAttributesByCategoryId,
@@ -1565,25 +1567,6 @@ export function PartsListClient({
     setColumnSorting(columnId, "none");
   }
 
-  function moveColumnByDrag(targetColumnId: string) {
-    if (!draggedColumnId || draggedColumnId === targetColumnId) {
-      return;
-    }
-
-    setColumnOrder((currentOrder) => {
-      const sourceIndex = currentOrder.indexOf(draggedColumnId);
-      const targetIndex = currentOrder.indexOf(targetColumnId);
-      if (sourceIndex < 0 || targetIndex < 0) {
-        return currentOrder;
-      }
-
-      const nextOrder = [...currentOrder];
-      const [sourceItem] = nextOrder.splice(sourceIndex, 1);
-      nextOrder.splice(targetIndex, 0, sourceItem);
-      return nextOrder;
-    });
-  }
-
   return (
     <>
       <div className="flex min-h-0 flex-1 gap-4">
@@ -1642,10 +1625,10 @@ export function PartsListClient({
               </div>
               <ManufacturerAutocomplete
                 compact
-                copy={copy}
                 disabled={!isDatabaseAvailable}
                 inputId="manufacturer-filter"
                 label={copy.filterByManufacturer}
+                noMatchingLabel={copy.noMatchingManufacturers}
                 name="manufacturerFilter"
                 placeholder={copy.allManufacturers}
                 suggestions={manufacturerFilterOptions.map((manufacturerName) => ({
@@ -1723,9 +1706,9 @@ export function PartsListClient({
                       setColumnSorting={setColumnSorting}
                       setColumnWidth={setColumnWidth}
                       setIsResizingColumn={setIsResizingColumn}
-                      onDragEnd={() => setDraggedColumnId(null)}
-                      onDropOnto={(id) => moveColumnByDrag(id)}
-                      onStartDrag={(id) => setDraggedColumnId(id)}
+                      onDragEnd={onDragEnd}
+                      onDropOnto={onDropOnto}
+                      onStartDrag={onStartDrag}
                     />
                   ))}
                 </tr>
@@ -2174,10 +2157,10 @@ export function PartsListClient({
                   </label>
                   <ManufacturerAutocomplete
                     compact
-                    copy={copy}
                     disabled={!isDatabaseAvailable}
                     inputId="matching-target-manufacturer"
                     label={copy.targetManufacturerLabel}
+                    noMatchingLabel={copy.noMatchingManufacturers}
                     name="matchingTargetManufacturerName"
                     placeholder={copy.manufacturerPlaceholder}
                     suggestions={currentManufacturerSuggestions}
@@ -2921,255 +2904,6 @@ function getPartFormErrorMessage(copy: Copy, error: string) {
 
   return copy.databaseUnavailable;
 }
-
-function ManufacturerAutocomplete({
-  compact = false,
-  copy,
-  disabled,
-  error,
-  inputId,
-  label = copy.manufacturer,
-  name,
-  placeholder,
-  suggestions,
-  value,
-  onValueChange
-}: {
-  compact?: boolean;
-  copy: Copy;
-  disabled: boolean;
-  error?: string;
-  inputId: string;
-  label?: string;
-  name: string;
-  placeholder: string;
-  suggestions: ManufacturerSuggestion[];
-  value: string;
-  onValueChange: (value: string) => void;
-}) {
-  const listboxId = `${inputId}-suggestions`;
-  const [isOpen, setIsOpen] = useState(false);
-  const [activeIndex, setActiveIndex] = useState(0);
-  const matchingSuggestions = getManufacturerMatches(value, suggestions);
-  const hasSuggestions = matchingSuggestions.length > 0;
-  const activeSuggestion = matchingSuggestions[activeIndex];
-  const hasSearchQuery = normalizeManufacturerSearchText(value).length > 0;
-
-  function updateSuggestionsOpen(nextValue: string) {
-    if (!disabled && normalizeManufacturerSearchText(nextValue)) {
-      setIsOpen(true);
-      return;
-    }
-
-    setIsOpen(false);
-  }
-
-  function selectSuggestion(suggestion: ManufacturerSuggestion) {
-    onValueChange(suggestion.name);
-    setIsOpen(false);
-    setActiveIndex(0);
-  }
-
-  function moveActiveSuggestion(direction: 1 | -1) {
-    if (!hasSuggestions) {
-      return;
-    }
-
-    setActiveIndex(
-      (activeIndex + direction + matchingSuggestions.length) %
-        matchingSuggestions.length
-    );
-  }
-
-  function handleKeyDown(event: ReactKeyboardEvent<HTMLInputElement>) {
-    if (event.key === "ArrowDown") {
-      event.preventDefault();
-
-      if (!isOpen) {
-        updateSuggestionsOpen(value);
-        return;
-      }
-
-      moveActiveSuggestion(1);
-    }
-
-    if (event.key === "ArrowUp") {
-      event.preventDefault();
-
-      if (!isOpen) {
-        updateSuggestionsOpen(value);
-        return;
-      }
-
-      moveActiveSuggestion(-1);
-    }
-
-    if (event.key === "Enter" && isOpen && activeSuggestion) {
-      event.preventDefault();
-      selectSuggestion(activeSuggestion);
-    }
-
-    if (event.key === "Escape" && isOpen) {
-      event.preventDefault();
-      setIsOpen(false);
-    }
-  }
-
-  return (
-    <div
-      className={`relative grid text-sm font-medium text-slate-700 ${
-        compact ? "min-w-52 gap-1.5" : "gap-2"
-      }`}
-    >
-      <LabelWithError htmlFor={inputId} error={error}>
-        {label}
-      </LabelWithError>
-      <input
-        id={inputId}
-        aria-activedescendant={
-          isOpen && activeSuggestion
-            ? getManufacturerOptionId(inputId, activeSuggestion.id)
-            : undefined
-        }
-        aria-autocomplete="list"
-        aria-controls={listboxId}
-        aria-expanded={isOpen}
-        aria-invalid={error ? true : undefined}
-        autoComplete="off"
-        className={getFieldInputClassName(
-          `rounded-md border border-slate-300 bg-white px-3 text-slate-950 outline-none transition placeholder:text-slate-400 hover:border-slate-400 focus:border-slate-500 focus:ring-2 focus:ring-slate-200 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400 ${
-            compact ? "min-h-9 py-1.5 text-sm" : "min-h-11 py-2 text-base"
-          }`,
-          Boolean(error)
-        )}
-        disabled={disabled}
-        name={name}
-        placeholder={placeholder}
-        role="combobox"
-        type="text"
-        value={value}
-        onBlur={() => {
-          setIsOpen(false);
-        }}
-        onChange={(event) => {
-          const nextValue = event.currentTarget.value;
-
-          onValueChange(nextValue);
-          setActiveIndex(0);
-          updateSuggestionsOpen(nextValue);
-        }}
-        onKeyDown={handleKeyDown}
-      />
-      {isOpen && hasSearchQuery ? (
-        <div
-          id={listboxId}
-          className="absolute left-0 right-0 top-full z-40 mt-1 overflow-hidden rounded-md border border-slate-200 bg-white shadow-lg"
-          role="listbox"
-        >
-          {hasSuggestions ? (
-            <ol className="max-h-56 overflow-auto p-1">
-              {matchingSuggestions.map((suggestion, index) => (
-                <li key={suggestion.id}>
-                  <button
-                    id={getManufacturerOptionId(inputId, suggestion.id)}
-                    aria-selected={index === activeIndex}
-                    className={`min-h-9 w-full rounded-md px-3 py-1.5 text-left text-sm transition focus:outline-none focus:ring-2 focus:ring-slate-300 ${
-                      index === activeIndex
-                        ? "bg-[var(--color-accent-soft)] font-semibold text-slate-950"
-                        : "text-slate-700 hover:bg-slate-50"
-                    }`}
-                    role="option"
-                    type="button"
-                    onMouseDown={(event) => event.preventDefault()}
-                    onClick={() => selectSuggestion(suggestion)}
-                  >
-                    {suggestion.name}
-                  </button>
-                </li>
-              ))}
-            </ol>
-          ) : (
-            <p className="px-3 py-3 text-sm font-normal text-slate-500">
-              {copy.noMatchingManufacturers}
-            </p>
-          )}
-        </div>
-      ) : null}
-    </div>
-  );
-}
-
-function getManufacturerOptionId(inputId: string, suggestionId: string) {
-  return `${inputId}-suggestion-${suggestionId}`;
-}
-
-function getManufacturerMatches(
-  query: string,
-  suggestions: ManufacturerSuggestion[]
-) {
-  const normalizedQuery = normalizeManufacturerSearchText(query);
-
-  return suggestions
-    .map((suggestion) => ({
-      suggestion,
-      score: scoreManufacturerMatch(normalizedQuery, suggestion.name)
-    }))
-    .filter((match) => match.score >= 0)
-    .sort((left, right) => {
-      if (left.score !== right.score) {
-        return right.score - left.score;
-      }
-
-      return left.suggestion.name.localeCompare(right.suggestion.name, "en", {
-        sensitivity: "base"
-      });
-    })
-    .slice(0, 6)
-    .map((match) => match.suggestion);
-}
-
-function scoreManufacturerMatch(query: string, manufacturerName: string) {
-  const normalizedName = normalizeManufacturerSearchText(manufacturerName);
-
-  if (!query) {
-    return 1;
-  }
-
-  if (normalizedName === query) {
-    return 100;
-  }
-
-  if (normalizedName.startsWith(query)) {
-    return 80 - normalizedName.length / 100;
-  }
-
-  if (normalizedName.includes(query)) {
-    return 60 - normalizedName.indexOf(query);
-  }
-
-  let queryIndex = 0;
-  let score = 30;
-
-  for (let nameIndex = 0; nameIndex < normalizedName.length; nameIndex += 1) {
-    if (normalizedName[nameIndex] !== query[queryIndex]) {
-      continue;
-    }
-
-    queryIndex += 1;
-    score -= nameIndex / 100;
-
-    if (queryIndex === query.length) {
-      return score;
-    }
-  }
-
-  return -1;
-}
-
-function normalizeManufacturerSearchText(value: string) {
-  return value.trim().replace(/\s+/g, " ").toLocaleLowerCase("en");
-}
-
 function PartDialogTabs({
   activeTab,
   copy,
@@ -3590,9 +3324,10 @@ function PartDetailsFields({
         </div>
         <ManufacturerAutocomplete
           key={`manufacturer-${formResetKey}`}
-          copy={copy}
           disabled={disabled}
           inputId={manufacturerInputId}
+          label={copy.manufacturer}
+          noMatchingLabel={copy.noMatchingManufacturers}
           value={manufacturerName}
           name="manufacturerName"
           placeholder={copy.manufacturerPlaceholder}

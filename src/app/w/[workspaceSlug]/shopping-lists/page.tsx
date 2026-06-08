@@ -7,7 +7,6 @@ import {
   getCurrentSession,
   getCurrentWorkspaceContextBySlug
 } from "@/server/auth/currentContext";
-import { getSupplierOrganizationsForWorkspace } from "@/server/organizations/organizations";
 import { getShoppingLists } from "@/server/shopping-lists/shoppingListMutations";
 
 export const dynamic = "force-dynamic";
@@ -57,7 +56,8 @@ const copy = {
   convertToOrderBody: "Select a draft purchase order or create a new one.",
   supplier: "Supplier",
   chooseSupplier: "Choose a supplier",
-  noSuppliers: "No supplier organizations found. Add an organization with the Supplier role first.",
+  noSuppliers: "No matching suppliers",
+  loadingSuppliers: "Loading suppliers...",
   newOrder: "New order",
   newOrderTitle: "New purchase order",
   noDraftOrders: "No draft purchase orders available.",
@@ -125,12 +125,8 @@ export default async function ShoppingListsPage({
 
   const emptyPage = { items: [], nextCursor: null, totalCount: 0, filteredCount: 0 };
 
-  const [initialPage, organizations, canWrite] = await Promise.all([
+  const [initialPage, canWrite] = await Promise.all([
     getShoppingLists(context.workspace.id).catch(() => emptyPage),
-    getSupplierOrganizationsForWorkspace({
-      userId: context.user.id,
-      workspaceId: context.workspace.id
-    }).catch(() => []),
     hasWorkspacePermission({
       userId: context.user.id,
       workspaceId: context.workspace.id,
@@ -152,7 +148,6 @@ export default async function ShoppingListsPage({
         copy={copy}
         initialPage={initialPage}
         initialSelectedListId={resolvedSearchParams?.selectedListId}
-        organizations={organizations}
         workspaceSlug={workspaceSlug}
       />
     </WorkspaceShell>

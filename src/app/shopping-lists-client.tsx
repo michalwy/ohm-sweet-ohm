@@ -53,14 +53,13 @@ import {
   useListTableConfiguration,
   type ListColumnDefinition
 } from "@/app/list-table-config";
-import { ListPageToolbar, ListTableHeaderCell, useColumnResizeCursor } from "@/app/list-page-toolbar";
+import { ListPageToolbar, ListTableHeaderCell, useColumnDragReorder, useColumnResizeCursor } from "@/app/list-page-toolbar";
 import { DetailPanel, useDetailsPanelWidth } from "@/app/detail-panel";
 import {
   CreatePurchaseOrderDialog,
   type CreatePurchaseOrderDialogCopy,
 } from "@/app/create-purchase-order-dialog";
 
-type Organization = { id: string; name: string };
 
 type Copy = {
   title: string;
@@ -108,6 +107,7 @@ type Copy = {
   supplier: string;
   chooseSupplier: string;
   noSuppliers: string;
+  loadingSuppliers: string;
   newOrder: string;
   newOrderTitle: string;
   noDraftOrders: string;
@@ -155,7 +155,6 @@ type ShoppingListsClientProps = {
   copy: Copy;
   initialPage: ListPage<ShoppingListSummary>;
   initialSelectedListId?: string;
-  organizations: Organization[];
   workspaceSlug: string;
 };
 
@@ -166,7 +165,6 @@ export function ShoppingListsClient({
   copy,
   initialPage,
   initialSelectedListId,
-  organizations,
   workspaceSlug
 }: ShoppingListsClientProps) {
   const queryClient = useQueryClient();
@@ -367,22 +365,7 @@ export function ShoppingListsClient({
     enabled: convertDialogOpen
   });
 
-  // --- Column drag-and-drop reordering ---
-
-  const [draggedColumnId, setDraggedColumnId] = useState<string | null>(null);
-
-  function moveColumnByDrag(targetColumnId: string) {
-    if (!draggedColumnId || draggedColumnId === targetColumnId) return;
-    setColumnOrder((currentOrder) => {
-      const sourceIndex = currentOrder.indexOf(draggedColumnId);
-      const targetIndex = currentOrder.indexOf(targetColumnId);
-      if (sourceIndex < 0 || targetIndex < 0) return currentOrder;
-      const nextOrder = [...currentOrder];
-      const [sourceItem] = nextOrder.splice(sourceIndex, 1);
-      nextOrder.splice(targetIndex, 0, sourceItem);
-      return nextOrder;
-    });
-  }
+  const { draggedColumnId, onDragEnd, onStartDrag, onDropOnto } = useColumnDragReorder(setColumnOrder);
 
   // --- URL sync & panel ---
 
@@ -770,9 +753,9 @@ export function ShoppingListsClient({
                         setColumnSorting={setColumnSorting}
                         setColumnWidth={setColumnWidth}
                         setIsResizingColumn={setIsResizingColumn}
-                        onDragEnd={() => setDraggedColumnId(null)}
-                        onDropOnto={(id) => moveColumnByDrag(id)}
-                        onStartDrag={(id) => setDraggedColumnId(id)}
+                        onDragEnd={onDragEnd}
+                        onDropOnto={onDropOnto}
+                        onStartDrag={onStartDrag}
                       />
                     ))}
                   </tr>
@@ -848,7 +831,7 @@ export function ShoppingListsClient({
                   {selectedItemIds.size > 0 ? (
                     <button
                       className="min-h-8 rounded-md border border-slate-300 bg-white px-3 text-sm font-medium text-slate-700 transition hover:border-slate-400 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
-                      disabled={!canWrite || organizations.length === 0}
+                      disabled={!canWrite}
                       type="button"
                       onClick={openConvertDialog}
                     >
@@ -1197,12 +1180,12 @@ export function ShoppingListsClient({
         dialogRef={createPODialogRef}
         isOpen={createPODialogOpen}
         workspaceSlug={workspaceSlug}
-        organizations={organizations}
         copy={{
           title: copy.newOrderTitle,
           supplier: copy.supplier,
           chooseSupplier: copy.chooseSupplier,
           noSuppliers: copy.noSuppliers,
+          loadingSuppliers: copy.loadingSuppliers,
           orderNumber: copy.orderNumber,
           orderNumberPlaceholder: copy.orderNumberPlaceholder,
           notes: copy.notes,

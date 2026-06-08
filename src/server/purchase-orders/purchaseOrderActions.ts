@@ -6,6 +6,7 @@ import {
   addOrderItem,
   createPurchaseOrder,
   deletePurchaseOrder,
+  generateOrderNumber,
   getDraftPurchaseOrders,
   getPurchaseOrderDetail,
   getPurchaseOrders,
@@ -24,6 +25,7 @@ import {
   updatePurchaseOrder
 } from "@/server/purchase-orders/purchaseOrderMutations";
 import type { ListPage } from "@/server/pagination";
+import { getSupplierOrganizationsForWorkspace } from "@/server/organizations/organizations";
 import { revalidatePath } from "next/cache";
 
 export type PurchaseOrderActionResult<T> =
@@ -61,6 +63,35 @@ export async function getPurchaseOrderDetailForWorkspace(input: {
   }
 }
 
+export async function getNextOrderNumberForWorkspace(input: {
+  workspaceSlug: string;
+}): Promise<PurchaseOrderActionResult<{ orderNumber: string }>> {
+  try {
+    const context = await getAuthorizedContext(input.workspaceSlug, "purchase-orders:read");
+    const orderNumber = await generateOrderNumber(context.workspace.id);
+    return success({ orderNumber });
+  } catch (error) {
+    return failure(error);
+  }
+}
+
+export async function searchSupplierOrganizationsForWorkspace(input: {
+  workspaceSlug: string;
+  searchQuery?: string;
+}): Promise<PurchaseOrderActionResult<{ id: string; name: string }[]>> {
+  try {
+    const context = await getAuthorizedContext(input.workspaceSlug, "purchase-orders:read");
+    const results = await getSupplierOrganizationsForWorkspace({
+      userId: context.user.id,
+      workspaceId: context.workspace.id,
+      searchQuery: input.searchQuery
+    });
+    return success(results);
+  } catch (error) {
+    return failure(error);
+  }
+}
+
 export async function lookupSupplierItemForWorkspace(input: {
   workspaceSlug: string;
   partId: string;
@@ -86,6 +117,7 @@ export async function createPurchaseOrderForWorkspace(input: {
     const order = await createPurchaseOrder({
       workspaceId: context.workspace.id,
       supplierId: input.supplierId,
+      createdByUserId: context.user.id,
       orderNumber: input.orderNumber,
       notes: input.notes
     });
@@ -101,15 +133,25 @@ export async function updatePurchaseOrderForWorkspace(input: {
   orderId: string;
   supplierId?: string;
   orderNumber?: string | null;
+  supplierOrderNumber?: string | null;
+  orderedAt?: string | null;
   notes?: string | null;
 }): Promise<PurchaseOrderActionResult<null>> {
   try {
     const context = await getAuthorizedContext(input.workspaceSlug, "purchase-orders:write");
+    const orderedAt =
+      input.orderedAt !== undefined
+        ? input.orderedAt
+          ? new Date(input.orderedAt)
+          : null
+        : undefined;
     await updatePurchaseOrder({
       workspaceId: context.workspace.id,
       orderId: input.orderId,
       supplierId: input.supplierId,
       orderNumber: input.orderNumber,
+      supplierOrderNumber: input.supplierOrderNumber,
+      orderedAt,
       notes: input.notes
     });
     revalidatePath(workspacePath(input.workspaceSlug));

@@ -1,18 +1,21 @@
 "use client";
 
-import { useRef, useState } from "react";
-import { useMutation } from "@tanstack/react-query";
+import { useState } from "react";
+import { useMutation, useQuery } from "@tanstack/react-query";
 
-import { createPurchaseOrderForWorkspace } from "@/server/purchase-orders/purchaseOrderActions";
+import {
+  createPurchaseOrderForWorkspace,
+  getNextOrderNumberForWorkspace,
+} from "@/server/purchase-orders/purchaseOrderActions";
 import {
   closeDialog,
   DialogBody,
   DialogFooter,
   DialogShell,
   ErrorBubble,
-  getFieldInputClassName,
   LabelWithError,
 } from "@/app/dialog-shell";
+import { SupplierPickerCombobox } from "@/app/supplier-picker-combobox";
 
 export type CreatePurchaseOrderDialogCopy = {
   title: string;
@@ -30,13 +33,13 @@ export type CreatePurchaseOrderDialogCopy = {
   permissionDenied: string;
   databaseUnavailable: string;
   invalidInput: string;
+  loadingSuppliers: string;
 };
 
 type CreatePurchaseOrderDialogProps = {
   dialogRef: React.RefObject<HTMLDialogElement | null>;
   isOpen: boolean;
   workspaceSlug: string;
-  organizations: { id: string; name: string }[];
   copy: CreatePurchaseOrderDialogCopy;
   onClose: () => void;
   onSuccess: (newOrderId: string) => void;
@@ -57,13 +60,22 @@ export function CreatePurchaseOrderDialog({
   dialogRef,
   isOpen,
   workspaceSlug,
-  organizations,
   copy,
   onClose,
   onSuccess,
 }: CreatePurchaseOrderDialogProps) {
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [formKey, setFormKey] = useState(0);
+
+  const orderNumberQuery = useQuery({
+    queryKey: ["next-order-number", workspaceSlug, formKey],
+    queryFn: async () => {
+      const result = await getNextOrderNumberForWorkspace({ workspaceSlug });
+      return result.ok ? result.data.orderNumber : "";
+    },
+    enabled: isOpen,
+    staleTime: 0,
+  });
 
   const createMutation = useMutation({
     mutationFn: createPurchaseOrderForWorkspace,
@@ -121,28 +133,13 @@ export function CreatePurchaseOrderDialog({
               >
                 {copy.supplier}
               </LabelWithError>
-              {organizations.length === 0 ? (
-                <p className="text-sm text-slate-500">{copy.noSuppliers}</p>
-              ) : (
-                <select
-                  id="create-po-supplier"
-                  name="supplierId"
-                  defaultValue=""
-                  className={getFieldInputClassName(
-                    "min-h-10 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-950 outline-none transition hover:border-slate-400 focus:border-slate-500 focus:ring-2 focus:ring-slate-200",
-                    Boolean(formErrors.supplier)
-                  )}
-                >
-                  <option value="" disabled>
-                    {copy.chooseSupplier}
-                  </option>
-                  {organizations.map((org) => (
-                    <option key={org.id} value={org.id}>
-                      {org.name}
-                    </option>
-                  ))}
-                </select>
-              )}
+              <SupplierPickerCombobox
+                workspaceSlug={workspaceSlug}
+                inputId="create-po-supplier"
+                placeholder={copy.chooseSupplier}
+                noItemsLabel={copy.noSuppliers}
+                loadingLabel={copy.loadingSuppliers}
+              />
             </div>
             <div className="grid gap-2">
               <label
@@ -154,7 +151,9 @@ export function CreatePurchaseOrderDialog({
               <input
                 id="create-po-order-number"
                 name="orderNumber"
-                placeholder={copy.orderNumberPlaceholder}
+                placeholder={orderNumberQuery.isFetching ? "…" : copy.orderNumberPlaceholder}
+                defaultValue={orderNumberQuery.data ?? ""}
+                key={`order-num-${formKey}-${orderNumberQuery.data ?? "loading"}`}
                 className="min-h-10 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-950 outline-none transition hover:border-slate-400 focus:border-slate-500 focus:ring-2 focus:ring-slate-200"
               />
             </div>
@@ -165,11 +164,12 @@ export function CreatePurchaseOrderDialog({
               >
                 {copy.notes}
               </label>
-              <input
+              <textarea
                 id="create-po-notes"
                 name="notes"
+                rows={3}
                 placeholder={copy.notesPlaceholder}
-                className="min-h-10 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-950 outline-none transition hover:border-slate-400 focus:border-slate-500 focus:ring-2 focus:ring-slate-200"
+                className="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-950 outline-none transition hover:border-slate-400 focus:border-slate-500 focus:ring-2 focus:ring-slate-200 resize-none"
               />
             </div>
           </DialogBody>
@@ -184,7 +184,7 @@ export function CreatePurchaseOrderDialog({
             <button
               className="min-h-10 rounded-md bg-[var(--color-accent)] px-4 text-sm font-semibold text-white transition hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-60"
               type="submit"
-              disabled={createMutation.isPending || organizations.length === 0}
+              disabled={createMutation.isPending}
             >
               {copy.createOrder}
             </button>

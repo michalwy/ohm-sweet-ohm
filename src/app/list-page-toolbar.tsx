@@ -32,6 +32,30 @@ export function useColumnResizeCursor() {
   return { isResizingColumn, setIsResizingColumn, containerClassName };
 }
 
+export function useColumnDragReorder(setColumnOrder: (updater: (order: string[]) => string[]) => void) {
+  const [draggedColumnId, setDraggedColumnId] = useState<string | null>(null);
+
+  function moveColumnByDrag(targetColumnId: string) {
+    if (!draggedColumnId || draggedColumnId === targetColumnId) return;
+    setColumnOrder((currentOrder) => {
+      const sourceIndex = currentOrder.indexOf(draggedColumnId);
+      const targetIndex = currentOrder.indexOf(targetColumnId);
+      if (sourceIndex < 0 || targetIndex < 0) return currentOrder;
+      const nextOrder = [...currentOrder];
+      const [sourceItem] = nextOrder.splice(sourceIndex, 1);
+      nextOrder.splice(targetIndex, 0, sourceItem);
+      return nextOrder;
+    });
+  }
+
+  return {
+    draggedColumnId,
+    onDragEnd: () => setDraggedColumnId(null),
+    onStartDrag: (id: string) => setDraggedColumnId(id),
+    onDropOnto: (id: string) => moveColumnByDrag(id),
+  };
+}
+
 export type ColumnGroup = {
   groupId: string;
   label: string;

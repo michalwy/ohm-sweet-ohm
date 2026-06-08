@@ -294,10 +294,12 @@ export async function deleteOrganizationForWorkspace({
 
 export async function getSupplierOrganizationsForWorkspace({
   userId,
-  workspaceId
+  workspaceId,
+  searchQuery
 }: {
   userId: string;
   workspaceId: string;
+  searchQuery?: string;
 }): Promise<{ id: string; name: string }[]> {
   await authorizeWorkspacePermission({
     userId,
@@ -308,9 +310,11 @@ export async function getSupplierOrganizationsForWorkspace({
   return prisma.organization.findMany({
     where: {
       workspaceId,
-      roles: { some: { role: ORGANIZATION_ROLE_SUPPLIER } }
+      roles: { some: { role: ORGANIZATION_ROLE_SUPPLIER } },
+      ...(searchQuery ? { name: { contains: searchQuery, mode: "insensitive" } } : {})
     },
     orderBy: { name: "asc" },
+    take: searchQuery ? 20 : undefined,
     select: { id: true, name: true }
   });
 }
