@@ -104,6 +104,9 @@ model InventoryEntry {
   fromLocationId      String?
   toLocationId        String?
   note                String?
+  unitCost            Decimal?
+  costCurrency        String?
+  unitCostPrimary     Decimal?
   createdByUserId     String?
   createdAt           DateTime           @default(now())
 
@@ -175,6 +178,9 @@ model Organization {
   workspaceId    String
   name           String
   normalizedName String
+  currency              String?
+  defaultPriceEntryMode String?
+  defaultTaxRate        Decimal?
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
@@ -381,12 +387,15 @@ model Verification {
 }
 
 model Workspace {
-  id        String   @id @default(cuid())
-  name      String
-  slug      String   @unique
+  id              String   @id @default(cuid())
+  name            String
+  slug            String   @unique
+  primaryCurrency       String   @default("EUR")
+  defaultPriceEntryMode String   @default("net")
+  defaultTaxRate        Decimal?
   activeSupplierProvider SupplierProvider?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
   members              WorkspaceMember[]
   parts                Part[]
@@ -409,6 +418,18 @@ model Workspace {
   supplierManufacturerMappingStats SupplierManufacturerMappingStat[]
   shoppingLists    ShoppingList[]
   purchaseOrders   PurchaseOrder[]
+}
+
+model ExchangeRate {
+  id            String   @id @default(cuid())
+  baseCurrency  String
+  quoteCurrency String
+  date          DateTime @db.Date
+  rate          Decimal
+  fetchedAt     DateTime @default(now())
+
+  @@unique([baseCurrency, quoteCurrency, date])
+  @@index([baseCurrency, quoteCurrency, date])
 }
 
 enum SupplierProvider {
@@ -622,6 +643,9 @@ model PurchaseOrder {
   status               PurchaseOrderStatus @default(DRAFT)
   orderNumber          String?
   supplierOrderNumber  String?
+  currency             String?
+  taxRate              Decimal?
+  priceEntryMode       String    @default("net")
   orderedAt            DateTime?
   notes                String?
   createdAt            DateTime            @default(now())
@@ -649,6 +673,7 @@ model PurchaseOrderItem {
   supplierSku              String?
   unitPrice                Decimal?
   currency                 String?
+  taxRate                  Decimal?
   notes                    String?
   createdAt                DateTime @default(now())
   updatedAt                DateTime @updatedAt

@@ -207,19 +207,46 @@ In both cases the original shopping list items remain on the list and show an **
 
 Use **Purchase Orders** to track formal orders sent to a supplier.
 
+### Pricing And Currencies
+
+OSO tracks net prices and computes gross amounts on the fly.
+
+**Workspace primary currency** is set when you create a workspace and cannot be changed. It is used for all cost summaries and the average cost column in the parts list.
+
+**Order currency** — set an optional currency on each purchase order. When the order currency differs from your workspace primary currency, OSO fetches the exchange rate from the ECB (via the Frankfurter API) and shows amounts in both currencies wherever applicable. Currency is locked after creation.
+
+**Tax rate cascade** — tax rate defaults follow this hierarchy: per-item override → PO default → supplier default → workspace ordering default → 0. Set workspace-level defaults under **Settings → Ordering**.
+
+**Price entry mode** — each PO has a price entry mode: **Net** (you enter net prices, gross is computed) or **Gross** (you enter gross prices, net is back-calculated and stored). Set at PO creation; cannot be changed afterwards.
+
+- In **Net** mode: enter net price per item; the dialog shows gross as a read-only computed value.
+- In **Gross** mode: enter the gross price per item; OSO back-calculates `net = gross / (1 + taxRate / 100)` and stores the net.
+
+**Supplier defaults** — set a default price entry mode, tax rate, and currency per supplier organization (under **Organizations**). When you select a supplier in the create-PO dialog, these fields are pre-filled automatically.
+
+**Workspace ordering defaults** — fallback defaults for price entry mode and tax rate when the selected supplier has no defaults. Configure them under **Settings → Ordering**.
+
+**Dual-entry pricing** — in the item dialog, enter either the unit price (or gross unit price) or the line total; the other field updates automatically.
+
+**Order totals** — the detail panel shows a totals footer (net and gross) whenever at least one item has a price. If the order currency differs from your primary currency and the order has been marked as ordered, primary-currency equivalents are shown alongside.
+
+**Average cost column** — the parts list has an **Avg. cost** column (hidden by default). It shows the weighted-average net receipt cost in your workspace primary currency, calculated from all received purchase order items that had a price at receive time.
+
 ### Creating An Order
 
 1. Open **Purchase Orders** from the sidebar.
-2. Click **New order**, choose a supplier organization, optionally enter an order number and notes, and save.
-3. The order starts in **Draft** status.
+2. Click **New order**, choose a supplier. Currency, tax rate, and price entry mode are pre-filled from the supplier's defaults (falling back to workspace ordering defaults).
+3. Adjust any fields as needed and save.
+4. The order starts in **Draft** status.
 
 > **Note:** The supplier dropdown only shows organizations with the **Supplier** role. If the list is empty, open **Organizations** from the sidebar and assign the Supplier role to the relevant organization.
 
 ### Adding Items
 
 1. Click an order row to open the detail panel on the right.
-2. Click **Add item**, search for a part, enter a quantity, and optionally fill in a supplier SKU, unit price, and currency.
-3. Click **Look up** next to the supplier SKU field to auto-fill the SKU from the active DigiKey or TME integration.
+2. Click **Add item**, search for a part, enter a quantity, and optionally fill in a supplier SKU, price (net or gross depending on the PO's price entry mode), and a per-item tax rate override.
+3. A computed panel shows the complementary price (gross if net mode, net if gross mode). If the order is marked as ordered and the currencies differ, primary-currency equivalents are also shown.
+4. Click **Look up** next to the supplier SKU field to auto-fill the SKU from the active DigiKey or TME integration.
 
 ### Marking An Order As Ordered
 

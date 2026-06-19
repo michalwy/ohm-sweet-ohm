@@ -6,7 +6,13 @@ import { useQuery } from "@tanstack/react-query";
 import { ComboboxBase } from "@/app/combobox-base";
 import { searchSupplierOrganizationsForWorkspace } from "@/server/purchase-orders/purchaseOrderActions";
 
-type SupplierOption = { id: string; name: string };
+type SupplierOption = {
+  id: string;
+  name: string;
+  currency: string | null;
+  defaultPriceEntryMode: string | null;
+  defaultTaxRate: string | null;
+};
 
 type SupplierPickerComboboxProps = {
   workspaceSlug: string;
@@ -16,6 +22,7 @@ type SupplierPickerComboboxProps = {
   loadingLabel: string;
   initialValue?: { id: string; name: string } | null;
   disabled?: boolean;
+  onSupplierSelect?: (supplier: SupplierOption) => void;
 };
 
 export function SupplierPickerCombobox({
@@ -26,6 +33,7 @@ export function SupplierPickerCombobox({
   loadingLabel,
   initialValue,
   disabled,
+  onSupplierSelect,
 }: SupplierPickerComboboxProps) {
   const [inputValue, setInputValue] = useState(initialValue?.name ?? "");
   const [selectedId, setSelectedId] = useState(initialValue?.id ?? "");
@@ -92,6 +100,7 @@ export function SupplierPickerCombobox({
         onItemSelect={(item) => {
           setInputValue(item.name);
           setSelectedId(item.id);
+          onSupplierSelect?.(item);
         }}
       />
     </div>

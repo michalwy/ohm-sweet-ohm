@@ -1197,6 +1197,14 @@ export function ShoppingListsClient({
           permissionDenied: copy.permissionDenied,
           databaseUnavailable: copy.databaseUnavailable,
           invalidInput: copy.invalidInput,
+          currency: "Currency",
+          chooseCurrency: "— none —",
+          taxRate: "Tax rate (%)",
+          taxRatePlaceholder: "0",
+          taxRateHelp: "Applied to all items unless overridden per item",
+          priceEntryMode: "Price entry mode",
+          priceEntryModeNet: "Net",
+          priceEntryModeGross: "Gross",
         }}
         onClose={closeCreatePODialog}
         onSuccess={handleCreatePOSuccessFromConvert}

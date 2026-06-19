@@ -8,8 +8,14 @@ import { createWorkspaceForOwner } from "@/server/workspaces/createWorkspace";
 
 const workspaceCopy = {
   missingName: "missing-name",
+  missingCurrency: "missing-currency",
   unavailable: "workspace-unavailable"
 };
+
+const SUPPORTED_CURRENCIES = new Set([
+  "EUR", "USD", "GBP", "PLN", "CZK", "CHF", "SEK", "DKK", "NOK",
+  "HUF", "RON", "BGN", "HRK", "RUB", "JPY", "CNY", "CAD", "AUD"
+]);
 
 export async function createWorkspace(formData: FormData) {
   const session = await getCurrentSession();
@@ -19,9 +25,14 @@ export async function createWorkspace(formData: FormData) {
   }
 
   const name = getRequiredFormValue(formData, "name");
+  const currency = getRequiredFormValue(formData, "currency").toUpperCase();
 
   if (!name) {
     redirect(`/workspaces?error=${workspaceCopy.missingName}`);
+  }
+
+  if (!currency || !SUPPORTED_CURRENCIES.has(currency)) {
+    redirect(`/workspaces?error=${workspaceCopy.missingCurrency}`);
   }
 
   let workspaceSlug = "";
@@ -29,7 +40,8 @@ export async function createWorkspace(formData: FormData) {
   try {
     const workspace = await createWorkspaceForOwner({
       userId: session.user.id,
-      name
+      name,
+      primaryCurrency: currency
     });
 
     workspaceSlug = workspace.slug;

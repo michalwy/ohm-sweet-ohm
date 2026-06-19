@@ -54,7 +54,15 @@ const copy = {
   invalidInput: "Check the fields and try again.",
   configureList: "Configure list",
   visibleColumns: "Columns",
-  listCountSummary: "{visible} of {total} organizations"
+  listCountSummary: "{visible} of {total} organizations",
+  currency: "Default currency",
+  chooseCurrency: "No default",
+  defaultPriceEntryMode: "Default price entry mode",
+  priceEntryModeNet: "Net",
+  priceEntryModeGross: "Gross",
+  priceEntryModeNone: "No default",
+  defaultTaxRate: "Default tax rate (%)",
+  defaultTaxRatePlaceholder: "0"
 };
 
 type OrganizationsPageProps = {

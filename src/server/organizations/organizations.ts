@@ -1,5 +1,7 @@
 import "server-only";
 
+import { Prisma } from "@/generated/prisma/client";
+
 import { authorizeWorkspacePermission } from "@/server/access-control/authorize";
 import { prisma } from "@/server/db/prisma";
 import {
@@ -23,6 +25,9 @@ export type OrganizationSummary = {
   id: string;
   name: string;
   roles: string[];
+  currency: string | null;
+  defaultPriceEntryMode: string | null;
+  defaultTaxRate: string | null;
   createdAt: Date;
 };
 
@@ -126,6 +131,9 @@ export async function getOrganizationsForWorkspace({
     select: {
       id: true,
       name: true,
+      currency: true,
+      defaultPriceEntryMode: true,
+      defaultTaxRate: true,
       createdAt: true,
       roles: { select: { role: true } }
     }
@@ -135,6 +143,9 @@ export async function getOrganizationsForWorkspace({
   const items = rows.slice(0, limit).map((r) => ({
     id: r.id,
     name: r.name,
+    currency: r.currency,
+    defaultPriceEntryMode: r.defaultPriceEntryMode,
+    defaultTaxRate: r.defaultTaxRate?.toString() ?? null,
     createdAt: r.createdAt,
     roles: r.roles.map((role) => role.role)
   }));
@@ -150,12 +161,18 @@ export async function createOrganizationForWorkspace({
   userId,
   workspaceId,
   name,
-  roles
+  roles,
+  currency,
+  defaultPriceEntryMode,
+  defaultTaxRate
 }: {
   userId: string;
   workspaceId: string;
   name: string;
   roles: string[];
+  currency?: string | null;
+  defaultPriceEntryMode?: string | null;
+  defaultTaxRate?: string | null;
 }): Promise<{ ok: true; id: string } | { ok: false; error: string }> {
   await authorizeWorkspacePermission({
     userId,
@@ -181,11 +198,19 @@ export async function createOrganizationForWorkspace({
     return { ok: false, error: "name_taken" };
   }
 
+  const parsedDefaultTaxRate =
+    defaultTaxRate && defaultTaxRate.trim()
+      ? new Prisma.Decimal(defaultTaxRate.trim())
+      : null;
+
   const org = await prisma.organization.create({
     data: {
       workspaceId,
       name: displayName,
       normalizedName,
+      currency: currency || null,
+      defaultPriceEntryMode: defaultPriceEntryMode || null,
+      defaultTaxRate: parsedDefaultTaxRate,
       roles: {
         create: roles.map((role) => ({ role }))
       }
@@ -201,13 +226,19 @@ export async function updateOrganizationForWorkspace({
   workspaceId,
   id,
   name,
-  roles
+  roles,
+  currency,
+  defaultPriceEntryMode,
+  defaultTaxRate
 }: {
   userId: string;
   workspaceId: string;
   id: string;
   name: string;
   roles: string[];
+  currency?: string | null;
+  defaultPriceEntryMode?: string | null;
+  defaultTaxRate?: string | null;
 }): Promise<{ ok: true } | { ok: false; error: string }> {
   await authorizeWorkspacePermission({
     userId,
@@ -241,10 +272,21 @@ export async function updateOrganizationForWorkspace({
     return { ok: false, error: "not_found" };
   }
 
+  const parsedUpdateTaxRate =
+    defaultTaxRate && defaultTaxRate.trim()
+      ? new Prisma.Decimal(defaultTaxRate.trim())
+      : null;
+
   await prisma.$transaction([
     prisma.organization.update({
       where: { id },
-      data: { name: displayName, normalizedName }
+      data: {
+        name: displayName,
+        normalizedName,
+        currency: currency || null,
+        defaultPriceEntryMode: defaultPriceEntryMode || null,
+        defaultTaxRate: parsedUpdateTaxRate
+      }
     }),
     prisma.organizationRole.deleteMany({ where: { organizationId: id } }),
     prisma.organizationRole.createMany({
@@ -292,6 +334,14 @@ export async function deleteOrganizationForWorkspace({
   return { ok: true };
 }
 
+export type SupplierSummary = {
+  id: string;
+  name: string;
+  currency: string | null;
+  defaultPriceEntryMode: string | null;
+  defaultTaxRate: string | null;
+};
+
 export async function getSupplierOrganizationsForWorkspace({
   userId,
   workspaceId,
@@ -300,14 +350,14 @@ export async function getSupplierOrganizationsForWorkspace({
   userId: string;
   workspaceId: string;
   searchQuery?: string;
-}): Promise<{ id: string; name: string }[]> {
+}): Promise<SupplierSummary[]> {
   await authorizeWorkspacePermission({
     userId,
     workspaceId,
     permission: "purchase-orders:read"
   });
 
-  return prisma.organization.findMany({
+  const rows = await prisma.organization.findMany({
     where: {
       workspaceId,
       roles: { some: { role: ORGANIZATION_ROLE_SUPPLIER } },
@@ -315,8 +365,16 @@ export async function getSupplierOrganizationsForWorkspace({
     },
     orderBy: { name: "asc" },
     take: searchQuery ? 20 : undefined,
-    select: { id: true, name: true }
+    select: { id: true, name: true, currency: true, defaultPriceEntryMode: true, defaultTaxRate: true }
   });
+
+  return rows.map((r) => ({
+    id: r.id,
+    name: r.name,
+    currency: r.currency,
+    defaultPriceEntryMode: r.defaultPriceEntryMode,
+    defaultTaxRate: r.defaultTaxRate?.toString() ?? null
+  }));
 }
 
 export async function getManufacturerSuggestionsForPartForm({

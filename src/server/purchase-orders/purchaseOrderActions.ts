@@ -24,8 +24,9 @@ import {
   updateOrderItem,
   updatePurchaseOrder
 } from "@/server/purchase-orders/purchaseOrderMutations";
+import { getExchangeRate } from "@/server/currency/exchangeRates";
 import type { ListPage } from "@/server/pagination";
-import { getSupplierOrganizationsForWorkspace } from "@/server/organizations/organizations";
+import { getSupplierOrganizationsForWorkspace, type SupplierSummary } from "@/server/organizations/organizations";
 import { revalidatePath } from "next/cache";
 
 export type PurchaseOrderActionResult<T> =
@@ -78,7 +79,7 @@ export async function getNextOrderNumberForWorkspace(input: {
 export async function searchSupplierOrganizationsForWorkspace(input: {
   workspaceSlug: string;
   searchQuery?: string;
-}): Promise<PurchaseOrderActionResult<{ id: string; name: string }[]>> {
+}): Promise<PurchaseOrderActionResult<SupplierSummary[]>> {
   try {
     const context = await getAuthorizedContext(input.workspaceSlug, "purchase-orders:read");
     const results = await getSupplierOrganizationsForWorkspace({
@@ -110,6 +111,9 @@ export async function createPurchaseOrderForWorkspace(input: {
   workspaceSlug: string;
   supplierId: string;
   orderNumber?: string | null;
+  currency?: string | null;
+  taxRate?: string | null;
+  priceEntryMode?: "net" | "gross" | null;
   notes?: string | null;
 }): Promise<PurchaseOrderActionResult<{ orderId: string }>> {
   try {
@@ -119,6 +123,9 @@ export async function createPurchaseOrderForWorkspace(input: {
       supplierId: input.supplierId,
       createdByUserId: context.user.id,
       orderNumber: input.orderNumber,
+      currency: input.currency,
+      taxRate: input.taxRate,
+      priceEntryMode: input.priceEntryMode,
       notes: input.notes
     });
     revalidatePath(workspacePath(input.workspaceSlug));
@@ -134,6 +141,8 @@ export async function updatePurchaseOrderForWorkspace(input: {
   supplierId?: string;
   orderNumber?: string | null;
   supplierOrderNumber?: string | null;
+  currency?: string | null;
+  taxRate?: string | null;
   orderedAt?: string | null;
   notes?: string | null;
 }): Promise<PurchaseOrderActionResult<null>> {
@@ -151,6 +160,8 @@ export async function updatePurchaseOrderForWorkspace(input: {
       supplierId: input.supplierId,
       orderNumber: input.orderNumber,
       supplierOrderNumber: input.supplierOrderNumber,
+      currency: input.currency,
+      taxRate: input.taxRate,
       orderedAt,
       notes: input.notes
     });
@@ -183,6 +194,7 @@ export async function addOrderItemForWorkspace(input: {
   supplierSku?: string | null;
   unitPrice?: string | null;
   currency?: string | null;
+  taxRate?: string | null;
   notes?: string | null;
   sourceShoppingListItemId?: string | null;
 }): Promise<PurchaseOrderActionResult<null>> {
@@ -196,6 +208,7 @@ export async function addOrderItemForWorkspace(input: {
       supplierSku: input.supplierSku,
       unitPrice: input.unitPrice,
       currency: input.currency,
+      taxRate: input.taxRate,
       notes: input.notes,
       sourceShoppingListItemId: input.sourceShoppingListItemId
     });
@@ -214,6 +227,7 @@ export async function updateOrderItemForWorkspace(input: {
   supplierSku?: string | null;
   unitPrice?: string | null;
   currency?: string | null;
+  taxRate?: string | null;
   notes?: string | null;
 }): Promise<PurchaseOrderActionResult<null>> {
   try {
@@ -226,6 +240,7 @@ export async function updateOrderItemForWorkspace(input: {
       supplierSku: input.supplierSku,
       unitPrice: input.unitPrice,
       currency: input.currency,
+      taxRate: input.taxRate,
       notes: input.notes
     });
     revalidatePath(workspacePath(input.workspaceSlug));
@@ -297,6 +312,21 @@ export async function revertOrderToDraftForWorkspace(input: {
     await revertOrderToDraft({ workspaceId: context.workspace.id, orderId: input.orderId });
     revalidatePath(workspacePath(input.workspaceSlug));
     return success(null);
+  } catch (error) {
+    return failure(error);
+  }
+}
+
+export async function getExchangeRateForWorkspace(input: {
+  workspaceSlug: string;
+  from: string;
+  to: string;
+  date: string;
+}): Promise<PurchaseOrderActionResult<{ rate: string } | null>> {
+  try {
+    await getAuthorizedContext(input.workspaceSlug, "purchase-orders:read");
+    const rate = await getExchangeRate(input.from, input.to, new Date(input.date));
+    return success(rate ? { rate: rate.toString() } : null);
   } catch (error) {
     return failure(error);
   }

@@ -76,6 +76,7 @@ const copy = {
   stock: "Stock",
   planned: "Planned",
   onOrder: "On order",
+  avgCost: "Avg. cost",
   newPartTitle: "Add part",
   newPartBody: "Create a new part.",
   editPartTitle: "Edit part",

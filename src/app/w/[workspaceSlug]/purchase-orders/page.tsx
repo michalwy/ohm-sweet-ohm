@@ -72,7 +72,14 @@ const copy = {
   noLocations: "No assignable locations available.",
   supplierSku: "Supplier SKU",
   unitPrice: "Unit price",
+  lineTotal: "Line total",
   currency: "Currency",
+  chooseCurrency: "— none —",
+  taxRate: "Tax rate (%)",
+  taxRatePlaceholder: "0",
+  taxRateHelp: "Applied to all items unless overridden per item",
+  grossUnitPrice: "Gross unit price",
+  grossLineTotal: "Gross line total",
   lookupSku: "Look up",
   skuFound: "SKU found",
   skuNotFound: "Not found",
@@ -102,6 +109,11 @@ const copy = {
   databaseUnavailable: "Database is not available.",
   orderedAt: "Ordered",
   noAttribute: "—",
+  totalNetValue: "Net value",
+  totalGrossValue: "Gross value",
+  totalNetValuePrimary: "Net value ({currency})",
+  totalGrossValuePrimary: "Gross value ({currency})",
+  orderTotals: "Order totals",
   configureList: "Configure list",
   configureListTitle: "Configure list",
   configureListBody: "Choose visible columns, order, sorting, and widths.",
@@ -112,7 +124,10 @@ const copy = {
   sortingLabel: "Sort",
   clearSorting: "None",
   resetListConfiguration: "Reset defaults",
-  orderCountSummary: "{visible} of {total} orders"
+  orderCountSummary: "{visible} of {total} orders",
+  priceEntryMode: "Price entry mode",
+  priceEntryModeNet: "Net",
+  priceEntryModeGross: "Gross"
 };
 
 type PurchaseOrdersPageProps = {
@@ -165,6 +180,11 @@ export default async function PurchaseOrdersPage({ params, searchParams }: Purch
         initialSelectedOrderId={resolvedSearchParams?.selectedOrderId}
         assignableLocations={assignableLocations}
         workspaceSlug={workspaceSlug}
+        primaryCurrency={context.workspace.primaryCurrency}
+        workspaceDefaultPriceEntryMode={
+          (context.workspace.defaultPriceEntryMode as "net" | "gross") ?? "net"
+        }
+        workspaceDefaultTaxRate={context.workspace.defaultTaxRate?.toString() ?? null}
       />
     </WorkspaceShell>
   );

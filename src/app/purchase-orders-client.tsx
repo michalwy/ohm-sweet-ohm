@@ -18,9 +18,9 @@ import {
 import {
   addOrderItemForWorkspace,
   deletePurchaseOrderForWorkspace,
+  getExchangeRateForWorkspace,
   getPurchaseOrderDetailForWorkspace,
   getPurchaseOrdersForWorkspace,
-  lookupSupplierItemForWorkspace,
   markOrderedForWorkspace,
   receiveItemsForWorkspace,
   removeOrderItemForWorkspace,
@@ -52,6 +52,7 @@ import {
   LabelWithError,
   openDialog
 } from "@/app/dialog-shell";
+import { CURRENCIES } from "@/app/currencies";
 import { getNextToastId, ToastNotice, type ToastMessage } from "@/app/toast-notice";
 import type { StorageLocationListItem } from "@/server/inventory/locationMutations";
 import { InfiniteListViewport } from "@/app/infinite-list";
@@ -61,6 +62,10 @@ import {
 } from "@/app/list-table-config";
 import { ListPageToolbar, ListTableHeaderCell, useColumnDragReorder, useColumnResizeCursor } from "@/app/list-page-toolbar";
 import { DetailPanel, useDetailsPanelWidth } from "@/app/detail-panel";
+
+function roundDisplay(n: number): string {
+  return n.toFixed(2);
+}
 
 type Copy = {
   title: string;
@@ -112,12 +117,15 @@ type Copy = {
   location: string;
   chooseLocation: string;
   noLocations: string;
-  supplierSku: string;
   unitPrice: string;
+  lineTotal: string;
   currency: string;
-  lookupSku: string;
-  skuFound: string;
-  skuNotFound: string;
+  chooseCurrency: string;
+  taxRate: string;
+  taxRatePlaceholder: string;
+  taxRateHelp: string;
+  grossUnitPrice: string;
+  grossLineTotal: string;
   addItem: string;
   editItem: string;
   removeItem: string;
@@ -152,6 +160,11 @@ type Copy = {
   supplierOrderNumber: string;
   supplierOrderNumberPlaceholder: string;
   noAttribute: string;
+  totalNetValue: string;
+  totalGrossValue: string;
+  totalNetValuePrimary: string;
+  totalGrossValuePrimary: string;
+  orderTotals: string;
   configureList: string;
   configureListTitle: string;
   configureListBody: string;
@@ -163,6 +176,9 @@ type Copy = {
   clearSorting: string;
   resetListConfiguration: string;
   orderCountSummary: string;
+  priceEntryMode: string;
+  priceEntryModeNet: string;
+  priceEntryModeGross: string;
 };
 
 type PurchaseOrdersClientProps = {
@@ -172,6 +188,9 @@ type PurchaseOrdersClientProps = {
   initialSelectedOrderId?: string;
   assignableLocations: StorageLocationListItem[];
   workspaceSlug: string;
+  primaryCurrency: string;
+  workspaceDefaultPriceEntryMode?: "net" | "gross";
+  workspaceDefaultTaxRate?: string | null;
 };
 
 type ReceiveRowState = { quantity: string; locationId: string };
@@ -184,7 +203,10 @@ export function PurchaseOrdersClient({
   initialPage,
   initialSelectedOrderId,
   assignableLocations,
-  workspaceSlug
+  workspaceSlug,
+  primaryCurrency,
+  workspaceDefaultPriceEntryMode = "net",
+  workspaceDefaultTaxRate = null
 }: PurchaseOrdersClientProps) {
   const queryClient = useQueryClient();
 
@@ -205,10 +227,14 @@ export function PurchaseOrdersClient({
   const [receiveRows, setReceiveRows] = useState<Map<string, ReceiveRowState>>(new Map());
   const [partSearchQuery, setPartSearchQuery] = useState("");
   const [selectedPartId, setSelectedPartId] = useState<string | null>(null);
-  const [lookupState, setLookupState] = useState<"idle" | "loading" | "found" | "not-found">("idle");
   const [orderFormErrors, setOrderFormErrors] = useState<Record<string, string>>({});
   const [itemFormErrors, setItemFormErrors] = useState<Record<string, string>>({});
   const [receiveFormErrors, setReceiveFormErrors] = useState<Record<string, string>>({});
+  const [itemUnitPrice, setItemUnitPrice] = useState("");
+  const [itemLineTotal, setItemLineTotal] = useState("");
+  const [itemQuantity, setItemQuantity] = useState("1");
+  const [itemTaxRate, setItemTaxRate] = useState("");
+  const [itemCurrency, setItemCurrency] = useState("");
   const [dialogFormKey, setDialogFormKey] = useState(0);
   const { isResizingColumn, setIsResizingColumn, containerClassName } = useColumnResizeCursor();
   const [toastMessages, setToastMessages] = useState<ToastMessage[]>([]);
@@ -231,9 +257,14 @@ export function PurchaseOrdersClient({
       { id: "supplierOrderNumber", label: copy.supplierOrderNumber, group: "base", defaultWidth: 160, minWidth: 80, defaultVisible: false },
       { id: "createdAt", label: copy.created, group: "base", defaultWidth: 160, minWidth: 100, defaultVisible: false, sortable: true },
       { id: "createdBy", label: copy.createdBy, group: "base", defaultWidth: 160, minWidth: 100, defaultVisible: false },
-      { id: "orderedAt", label: copy.orderedAt, group: "base", defaultWidth: 160, minWidth: 100, defaultVisible: false }
+      { id: "orderedAt", label: copy.orderedAt, group: "base", defaultWidth: 160, minWidth: 100, defaultVisible: false },
+      { id: "currency", label: copy.currency, group: "base", defaultWidth: 90, minWidth: 64, defaultVisible: false },
+      { id: "totalNetValue", label: copy.totalNetValue, group: "base", defaultWidth: 150, minWidth: 100, defaultVisible: false, align: "right" as const },
+      { id: "totalGrossValue", label: copy.totalGrossValue, group: "base", defaultWidth: 150, minWidth: 100, defaultVisible: false, align: "right" as const },
+      { id: "totalNetValuePrimary", label: copy.totalNetValuePrimary.replace("{currency}", primaryCurrency), group: "base", defaultWidth: 170, minWidth: 100, defaultVisible: false, align: "right" as const },
+      { id: "totalGrossValuePrimary", label: copy.totalGrossValuePrimary.replace("{currency}", primaryCurrency), group: "base", defaultWidth: 170, minWidth: 100, defaultVisible: false, align: "right" as const }
     ],
-    [copy]
+    [copy, primaryCurrency]
   );
   const fixedOrderColumnIds = useMemo(() => ["actions"], []);
 
@@ -291,9 +322,17 @@ export function PurchaseOrdersClient({
     void queryClient.invalidateQueries({ queryKey: ["purchase-orders", workspaceSlug] });
   }
 
+  function refreshDetail(orderId: string) {
+    void getPurchaseOrderDetailForWorkspace({ workspaceSlug, orderId }).then((result) => {
+      if (result.ok) {
+        queryClient.setQueryData(["purchase-order-detail", workspaceSlug, orderId], result.data);
+      }
+    });
+  }
+
   // --- Detail query ---
 
-  const { data: orderDetail, refetch: refetchDetail } = useQuery({
+  const { data: orderDetail } = useQuery({
     queryKey: ["purchase-order-detail", workspaceSlug, selectedOrderId],
     queryFn: async () => {
       if (!selectedOrderId) return null;
@@ -304,6 +343,25 @@ export function PurchaseOrdersClient({
       return result.ok ? result.data : null;
     },
     enabled: Boolean(selectedOrderId)
+  });
+
+  const detailForRate = orderDetail as PurchaseOrderDetail | null | undefined;
+  const detailCurrency = detailForRate?.currency ?? null;
+  const detailOrderedAt = detailForRate?.orderedAt ?? null;
+
+  const { data: itemExchangeRate } = useQuery({
+    queryKey: ["item-exchange-rate", workspaceSlug, detailCurrency, primaryCurrency, detailOrderedAt],
+    queryFn: async () => {
+      if (!detailCurrency || detailCurrency === primaryCurrency || !detailOrderedAt) return null;
+      const result = await getExchangeRateForWorkspace({
+        workspaceSlug,
+        from: detailCurrency,
+        to: primaryCurrency,
+        date: detailOrderedAt.split("T")[0]
+      });
+      return result.ok ? result.data : null;
+    },
+    enabled: Boolean(detailCurrency && detailCurrency !== primaryCurrency && detailOrderedAt)
   });
 
   // --- Mutations ---
@@ -331,67 +389,67 @@ export function PurchaseOrdersClient({
 
   const markOrderedMutation = useMutation({
     mutationFn: markOrderedForWorkspace,
-    onSuccess: (result) => {
+    onSuccess: (result, variables) => {
       if (!result.ok) { addToast(getErrorMsg(copy, result.error)); return; }
       setMarkOrderedPending(false);
       closeDialog(markOrderedDialogRef.current);
       addToast(copy.orderedToast);
-      void refetchDetail();
+      refreshDetail(variables.orderId);
       reloadOrders();
     }
   });
 
   const revertToDraftMutation = useMutation({
     mutationFn: revertOrderToDraftForWorkspace,
-    onSuccess: (result) => {
+    onSuccess: (result, variables) => {
       if (!result.ok) { addToast(getErrorMsg(copy, result.error)); return; }
       setRevertToDraftPending(false);
       closeDialog(revertToDraftDialogRef.current);
       addToast(copy.revertedToast);
-      void refetchDetail();
+      refreshDetail(variables.orderId);
       reloadOrders();
     }
   });
 
   const addItemMutation = useMutation({
     mutationFn: addOrderItemForWorkspace,
-    onSuccess: (result) => {
+    onSuccess: (result, variables) => {
       if (!result.ok) { setItemFormErrors({ submit: getErrorMsg(copy, result.error) }); return; }
       closeItemDialog();
       addToast(copy.itemAddedToast);
-      void refetchDetail();
+      refreshDetail(variables.orderId);
       reloadOrders();
     }
   });
 
   const updateItemMutation = useMutation({
     mutationFn: updateOrderItemForWorkspace,
-    onSuccess: (result) => {
+    onSuccess: (result, variables) => {
       if (!result.ok) { setItemFormErrors({ submit: getErrorMsg(copy, result.error) }); return; }
       closeItemDialog();
       addToast(copy.itemUpdatedToast);
-      void refetchDetail();
+      refreshDetail(variables.orderId);
     }
   });
 
   const removeItemMutation = useMutation({
     mutationFn: removeOrderItemForWorkspace,
-    onSuccess: (result) => {
+    onSuccess: (result, variables) => {
       if (!result.ok) { addToast(getErrorMsg(copy, result.error)); return; }
       setItemPendingRemove(null);
       addToast(copy.itemRemovedToast);
-      void refetchDetail();
+      refreshDetail(variables.orderId);
       reloadOrders();
     }
   });
 
   const receiveItemsMutation = useMutation({
     mutationFn: receiveItemsForWorkspace,
-    onSuccess: (result) => {
+    onSuccess: (result, variables) => {
       if (!result.ok) { setReceiveFormErrors({ submit: getErrorMsg(copy, result.error) }); return; }
       closeReceiveDialog();
       addToast(copy.receivedToast);
-      void refetchDetail();
+      refreshDetail(variables.orderId);
       reloadOrders();
     }
   });
@@ -455,7 +513,11 @@ export function PurchaseOrdersClient({
     setItemFormErrors({});
     setSelectedPartId(null);
     setPartSearchQuery("");
-    setLookupState("idle");
+    setItemUnitPrice("");
+    setItemLineTotal("");
+    setItemQuantity("1");
+    setItemTaxRate(orderDetail?.taxRate ?? selectedOrder?.taxRate ?? "");
+    setItemCurrency(orderDetail?.currency ?? selectedOrder?.currency ?? "");
     setDialogFormKey((k) => k + 1);
     window.requestAnimationFrame(() => openDialog(itemDialogRef.current));
   }
@@ -466,7 +528,34 @@ export function PurchaseOrdersClient({
     setItemFormErrors({});
     setSelectedPartId(item.partId);
     setPartSearchQuery("");
-    setLookupState("idle");
+    const qty = item.quantity ?? "1";
+    const netPrice = item.unitPrice ?? "";
+    const editTaxRate = item.taxRate ?? "";
+    setItemQuantity(qty);
+    setItemTaxRate(editTaxRate);
+    setItemCurrency(item.currency ?? "");
+
+    // In gross mode, show gross value in the input (net is stored, gross = net * (1 + rate/100))
+    const currentMode = detail?.priceEntryMode ?? selectedOrder?.priceEntryMode ?? "net";
+    let displayPrice = netPrice;
+    if (currentMode === "gross" && netPrice) {
+      const editEffectiveTaxRate =
+        parseFloat(editTaxRate) ||
+        parseFloat(detail?.taxRate ?? "") ||
+        parseFloat(detail?.supplierDefaultTaxRate ?? "") ||
+        parseFloat(workspaceDefaultTaxRate ?? "") ||
+        0;
+      const grossVal = parseFloat(netPrice) * (1 + editEffectiveTaxRate / 100);
+      displayPrice = isNaN(grossVal) ? netPrice : roundDisplay(grossVal);
+    }
+
+    setItemUnitPrice(displayPrice);
+    if (displayPrice && qty) {
+      const total = parseFloat(displayPrice) * parseFloat(qty);
+      setItemLineTotal(isNaN(total) ? "" : roundDisplay(total));
+    } else {
+      setItemLineTotal("");
+    }
     setDialogFormKey((k) => k + 1);
     window.requestAnimationFrame(() => openDialog(itemDialogRef.current));
   }
@@ -478,7 +567,9 @@ export function PurchaseOrdersClient({
     setItemFormErrors({});
     setSelectedPartId(null);
     setPartSearchQuery("");
-    setLookupState("idle");
+    setItemUnitPrice("");
+    setItemLineTotal("");
+    setItemQuantity("1");
   }
 
   function openReceiveDialog() {
@@ -517,24 +608,11 @@ export function PurchaseOrdersClient({
         supplierId,
         orderNumber: getString(formData, "orderNumber") || null,
         supplierOrderNumber: getString(formData, "supplierOrderNumber") || null,
+        currency: getString(formData, "currency") || null,
+        taxRate: getString(formData, "taxRate") || null,
         orderedAt: editingOrder.status === "ORDERED" ? (getString(formData, "orderedAt") || null) : undefined,
         notes: getString(formData, "notes") || null
       });
-    }
-  }
-
-  async function handleLookupSku() {
-    if (!selectedPartId && !editingItem?.partId) return;
-    const partId = selectedPartId ?? editingItem!.partId;
-    setLookupState("loading");
-    const result = await lookupSupplierItemForWorkspace({ workspaceSlug, partId });
-    if (!result.ok) { setLookupState("not-found"); return; }
-    if (result.data.ok) {
-      const skuInput = document.getElementById("item-supplier-sku") as HTMLInputElement | null;
-      if (skuInput) skuInput.value = result.data.supplierSku;
-      setLookupState("found");
-    } else {
-      setLookupState("not-found");
     }
   }
 
@@ -545,15 +623,18 @@ export function PurchaseOrdersClient({
     if (!partId && itemDialogMode === "create") { setItemFormErrors({ part: copy.partRequired }); return; }
     if (!quantity) { setItemFormErrors({ quantity: copy.quantityRequired }); return; }
 
+    // In gross mode the hidden unitPrice input already has net (back-calculated)
+    const unitPrice = getString(formData, "unitPrice") || null;
+
     if (itemDialogMode === "create" && selectedOrderId && partId) {
       addItemMutation.mutate({
         workspaceSlug,
         orderId: selectedOrderId,
         partId,
         quantity,
-        supplierSku: getString(formData, "supplierSku") || null,
-        unitPrice: getString(formData, "unitPrice") || null,
+        unitPrice,
         currency: getString(formData, "currency") || null,
+        taxRate: getString(formData, "taxRate") || null,
         notes: getString(formData, "notes") || null
       });
     } else if (editingItem && selectedOrderId) {
@@ -562,9 +643,9 @@ export function PurchaseOrdersClient({
         orderId: selectedOrderId,
         itemId: editingItem.id,
         quantity,
-        supplierSku: getString(formData, "supplierSku") || null,
-        unitPrice: getString(formData, "unitPrice") || null,
+        unitPrice,
         currency: getString(formData, "currency") || null,
+        taxRate: getString(formData, "taxRate") || null,
         notes: getString(formData, "notes") || null
       });
     }
@@ -596,6 +677,26 @@ export function PurchaseOrdersClient({
   const unreceived = detailItems.filter(
     (item) => parseFloat(item.receivedQuantity) < parseFloat(item.quantity)
   );
+
+  const isGrossMode = (detail?.priceEntryMode ?? selectedOrder?.priceEntryMode ?? "net") === "gross";
+  const itemEffectiveTaxRate =
+    parseFloat(itemTaxRate) ||
+    parseFloat(detail?.taxRate ?? "") ||
+    parseFloat(detail?.supplierDefaultTaxRate ?? "") ||
+    parseFloat(workspaceDefaultTaxRate ?? "") ||
+    0;
+  const itemPriceFactor = 1 + itemEffectiveTaxRate / 100;
+  const _activeUnitNum = parseFloat(itemUnitPrice);
+  const _activeLineNum = parseFloat(itemLineTotal);
+  const itemComputedOppositeUnit =
+    !isNaN(_activeUnitNum) && _activeUnitNum > 0
+      ? roundDisplay(isGrossMode ? _activeUnitNum / itemPriceFactor : _activeUnitNum * itemPriceFactor)
+      : "";
+  const itemComputedOppositeLine =
+    !isNaN(_activeLineNum) && _activeLineNum > 0
+      ? roundDisplay(isGrossMode ? _activeLineNum / itemPriceFactor : _activeLineNum * itemPriceFactor)
+      : "";
+
   const isMutating =
     updateOrderMutation.isPending ||
     addItemMutation.isPending ||
@@ -703,6 +804,68 @@ export function PurchaseOrdersClient({
           return v
             ? <span className="text-slate-700">{new Date(v).toLocaleDateString()}</span>
             : <span className="text-slate-400">—</span>;
+        }
+      }),
+      columnHelper.accessor("currency", {
+        id: "currency",
+        header: copy.currency,
+        size: 90,
+        minSize: 64,
+        cell: ({ getValue }) => {
+          const v = getValue();
+          return v
+            ? <span className="text-slate-700">{v}</span>
+            : <span className="text-slate-400">—</span>;
+        }
+      }),
+      columnHelper.accessor("totalNetValue", {
+        id: "totalNetValue",
+        header: () => <span className="block text-right">{copy.totalNetValue}</span>,
+        size: 150,
+        minSize: 100,
+        cell: ({ getValue, row }) => {
+          const v = getValue();
+          const cur = row.original.currency;
+          return v
+            ? <span className="block text-right font-mono text-slate-700">{v}{cur ? ` ${cur}` : ""}</span>
+            : <span className="block text-right text-slate-400">—</span>;
+        }
+      }),
+      columnHelper.accessor("totalGrossValue", {
+        id: "totalGrossValue",
+        header: () => <span className="block text-right">{copy.totalGrossValue}</span>,
+        size: 150,
+        minSize: 100,
+        cell: ({ getValue, row }) => {
+          const v = getValue();
+          const cur = row.original.currency;
+          return v
+            ? <span className="block text-right font-mono text-slate-700">{v}{cur ? ` ${cur}` : ""}</span>
+            : <span className="block text-right text-slate-400">—</span>;
+        }
+      }),
+      columnHelper.accessor("totalNetValuePrimary", {
+        id: "totalNetValuePrimary",
+        header: () => <span className="block text-right">{copy.totalNetValuePrimary.replace("{currency}", primaryCurrency)}</span>,
+        size: 170,
+        minSize: 100,
+        cell: ({ getValue }) => {
+          const v = getValue();
+          return v
+            ? <span className="block text-right font-mono text-slate-700">{v} {primaryCurrency}</span>
+            : <span className="block text-right text-slate-400">—</span>;
+        }
+      }),
+      columnHelper.accessor("totalGrossValuePrimary", {
+        id: "totalGrossValuePrimary",
+        header: () => <span className="block text-right">{copy.totalGrossValuePrimary.replace("{currency}", primaryCurrency)}</span>,
+        size: 170,
+        minSize: 100,
+        cell: ({ getValue }) => {
+          const v = getValue();
+          return v
+            ? <span className="block text-right font-mono text-slate-700">{v} {primaryCurrency}</span>
+            : <span className="block text-right text-slate-400">—</span>;
         }
       }),
       columnHelper.display({
@@ -907,19 +1070,22 @@ export function PurchaseOrdersClient({
         </section>
 
         {/* Detail panel */}
-        {selectedOrder && hasLoadedDetailsPanelWidth ? (
-          <DetailPanel
+        {(() => {
+          const panelOrder = detail ?? selectedOrder;
+          if (!panelOrder || !hasLoadedDetailsPanelWidth) return null;
+          return (
+        <DetailPanel
             closeLabel={copy.close}
-            subtitle={selectedOrder.orderNumber ?? undefined}
-            title={selectedOrder.supplierName}
+            subtitle={panelOrder.orderNumber ?? undefined}
+            title={panelOrder.supplierName}
             width={detailsPanelWidth}
             onClose={closeOrderDetails}
             onStartResize={startResizingDetailsPanel}
           >
             {/* Status + actions */}
             <div className="flex flex-wrap items-center gap-2">
-              <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${statusBadgeClass(selectedOrder.status)}`}>
-                {statusLabel(selectedOrder.status)}
+              <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${statusBadgeClass(panelOrder.status)}`}>
+                {statusLabel(panelOrder.status)}
               </span>
               {detail?.status === "DRAFT" ? (
                 <button
@@ -987,7 +1153,6 @@ export function PurchaseOrdersClient({
                         <th className="px-3 py-2 font-semibold text-slate-700">{copy.part}</th>
                         <th className="w-16 px-3 py-2 text-right font-semibold text-slate-700">{copy.quantity}</th>
                         <th className="w-16 px-3 py-2 text-right font-semibold text-slate-700">{copy.received}</th>
-                        <th className="px-3 py-2 font-semibold text-slate-700">{copy.supplierSku}</th>
                         {detail?.status !== "RECEIVED" ? (
                           <th className="w-20 px-3 py-2" />
                         ) : null}
@@ -1014,7 +1179,6 @@ export function PurchaseOrdersClient({
                                 <span className="ml-1 text-xs text-[var(--color-success)]">✓</span>
                               ) : null}
                             </td>
-                            <td className="px-3 py-2 font-mono text-slate-600">{item.supplierSku ?? copy.noAttribute}</td>
                             {detail?.status !== "RECEIVED" ? (
                               <td className="px-3 py-2">
                                 <div className="flex justify-end gap-1">
@@ -1050,9 +1214,49 @@ export function PurchaseOrdersClient({
                   </table>
                 </div>
               )}
+
+              {(() => {
+                if (!detail) return null;
+                const pricedItems = detail.items.filter((item) => item.unitPrice != null);
+                if (pricedItems.length === 0) return null;
+                const orderTaxRate = parseFloat(detail.taxRate ?? "") || 0;
+                let netTotal = 0;
+                let grossTotal = 0;
+                for (const item of pricedItems) {
+                  const price = parseFloat(item.unitPrice!);
+                  const qty = parseFloat(item.quantity);
+                  if (isNaN(price) || isNaN(qty)) continue;
+                  const net = price * qty;
+                  const tax = parseFloat(item.taxRate ?? "") || orderTaxRate;
+                  netTotal += net;
+                  grossTotal += net * (1 + tax / 100);
+                }
+                const rateNum = itemExchangeRate?.rate ? parseFloat(itemExchangeRate.rate) : null;
+                const showPrimary = rateNum != null && detail.currency && detail.currency !== primaryCurrency;
+                return (
+                  <div className="mt-3 rounded-md border border-slate-200 bg-slate-50 px-3 py-2.5 grid gap-1.5 text-sm">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{copy.orderTotals}</p>
+                    <div className="flex justify-between gap-4">
+                      <span className="text-slate-600">{copy.totalNetValue}</span>
+                      <span className="font-mono text-slate-900">
+                        {roundDisplay(netTotal)}{detail.currency ? ` ${detail.currency}` : ""}
+                        {showPrimary ? <span className="text-slate-400 text-xs"> (≈{roundDisplay(netTotal * rateNum!)} {primaryCurrency})</span> : null}
+                      </span>
+                    </div>
+                    <div className="flex justify-between gap-4">
+                      <span className="text-slate-600">{copy.totalGrossValue}</span>
+                      <span className="font-mono text-slate-900">
+                        {roundDisplay(grossTotal)}{detail.currency ? ` ${detail.currency}` : ""}
+                        {showPrimary ? <span className="text-slate-400 text-xs"> (≈{roundDisplay(grossTotal * rateNum!)} {primaryCurrency})</span> : null}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })()}
             </section>
           </DetailPanel>
-        ) : null}
+          );
+        })()}
       </div>
 
       {/* Edit order dialog */}
@@ -1104,6 +1308,39 @@ export function PurchaseOrdersClient({
                   className="min-h-10 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-950 outline-none transition hover:border-slate-400 focus:border-slate-500 focus:ring-2 focus:ring-slate-200"
                 />
               </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="grid gap-2">
+                  <label className="text-sm font-medium text-slate-700">
+                    {copy.currency}
+                  </label>
+                  <input type="hidden" name="currency" value={editingOrder?.currency ?? ""} />
+                  <div className="min-h-10 rounded-md border border-slate-200 bg-slate-50 px-3 py-1.5 text-sm text-slate-500 flex items-center">
+                    {editingOrder?.currency || "—"}
+                  </div>
+                </div>
+                <div className="grid gap-2">
+                  <label className="text-sm font-medium text-slate-700" htmlFor="order-tax-rate">
+                    {copy.taxRate}
+                  </label>
+                  <input
+                    id="order-tax-rate"
+                    name="taxRate"
+                    type="text"
+                    inputMode="decimal"
+                    placeholder={copy.taxRatePlaceholder}
+                    defaultValue={editingOrder?.taxRate ?? ""}
+                    className="min-h-10 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-950 outline-none transition hover:border-slate-400 focus:border-slate-500 focus:ring-2 focus:ring-slate-200"
+                  />
+                </div>
+              </div>
+              <div className="grid gap-2">
+                <label className="text-sm font-medium text-slate-700">
+                  {copy.priceEntryMode}
+                </label>
+                <div className="min-h-10 rounded-md border border-slate-200 bg-slate-50 px-3 py-1.5 text-sm text-slate-500 flex items-center capitalize">
+                  {editingOrder?.priceEntryMode === "gross" ? copy.priceEntryModeGross : copy.priceEntryModeNet}
+                </div>
+              </div>
               {editingOrder?.status === "ORDERED" ? (
                 <div className="grid gap-2">
                   <label className="text-sm font-medium text-slate-700" htmlFor="order-ordered-at">
@@ -1154,6 +1391,9 @@ export function PurchaseOrdersClient({
         dialogRef={createOrderDialogRef}
         isOpen={createOrderDialogOpen}
         workspaceSlug={workspaceSlug}
+        primaryCurrency={primaryCurrency}
+        workspaceDefaultPriceEntryMode={workspaceDefaultPriceEntryMode}
+        workspaceDefaultTaxRate={workspaceDefaultTaxRate}
         copy={{
           title: copy.newOrderTitle,
           supplier: copy.supplier,
@@ -1162,6 +1402,14 @@ export function PurchaseOrdersClient({
           loadingSuppliers: copy.loadingSuppliers,
           orderNumber: copy.orderNumber,
           orderNumberPlaceholder: copy.orderNumberPlaceholder,
+          currency: copy.currency,
+          chooseCurrency: copy.chooseCurrency,
+          taxRate: copy.taxRate,
+          taxRatePlaceholder: copy.taxRatePlaceholder,
+          taxRateHelp: copy.taxRateHelp,
+          priceEntryMode: copy.priceEntryMode,
+          priceEntryModeNet: copy.priceEntryModeNet,
+          priceEntryModeGross: copy.priceEntryModeGross,
           notes: copy.notes,
           notesPlaceholder: copy.notesPlaceholder,
           createOrder: copy.createOrder,
@@ -1203,8 +1451,8 @@ export function PurchaseOrdersClient({
                     placeholder={copy.searchPartsPlaceholder}
                     loadingLabel={copy.loadingParts}
                     noMatchesLabel={copy.noMatchingParts}
-                    onInputChange={(value) => { setPartSearchQuery(value); setSelectedPartId(null); setLookupState("idle"); }}
-                    onSelect={(part: PartPickerOption) => { setSelectedPartId(part.id); setPartSearchQuery(`${part.catalogNumber} — ${part.manufacturerName}`); setLookupState("idle"); }}
+                    onInputChange={(value) => { setPartSearchQuery(value); setSelectedPartId(null); }}
+                    onSelect={(part: PartPickerOption) => { setSelectedPartId(part.id); setPartSearchQuery(`${part.catalogNumber} — ${part.manufacturerName}`); }}
                   />
                 </div>
               ) : (
@@ -1221,7 +1469,18 @@ export function PurchaseOrdersClient({
                   name="quantity"
                   type="text"
                   inputMode="decimal"
-                  defaultValue={editingItem?.quantity ?? ""}
+                  value={itemQuantity}
+                  onChange={(e) => {
+                    const qty = e.target.value;
+                    setItemQuantity(qty);
+                    const q = parseFloat(qty);
+                    const p = parseFloat(itemUnitPrice);
+                    if (!isNaN(q) && q > 0 && !isNaN(p) && p >= 0) {
+                      setItemLineTotal(roundDisplay(p * q));
+                    } else {
+                      setItemLineTotal("");
+                    }
+                  }}
                   placeholder="1"
                   className={getFieldInputClassName(
                     "min-h-10 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-950 outline-none transition hover:border-slate-400 focus:border-slate-500 focus:ring-2 focus:ring-slate-200",
@@ -1230,49 +1489,164 @@ export function PurchaseOrdersClient({
                 />
               </div>
 
-              <div className="grid gap-2">
-                <div className="flex items-center justify-between">
-                  <label className="text-sm font-medium text-slate-700" htmlFor="item-supplier-sku">{copy.supplierSku}</label>
-                  <button
-                    type="button"
-                    className="text-xs font-medium text-[var(--color-accent)] disabled:cursor-not-allowed disabled:opacity-60"
-                    disabled={(!selectedPartId && !editingItem?.partId) || lookupState === "loading"}
-                    onClick={() => void handleLookupSku()}
-                  >
-                    {lookupState === "loading" ? "…" : lookupState === "found" ? copy.skuFound : lookupState === "not-found" ? copy.skuNotFound : copy.lookupSku}
-                  </button>
+              {/* Hidden unitPrice submits net regardless of entry mode */}
+              <input
+                type="hidden"
+                name="unitPrice"
+                value={
+                  isGrossMode && itemUnitPrice
+                    ? (parseFloat(itemUnitPrice) / (1 + itemEffectiveTaxRate / 100)).toFixed(10)
+                    : itemUnitPrice
+                }
+              />
+
+              {/* Net price row */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="grid gap-2">
+                  <label className="text-sm font-medium text-slate-700" htmlFor="po-item-net-price">
+                    {copy.unitPrice}
+                  </label>
+                  {isGrossMode ? (
+                    <div className="min-h-10 rounded-md border border-slate-200 bg-slate-50 px-3 py-1.5 text-sm text-slate-500 flex items-center">
+                      {itemComputedOppositeUnit}
+                    </div>
+                  ) : (
+                    <input
+                      id="po-item-net-price"
+                      type="text"
+                      inputMode="decimal"
+                      value={itemUnitPrice}
+                      onChange={(e) => {
+                        const price = e.target.value;
+                        setItemUnitPrice(price);
+                        const p = parseFloat(price);
+                        const q = parseFloat(itemQuantity);
+                        if (!isNaN(p) && p >= 0 && !isNaN(q) && q > 0) {
+                          setItemLineTotal(roundDisplay(p * q));
+                        } else {
+                          setItemLineTotal("");
+                        }
+                      }}
+                      className="min-h-10 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-950 outline-none transition hover:border-slate-400 focus:border-slate-500 focus:ring-2 focus:ring-slate-200"
+                    />
+                  )}
                 </div>
-                <input
-                  id="item-supplier-sku"
-                  name="supplierSku"
-                  defaultValue={editingItem?.supplierSku ?? ""}
-                  className="min-h-10 rounded-md border border-slate-300 bg-white px-3 py-1.5 font-mono text-sm text-slate-950 outline-none transition hover:border-slate-400 focus:border-slate-500 focus:ring-2 focus:ring-slate-200"
-                />
+                <div className="grid gap-2">
+                  <label className="text-sm font-medium text-slate-700" htmlFor="po-item-net-line-total">
+                    {copy.lineTotal}
+                  </label>
+                  {isGrossMode ? (
+                    <div className="min-h-10 rounded-md border border-slate-200 bg-slate-50 px-3 py-1.5 text-sm text-slate-500 flex items-center">
+                      {itemComputedOppositeLine}
+                    </div>
+                  ) : (
+                    <input
+                      id="po-item-net-line-total"
+                      type="text"
+                      inputMode="decimal"
+                      value={itemLineTotal}
+                      onChange={(e) => {
+                        const total = e.target.value;
+                        setItemLineTotal(total);
+                        const t = parseFloat(total);
+                        const q = parseFloat(itemQuantity);
+                        if (!isNaN(t) && t >= 0 && !isNaN(q) && q > 0) {
+                          setItemUnitPrice(roundDisplay(t / q));
+                        } else {
+                          setItemUnitPrice("");
+                        }
+                      }}
+                      className="min-h-10 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-950 outline-none transition hover:border-slate-400 focus:border-slate-500 focus:ring-2 focus:ring-slate-200"
+                    />
+                  )}
+                </div>
+              </div>
+
+              {/* Gross price row */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="grid gap-2">
+                  <label className="text-sm font-medium text-slate-700" htmlFor="po-item-gross-price">
+                    {copy.grossUnitPrice}
+                  </label>
+                  {isGrossMode ? (
+                    <input
+                      id="po-item-gross-price"
+                      type="text"
+                      inputMode="decimal"
+                      value={itemUnitPrice}
+                      onChange={(e) => {
+                        const price = e.target.value;
+                        setItemUnitPrice(price);
+                        const p = parseFloat(price);
+                        const q = parseFloat(itemQuantity);
+                        if (!isNaN(p) && p >= 0 && !isNaN(q) && q > 0) {
+                          setItemLineTotal(roundDisplay(p * q));
+                        } else {
+                          setItemLineTotal("");
+                        }
+                      }}
+                      className="min-h-10 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-950 outline-none transition hover:border-slate-400 focus:border-slate-500 focus:ring-2 focus:ring-slate-200"
+                    />
+                  ) : (
+                    <div className="min-h-10 rounded-md border border-slate-200 bg-slate-50 px-3 py-1.5 text-sm text-slate-500 flex items-center">
+                      {itemComputedOppositeUnit}
+                    </div>
+                  )}
+                </div>
+                <div className="grid gap-2">
+                  <label className="text-sm font-medium text-slate-700" htmlFor="po-item-gross-line-total">
+                    {copy.grossLineTotal}
+                  </label>
+                  {isGrossMode ? (
+                    <input
+                      id="po-item-gross-line-total"
+                      type="text"
+                      inputMode="decimal"
+                      value={itemLineTotal}
+                      onChange={(e) => {
+                        const total = e.target.value;
+                        setItemLineTotal(total);
+                        const t = parseFloat(total);
+                        const q = parseFloat(itemQuantity);
+                        if (!isNaN(t) && t >= 0 && !isNaN(q) && q > 0) {
+                          setItemUnitPrice(roundDisplay(t / q));
+                        } else {
+                          setItemUnitPrice("");
+                        }
+                      }}
+                      className="min-h-10 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-950 outline-none transition hover:border-slate-400 focus:border-slate-500 focus:ring-2 focus:ring-slate-200"
+                    />
+                  ) : (
+                    <div className="min-h-10 rounded-md border border-slate-200 bg-slate-50 px-3 py-1.5 text-sm text-slate-500 flex items-center">
+                      {itemComputedOppositeLine}
+                    </div>
+                  )}
+                </div>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div className="grid gap-2">
-                  <label className="text-sm font-medium text-slate-700" htmlFor="po-item-price">{copy.unitPrice}</label>
+                  <label className="text-sm font-medium text-slate-700" htmlFor="po-item-tax-rate">{copy.taxRate}</label>
                   <input
-                    id="po-item-price"
-                    name="unitPrice"
+                    id="po-item-tax-rate"
+                    name="taxRate"
                     type="text"
                     inputMode="decimal"
-                    defaultValue={editingItem?.unitPrice ?? ""}
+                    value={itemTaxRate}
+                    onChange={(e) => setItemTaxRate(e.target.value)}
+                    placeholder={detail?.taxRate ?? copy.taxRatePlaceholder}
                     className="min-h-10 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-950 outline-none transition hover:border-slate-400 focus:border-slate-500 focus:ring-2 focus:ring-slate-200"
                   />
                 </div>
                 <div className="grid gap-2">
-                  <label className="text-sm font-medium text-slate-700" htmlFor="po-item-currency">{copy.currency}</label>
-                  <input
-                    id="po-item-currency"
-                    name="currency"
-                    defaultValue={editingItem?.currency ?? ""}
-                    placeholder="USD"
-                    className="min-h-10 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-950 outline-none transition hover:border-slate-400 focus:border-slate-500 focus:ring-2 focus:ring-slate-200"
-                  />
+                  <label className="text-sm font-medium text-slate-700">{copy.currency}</label>
+                  <input type="hidden" name="currency" value={itemCurrency} />
+                  <div className="min-h-10 rounded-md border border-slate-200 bg-slate-50 px-3 py-1.5 text-sm text-slate-500 flex items-center">
+                    {itemCurrency || detail?.currency || "—"}
+                  </div>
                 </div>
               </div>
+
 
               <div className="grid gap-2">
                 <label className="text-sm font-medium text-slate-700" htmlFor="po-item-notes">{copy.notes}</label>

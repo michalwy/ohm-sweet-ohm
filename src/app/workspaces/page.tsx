@@ -7,6 +7,7 @@ import {
   getCurrentUserWorkspaces
 } from "@/server/auth/currentContext";
 import { createWorkspace } from "@/server/workspaces/actions";
+import { CURRENCIES } from "@/app/currencies";
 
 export const dynamic = "force-dynamic";
 
@@ -20,13 +21,17 @@ const copy = {
   createTitle: "Create workspace",
   name: "Workspace name",
   namePlaceholder: "Bench projects",
+  currency: "Primary currency",
+  currencyHelp: "Used for valuations and cost tracking. Cannot be changed after creation.",
   create: "Create workspace",
   emptyTitle: "No workspaces yet",
   emptyBody: "Create a workspace to start tracking parts.",
   open: "Open",
   missingName: "Enter a workspace name.",
+  missingCurrency: "Choose a primary currency.",
   unavailable: "Workspace could not be created. Try again."
 };
+
 
 type WorkspacesPageProps = {
   searchParams?: Promise<{
@@ -140,7 +145,11 @@ export default async function WorkspacesPage({
 
             {error ? (
               <p className="mt-4 rounded-md border border-[var(--color-error-border)] bg-[var(--color-error-soft)] px-3 py-2 text-sm text-[var(--color-error)]">
-                {error === "missing-name" ? copy.missingName : copy.unavailable}
+                {error === "missing-name"
+                  ? copy.missingName
+                  : error === "missing-currency"
+                    ? copy.missingCurrency
+                    : copy.unavailable}
               </p>
             ) : null}
 
@@ -155,6 +164,23 @@ export default async function WorkspacesPage({
                   type="text"
                 />
               </label>
+              <div className="grid gap-2">
+                <label className="text-sm font-medium text-slate-700" htmlFor="workspace-currency">
+                  {copy.currency}
+                </label>
+                <select
+                  id="workspace-currency"
+                  name="currency"
+                  required
+                  defaultValue="EUR"
+                  className="min-h-11 rounded-md border border-slate-300 bg-white px-3 py-2 text-base text-slate-950 outline-none transition hover:border-slate-400 focus:border-slate-500 focus:ring-2 focus:ring-slate-200"
+                >
+                  {CURRENCIES.map((c) => (
+                    <option key={c.code} value={c.code}>{c.label}</option>
+                  ))}
+                </select>
+                <p className="text-xs text-slate-500">{copy.currencyHelp}</p>
+              </div>
               <button
                 className="min-h-10 rounded-md border border-[var(--color-action-primary)] bg-[var(--color-action-primary)] px-4 py-2 text-sm font-semibold text-white transition hover:border-[var(--color-action-primary-hover)] hover:bg-[var(--color-action-primary-hover)] focus:outline-none focus:ring-2 focus:ring-[var(--color-action-focus)] focus:ring-offset-2"
                 type="submit"

@@ -14,6 +14,9 @@ export async function createInventoryEntry(input: {
   toLocationId?: string | null;
   note?: string | null;
   createdByUserId?: string | null;
+  unitCost?: Prisma.Decimal | null;
+  costCurrency?: string | null;
+  unitCostPrimary?: Prisma.Decimal | null;
 }) {
   const quantity = parseQuantity(input.quantity);
   const nextEntryShape = {
@@ -76,7 +79,10 @@ export async function createInventoryEntry(input: {
         fromLocationId: locations.fromLocationId,
         toLocationId: locations.toLocationId,
         note: normalizeOptionalText(input.note ?? null),
-        createdByUserId: input.createdByUserId ?? null
+        createdByUserId: input.createdByUserId ?? null,
+        unitCost: input.unitCost ?? null,
+        costCurrency: input.costCurrency ?? null,
+        unitCostPrimary: input.unitCostPrimary ?? null
       }
     });
 

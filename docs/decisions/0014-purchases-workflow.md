@@ -59,5 +59,7 @@ Assigned to system roles: `owner` and `editor` receive all four; `reader` receiv
 - The `Organization` model now supports a `"supplier"` role in addition to `"manufacturer"`. Existing manufacturer organizations are unaffected.
 - Receiving a purchase order item automatically creates an inventory `RECEIPT` movement. Users do not need to create receipt movements manually after receiving an order.
 - A shopping list item that has been added to a purchase order shows a visual indicator in the shopping list UI; however, it is not removed from the shopping list automatically.
-- Pricing fields (`unitPrice`, `currency`) on purchase order items are optional and pre-filled from supplier integration when available. No workspace-level pricing policy is defined by this decision.
+- Pricing fields (`unitPrice`, `currency`) on purchase order items are optional and pre-filled from supplier integration when available. See ADR-0015 for the workspace-level pricing and multi-currency policy built on top of this foundation.
+- `PurchaseOrder` now carries `currency` (ISO 4217) and `taxRate` (percentage, net→gross). `PurchaseOrderItem` carries a per-item `taxRate` override.
+- Receiving a PO item now populates `InventoryEntry.unitCost`, `InventoryEntry.costCurrency`, and `InventoryEntry.unitCostPrimary` (cost converted to workspace primary currency at the `orderedAt` exchange rate). See ADR-0015 for details.
 - Future BOM workflows (Issue #9) may link to purchase orders or shopping lists, but that relationship is left undefined until BOM behavior is decided.

@@ -18,6 +18,7 @@ type DatabaseClient = PrismaClient | Prisma.TransactionClient;
 type CreateWorkspaceInput = {
   name: string;
   slug: string;
+  primaryCurrency: string;
 };
 
 export async function createWorkspaceWithDefaultRoles(input: CreateWorkspaceInput) {
@@ -27,12 +28,14 @@ export async function createWorkspaceWithDefaultRoles(input: CreateWorkspaceInpu
 export async function createWorkspaceForOwner(input: {
   userId: string;
   name: string;
+  primaryCurrency: string;
 }) {
   return prisma.$transaction(async (tx) => {
     const slug = await generateUniqueWorkspaceSlug(tx, input.name);
     const workspace = await createWorkspaceWithDefaultRolesTx(tx, {
       name: input.name,
-      slug
+      slug,
+      primaryCurrency: input.primaryCurrency
     });
     const ownerRole = await tx.role.findUniqueOrThrow({
       where: {
@@ -73,7 +76,8 @@ export async function createWorkspaceWithDefaultRolesTx(
   const workspace = await tx.workspace.create({
     data: {
       name: input.name,
-      slug: input.slug
+      slug: input.slug,
+      primaryCurrency: input.primaryCurrency
     }
   });
 

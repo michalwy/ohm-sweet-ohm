@@ -137,6 +137,7 @@ type Copy = {
   stock: string;
   planned: string;
   onOrder: string;
+  avgCost: string;
   newPartTitle: string;
   newPartBody: string;
   editPartTitle: string;
@@ -441,6 +442,15 @@ export function PartsListClient({
               defaultWidth: 120,
               minWidth: 72,
               sortable: true,
+              align: "right" as const
+            },
+            {
+              id: "avgCost",
+              label: copy.avgCost,
+              group: "base" as const,
+              defaultVisible: false,
+              defaultWidth: 140,
+              minWidth: 80,
               align: "right" as const
             }
           ]
@@ -861,6 +871,25 @@ export function PartsListClient({
                   <span className="block text-right text-slate-950">{value}</span>
                 ) : (
                   <span className="block text-right text-slate-400">-</span>
+                );
+              }
+            }),
+            columnHelper.accessor("avgCost", {
+              id: "avgCost",
+              header: () => (
+                <span className="block w-full text-right">{copy.avgCost}</span>
+              ),
+              size: 140,
+              minSize: 80,
+              cell: ({ getValue, row }) => {
+                const value = getValue();
+                const currency = row.original.avgCostCurrency;
+                return value ? (
+                  <span className="block text-right font-mono text-slate-700">
+                    {value}{currency ? ` ${currency}` : ""}
+                  </span>
+                ) : (
+                  <span className="block text-right text-slate-400">—</span>
                 );
               }
             })

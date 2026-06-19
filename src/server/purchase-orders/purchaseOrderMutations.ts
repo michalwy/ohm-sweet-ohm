@@ -3,6 +3,7 @@ import "server-only";
 import { Prisma } from "@/generated/prisma/client";
 import { createInventoryEntry } from "@/server/inventory/entryMutations";
 import { prisma } from "@/server/db/prisma";
+import { batchGetExchangeRates, convertToWorkspacePrimary } from "@/server/currency/exchangeRates";
 import {
   decodeListCursor,
   encodeListCursor,
@@ -22,6 +23,7 @@ export type PurchaseOrderItem = {
   supplierSku: string | null;
   unitPrice: string | null;
   currency: string | null;
+  taxRate: string | null;
   notes: string | null;
 };
 
@@ -33,6 +35,11 @@ export type PurchaseOrderDetail = {
   status: "DRAFT" | "ORDERED" | "RECEIVED";
   orderNumber: string | null;
   supplierOrderNumber: string | null;
+  currency: string | null;
+  taxRate: string | null;
+  priceEntryMode: "net" | "gross";
+  supplierDefaultTaxRate: string | null;
+  supplierDefaultPriceEntryMode: string | null;
   orderedAt: string | null;
   notes: string | null;
   createdAt: string;
@@ -47,10 +54,17 @@ export type PurchaseOrderSummary = {
   status: "DRAFT" | "ORDERED" | "RECEIVED";
   orderNumber: string | null;
   supplierOrderNumber: string | null;
+  currency: string | null;
+  taxRate: string | null;
+  priceEntryMode: "net" | "gross";
   orderedAt: string | null;
   notes: string | null;
   createdByName: string | null;
   itemCount: number;
+  totalNetValue: string | null;
+  totalGrossValue: string | null;
+  totalNetValuePrimary: string | null;
+  totalGrossValuePrimary: string | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -82,28 +96,137 @@ const orderSelectShape = {
   status: true,
   orderNumber: true,
   supplierOrderNumber: true,
+  currency: true,
+  taxRate: true,
+  priceEntryMode: true,
   orderedAt: true,
   notes: true,
   createdAt: true,
   updatedAt: true,
   supplier: { select: { name: true, id: true } },
   createdByUser: { select: { name: true } },
-  _count: { select: { items: true } }
+  _count: { select: { items: true } },
+  items: {
+    select: {
+      unitPrice: true,
+      currency: true,
+      taxRate: true,
+      quantity: true
+    }
+  }
 } as const;
 
-function toOrderSummary(order: {
-  id: string;
-  status: "DRAFT" | "ORDERED" | "RECEIVED";
-  orderNumber: string | null;
-  supplierOrderNumber: string | null;
-  orderedAt: Date | null;
-  notes: string | null;
-  createdAt: Date;
-  updatedAt: Date;
-  supplier: { id: string; name: string };
-  createdByUser: { name: string | null } | null;
-  _count: { items: number };
-}): PurchaseOrderSummary {
+function computeOrderTotals(
+  order: {
+    currency: string | null;
+    taxRate: Prisma.Decimal | null;
+    orderedAt: Date | null;
+    items: Array<{
+      unitPrice: Prisma.Decimal | null;
+      currency: string | null;
+      taxRate: Prisma.Decimal | null;
+      quantity: Prisma.Decimal;
+    }>;
+  },
+  primaryCurrency: string,
+  rateMap: Map<string, Prisma.Decimal | null>
+): {
+  totalNetValue: string | null;
+  totalGrossValue: string | null;
+  totalNetValuePrimary: string | null;
+  totalGrossValuePrimary: string | null;
+} {
+  let netTotal = new Prisma.Decimal(0);
+  let grossTotal = new Prisma.Decimal(0);
+  let hasPrices = false;
+
+  for (const item of order.items) {
+    if (!item.unitPrice) continue;
+    const effectiveCurrency = item.currency ?? order.currency;
+    // Only sum items whose currency matches the order currency
+    if (effectiveCurrency !== order.currency) continue;
+
+    hasPrices = true;
+    const lineNet = item.quantity.mul(item.unitPrice);
+    const effectiveTaxRate = item.taxRate ?? order.taxRate ?? new Prisma.Decimal(0);
+    const lineGross = lineNet.mul(new Prisma.Decimal(1).plus(effectiveTaxRate.div(100)));
+    netTotal = netTotal.plus(lineNet);
+    grossTotal = grossTotal.plus(lineGross);
+  }
+
+  if (!hasPrices) {
+    return { totalNetValue: null, totalGrossValue: null, totalNetValuePrimary: null, totalGrossValuePrimary: null };
+  }
+
+  const netStr = netTotal.toDecimalPlaces(4).toString();
+  const grossStr = grossTotal.toDecimalPlaces(4).toString();
+
+  // Convert to primary currency using the orderedAt date rate
+  const poCurrency = order.currency;
+  if (!poCurrency || poCurrency === primaryCurrency) {
+    return {
+      totalNetValue: netStr,
+      totalGrossValue: grossStr,
+      totalNetValuePrimary: netStr,
+      totalGrossValuePrimary: grossStr
+    };
+  }
+
+  if (!order.orderedAt) {
+    // DRAFT: no frozen rate yet
+    return { totalNetValue: netStr, totalGrossValue: grossStr, totalNetValuePrimary: null, totalGrossValuePrimary: null };
+  }
+
+  const dateStr = formatRateKey(order.orderedAt);
+  const rateKey = `${poCurrency}:${primaryCurrency}:${dateStr}`;
+  const rate = rateMap.get(rateKey) ?? null;
+
+  if (!rate) {
+    return { totalNetValue: netStr, totalGrossValue: grossStr, totalNetValuePrimary: null, totalGrossValuePrimary: null };
+  }
+
+  return {
+    totalNetValue: netStr,
+    totalGrossValue: grossStr,
+    totalNetValuePrimary: netTotal.mul(rate).toDecimalPlaces(4).toString(),
+    totalGrossValuePrimary: grossTotal.mul(rate).toDecimalPlaces(4).toString()
+  };
+}
+
+function formatRateKey(date: Date): string {
+  const y = date.getUTCFullYear();
+  const m = String(date.getUTCMonth() + 1).padStart(2, "0");
+  const d = String(date.getUTCDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
+
+function toOrderSummary(
+  order: {
+    id: string;
+    status: "DRAFT" | "ORDERED" | "RECEIVED";
+    orderNumber: string | null;
+    supplierOrderNumber: string | null;
+    currency: string | null;
+    taxRate: Prisma.Decimal | null;
+    priceEntryMode: string;
+    orderedAt: Date | null;
+    notes: string | null;
+    createdAt: Date;
+    updatedAt: Date;
+    supplier: { id: string; name: string };
+    createdByUser: { name: string | null } | null;
+    _count: { items: number };
+    items: Array<{
+      unitPrice: Prisma.Decimal | null;
+      currency: string | null;
+      taxRate: Prisma.Decimal | null;
+      quantity: Prisma.Decimal;
+    }>;
+  },
+  primaryCurrency: string,
+  rateMap: Map<string, Prisma.Decimal | null>
+): PurchaseOrderSummary {
+  const totals = computeOrderTotals(order, primaryCurrency, rateMap);
   return {
     id: order.id,
     supplierId: order.supplier.id,
@@ -111,13 +234,30 @@ function toOrderSummary(order: {
     status: order.status,
     orderNumber: order.orderNumber,
     supplierOrderNumber: order.supplierOrderNumber,
+    currency: order.currency,
+    taxRate: order.taxRate?.toString() ?? null,
+    priceEntryMode: (order.priceEntryMode === "gross" ? "gross" : "net") as "net" | "gross",
     orderedAt: order.orderedAt?.toISOString() ?? null,
     notes: order.notes,
     createdByName: order.createdByUser?.name ?? null,
     itemCount: order._count.items,
+    ...totals,
     createdAt: order.createdAt.toISOString(),
     updatedAt: order.updatedAt.toISOString()
   };
+}
+
+async function buildRateMap(
+  rows: Array<{ currency: string | null; orderedAt: Date | null }>,
+  primaryCurrency: string
+): Promise<Map<string, Prisma.Decimal | null>> {
+  const requests: Array<{ from: string; to: string; date: Date }> = [];
+  for (const row of rows) {
+    if (row.currency && row.currency !== primaryCurrency && row.orderedAt) {
+      requests.push({ from: row.currency, to: primaryCurrency, date: row.orderedAt });
+    }
+  }
+  return batchGetExchangeRates(requests);
 }
 
 export async function getPurchaseOrders(
@@ -128,7 +268,11 @@ export async function getPurchaseOrders(
   const sortBy = input.sortBy ?? "createdAt";
   const dir = input.sortDirection ?? (sortBy === "createdAt" ? "desc" : "asc");
 
-  const totalCount = await prisma.purchaseOrder.count({ where: { workspaceId } });
+  const [totalCount, workspace] = await Promise.all([
+    prisma.purchaseOrder.count({ where: { workspaceId } }),
+    prisma.workspace.findUniqueOrThrow({ where: { id: workspaceId }, select: { primaryCurrency: true } })
+  ]);
+  const primaryCurrency = workspace.primaryCurrency;
 
   if (sortBy === "status" || sortBy === "itemCount") {
     const cursor = decodeListCursor<OffsetCursor>(input.cursor);
@@ -153,7 +297,9 @@ export async function getPurchaseOrders(
 
     const sliced = all.slice(offset, offset + size + 1);
     const hasMore = sliced.length > size;
-    const items = sliced.slice(0, size).map(toOrderSummary);
+    const page = sliced.slice(0, size);
+    const rateMap = await buildRateMap(page, primaryCurrency);
+    const items = page.map((o) => toOrderSummary(o, primaryCurrency, rateMap));
     const nextCursor = hasMore
       ? encodeListCursor<OffsetCursor>({ offset: offset + size })
       : null;
@@ -189,7 +335,9 @@ export async function getPurchaseOrders(
     });
 
     const hasMore = rows.length > size;
-    const items = rows.slice(0, size).map(toOrderSummary);
+    const page = rows.slice(0, size);
+    const rateMap = await buildRateMap(page, primaryCurrency);
+    const items = page.map((o) => toOrderSummary(o, primaryCurrency, rateMap));
     const last = items[items.length - 1];
     const nextCursor =
       hasMore && last
@@ -228,7 +376,9 @@ export async function getPurchaseOrders(
     });
 
     const hasMore = rows.length > size;
-    const items = rows.slice(0, size).map(toOrderSummary);
+    const page = rows.slice(0, size);
+    const rateMap = await buildRateMap(page, primaryCurrency);
+    const items = page.map((o) => toOrderSummary(o, primaryCurrency, rateMap));
     const last = items[items.length - 1];
     const nextCursor =
       hasMore && last
@@ -271,7 +421,9 @@ export async function getPurchaseOrders(
   });
 
   const hasMore = rows.length > size;
-  const items = rows.slice(0, size).map(toOrderSummary);
+  const page = rows.slice(0, size);
+  const rateMap = await buildRateMap(page, primaryCurrency);
+  const items = page.map((o) => toOrderSummary(o, primaryCurrency, rateMap));
   const last = items[items.length - 1];
   const nextCursor =
     hasMore && last
@@ -293,11 +445,21 @@ export async function getPurchaseOrderDetail(
       status: true,
       orderNumber: true,
       supplierOrderNumber: true,
+      currency: true,
+      taxRate: true,
+      priceEntryMode: true,
       orderedAt: true,
       notes: true,
       createdAt: true,
       updatedAt: true,
-      supplier: { select: { id: true, name: true } },
+      supplier: {
+        select: {
+          id: true,
+          name: true,
+          defaultTaxRate: true,
+          defaultPriceEntryMode: true
+        }
+      },
       items: {
         orderBy: { createdAt: "asc" },
         select: {
@@ -309,6 +471,7 @@ export async function getPurchaseOrderDetail(
           supplierSku: true,
           unitPrice: true,
           currency: true,
+          taxRate: true,
           notes: true,
           part: {
             select: {
@@ -332,6 +495,11 @@ export async function getPurchaseOrderDetail(
     status: order.status,
     orderNumber: order.orderNumber,
     supplierOrderNumber: order.supplierOrderNumber,
+    currency: order.currency,
+    taxRate: order.taxRate?.toString() ?? null,
+    priceEntryMode: (order.priceEntryMode === "gross" ? "gross" : "net") as "net" | "gross",
+    supplierDefaultTaxRate: order.supplier.defaultTaxRate?.toString() ?? null,
+    supplierDefaultPriceEntryMode: order.supplier.defaultPriceEntryMode,
     orderedAt: order.orderedAt?.toISOString() ?? null,
     notes: order.notes,
     createdAt: order.createdAt.toISOString(),
@@ -348,6 +516,7 @@ export async function getPurchaseOrderDetail(
       supplierSku: item.supplierSku,
       unitPrice: item.unitPrice?.toString() ?? null,
       currency: item.currency,
+      taxRate: item.taxRate?.toString() ?? null,
       notes: item.notes
     }))
   };
@@ -364,6 +533,9 @@ export async function createPurchaseOrder(input: {
   supplierId: string;
   createdByUserId?: string | null;
   orderNumber?: string | null;
+  currency?: string | null;
+  taxRate?: string | null;
+  priceEntryMode?: "net" | "gross" | null;
   notes?: string | null;
 }) {
   await assertSupplierBelongsToWorkspace(input.workspaceId, input.supplierId);
@@ -377,6 +549,9 @@ export async function createPurchaseOrder(input: {
       supplierId: input.supplierId,
       createdByUserId: input.createdByUserId ?? null,
       orderNumber,
+      currency: normalizeOptionalText(input.currency),
+      taxRate: input.taxRate ? parseTaxRate(input.taxRate) : null,
+      priceEntryMode: input.priceEntryMode ?? "net",
       notes: normalizeOptionalText(input.notes)
     }
   });
@@ -388,6 +563,8 @@ export async function updatePurchaseOrder(input: {
   supplierId?: string;
   orderNumber?: string | null;
   supplierOrderNumber?: string | null;
+  currency?: string | null;
+  taxRate?: string | null;
   orderedAt?: Date | null;
   notes?: string | null;
 }) {
@@ -407,6 +584,8 @@ export async function updatePurchaseOrder(input: {
       ...(input.supplierId ? { supplierId: input.supplierId } : {}),
       orderNumber: normalizeOptionalText(input.orderNumber),
       supplierOrderNumber: normalizeOptionalText(input.supplierOrderNumber),
+      currency: normalizeOptionalText(input.currency),
+      ...(input.taxRate !== undefined ? { taxRate: input.taxRate ? parseTaxRate(input.taxRate) : null } : {}),
       ...(input.orderedAt !== undefined ? { orderedAt: input.orderedAt } : {}),
       notes: normalizeOptionalText(input.notes)
     }
@@ -525,6 +704,7 @@ export async function addOrderItem(input: {
   supplierSku?: string | null;
   unitPrice?: string | null;
   currency?: string | null;
+  taxRate?: string | null;
   notes?: string | null;
   sourceShoppingListItemId?: string | null;
 }) {
@@ -547,6 +727,7 @@ export async function addOrderItem(input: {
       supplierSku: normalizeOptionalText(input.supplierSku),
       unitPrice,
       currency: normalizeOptionalText(input.currency),
+      taxRate: input.taxRate ? parseTaxRate(input.taxRate) : null,
       notes: normalizeOptionalText(input.notes),
       sourceShoppingListItemId: input.sourceShoppingListItemId ?? null
     }
@@ -570,6 +751,7 @@ export async function updateOrderItem(input: {
   supplierSku?: string | null;
   unitPrice?: string | null;
   currency?: string | null;
+  taxRate?: string | null;
   notes?: string | null;
 }) {
   const order = await assertOrderBelongsToWorkspace(input.workspaceId, input.orderId);
@@ -595,6 +777,7 @@ export async function updateOrderItem(input: {
       supplierSku: normalizeOptionalText(input.supplierSku),
       unitPrice,
       currency: normalizeOptionalText(input.currency),
+      taxRate: input.taxRate !== undefined ? (input.taxRate ? parseTaxRate(input.taxRate) : null) : undefined,
       notes: normalizeOptionalText(input.notes)
     }
   });
@@ -714,6 +897,18 @@ export async function receiveItems(input: {
     throw new Error("order-already-received");
   }
 
+  const [orderPricing, workspacePrimary] = await Promise.all([
+    prisma.purchaseOrder.findUniqueOrThrow({
+      where: { id: input.orderId },
+      select: { currency: true, orderedAt: true }
+    }),
+    prisma.workspace.findUniqueOrThrow({
+      where: { id: input.workspaceId },
+      select: { primaryCurrency: true }
+    })
+  ]);
+  const primaryCurrency = workspacePrimary.primaryCurrency;
+
   const orderItems = await prisma.purchaseOrderItem.findMany({
     where: {
       purchaseOrderId: input.orderId,
@@ -724,6 +919,8 @@ export async function receiveItems(input: {
       partId: true,
       quantity: true,
       receivedQuantity: true,
+      unitPrice: true,
+      currency: true,
       part: { select: { unit: { select: { allowsFraction: true } } } }
     }
   });
@@ -751,6 +948,22 @@ export async function receiveItems(input: {
         throw new Error("receive-exceeds-ordered-quantity");
       }
 
+      // Compute unit cost for inventory tracking
+      let unitCost: Prisma.Decimal | null = null;
+      let costCurrency: string | null = null;
+      let unitCostPrimary: Prisma.Decimal | null = null;
+      if (orderItem.unitPrice != null) {
+        unitCost = orderItem.unitPrice;
+        costCurrency = orderItem.currency ?? orderPricing.currency ?? null;
+        if (costCurrency) {
+          if (costCurrency === primaryCurrency) {
+            unitCostPrimary = unitCost;
+          } else if (orderPricing.orderedAt) {
+            unitCostPrimary = await convertToWorkspacePrimary(unitCost, costCurrency, primaryCurrency, orderPricing.orderedAt);
+          }
+        }
+      }
+
       // createInventoryEntry runs in its own nested transaction; call it BEFORE
       // tx.part.update so both don't compete for a lock on the same Part row.
       await createInventoryEntry({
@@ -759,7 +972,10 @@ export async function receiveItems(input: {
         entryType: "RECEIPT",
         quantity: qty.toString(),
         toLocationId: receiveInput.locationId,
-        createdByUserId: input.createdByUserId
+        createdByUserId: input.createdByUserId,
+        unitCost,
+        costCurrency,
+        unitCostPrimary
       });
 
       await tx.purchaseOrderItem.update({
@@ -913,6 +1129,21 @@ function parseUnitPrice(rawValue: string) {
 
   if (price.lessThan(0)) throw new Error("invalid-unit-price");
   return price;
+}
+
+function parseTaxRate(rawValue: string) {
+  const normalized = rawValue.trim();
+  if (!normalized) return null;
+
+  let rate: Prisma.Decimal;
+  try {
+    rate = new Prisma.Decimal(normalized);
+  } catch {
+    throw new Error("invalid-tax-rate");
+  }
+
+  if (rate.lessThan(0) || rate.greaterThanOrEqualTo(100)) throw new Error("invalid-tax-rate");
+  return rate;
 }
 
 function normalizeOptionalText(value?: string | null) {

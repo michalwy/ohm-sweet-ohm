@@ -29,6 +29,8 @@ export type PartsListItem = {
   currentStock: string | null;
   plannedQuantity: string | null;
   onOrderQuantity: string | null;
+  avgCost: string | null;
+  avgCostCurrency: string | null;
   attributeValues: PartAttributeValueListItem[];
 };
 
@@ -63,6 +65,7 @@ type WorkspaceContext = {
   };
   workspace: {
     id: string;
+    primaryCurrency: string;
   };
 };
 
@@ -165,8 +168,10 @@ export async function getPartsListPage(
   const activeSortDirection: PartsListSortDirection =
     input.sortDirection === "desc" ? "desc" : "asc";
 
+  let page: ListPage<PartsListItem>;
+
   if (activeSortBy === "currentStock" && canReadInventory) {
-    return getDecimalFieldSortedPartsListPage({
+    page = await getDecimalFieldSortedPartsListPage({
       field: "currentStock",
       baseWhere,
       categoryPathsById,
@@ -179,10 +184,8 @@ export async function getPartsListPage(
       canReadShoppingLists,
       canReadPurchaseOrders
     });
-  }
-
-  if (activeSortBy === "plannedQuantity" && canReadShoppingLists) {
-    return getDecimalFieldSortedPartsListPage({
+  } else if (activeSortBy === "plannedQuantity" && canReadShoppingLists) {
+    page = await getDecimalFieldSortedPartsListPage({
       field: "plannedQty",
       baseWhere,
       categoryPathsById,
@@ -195,10 +198,8 @@ export async function getPartsListPage(
       canReadShoppingLists,
       canReadPurchaseOrders
     });
-  }
-
-  if (activeSortBy === "onOrderQuantity" && canReadPurchaseOrders) {
-    return getDecimalFieldSortedPartsListPage({
+  } else if (activeSortBy === "onOrderQuantity" && canReadPurchaseOrders) {
+    page = await getDecimalFieldSortedPartsListPage({
       field: "onOrderQty",
       baseWhere,
       categoryPathsById,
@@ -211,10 +212,8 @@ export async function getPartsListPage(
       canReadShoppingLists,
       canReadPurchaseOrders
     });
-  }
-
-  if (activeSortBy) {
-    return getSortedPartsListPage({
+  } else if (activeSortBy) {
+    page = await getSortedPartsListPage({
       baseWhere,
       categoryPathsById,
       pageSize,
@@ -227,60 +226,73 @@ export async function getPartsListPage(
       canReadShoppingLists,
       canReadPurchaseOrders
     });
+  } else {
+    const cursor = decodeListCursor<PartListCursor>(input.cursor);
+    const where = cursor
+      ? { AND: [baseWhere, getPartsCursorWhere(cursor)] }
+      : baseWhere;
+    const [parts, filteredCount] = await Promise.all([
+      prisma.part.findMany({
+        where,
+        orderBy: [
+          { manufacturer: { name: "asc" } },
+          { catalogNumber: "asc" },
+          { id: "asc" }
+        ],
+        take: pageSize + 1,
+        select: partListSelect
+      }),
+      prisma.part.count({ where: baseWhere })
+    ]);
+    const pageParts = parts.slice(0, pageSize);
+    const valueAttributeIdsByCategoryId = await getValueAttributeIdsByCategoryId({
+      workspaceId: context.workspace.id,
+      categoryIds: pageParts
+        .map((part) => part.primaryCategoryId)
+        .filter((categoryId): categoryId is string => Boolean(categoryId))
+    });
+    const lastPart = pageParts.at(-1);
+    page = {
+      items: pageParts.map((part) =>
+        mapPartListItem({
+          part,
+          categoryPathsById,
+          valueAttributeIdsByCategoryId,
+          canReadInventory,
+          canReadShoppingLists,
+          canReadPurchaseOrders
+        })
+      ),
+      nextCursor:
+        parts.length > pageSize && lastPart
+          ? encodeListCursor<PartListCursor>({
+              manufacturerName: lastPart.manufacturer.name,
+              catalogNumber: lastPart.catalogNumber,
+              id: lastPart.id
+            })
+          : null,
+      totalCount,
+      filteredCount
+    };
   }
 
-  const cursor = decodeListCursor<PartListCursor>(input.cursor);
-  const where = cursor
-    ? {
-        AND: [baseWhere, getPartsCursorWhere(cursor)]
-      }
-    : baseWhere;
-  const [parts, filteredCount] = await Promise.all([
-    prisma.part.findMany({
-      where,
-      orderBy: [
-        { manufacturer: { name: "asc" } },
-        { catalogNumber: "asc" },
-        { id: "asc" }
-      ],
-      take: pageSize + 1,
-      select: partListSelect
-    }),
-    prisma.part.count({
-      where: baseWhere
-    })
-  ]);
-  const pageParts = parts.slice(0, pageSize);
-  const valueAttributeIdsByCategoryId = await getValueAttributeIdsByCategoryId({
-    workspaceId: context.workspace.id,
-    categoryIds: pageParts
-      .map((part) => part.primaryCategoryId)
-      .filter((categoryId): categoryId is string => Boolean(categoryId))
-  });
-  const lastPart = pageParts.at(-1);
+  if (canReadPurchaseOrders && page.items.length > 0) {
+    const avgCosts = await getAveragePartCostsInPrimary(
+      context.workspace.id,
+      context.workspace.primaryCurrency,
+      page.items.map((i) => i.id)
+    );
+    return {
+      ...page,
+      items: page.items.map((item) => ({
+        ...item,
+        avgCost: avgCosts.get(item.id)?.avgCost ?? null,
+        avgCostCurrency: avgCosts.get(item.id)?.currency ?? null
+      }))
+    };
+  }
 
-  return {
-    items: pageParts.map((part) =>
-      mapPartListItem({
-        part,
-        categoryPathsById,
-        valueAttributeIdsByCategoryId,
-        canReadInventory,
-        canReadShoppingLists,
-        canReadPurchaseOrders
-      })
-    ),
-    nextCursor:
-      parts.length > pageSize && lastPart
-        ? encodeListCursor<PartListCursor>({
-            manufacturerName: lastPart.manufacturer.name,
-            catalogNumber: lastPart.catalogNumber,
-            id: lastPart.id
-          })
-        : null,
-    totalCount,
-    filteredCount
-  };
+  return page;
 }
 
 const partListSelect = {
@@ -622,6 +634,48 @@ function compareText(left: string, right: string) {
   });
 }
 
+async function getAveragePartCostsInPrimary(
+  workspaceId: string,
+  primaryCurrency: string,
+  partIds: string[]
+): Promise<Map<string, { avgCost: string; currency: string }>> {
+  if (partIds.length === 0) return new Map();
+
+  const entries = await prisma.inventoryEntry.findMany({
+    where: {
+      workspaceId,
+      entryType: "RECEIPT",
+      partId: { in: partIds },
+      unitCostPrimary: { not: null }
+    },
+    select: { partId: true, quantity: true, unitCostPrimary: true }
+  });
+
+  const grouped = new Map<string, { totalCost: Prisma.Decimal; totalQty: Prisma.Decimal }>();
+  for (const entry of entries) {
+    if (entry.unitCostPrimary == null) continue;
+    const qty = new Prisma.Decimal(entry.quantity);
+    const lineCost = entry.unitCostPrimary.mul(qty);
+    const existing = grouped.get(entry.partId);
+    if (existing) {
+      existing.totalCost = existing.totalCost.add(lineCost);
+      existing.totalQty = existing.totalQty.add(qty);
+    } else {
+      grouped.set(entry.partId, { totalCost: lineCost, totalQty: qty });
+    }
+  }
+
+  const result = new Map<string, { avgCost: string; currency: string }>();
+  for (const [partId, { totalCost, totalQty }] of grouped) {
+    if (totalQty.isZero()) continue;
+    result.set(partId, {
+      avgCost: totalCost.div(totalQty).toDecimalPlaces(4).toString(),
+      currency: primaryCurrency
+    });
+  }
+  return result;
+}
+
 function mapPartListItem({
   part,
   categoryPathsById,
@@ -669,6 +723,8 @@ function mapPartListItem({
     currentStock: canReadInventory ? part.currentStock.toString() : null,
     plannedQuantity: canReadShoppingLists ? part.plannedQty.toString() : null,
     onOrderQuantity: canReadPurchaseOrders ? part.onOrderQty.toString() : null,
+    avgCost: null,
+    avgCostCurrency: null,
     attributeValues
   };
 }

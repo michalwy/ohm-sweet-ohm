@@ -46,6 +46,9 @@ export async function createOrganizationAction(input: {
   workspaceSlug: string;
   name: string;
   roles: string[];
+  currency?: string | null;
+  defaultPriceEntryMode?: string | null;
+  defaultTaxRate?: string | null;
 }): Promise<OrganizationActionResult<{ id: string }>> {
   try {
     const context = await getContext(input.workspaceSlug);
@@ -53,7 +56,10 @@ export async function createOrganizationAction(input: {
       userId: context.user.id,
       workspaceId: context.workspace.id,
       name: input.name,
-      roles: input.roles
+      roles: input.roles,
+      currency: input.currency,
+      defaultPriceEntryMode: input.defaultPriceEntryMode,
+      defaultTaxRate: input.defaultTaxRate
     });
     if (!result.ok) throw new Error(result.error);
     revalidatePath(workspacePath(input.workspaceSlug));
@@ -68,6 +74,9 @@ export async function updateOrganizationAction(input: {
   id: string;
   name: string;
   roles: string[];
+  currency?: string | null;
+  defaultPriceEntryMode?: string | null;
+  defaultTaxRate?: string | null;
 }): Promise<OrganizationActionResult<null>> {
   try {
     const context = await getContext(input.workspaceSlug);
@@ -76,7 +85,10 @@ export async function updateOrganizationAction(input: {
       workspaceId: context.workspace.id,
       id: input.id,
       name: input.name,
-      roles: input.roles
+      roles: input.roles,
+      currency: input.currency,
+      defaultPriceEntryMode: input.defaultPriceEntryMode,
+      defaultTaxRate: input.defaultTaxRate
     });
     if (!result.ok) throw new Error(result.error);
     revalidatePath(workspacePath(input.workspaceSlug));

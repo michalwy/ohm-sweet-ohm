@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useRef, useState } from "react";
+import { CURRENCIES } from "@/app/currencies";
 import {
   createColumnHelper,
   flexRender,
@@ -84,6 +85,14 @@ type Copy = {
   configureList: string;
   visibleColumns: string;
   listCountSummary: string;
+  currency: string;
+  chooseCurrency: string;
+  defaultPriceEntryMode: string;
+  priceEntryModeNet: string;
+  priceEntryModeGross: string;
+  priceEntryModeNone: string;
+  defaultTaxRate: string;
+  defaultTaxRatePlaceholder: string;
 };
 
 type OrganizationsClientProps = {
@@ -277,6 +286,9 @@ export function OrganizationsClient({
     const fd = new FormData(e.currentTarget);
     const name = (fd.get("name") as string | null) ?? "";
     const roles = ORGANIZATION_ROLES.filter((r) => fd.get(`role-${r}`) === "on");
+    const currency = ((fd.get("currency") as string | null) ?? "").trim() || null;
+    const defaultPriceEntryMode = ((fd.get("defaultPriceEntryMode") as string | null) ?? "").trim() || null;
+    const defaultTaxRate = ((fd.get("defaultTaxRate") as string | null) ?? "").trim() || null;
 
     if (!name.trim()) {
       setFormErrors({ name: copy.nameRequired });
@@ -289,9 +301,9 @@ export function OrganizationsClient({
 
     setFormErrors({});
     if (dialogMode === "create") {
-      createMutation.mutate({ workspaceSlug, name, roles: [...roles] });
+      createMutation.mutate({ workspaceSlug, name, roles: [...roles], currency, defaultPriceEntryMode, defaultTaxRate });
     } else if (dialogMode === "edit" && editingOrg) {
-      updateMutation.mutate({ workspaceSlug, id: editingOrg.id, name, roles: [...roles] });
+      updateMutation.mutate({ workspaceSlug, id: editingOrg.id, name, roles: [...roles], currency, defaultPriceEntryMode, defaultTaxRate });
     }
   }
 
@@ -574,6 +586,54 @@ export function OrganizationsClient({
                   ))}
                 </div>
               </fieldset>
+
+              <div className="grid gap-1">
+                <label className="block text-sm font-medium text-slate-700" htmlFor="org-currency">
+                  {copy.currency}
+                </label>
+                <select
+                  id="org-currency"
+                  name="currency"
+                  defaultValue={editingOrg?.currency ?? ""}
+                  className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
+                >
+                  <option value="">{copy.chooseCurrency}</option>
+                  {CURRENCIES.map((c) => (
+                    <option key={c.code} value={c.code}>{c.code}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="grid gap-1">
+                <label className="block text-sm font-medium text-slate-700" htmlFor="org-price-entry-mode">
+                  {copy.defaultPriceEntryMode}
+                </label>
+                <select
+                  id="org-price-entry-mode"
+                  name="defaultPriceEntryMode"
+                  defaultValue={editingOrg?.defaultPriceEntryMode ?? ""}
+                  className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
+                >
+                  <option value="">{copy.priceEntryModeNone}</option>
+                  <option value="net">{copy.priceEntryModeNet}</option>
+                  <option value="gross">{copy.priceEntryModeGross}</option>
+                </select>
+              </div>
+
+              <div className="grid gap-1">
+                <label className="block text-sm font-medium text-slate-700" htmlFor="org-default-tax-rate">
+                  {copy.defaultTaxRate}
+                </label>
+                <input
+                  id="org-default-tax-rate"
+                  name="defaultTaxRate"
+                  type="text"
+                  inputMode="decimal"
+                  placeholder={copy.defaultTaxRatePlaceholder}
+                  defaultValue={editingOrg?.defaultTaxRate ?? ""}
+                  className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
+                />
+              </div>
             </div>
 
             {formErrors.submit ? (

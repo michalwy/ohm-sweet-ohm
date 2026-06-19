@@ -1,0 +1,17 @@
+export const CURRENCIES = [
+  { code: "EUR", label: "EUR — Euro" },
+  { code: "USD", label: "USD — US Dollar" },
+  { code: "GBP", label: "GBP — British Pound" },
+  { code: "PLN", label: "PLN — Polish Złoty" },
+  { code: "CZK", label: "CZK — Czech Koruna" },
+  { code: "CHF", label: "CHF — Swiss Franc" },
+  { code: "SEK", label: "SEK — Swedish Krona" },
+  { code: "DKK", label: "DKK — Danish Krone" },
+  { code: "NOK", label: "NOK — Norwegian Krone" },
+  { code: "HUF", label: "HUF — Hungarian Forint" },
+  { code: "RON", label: "RON — Romanian Leu" },
+  { code: "JPY", label: "JPY — Japanese Yen" },
+  { code: "CNY", label: "CNY — Chinese Yuan" },
+  { code: "CAD", label: "CAD — Canadian Dollar" },
+  { code: "AUD", label: "AUD — Australian Dollar" },
+] as const;
