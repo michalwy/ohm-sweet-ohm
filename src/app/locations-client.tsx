@@ -20,10 +20,9 @@ import {
   getFieldInputClassName,
   openDialog
 } from "@/app/dialog-shell";
+import { buildTree, type TreeNode } from "@/app/tree-picker-utils";
 
-type LocationTreeItem = StorageLocationListItem & {
-  children: LocationTreeItem[];
-};
+type LocationTreeItem = TreeNode<StorageLocationListItem>;
 
 type Copy = {
   addLocation: string;
@@ -140,7 +139,7 @@ export function LocationsClient({
         .sort((a, b) => a.name.localeCompare(b.name, "en")),
     [locations, editingLocation]
   );
-  const locationTree = useMemo(() => buildLocationTree(locations), [locations]);
+  const locationTree = useMemo(() => buildTree(locations), [locations]);
 
   function openCreateForm(parentId = "") {
     setEditingLocation(null);
@@ -569,34 +568,6 @@ function LocationNode({
       ) : null}
     </li>
   );
-}
-
-function buildLocationTree(locations: StorageLocationListItem[]) {
-  const childrenByParentId = new Map<string | null, StorageLocationListItem[]>();
-  for (const location of locations) {
-    const parentId = location.parentId ?? null;
-    const siblings = childrenByParentId.get(parentId);
-    if (siblings) {
-      siblings.push(location);
-    } else {
-      childrenByParentId.set(parentId, [location]);
-    }
-  }
-
-  const sortByName = (items: StorageLocationListItem[]) =>
-    items.sort((left, right) => left.name.localeCompare(right.name, "en"));
-  for (const items of childrenByParentId.values()) {
-    sortByName(items);
-  }
-
-  function createNode(location: StorageLocationListItem): LocationTreeItem {
-    return {
-      ...location,
-      children: (childrenByParentId.get(location.id) ?? []).map(createNode)
-    };
-  }
-
-  return (childrenByParentId.get(null) ?? []).map(createNode);
 }
 
 function getFormString(formData: FormData, name: string) {

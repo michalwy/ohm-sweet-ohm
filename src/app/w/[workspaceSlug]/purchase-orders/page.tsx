@@ -70,6 +70,10 @@ const copy = {
   location: "Location",
   chooseLocation: "Choose a location",
   noLocations: "No assignable locations available.",
+  searchLocations: "Search locations",
+  noMatchingLocations: "No matching locations",
+  expandLocation: "Expand",
+  collapseLocation: "Collapse",
   supplierSku: "Supplier SKU",
   unitPrice: "Unit price",
   lineTotal: "Line total",
@@ -167,6 +171,7 @@ export default async function PurchaseOrdersPage({ params, searchParams }: Purch
     }).catch(() => false)
   ]);
 
+  const allLocations = locations.filter((l) => !l.isArchived);
   const assignableLocations = locations.filter((l) => l.isAssignable && !l.isArchived);
 
   return (
@@ -183,6 +188,7 @@ export default async function PurchaseOrdersPage({ params, searchParams }: Purch
         canWrite={canWrite}
         initialPage={initialPage}
         initialSelectedOrderId={resolvedSearchParams?.selectedOrderId}
+        allLocations={allLocations}
         assignableLocations={assignableLocations}
         workspaceSlug={workspaceSlug}
         primaryCurrency={context.workspace.primaryCurrency}

@@ -36,6 +36,14 @@ import {
   type ToastMessage
 } from "@/app/toast-notice";
 import {
+  buildTree,
+  getAncestorIds,
+  getExpandableIds,
+  getFloatingPanelStyle,
+  getVisibleOptions,
+  type TreeNode
+} from "@/app/tree-picker-utils";
+import {
   DeleteConfirmationDialog,
   DialogBody,
   DialogFooter,
@@ -123,9 +131,7 @@ type Copy = {
   databaseUnavailable: string;
 };
 
-type CategoryTreeItem = PartCategoryListItem & {
-  children: CategoryTreeItem[];
-};
+type CategoryTreeItem = TreeNode<PartCategoryListItem>;
 
 type CategoryDialogMode = "create" | "edit";
 type CategoryDialogTab = "details" | "attributes";
@@ -192,12 +198,12 @@ export function PartCategoriesClient({
     useState<CategoryFormErrors>({});
   const [toastMessages, setToastMessages] = useState<ToastMessage[]>([]);
   const categoryTree = useMemo(
-    () => buildCategoryTree(currentCategories),
+    () => buildTree(currentCategories),
     [currentCategories]
   );
   const categoryExpansionStorageKey = `oso:${workspaceSlug}:part-category-expansion`;
   const defaultExpandedCategoryIds = useMemo(
-    () => getExpandableCategoryIds(categoryTree),
+    () => getExpandableIds(categoryTree),
     [categoryTree]
   );
   const expansionInteractedRef = useRef(false);
@@ -1804,7 +1810,7 @@ function CategoryFormFields({
   );
   const [selectedParentId, setSelectedParentId] = useState(parentId);
   const parentCategoryTree = useMemo(
-    () => buildCategoryTree(parentOptions),
+    () => buildTree(parentOptions),
     [parentOptions]
   );
 
@@ -1928,9 +1934,9 @@ function CategoryParentTreeSelect({
     ? filterCategoryTree(categoryTree, normalizedSearchQuery)
     : categoryTree;
   const effectiveExpandedCategoryIds = normalizedSearchQuery
-    ? getExpandableCategoryIds(visibleTree)
+    ? getExpandableIds(visibleTree)
     : expandedCategoryIds;
-  const visibleCategoryOptions = getVisibleCategoryOptions(
+  const visibleCategoryOptions = getVisibleOptions(
     visibleTree,
     effectiveExpandedCategoryIds
   );
@@ -2293,79 +2299,6 @@ function CategoryParentTreeSelectNode({
   );
 }
 
-function buildCategoryTree(categories: PartCategoryListItem[]) {
-  const nodesById = new Map<string, CategoryTreeItem>();
-
-  for (const category of categories) {
-    nodesById.set(category.id, { ...category, children: [] });
-  }
-
-  const roots: CategoryTreeItem[] = [];
-
-  for (const category of categories) {
-    const node = nodesById.get(category.id);
-
-    if (!node) {
-      continue;
-    }
-
-    const parent = category.parentId
-      ? nodesById.get(category.parentId)
-      : undefined;
-
-    if (parent) {
-      parent.children.push(node);
-    } else {
-      roots.push(node);
-    }
-  }
-
-  sortCategoryTree(roots);
-
-  return roots;
-}
-
-function sortCategoryTree(categories: CategoryTreeItem[]) {
-  categories.sort((left, right) =>
-    left.name.localeCompare(right.name, "en", { sensitivity: "base" })
-  );
-
-  for (const category of categories) {
-    sortCategoryTree(category.children);
-  }
-}
-
-function getExpandableCategoryIds(categories: CategoryTreeItem[]) {
-  const expandableIds = new Set<string>();
-
-  for (const category of categories) {
-    if (category.children.length > 0) {
-      expandableIds.add(category.id);
-    }
-
-    for (const childId of getExpandableCategoryIds(category.children)) {
-      expandableIds.add(childId);
-    }
-  }
-
-  return expandableIds;
-}
-
-function getAncestorIds(categories: PartCategoryListItem[], categoryId: string) {
-  const categoriesById = new Map(
-    categories.map((category) => [category.id, category])
-  );
-  const ancestorIds = new Set<string>();
-  let currentCategory = categoriesById.get(categoryId);
-
-  while (currentCategory?.parentId) {
-    ancestorIds.add(currentCategory.parentId);
-    currentCategory = categoriesById.get(currentCategory.parentId);
-  }
-
-  return ancestorIds;
-}
-
 function filterCategoryTree(
   categories: CategoryTreeItem[],
   normalizedSearchQuery: string
@@ -2384,51 +2317,6 @@ function filterCategoryTree(
   }
 
   return filteredCategories;
-}
-
-function getVisibleCategoryOptions(
-  categories: CategoryTreeItem[],
-  expandedCategoryIds: Set<string>
-) {
-  const visibleCategories: CategoryTreeItem[] = [];
-
-  for (const category of categories) {
-    visibleCategories.push(category);
-
-    if (expandedCategoryIds.has(category.id)) {
-      visibleCategories.push(
-        ...getVisibleCategoryOptions(category.children, expandedCategoryIds)
-      );
-    }
-  }
-
-  return visibleCategories;
-}
-
-function getFloatingPanelStyle(
-  anchor: HTMLElement | null
-): CSSProperties | null {
-  if (!anchor) {
-    return null;
-  }
-
-  const viewportPadding = 16;
-  const gap = 4;
-  const minimumHeight = 220;
-  const rect = anchor.getBoundingClientRect();
-  const spaceBelow = window.innerHeight - rect.bottom - viewportPadding - gap;
-  const spaceAbove = rect.top - viewportPadding - gap;
-  const opensDown = spaceBelow >= minimumHeight || spaceBelow >= spaceAbove;
-  const maxHeight = Math.max(160, Math.floor(opensDown ? spaceBelow : spaceAbove));
-
-  return {
-    left: rect.left,
-    width: rect.width,
-    maxHeight,
-    ...(opensDown
-      ? { top: rect.bottom + gap }
-      : { bottom: window.innerHeight - rect.top + gap })
-  };
 }
 
 function getInitialExpandedCategoryIds(
