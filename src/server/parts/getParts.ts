@@ -698,10 +698,10 @@ function mapPartListItem({
     plannedQuantity: canReadShoppingLists ? part.plannedQty.toString() : null,
     onOrderQuantity: canReadPurchaseOrders ? part.onOrderQty.toString() : null,
     avgNetCost: canReadPurchaseOrders
-      ? (part.avgNetCostPrimary?.toDecimalPlaces(4).toString() ?? null)
+      ? (part.avgNetCostPrimary?.toDecimalPlaces(2).toFixed(2) ?? null)
       : null,
     avgGrossCost: canReadPurchaseOrders
-      ? (part.avgGrossCostPrimary?.toDecimalPlaces(4).toString() ?? null)
+      ? (part.avgGrossCostPrimary?.toDecimalPlaces(2).toFixed(2) ?? null)
       : null,
     attributeValues
   };
