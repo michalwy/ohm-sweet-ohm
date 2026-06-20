@@ -18,13 +18,13 @@ import {
 import {
   addOrderItemForWorkspace,
   deletePurchaseOrderForWorkspace,
-  getExchangeRateForWorkspace,
   getPurchaseOrderDetailForWorkspace,
   getPurchaseOrdersForWorkspace,
   markOrderedForWorkspace,
   receiveItemsForWorkspace,
   removeOrderItemForWorkspace,
   revertOrderToDraftForWorkspace,
+  saveManualExchangeRateForWorkspace,
   updateOrderItemForWorkspace,
   updatePurchaseOrderForWorkspace
 } from "@/server/purchase-orders/purchaseOrderActions";
@@ -179,6 +179,10 @@ type Copy = {
   priceEntryMode: string;
   priceEntryModeNet: string;
   priceEntryModeGross: string;
+  exchangeRateUnavailableTitle: string;
+  exchangeRateUnavailableBody: string;
+  manualRateLabel: string;
+  manualRateSubmit: string;
 };
 
 type PurchaseOrdersClientProps = {
@@ -259,10 +263,10 @@ export function PurchaseOrdersClient({
       { id: "createdBy", label: copy.createdBy, group: "base", defaultWidth: 160, minWidth: 100, defaultVisible: false },
       { id: "orderedAt", label: copy.orderedAt, group: "base", defaultWidth: 160, minWidth: 100, defaultVisible: false },
       { id: "currency", label: copy.currency, group: "base", defaultWidth: 90, minWidth: 64, defaultVisible: false },
-      { id: "totalNetValue", label: copy.totalNetValue, group: "base", defaultWidth: 150, minWidth: 100, defaultVisible: false, align: "right" as const },
-      { id: "totalGrossValue", label: copy.totalGrossValue, group: "base", defaultWidth: 150, minWidth: 100, defaultVisible: false, align: "right" as const },
-      { id: "totalNetValuePrimary", label: copy.totalNetValuePrimary.replace("{currency}", primaryCurrency), group: "base", defaultWidth: 170, minWidth: 100, defaultVisible: false, align: "right" as const },
-      { id: "totalGrossValuePrimary", label: copy.totalGrossValuePrimary.replace("{currency}", primaryCurrency), group: "base", defaultWidth: 170, minWidth: 100, defaultVisible: false, align: "right" as const }
+      { id: "totalNetValue", label: copy.totalNetValue, group: "base", defaultWidth: 150, minWidth: 100, defaultVisible: false, align: "right" as const, sortable: true },
+      { id: "totalGrossValue", label: copy.totalGrossValue, group: "base", defaultWidth: 150, minWidth: 100, defaultVisible: false, align: "right" as const, sortable: true },
+      { id: "totalNetValuePrimary", label: copy.totalNetValuePrimary.replace("{currency}", primaryCurrency), group: "base", defaultWidth: 170, minWidth: 100, defaultVisible: false, align: "right" as const, sortable: true },
+      { id: "totalGrossValuePrimary", label: copy.totalGrossValuePrimary.replace("{currency}", primaryCurrency), group: "base", defaultWidth: 170, minWidth: 100, defaultVisible: false, align: "right" as const, sortable: true }
     ],
     [copy, primaryCurrency]
   );
@@ -345,31 +349,47 @@ export function PurchaseOrdersClient({
     enabled: Boolean(selectedOrderId)
   });
 
-  const detailForRate = orderDetail as PurchaseOrderDetail | null | undefined;
-  const detailCurrency = detailForRate?.currency ?? null;
-  const detailOrderedAt = detailForRate?.orderedAt ?? null;
-
-  const { data: itemExchangeRate } = useQuery({
-    queryKey: ["item-exchange-rate", workspaceSlug, detailCurrency, primaryCurrency, detailOrderedAt],
-    queryFn: async () => {
-      if (!detailCurrency || detailCurrency === primaryCurrency || !detailOrderedAt) return null;
-      const result = await getExchangeRateForWorkspace({
-        workspaceSlug,
-        from: detailCurrency,
-        to: primaryCurrency,
-        date: detailOrderedAt.split("T")[0]
-      });
-      return result.ok ? result.data : null;
-    },
-    enabled: Boolean(detailCurrency && detailCurrency !== primaryCurrency && detailOrderedAt)
-  });
+  const [rateRequiredState, setRateRequiredState] = useState<{
+    from: string;
+    to: string;
+    date: string;
+    retryFn: () => void;
+  } | null>(null);
+  const [rateRequiredValue, setRateRequiredValue] = useState("");
+  const [rateRequiredError, setRateRequiredError] = useState("");
+  const rateRequiredDialogRef = useRef<HTMLDialogElement>(null);
 
   // --- Mutations ---
 
+  function openRateDialog(details: { from: string; to: string; date: string }, retryFn: () => void) {
+    setRateRequiredState({ ...details, retryFn });
+    setRateRequiredValue("");
+    setRateRequiredError("");
+    window.requestAnimationFrame(() => openDialog(rateRequiredDialogRef.current));
+  }
+
+  const saveManualRateMutation = useMutation({
+    mutationFn: saveManualExchangeRateForWorkspace,
+    onSuccess: (result) => {
+      if (!result.ok) { setRateRequiredError(getErrorMsg(copy, result.error)); return; }
+      closeDialog(rateRequiredDialogRef.current);
+      const retry = rateRequiredState?.retryFn;
+      setRateRequiredState(null);
+      retry?.();
+    }
+  });
+
   const updateOrderMutation = useMutation({
     mutationFn: updatePurchaseOrderForWorkspace,
-    onSuccess: (result) => {
-      if (!result.ok) { setOrderFormErrors({ submit: getErrorMsg(copy, result.error) }); return; }
+    onSuccess: (result, variables) => {
+      if (!result.ok) {
+        if (result.error === "exchange-rate-unavailable" && result.errorDetails) {
+          openRateDialog(result.errorDetails, () => updateOrderMutation.mutate(variables));
+          return;
+        }
+        setOrderFormErrors({ submit: getErrorMsg(copy, result.error) });
+        return;
+      }
       closeOrderDialog();
       addToast(copy.updatedToast);
       reloadOrders();
@@ -390,7 +410,16 @@ export function PurchaseOrdersClient({
   const markOrderedMutation = useMutation({
     mutationFn: markOrderedForWorkspace,
     onSuccess: (result, variables) => {
-      if (!result.ok) { addToast(getErrorMsg(copy, result.error)); return; }
+      if (!result.ok) {
+        if (result.error === "exchange-rate-unavailable" && result.errorDetails) {
+          closeDialog(markOrderedDialogRef.current);
+          setMarkOrderedPending(false);
+          openRateDialog(result.errorDetails, () => markOrderedMutation.mutate(variables));
+          return;
+        }
+        addToast(getErrorMsg(copy, result.error));
+        return;
+      }
       setMarkOrderedPending(false);
       closeDialog(markOrderedDialogRef.current);
       addToast(copy.orderedToast);
@@ -414,7 +443,14 @@ export function PurchaseOrdersClient({
   const addItemMutation = useMutation({
     mutationFn: addOrderItemForWorkspace,
     onSuccess: (result, variables) => {
-      if (!result.ok) { setItemFormErrors({ submit: getErrorMsg(copy, result.error) }); return; }
+      if (!result.ok) {
+        if (result.error === "exchange-rate-unavailable" && result.errorDetails) {
+          openRateDialog(result.errorDetails, () => addItemMutation.mutate(variables));
+          return;
+        }
+        setItemFormErrors({ submit: getErrorMsg(copy, result.error) });
+        return;
+      }
       closeItemDialog();
       addToast(copy.itemAddedToast);
       refreshDetail(variables.orderId);
@@ -425,10 +461,18 @@ export function PurchaseOrdersClient({
   const updateItemMutation = useMutation({
     mutationFn: updateOrderItemForWorkspace,
     onSuccess: (result, variables) => {
-      if (!result.ok) { setItemFormErrors({ submit: getErrorMsg(copy, result.error) }); return; }
+      if (!result.ok) {
+        if (result.error === "exchange-rate-unavailable" && result.errorDetails) {
+          openRateDialog(result.errorDetails, () => updateItemMutation.mutate(variables));
+          return;
+        }
+        setItemFormErrors({ submit: getErrorMsg(copy, result.error) });
+        return;
+      }
       closeItemDialog();
       addToast(copy.itemUpdatedToast);
       refreshDetail(variables.orderId);
+      reloadOrders();
     }
   });
 
@@ -550,11 +594,14 @@ export function PurchaseOrdersClient({
     }
 
     setItemUnitPrice(displayPrice);
-    if (displayPrice && qty) {
-      const total = parseFloat(displayPrice) * parseFloat(qty);
-      setItemLineTotal(isNaN(total) ? "" : roundDisplay(total));
+    // Use stored line total to avoid rounding drift (e.g. 10/3 * 3 = 9.99).
+    // roundDisplay normalises any legacy high-precision strings (e.g. "9.999999999984" → "10.00").
+    if (currentMode === "gross") {
+      const rawGross = item.lineGrossValue ? parseFloat(item.lineGrossValue) : NaN;
+      setItemLineTotal(!isNaN(rawGross) ? roundDisplay(rawGross) : "");
     } else {
-      setItemLineTotal("");
+      const rawNet = item.lineNetValue ? parseFloat(item.lineNetValue) : NaN;
+      setItemLineTotal(!isNaN(rawNet) ? roundDisplay(rawNet) : "");
     }
     setDialogFormKey((k) => k + 1);
     window.requestAnimationFrame(() => openDialog(itemDialogRef.current));
@@ -625,6 +672,8 @@ export function PurchaseOrdersClient({
 
     // In gross mode the hidden unitPrice input already has net (back-calculated)
     const unitPrice = getString(formData, "unitPrice") || null;
+    // lineNetTotal bypasses unitPrice * quantity computation to prevent rounding drift
+    const lineNetTotal = getString(formData, "lineNetTotal") || null;
 
     if (itemDialogMode === "create" && selectedOrderId && partId) {
       addItemMutation.mutate({
@@ -633,6 +682,7 @@ export function PurchaseOrdersClient({
         partId,
         quantity,
         unitPrice,
+        lineNetTotal,
         currency: getString(formData, "currency") || null,
         taxRate: getString(formData, "taxRate") || null,
         notes: getString(formData, "notes") || null
@@ -644,6 +694,7 @@ export function PurchaseOrdersClient({
         itemId: editingItem.id,
         quantity,
         unitPrice,
+        lineNetTotal,
         currency: getString(formData, "currency") || null,
         taxRate: getString(formData, "taxRate") || null,
         notes: getString(formData, "notes") || null
@@ -703,7 +754,8 @@ export function PurchaseOrdersClient({
     updateItemMutation.isPending ||
     receiveItemsMutation.isPending ||
     markOrderedMutation.isPending ||
-    revertToDraftMutation.isPending;
+    revertToDraftMutation.isPending ||
+    saveManualRateMutation.isPending;
 
   function statusLabel(status: "DRAFT" | "ORDERED" | "RECEIVED") {
     if (status === "DRAFT") return copy.statusDraft;
@@ -1217,38 +1269,28 @@ export function PurchaseOrdersClient({
 
               {(() => {
                 if (!detail) return null;
-                const pricedItems = detail.items.filter((item) => item.unitPrice != null);
-                if (pricedItems.length === 0) return null;
-                const orderTaxRate = parseFloat(detail.taxRate ?? "") || 0;
-                let netTotal = 0;
-                let grossTotal = 0;
-                for (const item of pricedItems) {
-                  const price = parseFloat(item.unitPrice!);
-                  const qty = parseFloat(item.quantity);
-                  if (isNaN(price) || isNaN(qty)) continue;
-                  const net = price * qty;
-                  const tax = parseFloat(item.taxRate ?? "") || orderTaxRate;
-                  netTotal += net;
-                  grossTotal += net * (1 + tax / 100);
-                }
-                const rateNum = itemExchangeRate?.rate ? parseFloat(itemExchangeRate.rate) : null;
-                const showPrimary = rateNum != null && detail.currency && detail.currency !== primaryCurrency;
+                const { totalNetValue, totalGrossValue, totalNetValuePrimary, totalGrossValuePrimary } = detail;
+                if (!totalNetValue && !totalGrossValue) return null;
+                const showPrimary =
+                  totalNetValuePrimary != null &&
+                  detail.currency != null &&
+                  detail.currency !== primaryCurrency;
                 return (
                   <div className="mt-3 rounded-md border border-slate-200 bg-slate-50 px-3 py-2.5 grid gap-1.5 text-sm">
                     <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{copy.orderTotals}</p>
                     <div className="flex justify-between gap-4">
                       <span className="text-slate-600">{copy.totalNetValue}</span>
-                      <span className="font-mono text-slate-900">
-                        {roundDisplay(netTotal)}{detail.currency ? ` ${detail.currency}` : ""}
-                        {showPrimary ? <span className="text-slate-400 text-xs"> (≈{roundDisplay(netTotal * rateNum!)} {primaryCurrency})</span> : null}
-                      </span>
+                      <div className="text-right">
+                        <span className="font-mono text-slate-900">{totalNetValue}{detail.currency ? ` ${detail.currency}` : ""}</span>
+                        {showPrimary ? <div className="font-mono text-xs text-slate-400">≈{totalNetValuePrimary} {primaryCurrency}</div> : null}
+                      </div>
                     </div>
                     <div className="flex justify-between gap-4">
                       <span className="text-slate-600">{copy.totalGrossValue}</span>
-                      <span className="font-mono text-slate-900">
-                        {roundDisplay(grossTotal)}{detail.currency ? ` ${detail.currency}` : ""}
-                        {showPrimary ? <span className="text-slate-400 text-xs"> (≈{roundDisplay(grossTotal * rateNum!)} {primaryCurrency})</span> : null}
-                      </span>
+                      <div className="text-right">
+                        <span className="font-mono text-slate-900">{totalGrossValue}{detail.currency ? ` ${detail.currency}` : ""}</span>
+                        {showPrimary ? <div className="font-mono text-xs text-slate-400">≈{totalGrossValuePrimary} {primaryCurrency}</div> : null}
+                      </div>
                     </div>
                   </div>
                 );
@@ -1497,6 +1539,18 @@ export function PurchaseOrdersClient({
                   isGrossMode && itemUnitPrice
                     ? (parseFloat(itemUnitPrice) / (1 + itemEffectiveTaxRate / 100)).toFixed(10)
                     : itemUnitPrice
+                }
+              />
+              {/* Hidden lineNetTotal submits exact net line total to avoid rounding drift */}
+              <input
+                type="hidden"
+                name="lineNetTotal"
+                value={
+                  itemLineTotal
+                    ? isGrossMode
+                      ? (parseFloat(itemLineTotal) / (1 + itemEffectiveTaxRate / 100)).toFixed(10)
+                      : itemLineTotal
+                    : ""
                 }
               />
 
@@ -1874,6 +1928,67 @@ export function PurchaseOrdersClient({
           }
         }}
       />
+
+      {/* Manual exchange rate dialog */}
+      <DialogShell
+        ref={rateRequiredDialogRef}
+        closeLabel={copy.close}
+        title={copy.exchangeRateUnavailableTitle}
+        titleId="rate-required-dialog-title"
+        widthClassName="w-[min(28rem,calc(100vw-3rem))]"
+        onClose={() => setRateRequiredState(null)}
+      >
+        {rateRequiredState ? (
+          <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+            <DialogBody className="grid gap-4">
+              <p className="text-sm leading-6 text-slate-600">
+                {copy.exchangeRateUnavailableBody
+                  .replace("{from}", rateRequiredState.from)
+                  .replace("{to}", rateRequiredState.to)
+                  .replace("{date}", rateRequiredState.date)}
+              </p>
+              <div className="grid gap-2">
+                <label className="text-sm font-medium text-slate-700">
+                  {copy.manualRateLabel.replace("{from}", rateRequiredState.from)} {rateRequiredState.to}
+                </label>
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  value={rateRequiredValue}
+                  onChange={(e) => setRateRequiredValue(e.target.value)}
+                  className="min-h-10 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-950 outline-none transition hover:border-slate-400 focus:border-slate-500 focus:ring-2 focus:ring-slate-200"
+                />
+              </div>
+            </DialogBody>
+            <DialogFooter className="justify-end gap-2">
+              <button
+                className="min-h-10 rounded-md border border-slate-300 px-3 text-sm font-medium text-slate-700 transition hover:border-slate-400 hover:bg-slate-50"
+                type="button"
+                onClick={() => { closeDialog(rateRequiredDialogRef.current); setRateRequiredState(null); }}
+              >
+                {copy.cancel}
+              </button>
+              <button
+                className="min-h-10 rounded-md bg-[var(--color-accent)] px-4 text-sm font-semibold text-white transition hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-60"
+                type="button"
+                disabled={saveManualRateMutation.isPending || !rateRequiredValue.trim()}
+                onClick={() => {
+                  saveManualRateMutation.mutate({
+                    workspaceSlug,
+                    from: rateRequiredState.from,
+                    to: rateRequiredState.to,
+                    date: rateRequiredState.date,
+                    rate: rateRequiredValue
+                  });
+                }}
+              >
+                {copy.manualRateSubmit}
+              </button>
+            </DialogFooter>
+            {rateRequiredError ? <ErrorBubble>{rateRequiredError}</ErrorBubble> : null}
+          </div>
+        ) : null}
+      </DialogShell>
 
       <ToastNotice messages={toastMessages} onDismiss={(id) => setToastMessages((msgs) => msgs.filter((m) => m.id !== id))} />
     </>

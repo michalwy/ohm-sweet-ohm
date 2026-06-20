@@ -24,14 +24,14 @@ import {
   updateOrderItem,
   updatePurchaseOrder
 } from "@/server/purchase-orders/purchaseOrderMutations";
-import { getExchangeRate } from "@/server/currency/exchangeRates";
+import { ExchangeRateUnavailableError, getExchangeRate, saveManualExchangeRate } from "@/server/currency/exchangeRates";
 import type { ListPage } from "@/server/pagination";
 import { getSupplierOrganizationsForWorkspace, type SupplierSummary } from "@/server/organizations/organizations";
 import { revalidatePath } from "next/cache";
 
 export type PurchaseOrderActionResult<T> =
   | { ok: true; data: T; submittedAt: number }
-  | { ok: false; error: string; submittedAt: number };
+  | { ok: false; error: string; errorDetails?: { from: string; to: string; date: string }; submittedAt: number };
 
 // --- Queries ---
 
@@ -193,6 +193,7 @@ export async function addOrderItemForWorkspace(input: {
   quantity: string;
   supplierSku?: string | null;
   unitPrice?: string | null;
+  lineNetTotal?: string | null;
   currency?: string | null;
   taxRate?: string | null;
   notes?: string | null;
@@ -207,6 +208,7 @@ export async function addOrderItemForWorkspace(input: {
       quantity: input.quantity,
       supplierSku: input.supplierSku,
       unitPrice: input.unitPrice,
+      lineNetTotal: input.lineNetTotal,
       currency: input.currency,
       taxRate: input.taxRate,
       notes: input.notes,
@@ -226,6 +228,7 @@ export async function updateOrderItemForWorkspace(input: {
   quantity: string;
   supplierSku?: string | null;
   unitPrice?: string | null;
+  lineNetTotal?: string | null;
   currency?: string | null;
   taxRate?: string | null;
   notes?: string | null;
@@ -239,6 +242,7 @@ export async function updateOrderItemForWorkspace(input: {
       quantity: input.quantity,
       supplierSku: input.supplierSku,
       unitPrice: input.unitPrice,
+      lineNetTotal: input.lineNetTotal,
       currency: input.currency,
       taxRate: input.taxRate,
       notes: input.notes
@@ -374,5 +378,29 @@ function failure(error: unknown): PurchaseOrderActionResult<never> {
   if (!(error instanceof Error)) {
     return { ok: false, error: "database-unavailable", submittedAt: Date.now() };
   }
+  if (error instanceof ExchangeRateUnavailableError) {
+    return {
+      ok: false,
+      error: "exchange-rate-unavailable",
+      errorDetails: { from: error.from, to: error.to, date: error.date },
+      submittedAt: Date.now()
+    };
+  }
   return { ok: false, error: error.message.replaceAll("_", "-"), submittedAt: Date.now() };
+}
+
+export async function saveManualExchangeRateForWorkspace(input: {
+  workspaceSlug: string;
+  from: string;
+  to: string;
+  date: string;
+  rate: string;
+}): Promise<PurchaseOrderActionResult<null>> {
+  try {
+    await getAuthorizedContext(input.workspaceSlug, "purchase-orders:write");
+    await saveManualExchangeRate(input.from, input.to, new Date(input.date), input.rate);
+    return success(null);
+  } catch (error) {
+    return failure(error);
+  }
 }

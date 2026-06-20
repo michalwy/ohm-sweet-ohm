@@ -127,7 +127,11 @@ const copy = {
   orderCountSummary: "{visible} of {total} orders",
   priceEntryMode: "Price entry mode",
   priceEntryModeNet: "Net",
-  priceEntryModeGross: "Gross"
+  priceEntryModeGross: "Gross",
+  exchangeRateUnavailableTitle: "Exchange rate unavailable",
+  exchangeRateUnavailableBody: "The exchange rate for {from} → {to} on {date} could not be fetched automatically. Please enter it manually to continue.",
+  manualRateLabel: "1 {from} =",
+  manualRateSubmit: "Save rate and continue"
 };
 
 type PurchaseOrdersPageProps = {

@@ -647,6 +647,10 @@ model PurchaseOrder {
   taxRate              Decimal?
   priceEntryMode       String    @default("net")
   orderedAt            DateTime?
+  totalNetValue        Decimal?
+  totalGrossValue      Decimal?
+  totalNetValuePrimary    Decimal?
+  totalGrossValuePrimary  Decimal?
   notes                String?
   createdAt            DateTime            @default(now())
   updatedAt            DateTime            @updatedAt
@@ -661,6 +665,10 @@ model PurchaseOrder {
   @@index([workspaceId, supplierId])
   @@index([workspaceId, status])
   @@index([workspaceId, sourceShoppingListId])
+  @@index([workspaceId, totalNetValue])
+  @@index([workspaceId, totalGrossValue])
+  @@index([workspaceId, totalNetValuePrimary])
+  @@index([workspaceId, totalGrossValuePrimary])
 }
 
 model PurchaseOrderItem {
@@ -672,6 +680,10 @@ model PurchaseOrderItem {
   receivedQuantity         Decimal  @default(0)
   supplierSku              String?
   unitPrice                Decimal?
+  lineNetValue             Decimal?
+  lineGrossValue           Decimal?
+  lineNetValuePrimary      Decimal?
+  lineGrossValuePrimary    Decimal?
   currency                 String?
   taxRate                  Decimal?
   notes                    String?

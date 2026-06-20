@@ -87,6 +87,52 @@ export async function convertToWorkspacePrimary(
   return amount.mul(rate);
 }
 
+export class ExchangeRateUnavailableError extends Error {
+  readonly from: string;
+  readonly to: string;
+  readonly date: string;
+  constructor(from: string, to: string, date: string) {
+    super("exchange-rate-unavailable");
+    this.from = from;
+    this.to = to;
+    this.date = date;
+  }
+}
+
+export async function getExchangeRateOrThrow(
+  from: string,
+  to: string,
+  date: Date
+): Promise<Prisma.Decimal> {
+  if (from === to) return new Prisma.Decimal(1);
+  const rate = await getExchangeRate(from, to, date);
+  if (!rate) throw new ExchangeRateUnavailableError(from, to, formatDate(toDateOnly(date)));
+  return rate;
+}
+
+export async function saveManualExchangeRate(
+  from: string,
+  to: string,
+  date: Date,
+  rateStr: string
+): Promise<Prisma.Decimal> {
+  let decimal: Prisma.Decimal;
+  try {
+    decimal = new Prisma.Decimal(rateStr.trim());
+  } catch {
+    throw new Error("invalid-exchange-rate");
+  }
+  if (decimal.lessThanOrEqualTo(0)) throw new Error("invalid-exchange-rate");
+
+  const dateOnly = toDateOnly(date);
+  await prisma.exchangeRate.upsert({
+    where: { baseCurrency_quoteCurrency_date: { baseCurrency: from, quoteCurrency: to, date: dateOnly } },
+    create: { baseCurrency: from, quoteCurrency: to, date: dateOnly, rate: decimal },
+    update: { rate: decimal, fetchedAt: new Date() }
+  });
+  return decimal;
+}
+
 /**
  * Batch-fetches exchange rates for multiple (from, to, date) combinations, deduplicating
  * lookups. Returns a map keyed by `"${from}:${to}:${YYYY-MM-DD}"`.

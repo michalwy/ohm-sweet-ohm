@@ -3,7 +3,11 @@ import "server-only";
 import { Prisma } from "@/generated/prisma/client";
 import { createInventoryEntry } from "@/server/inventory/entryMutations";
 import { prisma } from "@/server/db/prisma";
-import { batchGetExchangeRates, convertToWorkspacePrimary } from "@/server/currency/exchangeRates";
+import {
+  convertToWorkspacePrimary,
+  getExchangeRate,
+  getExchangeRateOrThrow
+} from "@/server/currency/exchangeRates";
 import {
   decodeListCursor,
   encodeListCursor,
@@ -22,6 +26,10 @@ export type PurchaseOrderItem = {
   receivedQuantity: string;
   supplierSku: string | null;
   unitPrice: string | null;
+  lineNetValue: string | null;
+  lineGrossValue: string | null;
+  lineNetValuePrimary: string | null;
+  lineGrossValuePrimary: string | null;
   currency: string | null;
   taxRate: string | null;
   notes: string | null;
@@ -44,6 +52,10 @@ export type PurchaseOrderDetail = {
   notes: string | null;
   createdAt: string;
   updatedAt: string;
+  totalNetValue: string | null;
+  totalGrossValue: string | null;
+  totalNetValuePrimary: string | null;
+  totalGrossValuePrimary: string | null;
   items: PurchaseOrderItem[];
 };
 
@@ -74,7 +86,11 @@ export type PurchaseOrderSortBy =
   | "orderNumber"
   | "status"
   | "itemCount"
-  | "createdAt";
+  | "createdAt"
+  | "totalNetValue"
+  | "totalGrossValue"
+  | "totalNetValuePrimary"
+  | "totalGrossValuePrimary";
 export type PurchaseOrderSortDirection = "asc" | "desc";
 
 export type PurchaseOrdersPageInput = {
@@ -90,6 +106,7 @@ type CreatedAtCursor = { createdAt: string; id: string };
 type OffsetCursor = { offset: number };
 
 const STATUS_RANK: Record<string, number> = { DRAFT: 0, ORDERED: 1, RECEIVED: 2 };
+const TOTAL_SORT_COLS = new Set(["totalNetValue", "totalGrossValue", "totalNetValuePrimary", "totalGrossValuePrimary"]);
 
 const orderSelectShape = {
   id: true,
@@ -103,130 +120,35 @@ const orderSelectShape = {
   notes: true,
   createdAt: true,
   updatedAt: true,
+  totalNetValue: true,
+  totalGrossValue: true,
+  totalNetValuePrimary: true,
+  totalGrossValuePrimary: true,
   supplier: { select: { name: true, id: true } },
   createdByUser: { select: { name: true } },
-  _count: { select: { items: true } },
-  items: {
-    select: {
-      unitPrice: true,
-      currency: true,
-      taxRate: true,
-      quantity: true
-    }
-  }
+  _count: { select: { items: true } }
 } as const;
 
-function computeOrderTotals(
-  order: {
-    currency: string | null;
-    taxRate: Prisma.Decimal | null;
-    orderedAt: Date | null;
-    items: Array<{
-      unitPrice: Prisma.Decimal | null;
-      currency: string | null;
-      taxRate: Prisma.Decimal | null;
-      quantity: Prisma.Decimal;
-    }>;
-  },
-  primaryCurrency: string,
-  rateMap: Map<string, Prisma.Decimal | null>
-): {
-  totalNetValue: string | null;
-  totalGrossValue: string | null;
-  totalNetValuePrimary: string | null;
-  totalGrossValuePrimary: string | null;
-} {
-  let netTotal = new Prisma.Decimal(0);
-  let grossTotal = new Prisma.Decimal(0);
-  let hasPrices = false;
-
-  for (const item of order.items) {
-    if (!item.unitPrice) continue;
-    const effectiveCurrency = item.currency ?? order.currency;
-    // Only sum items whose currency matches the order currency
-    if (effectiveCurrency !== order.currency) continue;
-
-    hasPrices = true;
-    const lineNet = item.quantity.mul(item.unitPrice);
-    const effectiveTaxRate = item.taxRate ?? order.taxRate ?? new Prisma.Decimal(0);
-    const lineGross = lineNet.mul(new Prisma.Decimal(1).plus(effectiveTaxRate.div(100)));
-    netTotal = netTotal.plus(lineNet);
-    grossTotal = grossTotal.plus(lineGross);
-  }
-
-  if (!hasPrices) {
-    return { totalNetValue: null, totalGrossValue: null, totalNetValuePrimary: null, totalGrossValuePrimary: null };
-  }
-
-  const netStr = netTotal.toDecimalPlaces(4).toString();
-  const grossStr = grossTotal.toDecimalPlaces(4).toString();
-
-  // Convert to primary currency using the orderedAt date rate
-  const poCurrency = order.currency;
-  if (!poCurrency || poCurrency === primaryCurrency) {
-    return {
-      totalNetValue: netStr,
-      totalGrossValue: grossStr,
-      totalNetValuePrimary: netStr,
-      totalGrossValuePrimary: grossStr
-    };
-  }
-
-  if (!order.orderedAt) {
-    // DRAFT: no frozen rate yet
-    return { totalNetValue: netStr, totalGrossValue: grossStr, totalNetValuePrimary: null, totalGrossValuePrimary: null };
-  }
-
-  const dateStr = formatRateKey(order.orderedAt);
-  const rateKey = `${poCurrency}:${primaryCurrency}:${dateStr}`;
-  const rate = rateMap.get(rateKey) ?? null;
-
-  if (!rate) {
-    return { totalNetValue: netStr, totalGrossValue: grossStr, totalNetValuePrimary: null, totalGrossValuePrimary: null };
-  }
-
-  return {
-    totalNetValue: netStr,
-    totalGrossValue: grossStr,
-    totalNetValuePrimary: netTotal.mul(rate).toDecimalPlaces(4).toString(),
-    totalGrossValuePrimary: grossTotal.mul(rate).toDecimalPlaces(4).toString()
-  };
-}
-
-function formatRateKey(date: Date): string {
-  const y = date.getUTCFullYear();
-  const m = String(date.getUTCMonth() + 1).padStart(2, "0");
-  const d = String(date.getUTCDate()).padStart(2, "0");
-  return `${y}-${m}-${d}`;
-}
-
-function toOrderSummary(
-  order: {
-    id: string;
-    status: "DRAFT" | "ORDERED" | "RECEIVED";
-    orderNumber: string | null;
-    supplierOrderNumber: string | null;
-    currency: string | null;
-    taxRate: Prisma.Decimal | null;
-    priceEntryMode: string;
-    orderedAt: Date | null;
-    notes: string | null;
-    createdAt: Date;
-    updatedAt: Date;
-    supplier: { id: string; name: string };
-    createdByUser: { name: string | null } | null;
-    _count: { items: number };
-    items: Array<{
-      unitPrice: Prisma.Decimal | null;
-      currency: string | null;
-      taxRate: Prisma.Decimal | null;
-      quantity: Prisma.Decimal;
-    }>;
-  },
-  primaryCurrency: string,
-  rateMap: Map<string, Prisma.Decimal | null>
-): PurchaseOrderSummary {
-  const totals = computeOrderTotals(order, primaryCurrency, rateMap);
+function toOrderSummary(order: {
+  id: string;
+  status: "DRAFT" | "ORDERED" | "RECEIVED";
+  orderNumber: string | null;
+  supplierOrderNumber: string | null;
+  currency: string | null;
+  taxRate: Prisma.Decimal | null;
+  priceEntryMode: string;
+  orderedAt: Date | null;
+  notes: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+  totalNetValue: Prisma.Decimal | null;
+  totalGrossValue: Prisma.Decimal | null;
+  totalNetValuePrimary: Prisma.Decimal | null;
+  totalGrossValuePrimary: Prisma.Decimal | null;
+  supplier: { id: string; name: string };
+  createdByUser: { name: string | null } | null;
+  _count: { items: number };
+}): PurchaseOrderSummary {
   return {
     id: order.id,
     supplierId: order.supplier.id,
@@ -241,23 +163,13 @@ function toOrderSummary(
     notes: order.notes,
     createdByName: order.createdByUser?.name ?? null,
     itemCount: order._count.items,
-    ...totals,
+    totalNetValue: order.totalNetValue?.toFixed(2) ?? null,
+    totalGrossValue: order.totalGrossValue?.toFixed(2) ?? null,
+    totalNetValuePrimary: order.totalNetValuePrimary?.toFixed(2) ?? null,
+    totalGrossValuePrimary: order.totalGrossValuePrimary?.toFixed(2) ?? null,
     createdAt: order.createdAt.toISOString(),
     updatedAt: order.updatedAt.toISOString()
   };
-}
-
-async function buildRateMap(
-  rows: Array<{ currency: string | null; orderedAt: Date | null }>,
-  primaryCurrency: string
-): Promise<Map<string, Prisma.Decimal | null>> {
-  const requests: Array<{ from: string; to: string; date: Date }> = [];
-  for (const row of rows) {
-    if (row.currency && row.currency !== primaryCurrency && row.orderedAt) {
-      requests.push({ from: row.currency, to: primaryCurrency, date: row.orderedAt });
-    }
-  }
-  return batchGetExchangeRates(requests);
 }
 
 export async function getPurchaseOrders(
@@ -268,20 +180,13 @@ export async function getPurchaseOrders(
   const sortBy = input.sortBy ?? "createdAt";
   const dir = input.sortDirection ?? (sortBy === "createdAt" ? "desc" : "asc");
 
-  const [totalCount, workspace] = await Promise.all([
-    prisma.purchaseOrder.count({ where: { workspaceId } }),
-    prisma.workspace.findUniqueOrThrow({ where: { id: workspaceId }, select: { primaryCurrency: true } })
-  ]);
-  const primaryCurrency = workspace.primaryCurrency;
+  const totalCount = await prisma.purchaseOrder.count({ where: { workspaceId } });
 
   if (sortBy === "status" || sortBy === "itemCount") {
     const cursor = decodeListCursor<OffsetCursor>(input.cursor);
     const offset = cursor?.offset ?? 0;
 
-    const all = await prisma.purchaseOrder.findMany({
-      where: { workspaceId },
-      select: orderSelectShape
-    });
+    const all = await prisma.purchaseOrder.findMany({ where: { workspaceId }, select: orderSelectShape });
 
     if (sortBy === "status") {
       all.sort((a, b) => {
@@ -298,12 +203,28 @@ export async function getPurchaseOrders(
     const sliced = all.slice(offset, offset + size + 1);
     const hasMore = sliced.length > size;
     const page = sliced.slice(0, size);
-    const rateMap = await buildRateMap(page, primaryCurrency);
-    const items = page.map((o) => toOrderSummary(o, primaryCurrency, rateMap));
-    const nextCursor = hasMore
-      ? encodeListCursor<OffsetCursor>({ offset: offset + size })
-      : null;
+    const items = page.map(toOrderSummary);
+    const nextCursor = hasMore ? encodeListCursor<OffsetCursor>({ offset: offset + size }) : null;
+    return { items, nextCursor, totalCount, filteredCount: totalCount };
+  }
 
+  if (TOTAL_SORT_COLS.has(sortBy)) {
+    const cursor = decodeListCursor<OffsetCursor>(input.cursor);
+    const offset = cursor?.offset ?? 0;
+    const col = sortBy as "totalNetValue" | "totalGrossValue" | "totalNetValuePrimary" | "totalGrossValuePrimary";
+
+    const rows = await prisma.purchaseOrder.findMany({
+      where: { workspaceId },
+      orderBy: [{ [col]: { sort: dir === "asc" ? "asc" : "desc", nulls: "last" } }, { id: "asc" }],
+      skip: offset,
+      take: size + 1,
+      select: orderSelectShape
+    });
+
+    const hasMore = rows.length > size;
+    const page = rows.slice(0, size);
+    const items = page.map(toOrderSummary);
+    const nextCursor = hasMore ? encodeListCursor<OffsetCursor>({ offset: offset + size }) : null;
     return { items, nextCursor, totalCount, filteredCount: totalCount };
   }
 
@@ -313,21 +234,12 @@ export async function getPurchaseOrders(
     const rows = await prisma.purchaseOrder.findMany({
       where: {
         workspaceId,
-        ...(cursor
-          ? {
-              OR: [
-                {
-                  supplier: {
-                    name: dir === "asc" ? { gt: cursor.supplierName } : { lt: cursor.supplierName }
-                  }
-                },
-                {
-                  supplier: { name: cursor.supplierName },
-                  id: dir === "asc" ? { gt: cursor.id } : { lt: cursor.id }
-                }
-              ]
-            }
-          : {})
+        ...(cursor ? {
+          OR: [
+            { supplier: { name: dir === "asc" ? { gt: cursor.supplierName } : { lt: cursor.supplierName } } },
+            { supplier: { name: cursor.supplierName }, id: dir === "asc" ? { gt: cursor.id } : { lt: cursor.id } }
+          ]
+        } : {})
       },
       orderBy: [{ supplier: { name: dir } }, { id: dir }],
       take: size + 1,
@@ -336,14 +248,11 @@ export async function getPurchaseOrders(
 
     const hasMore = rows.length > size;
     const page = rows.slice(0, size);
-    const rateMap = await buildRateMap(page, primaryCurrency);
-    const items = page.map((o) => toOrderSummary(o, primaryCurrency, rateMap));
+    const items = page.map(toOrderSummary);
     const last = items[items.length - 1];
-    const nextCursor =
-      hasMore && last
-        ? encodeListCursor<SupplierNameCursor>({ supplierName: last.supplierName, id: last.id })
-        : null;
-
+    const nextCursor = hasMore && last
+      ? encodeListCursor<SupplierNameCursor>({ supplierName: last.supplierName, id: last.id })
+      : null;
     return { items, nextCursor, totalCount, filteredCount: totalCount };
   }
 
@@ -353,22 +262,12 @@ export async function getPurchaseOrders(
     const rows = await prisma.purchaseOrder.findMany({
       where: {
         workspaceId,
-        ...(cursor
-          ? {
-              OR: [
-                {
-                  orderNumber:
-                    dir === "asc"
-                      ? { gt: cursor.orderNumber ?? "" }
-                      : { lt: cursor.orderNumber ?? "" }
-                },
-                {
-                  orderNumber: cursor.orderNumber,
-                  id: dir === "asc" ? { gt: cursor.id } : { lt: cursor.id }
-                }
-              ]
-            }
-          : {})
+        ...(cursor ? {
+          OR: [
+            { orderNumber: dir === "asc" ? { gt: cursor.orderNumber ?? "" } : { lt: cursor.orderNumber ?? "" } },
+            { orderNumber: cursor.orderNumber, id: dir === "asc" ? { gt: cursor.id } : { lt: cursor.id } }
+          ]
+        } : {})
       },
       orderBy: [{ orderNumber: dir }, { id: dir }],
       take: size + 1,
@@ -377,14 +276,11 @@ export async function getPurchaseOrders(
 
     const hasMore = rows.length > size;
     const page = rows.slice(0, size);
-    const rateMap = await buildRateMap(page, primaryCurrency);
-    const items = page.map((o) => toOrderSummary(o, primaryCurrency, rateMap));
+    const items = page.map(toOrderSummary);
     const last = items[items.length - 1];
-    const nextCursor =
-      hasMore && last
-        ? encodeListCursor<OrderNumberCursor>({ orderNumber: last.orderNumber, id: last.id })
-        : null;
-
+    const nextCursor = hasMore && last
+      ? encodeListCursor<OrderNumberCursor>({ orderNumber: last.orderNumber, id: last.id })
+      : null;
     return { items, nextCursor, totalCount, filteredCount: totalCount };
   }
 
@@ -395,41 +291,25 @@ export async function getPurchaseOrders(
   const rows = await prisma.purchaseOrder.findMany({
     where: {
       workspaceId,
-      ...(cursor
-        ? {
-            OR: [
-              {
-                createdAt:
-                  createdAtDir === "desc"
-                    ? { lt: new Date(cursor.createdAt) }
-                    : { gt: new Date(cursor.createdAt) }
-              },
-              {
-                createdAt: new Date(cursor.createdAt),
-                id: createdAtDir === "desc" ? { lt: cursor.id } : { gt: cursor.id }
-              }
-            ]
-          }
-        : {})
+      ...(cursor ? {
+        OR: [
+          { createdAt: createdAtDir === "desc" ? { lt: new Date(cursor.createdAt) } : { gt: new Date(cursor.createdAt) } },
+          { createdAt: new Date(cursor.createdAt), id: createdAtDir === "desc" ? { lt: cursor.id } : { gt: cursor.id } }
+        ]
+      } : {})
     },
-    orderBy: [
-      { createdAt: createdAtDir },
-      { id: createdAtDir === "desc" ? "asc" : "desc" }
-    ],
+    orderBy: [{ createdAt: createdAtDir }, { id: createdAtDir === "desc" ? "asc" : "desc" }],
     take: size + 1,
     select: orderSelectShape
   });
 
   const hasMore = rows.length > size;
   const page = rows.slice(0, size);
-  const rateMap = await buildRateMap(page, primaryCurrency);
-  const items = page.map((o) => toOrderSummary(o, primaryCurrency, rateMap));
+  const items = page.map(toOrderSummary);
   const last = items[items.length - 1];
-  const nextCursor =
-    hasMore && last
-      ? encodeListCursor<CreatedAtCursor>({ createdAt: last.createdAt, id: last.id })
-      : null;
-
+  const nextCursor = hasMore && last
+    ? encodeListCursor<CreatedAtCursor>({ createdAt: last.createdAt, id: last.id })
+    : null;
   return { items, nextCursor, totalCount, filteredCount: totalCount };
 }
 
@@ -452,6 +332,10 @@ export async function getPurchaseOrderDetail(
       notes: true,
       createdAt: true,
       updatedAt: true,
+      totalNetValue: true,
+      totalGrossValue: true,
+      totalNetValuePrimary: true,
+      totalGrossValuePrimary: true,
       supplier: {
         select: {
           id: true,
@@ -470,6 +354,10 @@ export async function getPurchaseOrderDetail(
           receivedQuantity: true,
           supplierSku: true,
           unitPrice: true,
+          lineNetValue: true,
+          lineGrossValue: true,
+          lineNetValuePrimary: true,
+          lineGrossValuePrimary: true,
           currency: true,
           taxRate: true,
           notes: true,
@@ -504,6 +392,10 @@ export async function getPurchaseOrderDetail(
     notes: order.notes,
     createdAt: order.createdAt.toISOString(),
     updatedAt: order.updatedAt.toISOString(),
+    totalNetValue: order.totalNetValue?.toFixed(2) ?? null,
+    totalGrossValue: order.totalGrossValue?.toFixed(2) ?? null,
+    totalNetValuePrimary: order.totalNetValuePrimary?.toFixed(2) ?? null,
+    totalGrossValuePrimary: order.totalGrossValuePrimary?.toFixed(2) ?? null,
     items: order.items.map((item) => ({
       id: item.id,
       partId: item.partId,
@@ -515,6 +407,10 @@ export async function getPurchaseOrderDetail(
       receivedQuantity: item.receivedQuantity.toString(),
       supplierSku: item.supplierSku,
       unitPrice: item.unitPrice?.toString() ?? null,
+      lineNetValue: item.lineNetValue?.toFixed(2) ?? null,
+      lineGrossValue: item.lineGrossValue?.toFixed(2) ?? null,
+      lineNetValuePrimary: item.lineNetValuePrimary?.toFixed(2) ?? null,
+      lineGrossValuePrimary: item.lineGrossValuePrimary?.toFixed(2) ?? null,
       currency: item.currency,
       taxRate: item.taxRate?.toString() ?? null,
       notes: item.notes
@@ -576,6 +472,34 @@ export async function updatePurchaseOrder(input: {
 
   if (input.supplierId && input.supplierId !== order.supplierId) {
     await assertSupplierBelongsToWorkspace(input.workspaceId, input.supplierId);
+  }
+
+  const orderedAtChanged =
+    input.orderedAt !== undefined &&
+    (input.orderedAt?.toISOString() ?? null) !== (order.orderedAt?.toISOString() ?? null);
+  const needsRateRecompute = orderedAtChanged && order.status === "ORDERED";
+
+  if (needsRateRecompute) {
+    const primaryCurrency = await getWorkspacePrimaryCurrency(input.workspaceId);
+    const rateDate = input.orderedAt ?? new Date();
+    const rate = await resolvePrimaryRate(order.currency, primaryCurrency, rateDate, false);
+
+    await prisma.$transaction(async (tx) => {
+      await tx.purchaseOrder.update({
+        where: { id: input.orderId },
+        data: {
+          ...(input.supplierId ? { supplierId: input.supplierId } : {}),
+          orderNumber: normalizeOptionalText(input.orderNumber),
+          supplierOrderNumber: normalizeOptionalText(input.supplierOrderNumber),
+          currency: normalizeOptionalText(input.currency),
+          ...(input.taxRate !== undefined ? { taxRate: input.taxRate ? parseTaxRate(input.taxRate) : null } : {}),
+          orderedAt: input.orderedAt,
+          notes: normalizeOptionalText(input.notes)
+        }
+      });
+      await applyRateToAllItems(tx, input.orderId, rate);
+    });
+    return;
   }
 
   return prisma.purchaseOrder.update({
@@ -647,6 +571,9 @@ export async function revertOrderToDraft(input: {
     throw new Error("order-not-ordered");
   }
 
+  const primaryCurrency = await getWorkspacePrimaryCurrency(input.workspaceId);
+  const rate = await resolvePrimaryRate(order.currency, primaryCurrency, new Date(), true);
+
   const items = await prisma.purchaseOrderItem.findMany({
     where: { purchaseOrderId: input.orderId },
     select: { partId: true, quantity: true }
@@ -665,6 +592,8 @@ export async function revertOrderToDraft(input: {
         data: { onOrderQty: { decrement: delta }, plannedQty: { increment: delta } }
       });
     }
+
+    await applyRateToAllItems(tx, input.orderId, rate);
   });
 }
 
@@ -703,6 +632,7 @@ export async function addOrderItem(input: {
   quantity: string;
   supplierSku?: string | null;
   unitPrice?: string | null;
+  lineNetTotal?: string | null;
   currency?: string | null;
   taxRate?: string | null;
   notes?: string | null;
@@ -718,29 +648,68 @@ export async function addOrderItem(input: {
 
   const quantity = parseQuantity(input.quantity);
   const unitPrice = input.unitPrice ? parseUnitPrice(input.unitPrice) : null;
+  const itemTaxRate = input.taxRate ? parseTaxRate(input.taxRate) : null;
+  const effectiveTaxRate = itemTaxRate ?? order.taxRate ?? new Prisma.Decimal(0);
+  const effectiveCurrency = normalizeOptionalText(input.currency) ?? order.currency;
 
-  const item = await prisma.purchaseOrderItem.create({
-    data: {
-      purchaseOrderId: input.orderId,
-      partId: input.partId,
-      quantity,
-      supplierSku: normalizeOptionalText(input.supplierSku),
-      unitPrice,
-      currency: normalizeOptionalText(input.currency),
-      taxRate: input.taxRate ? parseTaxRate(input.taxRate) : null,
-      notes: normalizeOptionalText(input.notes),
-      sourceShoppingListItemId: input.sourceShoppingListItemId ?? null
+  // Fetch rate OUTSIDE transaction to avoid holding DB connection during API call
+  let lineNetValue: Prisma.Decimal | null = null;
+  let lineGrossValue: Prisma.Decimal | null = null;
+  let lineNetValuePrimary: Prisma.Decimal | null = null;
+  let lineGrossValuePrimary: Prisma.Decimal | null = null;
+
+  if (unitPrice) {
+    // Prefer submitted lineNetTotal to avoid division→multiplication rounding drift.
+    // When user enters a line total directly (e.g. 10 for qty 3), the UI sends that
+    // exact value; using unitPrice × quantity here would give 3.33 × 3 = 9.99.
+    if (input.lineNetTotal) {
+      lineNetValue = parseLineNetTotal(input.lineNetTotal); // already rounded to 2dp
+      lineGrossValue = lineNetValue.mul(new Prisma.Decimal(1).plus(effectiveTaxRate.div(100))).toDecimalPlaces(2);
+    } else {
+      const totals = computeItemLineTotals(unitPrice, quantity, effectiveTaxRate, null);
+      lineNetValue = totals.lineNetValue; // already rounded to 2dp
+      lineGrossValue = totals.lineGrossValue; // already rounded to 2dp
     }
-  });
 
-  if (!input.sourceShoppingListItemId) {
-    await prisma.part.update({
-      where: { id: input.partId },
-      data: { plannedQty: { increment: quantity } }
-    });
+    // Only compute primary when item currency matches order currency
+    if (effectiveCurrency === order.currency) {
+      const primaryCurrency = await getWorkspacePrimaryCurrency(input.workspaceId);
+      const rateDate = order.orderedAt ?? new Date();
+      const primaryRate = await resolvePrimaryRate(order.currency, primaryCurrency, rateDate, false);
+      lineNetValuePrimary = primaryRate ? lineNetValue.mul(primaryRate).toDecimalPlaces(2) : null;
+      lineGrossValuePrimary = primaryRate ? lineGrossValue.mul(primaryRate).toDecimalPlaces(2) : null;
+    }
   }
 
-  return item;
+  return prisma.$transaction(async (tx) => {
+    const item = await tx.purchaseOrderItem.create({
+      data: {
+        purchaseOrderId: input.orderId,
+        partId: input.partId,
+        quantity,
+        supplierSku: normalizeOptionalText(input.supplierSku),
+        unitPrice,
+        lineNetValue,
+        lineGrossValue,
+        lineNetValuePrimary,
+        lineGrossValuePrimary,
+        currency: normalizeOptionalText(input.currency),
+        taxRate: itemTaxRate,
+        notes: normalizeOptionalText(input.notes),
+        sourceShoppingListItemId: input.sourceShoppingListItemId ?? null
+      }
+    });
+
+    if (!input.sourceShoppingListItemId) {
+      await tx.part.update({
+        where: { id: input.partId },
+        data: { plannedQty: { increment: quantity } }
+      });
+    }
+
+    await recomputeOrderTotalsFromItems(tx, input.orderId);
+    return item;
+  });
 }
 
 export async function updateOrderItem(input: {
@@ -750,6 +719,7 @@ export async function updateOrderItem(input: {
   quantity: string;
   supplierSku?: string | null;
   unitPrice?: string | null;
+  lineNetTotal?: string | null;
   currency?: string | null;
   taxRate?: string | null;
   notes?: string | null;
@@ -764,35 +734,70 @@ export async function updateOrderItem(input: {
 
   const newQuantity = parseQuantity(input.quantity);
   const unitPrice = input.unitPrice ? parseUnitPrice(input.unitPrice) : null;
+  const newTaxRate = input.taxRate !== undefined ? (input.taxRate ? parseTaxRate(input.taxRate) : null) : undefined;
 
   const oldItem = await prisma.purchaseOrderItem.findUniqueOrThrow({
     where: { id: input.itemId },
-    select: { partId: true, quantity: true, sourceShoppingListItemId: true }
+    select: { partId: true, quantity: true, sourceShoppingListItemId: true, taxRate: true }
   });
 
-  const updated = await prisma.purchaseOrderItem.update({
-    where: { id: input.itemId },
-    data: {
-      quantity: newQuantity,
-      supplierSku: normalizeOptionalText(input.supplierSku),
-      unitPrice,
-      currency: normalizeOptionalText(input.currency),
-      taxRate: input.taxRate !== undefined ? (input.taxRate ? parseTaxRate(input.taxRate) : null) : undefined,
-      notes: normalizeOptionalText(input.notes)
+  const effectiveTaxRate = (newTaxRate !== undefined ? newTaxRate : oldItem.taxRate) ?? order.taxRate ?? new Prisma.Decimal(0);
+  const effectiveCurrency = normalizeOptionalText(input.currency) ?? order.currency;
+
+  // Fetch rate OUTSIDE transaction
+  let lineNetValue: Prisma.Decimal | null = null;
+  let lineGrossValue: Prisma.Decimal | null = null;
+  let lineNetValuePrimary: Prisma.Decimal | null = null;
+  let lineGrossValuePrimary: Prisma.Decimal | null = null;
+
+  if (unitPrice) {
+    if (input.lineNetTotal) {
+      lineNetValue = parseLineNetTotal(input.lineNetTotal); // already rounded to 2dp
+      lineGrossValue = lineNetValue.mul(new Prisma.Decimal(1).plus(effectiveTaxRate.div(100))).toDecimalPlaces(2);
+    } else {
+      const totals = computeItemLineTotals(unitPrice, newQuantity, effectiveTaxRate, null);
+      lineNetValue = totals.lineNetValue; // already rounded to 2dp
+      lineGrossValue = totals.lineGrossValue; // already rounded to 2dp
     }
-  });
 
-  if (order.status === "DRAFT" && oldItem.sourceShoppingListItemId === null) {
-    const delta = newQuantity.minus(oldItem.quantity);
-    if (!delta.isZero()) {
-      await prisma.part.update({
-        where: { id: oldItem.partId },
-        data: { plannedQty: { increment: delta } }
-      });
+    if (effectiveCurrency === order.currency) {
+      const primaryCurrency = await getWorkspacePrimaryCurrency(input.workspaceId);
+      const rateDate = order.orderedAt ?? new Date();
+      const primaryRate = await resolvePrimaryRate(order.currency, primaryCurrency, rateDate, false);
+      lineNetValuePrimary = primaryRate ? lineNetValue.mul(primaryRate).toDecimalPlaces(2) : null;
+      lineGrossValuePrimary = primaryRate ? lineGrossValue.mul(primaryRate).toDecimalPlaces(2) : null;
     }
   }
 
-  return updated;
+  await prisma.$transaction(async (tx) => {
+    await tx.purchaseOrderItem.update({
+      where: { id: input.itemId },
+      data: {
+        quantity: newQuantity,
+        supplierSku: normalizeOptionalText(input.supplierSku),
+        unitPrice,
+        lineNetValue,
+        lineGrossValue,
+        lineNetValuePrimary,
+        lineGrossValuePrimary,
+        currency: normalizeOptionalText(input.currency),
+        taxRate: newTaxRate,
+        notes: normalizeOptionalText(input.notes)
+      }
+    });
+
+    if (order.status === "DRAFT" && oldItem.sourceShoppingListItemId === null) {
+      const delta = newQuantity.minus(oldItem.quantity);
+      if (!delta.isZero()) {
+        await tx.part.update({
+          where: { id: oldItem.partId },
+          data: { plannedQty: { increment: delta } }
+        });
+      }
+    }
+
+    await recomputeOrderTotalsFromItems(tx, input.orderId);
+  });
 }
 
 export async function removeOrderItem(input: {
@@ -813,25 +818,28 @@ export async function removeOrderItem(input: {
     select: { partId: true, quantity: true, sourceShoppingListItemId: true }
   });
 
-  await prisma.purchaseOrderItem.delete({ where: { id: input.itemId } });
+  await prisma.$transaction(async (tx) => {
+    await tx.purchaseOrderItem.delete({ where: { id: input.itemId } });
 
-  if (order.status === "DRAFT" && item.sourceShoppingListItemId === null) {
-    await prisma.part.update({
-      where: { id: item.partId },
-      data: { plannedQty: { decrement: item.quantity } }
-    });
-  } else if (order.status === "ORDERED") {
-    await prisma.part.update({
-      where: { id: item.partId },
-      data: {
-        onOrderQty: { decrement: item.quantity },
-        // SL item still exists, so restore its plannedQty contribution (markOrdered had decremented it)
-        ...(item.sourceShoppingListItemId !== null
-          ? { plannedQty: { increment: item.quantity } }
-          : {})
-      }
-    });
-  }
+    if (order.status === "DRAFT" && item.sourceShoppingListItemId === null) {
+      await tx.part.update({
+        where: { id: item.partId },
+        data: { plannedQty: { decrement: item.quantity } }
+      });
+    } else if (order.status === "ORDERED") {
+      await tx.part.update({
+        where: { id: item.partId },
+        data: {
+          onOrderQty: { decrement: item.quantity },
+          ...(item.sourceShoppingListItemId !== null
+            ? { plannedQty: { increment: item.quantity } }
+            : {})
+        }
+      });
+    }
+
+    await recomputeOrderTotalsFromItems(tx, input.orderId);
+  });
 }
 
 export async function markOrdered(input: {
@@ -853,10 +861,14 @@ export async function markOrdered(input: {
     throw new Error("order-has-no-items");
   }
 
+  const primaryCurrency = await getWorkspacePrimaryCurrency(input.workspaceId);
+  const now = new Date();
+  const rate = await resolvePrimaryRate(order.currency, primaryCurrency, now, false);
+
   await prisma.$transaction(async (tx) => {
     await tx.purchaseOrder.update({
       where: { id: input.orderId },
-      data: { status: "ORDERED", orderedAt: new Date() }
+      data: { status: "ORDERED", orderedAt: now }
     });
 
     const deltaByPartId = sumQtyByPartId(items);
@@ -869,6 +881,8 @@ export async function markOrdered(input: {
         }
       });
     }
+
+    await applyRateToAllItems(tx, input.orderId, rate);
   });
 }
 
@@ -1068,10 +1082,123 @@ export async function lookupSupplierItem(input: {
   }
 }
 
+// --- Internal helpers ---
+
+async function recomputeOrderTotalsFromItems(
+  tx: Prisma.TransactionClient,
+  orderId: string
+): Promise<void> {
+  const order = await tx.purchaseOrder.findUniqueOrThrow({
+    where: { id: orderId },
+    select: { currency: true }
+  });
+
+  const items = await tx.purchaseOrderItem.findMany({
+    where: { purchaseOrderId: orderId },
+    select: {
+      currency: true,
+      lineNetValue: true,
+      lineGrossValue: true,
+      lineNetValuePrimary: true,
+      lineGrossValuePrimary: true
+    }
+  });
+
+  const eligible = items.filter(
+    (item) => (item.currency ?? order.currency) === order.currency
+  );
+  const priced = eligible.filter((item) => item.lineNetValue !== null);
+
+  let totalNetValue: Prisma.Decimal | null = null;
+  let totalGrossValue: Prisma.Decimal | null = null;
+  let totalNetValuePrimary: Prisma.Decimal | null = null;
+  let totalGrossValuePrimary: Prisma.Decimal | null = null;
+
+  if (priced.length > 0) {
+    totalNetValue = priced.reduce((acc, item) => acc.plus(item.lineNetValue!), new Prisma.Decimal(0)).toDecimalPlaces(2);
+    totalGrossValue = priced.reduce((acc, item) => acc.plus(item.lineGrossValue!), new Prisma.Decimal(0)).toDecimalPlaces(2);
+
+    const withPrimary = priced.filter((item) => item.lineNetValuePrimary !== null);
+    if (withPrimary.length === priced.length) {
+      totalNetValuePrimary = withPrimary.reduce((acc, item) => acc.plus(item.lineNetValuePrimary!), new Prisma.Decimal(0)).toDecimalPlaces(2);
+      totalGrossValuePrimary = withPrimary.reduce((acc, item) => acc.plus(item.lineGrossValuePrimary!), new Prisma.Decimal(0)).toDecimalPlaces(2);
+    }
+  }
+
+  await tx.purchaseOrder.update({
+    where: { id: orderId },
+    data: { totalNetValue, totalGrossValue, totalNetValuePrimary, totalGrossValuePrimary }
+  });
+}
+
+async function applyRateToAllItems(
+  tx: Prisma.TransactionClient,
+  orderId: string,
+  rate: Prisma.Decimal | null
+): Promise<void> {
+  const items = await tx.purchaseOrderItem.findMany({
+    where: { purchaseOrderId: orderId },
+    select: { id: true, lineNetValue: true, lineGrossValue: true }
+  });
+
+  for (const item of items) {
+    await tx.purchaseOrderItem.update({
+      where: { id: item.id },
+      data: {
+        lineNetValuePrimary: rate && item.lineNetValue ? item.lineNetValue.mul(rate).toDecimalPlaces(2) : null,
+        lineGrossValuePrimary: rate && item.lineGrossValue ? item.lineGrossValue.mul(rate).toDecimalPlaces(2) : null
+      }
+    });
+  }
+
+  await recomputeOrderTotalsFromItems(tx, orderId);
+}
+
+async function resolvePrimaryRate(
+  orderCurrency: string | null,
+  primaryCurrency: string,
+  rateDate: Date,
+  lenient: boolean
+): Promise<Prisma.Decimal | null> {
+  if (!orderCurrency || orderCurrency === primaryCurrency) return new Prisma.Decimal(1);
+  if (lenient) return getExchangeRate(orderCurrency, primaryCurrency, rateDate);
+  return getExchangeRateOrThrow(orderCurrency, primaryCurrency, rateDate);
+}
+
+function computeItemLineTotals(
+  unitPrice: Prisma.Decimal,
+  quantity: Prisma.Decimal,
+  effectiveTaxRate: Prisma.Decimal,
+  primaryRate: Prisma.Decimal | null
+): {
+  lineNetValue: Prisma.Decimal;
+  lineGrossValue: Prisma.Decimal;
+  lineNetValuePrimary: Prisma.Decimal | null;
+  lineGrossValuePrimary: Prisma.Decimal | null;
+} {
+  // unitPrice is always stored as net (UI converts gross→net before submitting)
+  const lineNetValue = unitPrice.mul(quantity).toDecimalPlaces(2);
+  const lineGrossValue = lineNetValue.mul(new Prisma.Decimal(1).plus(effectiveTaxRate.div(100))).toDecimalPlaces(2);
+  return {
+    lineNetValue,
+    lineGrossValue,
+    lineNetValuePrimary: primaryRate ? lineNetValue.mul(primaryRate).toDecimalPlaces(2) : null,
+    lineGrossValuePrimary: primaryRate ? lineGrossValue.mul(primaryRate).toDecimalPlaces(2) : null
+  };
+}
+
+async function getWorkspacePrimaryCurrency(workspaceId: string): Promise<string> {
+  const ws = await prisma.workspace.findUniqueOrThrow({
+    where: { id: workspaceId },
+    select: { primaryCurrency: true }
+  });
+  return ws.primaryCurrency;
+}
+
 async function assertOrderBelongsToWorkspace(workspaceId: string, orderId: string) {
   const order = await prisma.purchaseOrder.findFirst({
     where: { id: orderId, workspaceId },
-    select: { id: true, status: true, supplierId: true }
+    select: { id: true, status: true, supplierId: true, currency: true, taxRate: true, orderedAt: true }
   });
   if (!order) throw new Error("purchase-order-not-found");
   return order;
@@ -1129,6 +1256,21 @@ function parseUnitPrice(rawValue: string) {
 
   if (price.lessThan(0)) throw new Error("invalid-unit-price");
   return price;
+}
+
+function parseLineNetTotal(rawValue: string): Prisma.Decimal {
+  const normalized = rawValue.trim();
+  if (!normalized) throw new Error("invalid-line-total");
+
+  let value: Prisma.Decimal;
+  try {
+    value = new Prisma.Decimal(normalized);
+  } catch {
+    throw new Error("invalid-line-total");
+  }
+
+  if (value.lessThan(0)) throw new Error("invalid-line-total");
+  return value.toDecimalPlaces(2);
 }
 
 function parseTaxRate(rawValue: string) {
