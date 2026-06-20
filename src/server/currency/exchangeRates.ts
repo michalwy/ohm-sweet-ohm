@@ -133,35 +133,3 @@ export async function saveManualExchangeRate(
   return decimal;
 }
 
-/**
- * Batch-fetches exchange rates for multiple (from, to, date) combinations, deduplicating
- * lookups. Returns a map keyed by `"${from}:${to}:${YYYY-MM-DD}"`.
- */
-export async function batchGetExchangeRates(
-  requests: Array<{ from: string; to: string; date: Date }>
-): Promise<Map<string, Prisma.Decimal | null>> {
-  const result = new Map<string, Prisma.Decimal | null>();
-
-  // Deduplicate
-  const unique = new Map<string, { from: string; to: string; date: Date }>();
-  for (const req of requests) {
-    if (req.from === req.to) continue;
-    const key = `${req.from}:${req.to}:${formatDate(toDateOnly(req.date))}`;
-    if (!unique.has(key)) unique.set(key, req);
-  }
-
-  await Promise.all(
-    Array.from(unique.entries()).map(async ([key, req]) => {
-      const rate = await getExchangeRate(req.from, req.to, req.date);
-      result.set(key, rate);
-    })
-  );
-
-  // Fill same-currency entries
-  for (const req of requests) {
-    const key = `${req.from}:${req.to}:${formatDate(toDateOnly(req.date))}`;
-    if (req.from === req.to) result.set(key, new Prisma.Decimal(1));
-  }
-
-  return result;
-}
