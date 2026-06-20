@@ -76,6 +76,7 @@ const copy = {
   currency: "Currency",
   chooseCurrency: "— none —",
   taxRate: "Tax rate (%)",
+  taxRateShort: "Tax %",
   taxRatePlaceholder: "0",
   taxRateHelp: "Applied to all items unless overridden per item",
   grossUnitPrice: "Gross unit price",

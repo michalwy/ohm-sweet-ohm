@@ -122,6 +122,7 @@ type Copy = {
   currency: string;
   chooseCurrency: string;
   taxRate: string;
+  taxRateShort: string;
   taxRatePlaceholder: string;
   taxRateHelp: string;
   grossUnitPrice: string;
@@ -1198,15 +1199,22 @@ export function PurchaseOrdersClient({
                   {copy.noItems}
                 </p>
               ) : (
-                <div className="overflow-hidden rounded-md border border-slate-200">
-                  <table className="w-full border-collapse text-left text-sm">
+                <div className="overflow-x-auto rounded-md border border-slate-200">
+                  <table className="w-full min-w-max border-collapse text-left text-sm">
                     <thead>
                       <tr className="border-b border-slate-200 bg-slate-50">
                         <th className="px-3 py-2 font-semibold text-slate-700">{copy.part}</th>
-                        <th className="w-16 px-3 py-2 text-right font-semibold text-slate-700">{copy.quantity}</th>
-                        <th className="w-16 px-3 py-2 text-right font-semibold text-slate-700">{copy.received}</th>
+                        <th className="px-3 py-2 text-right font-semibold text-slate-700 whitespace-nowrap">
+                          {isGrossMode ? copy.grossUnitPrice : copy.unitPrice}
+                        </th>
+                        <th className="px-3 py-2 text-right font-semibold text-slate-700 whitespace-nowrap">{copy.taxRateShort}</th>
+                        <th className="px-3 py-2 text-right font-semibold text-slate-700 whitespace-nowrap">
+                          {isGrossMode ? copy.grossLineTotal : copy.lineTotal}
+                        </th>
+                        <th className="px-3 py-2 text-right font-semibold text-slate-700 whitespace-nowrap">{copy.quantity}</th>
+                        <th className="px-3 py-2 text-right font-semibold text-slate-700 whitespace-nowrap">{copy.received}</th>
                         {detail?.status !== "RECEIVED" ? (
-                          <th className="w-20 px-3 py-2" />
+                          <th className="px-3 py-2" />
                         ) : null}
                       </tr>
                     </thead>
@@ -1218,14 +1226,28 @@ export function PurchaseOrdersClient({
                             <td className="px-3 py-2">
                               <div className="font-medium text-slate-900">{item.partCatalogNumber}</div>
                               <div className="text-xs text-slate-500">{item.manufacturerName}</div>
-                              {item.unitPrice ? (
-                                <div className="text-xs text-slate-500">
-                                  {item.unitPrice}{item.currency ? ` ${item.currency}` : ""}
-                                </div>
-                              ) : null}
                             </td>
-                            <td className="px-3 py-2 text-right text-slate-700">{item.quantity}</td>
-                            <td className="px-3 py-2 text-right text-slate-700">
+                            <td className="px-3 py-2 text-right font-mono text-slate-700 whitespace-nowrap">
+                              {item.unitPrice != null
+                                ? <span title={`${item.unitPrice}${item.currency ? ` ${item.currency}` : ""}`}>
+                                    {parseFloat(item.unitPrice).toFixed(2)}{item.currency ? ` ${item.currency}` : ""}
+                                  </span>
+                                : copy.noAttribute}
+                            </td>
+                            <td className="px-3 py-2 text-right text-slate-500 whitespace-nowrap">
+                              {item.taxRate != null && item.taxRate !== ""
+                                ? `${item.taxRate}%`
+                                : copy.noAttribute}
+                            </td>
+                            <td className="px-3 py-2 text-right font-mono text-slate-700 whitespace-nowrap">
+                              {(() => {
+                                const val = isGrossMode ? item.lineGrossValue : item.lineNetValue;
+                                if (val == null) return copy.noAttribute;
+                                return `${val}${item.currency ? ` ${item.currency}` : ""}`;
+                              })()}
+                            </td>
+                            <td className="px-3 py-2 text-right text-slate-700 whitespace-nowrap">{item.quantity}</td>
+                            <td className="px-3 py-2 text-right text-slate-700 whitespace-nowrap">
                               {item.receivedQuantity}
                               {isFullyReceived ? (
                                 <span className="ml-1 text-xs text-[var(--color-success)]">✓</span>
