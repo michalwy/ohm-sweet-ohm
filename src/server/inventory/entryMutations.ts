@@ -17,6 +17,7 @@ export async function createInventoryEntry(input: {
   unitCost?: Prisma.Decimal | null;
   costCurrency?: string | null;
   unitCostPrimary?: Prisma.Decimal | null;
+  unitGrossCostPrimary?: Prisma.Decimal | null;
 }) {
   const quantity = parseQuantity(input.quantity);
   const nextEntryShape = {
@@ -39,6 +40,9 @@ export async function createInventoryEntry(input: {
       },
       select: {
         id: true,
+        currentStock: true,
+        avgNetCostPrimary: true,
+        avgGrossCostPrimary: true,
         unit: {
           select: {
             allowsFraction: true
@@ -82,9 +86,19 @@ export async function createInventoryEntry(input: {
         createdByUserId: input.createdByUserId ?? null,
         unitCost: input.unitCost ?? null,
         costCurrency: input.costCurrency ?? null,
-        unitCostPrimary: input.unitCostPrimary ?? null
+        unitCostPrimary: input.unitCostPrimary ?? null,
+        unitGrossCostPrimary: input.unitGrossCostPrimary ?? null
       }
     });
+
+    const isReceipt = input.entryType === "RECEIPT";
+    const stockBefore = new Prisma.Decimal(part.currentStock);
+    const newAvgNet = isReceipt
+      ? computeMovingAverage(part.avgNetCostPrimary, stockBefore, input.unitCostPrimary ?? null, quantity)
+      : undefined;
+    const newAvgGross = isReceipt
+      ? computeMovingAverage(part.avgGrossCostPrimary, stockBefore, input.unitGrossCostPrimary ?? null, quantity)
+      : undefined;
 
     await tx.part.update({
       where: {
@@ -96,7 +110,9 @@ export async function createInventoryEntry(input: {
             entryType: input.entryType,
             quantity
           })
-        }
+        },
+        ...(newAvgNet !== undefined && { avgNetCostPrimary: newAvgNet }),
+        ...(newAvgGross !== undefined && { avgGrossCostPrimary: newAvgGross })
       }
     });
 
@@ -280,6 +296,20 @@ async function assertNonNegativeAfterDelta(
   if (next.lessThan(0)) {
     throw new Error("insufficient-stock");
   }
+}
+
+function computeMovingAverage(
+  oldAvg: Prisma.Decimal | null,
+  stockBefore: Prisma.Decimal,
+  unitCost: Prisma.Decimal | null,
+  qty: Prisma.Decimal
+): Prisma.Decimal | null {
+  if (unitCost === null) return oldAvg;
+  const stockBeforeNonNeg = stockBefore.lessThan(0) ? new Prisma.Decimal(0) : stockBefore;
+  const newStock = stockBeforeNonNeg.plus(qty);
+  if (newStock.isZero()) return oldAvg;
+  const oldTotal = (oldAvg ?? new Prisma.Decimal(0)).mul(stockBeforeNonNeg);
+  return oldTotal.plus(unitCost.mul(qty)).div(newStock).toDecimalPlaces(8);
 }
 
 function getPartStockDelta(input: {

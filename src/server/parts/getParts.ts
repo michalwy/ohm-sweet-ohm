@@ -29,8 +29,8 @@ export type PartsListItem = {
   currentStock: string | null;
   plannedQuantity: string | null;
   onOrderQuantity: string | null;
-  avgCost: string | null;
-  avgCostCurrency: string | null;
+  avgNetCost: string | null;
+  avgGrossCost: string | null;
   attributeValues: PartAttributeValueListItem[];
 };
 
@@ -162,7 +162,9 @@ export async function getPartsListPage(
   const activeSortBy =
     (requestedSortBy === "currentStock" && !canReadInventory) ||
     (requestedSortBy === "plannedQuantity" && !canReadShoppingLists) ||
-    (requestedSortBy === "onOrderQuantity" && !canReadPurchaseOrders)
+    (requestedSortBy === "onOrderQuantity" && !canReadPurchaseOrders) ||
+    (requestedSortBy === "avgNetCost" && !canReadPurchaseOrders) ||
+    (requestedSortBy === "avgGrossCost" && !canReadPurchaseOrders)
       ? ""
       : requestedSortBy;
   const activeSortDirection: PartsListSortDirection =
@@ -201,6 +203,34 @@ export async function getPartsListPage(
   } else if (activeSortBy === "onOrderQuantity" && canReadPurchaseOrders) {
     page = await getDecimalFieldSortedPartsListPage({
       field: "onOrderQty",
+      baseWhere,
+      categoryPathsById,
+      cursor: input.cursor,
+      pageSize,
+      sortDirection: activeSortDirection,
+      totalCount,
+      workspaceId: context.workspace.id,
+      canReadInventory,
+      canReadShoppingLists,
+      canReadPurchaseOrders
+    });
+  } else if (activeSortBy === "avgNetCost" && canReadPurchaseOrders) {
+    page = await getDecimalFieldSortedPartsListPage({
+      field: "avgNetCostPrimary",
+      baseWhere,
+      categoryPathsById,
+      cursor: input.cursor,
+      pageSize,
+      sortDirection: activeSortDirection,
+      totalCount,
+      workspaceId: context.workspace.id,
+      canReadInventory,
+      canReadShoppingLists,
+      canReadPurchaseOrders
+    });
+  } else if (activeSortBy === "avgGrossCost" && canReadPurchaseOrders) {
+    page = await getDecimalFieldSortedPartsListPage({
+      field: "avgGrossCostPrimary",
       baseWhere,
       categoryPathsById,
       cursor: input.cursor,
@@ -276,22 +306,6 @@ export async function getPartsListPage(
     };
   }
 
-  if (canReadPurchaseOrders && page.items.length > 0) {
-    const avgCosts = await getAveragePartCostsInPrimary(
-      context.workspace.id,
-      context.workspace.primaryCurrency,
-      page.items.map((i) => i.id)
-    );
-    return {
-      ...page,
-      items: page.items.map((item) => ({
-        ...item,
-        avgCost: avgCosts.get(item.id)?.avgCost ?? null,
-        avgCostCurrency: avgCosts.get(item.id)?.currency ?? null
-      }))
-    };
-  }
-
   return page;
 }
 
@@ -303,6 +317,8 @@ const partListSelect = {
   currentStock: true,
   plannedQty: true,
   onOrderQty: true,
+  avgNetCostPrimary: true,
+  avgGrossCostPrimary: true,
   manufacturer: {
     select: {
       name: true
@@ -344,7 +360,7 @@ async function getDecimalFieldSortedPartsListPage({
   canReadShoppingLists,
   canReadPurchaseOrders
 }: {
-  field: "currentStock" | "plannedQty" | "onOrderQty";
+  field: "currentStock" | "plannedQty" | "onOrderQty" | "avgNetCostPrimary" | "avgGrossCostPrimary";
   baseWhere: Prisma.PartWhereInput;
   categoryPathsById: Map<string, string>;
   cursor?: string | null;
@@ -391,9 +407,9 @@ async function getDecimalFieldSortedPartsListPage({
       })
     ),
     nextCursor:
-      parts.length > pageSize && lastPart
+      parts.length > pageSize && lastPart && lastPart[field] != null
         ? encodeListCursor<DecimalFieldCursor>({
-            value: lastPart[field].toString(),
+            value: lastPart[field]!.toString(),
             id: lastPart.id
           })
         : null,
@@ -634,48 +650,6 @@ function compareText(left: string, right: string) {
   });
 }
 
-async function getAveragePartCostsInPrimary(
-  workspaceId: string,
-  primaryCurrency: string,
-  partIds: string[]
-): Promise<Map<string, { avgCost: string; currency: string }>> {
-  if (partIds.length === 0) return new Map();
-
-  const entries = await prisma.inventoryEntry.findMany({
-    where: {
-      workspaceId,
-      entryType: "RECEIPT",
-      partId: { in: partIds },
-      unitCostPrimary: { not: null }
-    },
-    select: { partId: true, quantity: true, unitCostPrimary: true }
-  });
-
-  const grouped = new Map<string, { totalCost: Prisma.Decimal; totalQty: Prisma.Decimal }>();
-  for (const entry of entries) {
-    if (entry.unitCostPrimary == null) continue;
-    const qty = new Prisma.Decimal(entry.quantity);
-    const lineCost = entry.unitCostPrimary.mul(qty);
-    const existing = grouped.get(entry.partId);
-    if (existing) {
-      existing.totalCost = existing.totalCost.add(lineCost);
-      existing.totalQty = existing.totalQty.add(qty);
-    } else {
-      grouped.set(entry.partId, { totalCost: lineCost, totalQty: qty });
-    }
-  }
-
-  const result = new Map<string, { avgCost: string; currency: string }>();
-  for (const [partId, { totalCost, totalQty }] of grouped) {
-    if (totalQty.isZero()) continue;
-    result.set(partId, {
-      avgCost: totalCost.div(totalQty).toDecimalPlaces(4).toString(),
-      currency: primaryCurrency
-    });
-  }
-  return result;
-}
-
 function mapPartListItem({
   part,
   categoryPathsById,
@@ -723,8 +697,12 @@ function mapPartListItem({
     currentStock: canReadInventory ? part.currentStock.toString() : null,
     plannedQuantity: canReadShoppingLists ? part.plannedQty.toString() : null,
     onOrderQuantity: canReadPurchaseOrders ? part.onOrderQty.toString() : null,
-    avgCost: null,
-    avgCostCurrency: null,
+    avgNetCost: canReadPurchaseOrders
+      ? (part.avgNetCostPrimary?.toDecimalPlaces(4).toString() ?? null)
+      : null,
+    avgGrossCost: canReadPurchaseOrders
+      ? (part.avgGrossCostPrimary?.toDecimalPlaces(4).toString() ?? null)
+      : null,
     attributeValues
   };
 }
@@ -852,7 +830,7 @@ function getDecimalFieldCursorWhere({
   cursor,
   sortDirection
 }: {
-  field: "currentStock" | "plannedQty" | "onOrderQty";
+  field: "currentStock" | "plannedQty" | "onOrderQty" | "avgNetCostPrimary" | "avgGrossCostPrimary";
   cursor: DecimalFieldCursor;
   sortDirection: PartsListSortDirection;
 }): Prisma.PartWhereInput {

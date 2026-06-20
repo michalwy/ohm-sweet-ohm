@@ -15,6 +15,8 @@ model Part {
   currentStock        Decimal  @default(0)
   plannedQty          Decimal  @default(0)
   onOrderQty          Decimal  @default(0)
+  avgNetCostPrimary   Decimal?
+  avgGrossCostPrimary Decimal?
   catalogNumber       String
   description         String?
   manufacturerId      String
@@ -41,6 +43,8 @@ model Part {
   @@index([workspaceId, currentStock, id])
   @@index([workspaceId, plannedQty, id])
   @@index([workspaceId, onOrderQty, id])
+  @@index([workspaceId, avgNetCostPrimary, id])
+  @@index([workspaceId, avgGrossCostPrimary, id])
   @@index([workspaceId, manufacturerId])
   @@index([workspaceId, primaryCategoryId])
   @@index([workspaceId, secondaryCategoryId])
@@ -104,10 +108,11 @@ model InventoryEntry {
   fromLocationId      String?
   toLocationId        String?
   note                String?
-  unitCost            Decimal?
-  costCurrency        String?
-  unitCostPrimary     Decimal?
-  createdByUserId     String?
+  unitCost             Decimal?
+  costCurrency         String?
+  unitCostPrimary      Decimal?
+  unitGrossCostPrimary Decimal?
+  createdByUserId      String?
   createdAt           DateTime           @default(now())
 
   workspace           Workspace          @relation(fields: [workspaceId], references: [id], onDelete: Cascade)

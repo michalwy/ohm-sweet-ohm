@@ -137,7 +137,8 @@ type Copy = {
   stock: string;
   planned: string;
   onOrder: string;
-  avgCost: string;
+  avgNetCost: string;
+  avgGrossCost: string;
   newPartTitle: string;
   newPartBody: string;
   editPartTitle: string;
@@ -445,12 +446,23 @@ export function PartsListClient({
               align: "right" as const
             },
             {
-              id: "avgCost",
-              label: copy.avgCost,
+              id: "avgNetCost",
+              label: copy.avgNetCost,
               group: "base" as const,
               defaultVisible: false,
               defaultWidth: 140,
               minWidth: 80,
+              sortable: true,
+              align: "right" as const
+            },
+            {
+              id: "avgGrossCost",
+              label: copy.avgGrossCost,
+              group: "base" as const,
+              defaultVisible: false,
+              defaultWidth: 140,
+              minWidth: 80,
+              sortable: true,
               align: "right" as const
             }
           ]
@@ -874,20 +886,33 @@ export function PartsListClient({
                 );
               }
             }),
-            columnHelper.accessor("avgCost", {
-              id: "avgCost",
+            columnHelper.accessor("avgNetCost", {
+              id: "avgNetCost",
               header: () => (
-                <span className="block w-full text-right">{copy.avgCost}</span>
+                <span className="block w-full text-right">{copy.avgNetCost}</span>
               ),
               size: 140,
               minSize: 80,
-              cell: ({ getValue, row }) => {
+              cell: ({ getValue }) => {
                 const value = getValue();
-                const currency = row.original.avgCostCurrency;
                 return value ? (
-                  <span className="block text-right font-mono text-slate-700">
-                    {value}{currency ? ` ${currency}` : ""}
-                  </span>
+                  <span className="block text-right font-mono text-slate-700">{value}</span>
+                ) : (
+                  <span className="block text-right text-slate-400">—</span>
+                );
+              }
+            }),
+            columnHelper.accessor("avgGrossCost", {
+              id: "avgGrossCost",
+              header: () => (
+                <span className="block w-full text-right">{copy.avgGrossCost}</span>
+              ),
+              size: 140,
+              minSize: 80,
+              cell: ({ getValue }) => {
+                const value = getValue();
+                return value ? (
+                  <span className="block text-right font-mono text-slate-700">{value}</span>
                 ) : (
                   <span className="block text-right text-slate-400">—</span>
                 );

@@ -829,8 +829,8 @@ async function getPartListItem({
     currentStock: part.currentStock.toString(),
     plannedQuantity: part.plannedQty.toString(),
     onOrderQuantity: part.onOrderQty.toString(),
-    avgCost: null,
-    avgCostCurrency: null,
+    avgNetCost: null,
+    avgGrossCost: null,
     attributeValues
   };
 }

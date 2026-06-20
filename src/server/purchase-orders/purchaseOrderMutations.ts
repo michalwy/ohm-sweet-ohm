@@ -935,6 +935,7 @@ export async function receiveItems(input: {
       receivedQuantity: true,
       unitPrice: true,
       currency: true,
+      lineGrossValuePrimary: true,
       part: { select: { unit: { select: { allowsFraction: true } } } }
     }
   });
@@ -966,6 +967,7 @@ export async function receiveItems(input: {
       let unitCost: Prisma.Decimal | null = null;
       let costCurrency: string | null = null;
       let unitCostPrimary: Prisma.Decimal | null = null;
+      let unitGrossCostPrimary: Prisma.Decimal | null = null;
       if (orderItem.unitPrice != null) {
         unitCost = orderItem.unitPrice;
         costCurrency = orderItem.currency ?? orderPricing.currency ?? null;
@@ -975,6 +977,12 @@ export async function receiveItems(input: {
           } else if (orderPricing.orderedAt) {
             unitCostPrimary = await convertToWorkspacePrimary(unitCost, costCurrency, primaryCurrency, orderPricing.orderedAt);
           }
+        }
+      }
+      if (orderItem.lineGrossValuePrimary != null) {
+        const orderedQty = new Prisma.Decimal(orderItem.quantity);
+        if (!orderedQty.isZero()) {
+          unitGrossCostPrimary = orderItem.lineGrossValuePrimary.div(orderedQty).toDecimalPlaces(8);
         }
       }
 
@@ -989,7 +997,8 @@ export async function receiveItems(input: {
         createdByUserId: input.createdByUserId,
         unitCost,
         costCurrency,
-        unitCostPrimary
+        unitCostPrimary,
+        unitGrossCostPrimary
       });
 
       await tx.purchaseOrderItem.update({
