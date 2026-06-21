@@ -57,7 +57,7 @@ When a task spans more than one logical area or cannot be safely completed in a 
 - Each step must be atomic: completable in one session and independently verifiable (e.g. `pnpm typecheck` passes after that step alone).
 - Each step must state a **Done when** criterion so a future agent knows exactly when it can mark the step complete.
 - Later steps should not assume context from earlier sessions — all necessary detail must be in the plan file itself.
-- When picking up work in a new session, read the plan file first, find the first unchecked step, mark it `[~]`, execute it, mark it `[x]`, then **stop and wait for the user to ask to continue** before moving to the next step.
+- When picking up work in a new session, read the plan file first, find the first unchecked step, mark it `[~]`, execute it, mark it `[x]`, then proceed to the next step without pausing — unless the user has explicitly asked to stop after each step.
 
 Example progress block:
 ```

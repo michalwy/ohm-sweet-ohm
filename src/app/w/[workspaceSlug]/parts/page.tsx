@@ -173,6 +173,15 @@ const copy = {
   historyColQuantity: "Qty",
   historyColLocation: "Location",
   historyColDate: "Date",
+  poHistory: "Purchase Orders",
+  noPurchaseOrders: "No purchase orders for this part.",
+  poHistoryColOrder: "Order",
+  poHistoryColSupplier: "Supplier",
+  poHistoryColStatus: "Status",
+  poHistoryColDate: "Ordered",
+  poHistoryColQty: "Qty",
+  poHistoryColUnitPriceNet: "Unit Price (net)",
+  poHistoryColUnitPriceGross: "Unit Price (gross)",
   databaseUnavailable:
     "Database is not available, so the list is shown empty for now."
 };
@@ -319,6 +328,7 @@ export default async function PartsPage({
         canWriteInventory={canWriteInventory}
         canReadShoppingLists={canReadShoppingLists}
         canReadPurchaseOrders={canReadPurchaseOrders}
+        primaryCurrency={context.workspace.primaryCurrency}
         initialSelectedPartId={initialSelectedPartId}
       />
     </WorkspaceShell>

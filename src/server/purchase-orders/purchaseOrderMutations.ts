@@ -1317,3 +1317,75 @@ function sumQtyByPartId(
   }
   return result;
 }
+
+export type PartPurchaseOrderHistoryItem = {
+  orderId: string;
+  orderNumber: string | null;
+  supplierName: string;
+  status: "DRAFT" | "ORDERED" | "RECEIVED";
+  orderedAt: string | null;
+  quantity: string;
+  unitPriceNet: string | null;
+  unitPriceGross: string | null;
+  currency: string | null;
+  unitPriceNetPrimary: string | null;
+  unitPriceGrossPrimary: string | null;
+};
+
+export async function getPartPurchaseOrderHistory(input: {
+  workspaceId: string;
+  partId: string;
+}): Promise<PartPurchaseOrderHistoryItem[]> {
+  const items = await prisma.purchaseOrderItem.findMany({
+    where: {
+      partId: input.partId,
+      purchaseOrder: { workspaceId: input.workspaceId }
+    },
+    orderBy: [
+      { purchaseOrder: { orderedAt: "desc" } },
+      { purchaseOrder: { createdAt: "desc" } }
+    ],
+    take: 50,
+    select: {
+      quantity: true,
+      unitPrice: true,
+      lineGrossValue: true,
+      lineNetValuePrimary: true,
+      lineGrossValuePrimary: true,
+      currency: true,
+      purchaseOrder: {
+        select: {
+          id: true,
+          orderNumber: true,
+          status: true,
+          orderedAt: true,
+          currency: true,
+          supplier: { select: { name: true } }
+        }
+      }
+    }
+  });
+
+  return items.map((item) => ({
+    orderId: item.purchaseOrder.id,
+    orderNumber: item.purchaseOrder.orderNumber,
+    supplierName: item.purchaseOrder.supplier.name,
+    status: item.purchaseOrder.status,
+    orderedAt: item.purchaseOrder.orderedAt?.toISOString() ?? null,
+    quantity: item.quantity.toString(),
+    unitPriceNet: item.unitPrice?.toFixed(2) ?? null,
+    unitPriceGross:
+      item.lineGrossValue != null
+        ? item.lineGrossValue.dividedBy(item.quantity).toFixed(2)
+        : null,
+    currency: item.currency ?? item.purchaseOrder.currency,
+    unitPriceNetPrimary:
+      item.lineNetValuePrimary != null
+        ? item.lineNetValuePrimary.dividedBy(item.quantity).toFixed(2)
+        : null,
+    unitPriceGrossPrimary:
+      item.lineGrossValuePrimary != null
+        ? item.lineGrossValuePrimary.dividedBy(item.quantity).toFixed(2)
+        : null
+  }));
+}

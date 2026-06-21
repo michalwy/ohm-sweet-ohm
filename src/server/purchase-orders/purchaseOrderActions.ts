@@ -8,6 +8,7 @@ import {
   deletePurchaseOrder,
   generateOrderNumber,
   getDraftPurchaseOrders,
+  getPartPurchaseOrderHistory,
   getPurchaseOrderDetail,
   getPurchaseOrders,
   lookupSupplierItem,
@@ -16,6 +17,7 @@ import {
   removeOrderItem,
   revertOrderToDraft,
   type DraftPurchaseOrderOption,
+  type PartPurchaseOrderHistoryItem,
   type PurchaseOrderDetail,
   type PurchaseOrderSummary,
   type PurchaseOrdersPageInput,
@@ -59,6 +61,20 @@ export async function getPurchaseOrderDetailForWorkspace(input: {
   try {
     const context = await getAuthorizedContext(input.workspaceSlug, "purchase-orders:read");
     return success(await getPurchaseOrderDetail(context.workspace.id, input.orderId));
+  } catch (error) {
+    return failure(error);
+  }
+}
+
+export async function getPartPurchaseOrderHistoryForWorkspace(input: {
+  workspaceSlug: string;
+  partId: string;
+}): Promise<PurchaseOrderActionResult<PartPurchaseOrderHistoryItem[]>> {
+  try {
+    const context = await getAuthorizedContext(input.workspaceSlug, "purchase-orders:read");
+    return success(
+      await getPartPurchaseOrderHistory({ workspaceId: context.workspace.id, partId: input.partId })
+    );
   } catch (error) {
     return failure(error);
   }

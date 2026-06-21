@@ -117,6 +117,15 @@ A part can have an optional default storage location set in its edit dialog. Whe
 
 To clear the default location, click the **×** button next to the location picker in the edit dialog.
 
+### Part Detail Panel
+
+Click any row in the parts list to open the detail panel on the right. The panel shows:
+
+- **Attributes** — all attribute values recorded for the part.
+- **Locations and stock** — current stock quantity per storage location, plus a button to record a new movement. Requires Inventory read access.
+- **Movement history** — the 50 most recent inventory entries (receipts, issues, transfers, adjustments). Requires Inventory read access.
+- **Purchase Orders** — all purchase order lines that reference this part, ordered by date descending (most recent first), up to 50 rows. Shows order reference, supplier, status (Draft / Ordered / Received), order date, quantity, and unit price with currency. Requires Purchase Orders read access.
+
 ## 4. Organize Your Category Structure
 
 Use **Part Categories** to build and maintain your category tree.

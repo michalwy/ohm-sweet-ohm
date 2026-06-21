@@ -76,6 +76,8 @@ import {
   type LocationTreeSelectCopy
 } from "@/app/location-tree-select";
 import { TreeSelectButton, TreeSelectPanel } from "@/app/tree-select";
+import { getPartPurchaseOrderHistoryForWorkspace } from "@/server/purchase-orders/purchaseOrderActions";
+import type { PartPurchaseOrderHistoryItem } from "@/server/purchase-orders/purchaseOrderMutations";
 
 type Copy = {
   title: string;
@@ -219,6 +221,15 @@ type Copy = {
   historyColQuantity: string;
   historyColLocation: string;
   historyColDate: string;
+  poHistory: string;
+  noPurchaseOrders: string;
+  poHistoryColOrder: string;
+  poHistoryColSupplier: string;
+  poHistoryColStatus: string;
+  poHistoryColDate: string;
+  poHistoryColQty: string;
+  poHistoryColUnitPriceNet: string;
+  poHistoryColUnitPriceGross: string;
 };
 
 type ListPage<TItem> = {
@@ -271,6 +282,7 @@ type PartsListClientProps = {
   canWriteInventory: boolean;
   canReadShoppingLists: boolean;
   canReadPurchaseOrders: boolean;
+  primaryCurrency: string;
   initialSelectedPartId?: string;
 };
 
@@ -292,6 +304,7 @@ export function PartsListClient({
   canWriteInventory,
   canReadShoppingLists,
   canReadPurchaseOrders,
+  primaryCurrency,
   initialSelectedPartId
 }: PartsListClientProps) {
   const queryClient = useQueryClient();
@@ -1233,6 +1246,19 @@ export function PartsListClient({
     }
   });
 
+  const partPurchaseOrderHistoryQuery = useQuery({
+    queryKey: ["part-po-history", workspaceSlug, selectedPartId],
+    enabled: Boolean(selectedPartId) && canReadPurchaseOrders,
+    queryFn: async () => {
+      const result = await getPartPurchaseOrderHistoryForWorkspace({
+        workspaceSlug,
+        partId: selectedPartId as string
+      });
+      if (!result.ok) throw new Error(result.error);
+      return result.data;
+    }
+  });
+
   const dialogLocationsQuery = useQuery({
     queryKey: ["locations-all", workspaceSlug, "part-dialog"],
     queryFn: async () => {
@@ -2056,6 +2082,98 @@ export function PartsListClient({
                                 {entry.authorName ? (
                                   <p>{entry.authorName}</p>
                                 ) : null}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </section>
+              ) : null}
+              {canReadPurchaseOrders ? (
+                <section className="grid gap-2">
+                  <h3 className="text-sm font-semibold text-slate-900">
+                    {copy.poHistory}
+                  </h3>
+                  {partPurchaseOrderHistoryQuery.isLoading ? (
+                    <p className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-600">
+                      {copy.loadingParts}
+                    </p>
+                  ) : partPurchaseOrderHistoryQuery.isError ? (
+                    <p className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-600">
+                      {copy.databaseUnavailable}
+                    </p>
+                  ) : (partPurchaseOrderHistoryQuery.data ?? []).length === 0 ? (
+                    <p className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-600">
+                      {copy.noPurchaseOrders}
+                    </p>
+                  ) : (
+                    <div className="max-h-64 overflow-y-auto rounded-md border border-slate-200">
+                      <table className="w-full text-left text-sm">
+                        <thead className="sticky top-0 bg-slate-50 text-slate-600">
+                          <tr>
+                            <th className="px-3 py-2 font-semibold">{copy.poHistoryColOrder}</th>
+                            <th className="px-3 py-2 font-semibold">{copy.poHistoryColSupplier}</th>
+                            <th className="px-3 py-2 font-semibold">{copy.poHistoryColStatus}</th>
+                            <th className="px-3 py-2 font-semibold">{copy.poHistoryColDate}</th>
+                            <th className="px-3 py-2 text-right font-semibold">{copy.poHistoryColQty}</th>
+                            <th className="px-3 py-2 text-right font-semibold">{copy.poHistoryColUnitPriceNet}</th>
+                            <th className="px-3 py-2 text-right font-semibold">{copy.poHistoryColUnitPriceGross}</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {(partPurchaseOrderHistoryQuery.data ?? []).map((entry: PartPurchaseOrderHistoryItem) => (
+                            <tr key={`${entry.orderId}`} className="border-t border-slate-100 first:border-t-0">
+                              <td className="px-3 py-2 align-middle font-mono text-xs text-slate-700">
+                                {entry.orderNumber ?? entry.orderId.slice(0, 8)}
+                              </td>
+                              <td className="px-3 py-2 align-middle text-slate-700">
+                                {entry.supplierName}
+                              </td>
+                              <td className="px-3 py-2 align-middle">
+                                <span className={[
+                                  "inline-block rounded px-1.5 py-0.5 font-mono text-xs font-medium",
+                                  entry.status === "RECEIVED"
+                                    ? "bg-green-100 text-green-800"
+                                    : entry.status === "ORDERED"
+                                      ? "bg-amber-100 text-amber-800"
+                                      : "bg-slate-100 text-slate-700"
+                                ].join(" ")}>
+                                  {entry.status}
+                                </span>
+                              </td>
+                              <td className="whitespace-nowrap px-3 py-2 align-middle text-xs text-slate-400">
+                                {entry.orderedAt
+                                  ? new Date(entry.orderedAt).toLocaleDateString()
+                                  : "—"}
+                              </td>
+                              <td className="px-3 py-2 align-middle text-right tabular-nums text-slate-950">
+                                {entry.quantity}
+                              </td>
+                              <td className="px-3 py-2 align-middle text-right tabular-nums text-slate-700">
+                                {entry.unitPriceNetPrimary != null ? (
+                                  <>
+                                    <span>{entry.unitPriceNetPrimary} {primaryCurrency}</span>
+                                    {entry.currency && entry.currency !== primaryCurrency && entry.unitPriceNet != null ? (
+                                      <p className="text-xs text-slate-400">{entry.unitPriceNet} {entry.currency}</p>
+                                    ) : null}
+                                  </>
+                                ) : entry.unitPriceNet != null ? (
+                                  <span>{entry.unitPriceNet}{entry.currency ? ` ${entry.currency}` : ""}</span>
+                                ) : "—"}
+                              </td>
+                              <td className="px-3 py-2 align-middle text-right tabular-nums text-slate-700">
+                                {entry.unitPriceGrossPrimary != null ? (
+                                  <>
+                                    <span>{entry.unitPriceGrossPrimary} {primaryCurrency}</span>
+                                    {entry.currency && entry.currency !== primaryCurrency && entry.unitPriceGross != null ? (
+                                      <p className="text-xs text-slate-400">{entry.unitPriceGross} {entry.currency}</p>
+                                    ) : null}
+                                  </>
+                                ) : entry.unitPriceGross != null ? (
+                                  <span>{entry.unitPriceGross}{entry.currency ? ` ${entry.currency}` : ""}</span>
+                                ) : "—"}
                               </td>
                             </tr>
                           ))}
