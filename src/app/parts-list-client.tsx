@@ -67,6 +67,15 @@ import {
   getPartInventoryHistoryForWorkspace
 } from "@/server/inventory/entryActions";
 import { getLocationsForWorkspace } from "@/server/inventory/locationActions";
+import type { StorageLocationListItem } from "@/server/inventory/locationMutations";
+import { buildTree } from "@/app/tree-picker-utils";
+import {
+  LocationTreeSelect,
+  formLocationSelectButtonClassName,
+  type LocationTreeItem,
+  type LocationTreeSelectCopy
+} from "@/app/location-tree-select";
+import { TreeSelectButton, TreeSelectPanel } from "@/app/tree-select";
 
 type Copy = {
   title: string;
@@ -151,6 +160,12 @@ type Copy = {
   noMatchingCategories: string;
   expandCategory: string;
   collapseCategory: string;
+  defaultLocation: string;
+  chooseDefaultLocation: string;
+  searchLocations: string;
+  noMatchingLocations: string;
+  expandLocation: string;
+  collapseLocation: string;
   createPart: string;
   editPart: string;
   deletePart: string;
@@ -188,6 +203,7 @@ type Copy = {
   duplicateCategories: string;
   duplicatePart: string;
   invalidAttributeValue: string;
+  invalidDefaultLocation: string;
   emptyTitle: string;
   emptyBody: string;
   noMatchingPartsTitle: string;
@@ -299,6 +315,7 @@ export function PartsListClient({
   const [createPrimaryCategoryId, setCreatePrimaryCategoryId] = useState("");
   const [createSecondaryCategoryId, setCreateSecondaryCategoryId] =
     useState("");
+  const [createDefaultLocationId, setCreateDefaultLocationId] = useState("");
   const [createActiveTab, setCreateActiveTab] = useState<PartDialogTab>("details");
   const [createDetailsContentHeight, setCreateDetailsContentHeight] =
     useState<number | null>(null);
@@ -327,6 +344,7 @@ export function PartsListClient({
   const [editUnitId, setEditUnitId] = useState("");
   const [editPrimaryCategoryId, setEditPrimaryCategoryId] = useState("");
   const [editSecondaryCategoryId, setEditSecondaryCategoryId] = useState("");
+  const [editDefaultLocationId, setEditDefaultLocationId] = useState("");
   const [editActiveTab, setEditActiveTab] = useState<PartDialogTab>("details");
   const [editDetailsContentHeight, setEditDetailsContentHeight] =
     useState<number | null>(null);
@@ -467,6 +485,14 @@ export function PartsListClient({
             }
           ]
         : []),
+      {
+        id: "defaultLocationName",
+        label: copy.defaultLocation,
+        group: "base" as const,
+        defaultVisible: false,
+        defaultWidth: 160,
+        minWidth: 80
+      },
       ...attributeColumnDefinitions
     ],
     [attributeColumnDefinitions, canReadInventory, canReadShoppingLists, canReadPurchaseOrders, copy]
@@ -898,7 +924,7 @@ export function PartsListClient({
                 return value ? (
                   <span className="block text-right font-mono text-slate-700">{value}</span>
                 ) : (
-                  <span className="block text-right text-slate-400">—</span>
+                  <span className="block text-right text-slate-400">-</span>
                 );
               }
             }),
@@ -914,12 +940,25 @@ export function PartsListClient({
                 return value ? (
                   <span className="block text-right font-mono text-slate-700">{value}</span>
                 ) : (
-                  <span className="block text-right text-slate-400">—</span>
+                  <span className="block text-right text-slate-400">-</span>
                 );
               }
             })
           ]
         : []),
+      columnHelper.accessor("defaultLocationName", {
+        header: () => copy.defaultLocation,
+        size: 160,
+        minSize: 80,
+        cell: ({ getValue }) => {
+          const value = getValue();
+          return value ? (
+            <span className="text-slate-950">{value}</span>
+          ) : (
+            <span className="text-slate-400">-</span>
+          );
+        }
+      }),
       columnHelper.display({
         id: "actions",
         header: "",
@@ -1091,6 +1130,7 @@ export function PartsListClient({
       setEditUnitId(part.unitId);
       setEditPrimaryCategoryId(part.primaryCategoryId ?? "");
       setEditSecondaryCategoryId(part.secondaryCategoryId ?? "");
+      setEditDefaultLocationId(part.defaultLocationId ?? "");
       setEditAttributeValues(getPartAttributeValueState(part));
       setEditActiveTab("details");
       openDialog(editDialogRef.current);
@@ -1105,6 +1145,7 @@ export function PartsListClient({
     setEditUnitId(part.unitId);
     setEditPrimaryCategoryId(part.primaryCategoryId ?? "");
     setEditSecondaryCategoryId(part.secondaryCategoryId ?? "");
+    setEditDefaultLocationId(part.defaultLocationId ?? "");
     setEditAttributeValues(getPartAttributeValueState(part));
     setEditActiveTab("details");
     setEditFieldErrors({});
@@ -1123,6 +1164,7 @@ export function PartsListClient({
     setCreateUnitId("");
     setCreatePrimaryCategoryId(defaultPrimaryCategoryId);
     setCreateSecondaryCategoryId("");
+    setCreateDefaultLocationId("");
     setCreateActiveTab("details");
     setCreateAttributeValues({});
     setCreateSupplierMatchingPayload("");
@@ -1190,6 +1232,20 @@ export function PartsListClient({
       return result.data;
     }
   });
+
+  const dialogLocationsQuery = useQuery({
+    queryKey: ["locations-all", workspaceSlug, "part-dialog"],
+    queryFn: async () => {
+      const result = await getLocationsForWorkspace({ workspaceSlug });
+      if (!result.ok) throw new Error(result.error);
+      return result.data;
+    }
+  });
+  const dialogLocations = useMemo(
+    () => (dialogLocationsQuery.data ?? []).filter((l) => !l.isArchived),
+    [dialogLocationsQuery.data]
+  );
+  const dialogLocationTree = useMemo(() => buildTree(dialogLocations), [dialogLocations]);
 
   const detailsPanelLocationsQuery = useQuery({
     queryKey: ["locations-all", workspaceSlug, "details-panel"],
@@ -1398,6 +1454,7 @@ export function PartsListClient({
     formData.set("description", createDescription);
     formData.set("primaryCategoryId", createPrimaryCategoryId);
     formData.set("secondaryCategoryId", createSecondaryCategoryId);
+    formData.set("defaultLocationId", createDefaultLocationId);
 
     createPartMutation.mutate(formData);
   }
@@ -1428,6 +1485,7 @@ export function PartsListClient({
     formData.set("description", editDescription);
     formData.set("primaryCategoryId", editPrimaryCategoryId);
     formData.set("secondaryCategoryId", editSecondaryCategoryId);
+    formData.set("defaultLocationId", editDefaultLocationId);
 
     updatePartMutation.mutate(formData);
   }
@@ -2077,6 +2135,10 @@ export function PartsListClient({
                     partCategories={partCategories}
                     primaryCategoryId={createPrimaryCategoryId}
                     secondaryCategoryId={createSecondaryCategoryId}
+                    defaultLocationId={createDefaultLocationId}
+                    dialogLocations={dialogLocations}
+                    dialogLocationTree={dialogLocationTree}
+                    onDefaultLocationChange={setCreateDefaultLocationId}
                     onCatalogNumberChange={(value) => {
                       setCreateCatalogNumber(value);
                       clearPartFieldError(setCreateFieldErrors, "catalogNumber");
@@ -2430,6 +2492,10 @@ export function PartsListClient({
                       partCategories={partCategories}
                       primaryCategoryId={editPrimaryCategoryId}
                       secondaryCategoryId={editSecondaryCategoryId}
+                      defaultLocationId={editDefaultLocationId}
+                      dialogLocations={dialogLocations}
+                      dialogLocationTree={dialogLocationTree}
+                      onDefaultLocationChange={setEditDefaultLocationId}
                       onCatalogNumberChange={(value) => {
                         setEditCatalogNumber(value);
                         clearPartFieldError(setEditFieldErrors, "catalogNumber");
@@ -2956,6 +3022,10 @@ function getPartFormErrorMessage(copy: Copy, error: string) {
     return copy.invalidAttributeValue;
   }
 
+  if (error === "invalid-default-location") {
+    return copy.invalidDefaultLocation;
+  }
+
   return copy.databaseUnavailable;
 }
 function PartDialogTabs({
@@ -3017,6 +3087,9 @@ function PartDetailsFields({
   partCategories,
   primaryCategoryId,
   secondaryCategoryId,
+  defaultLocationId,
+  dialogLocations,
+  dialogLocationTree,
   workspaceSlug,
   activeSupplierProvider,
   onCatalogNumberChange,
@@ -3025,7 +3098,8 @@ function PartDetailsFields({
   onUnitIdChange,
   onSupplierSuggestionSelect,
   onPrimaryCategoryChange,
-  onSecondaryCategoryChange
+  onSecondaryCategoryChange,
+  onDefaultLocationChange
 }: {
   catalogNumber: string;
   catalogNumberInputId: string;
@@ -3044,6 +3118,9 @@ function PartDetailsFields({
   partCategories: PartCategoryListItem[];
   primaryCategoryId: string;
   secondaryCategoryId: string;
+  defaultLocationId: string;
+  dialogLocations: StorageLocationListItem[];
+  dialogLocationTree: LocationTreeItem[];
   workspaceSlug: string;
   activeSupplierProvider: SupplierProviderKey | null;
   onCatalogNumberChange: (catalogNumber: string) => void;
@@ -3059,6 +3136,7 @@ function PartDetailsFields({
   }) => void;
   onPrimaryCategoryChange: (categoryId: string) => void;
   onSecondaryCategoryChange: (categoryId: string) => void;
+  onDefaultLocationChange: (locationId: string) => void;
 }) {
   const digiKeyAnchorRef = useRef<HTMLDivElement>(null);
   const digiKeyPanelRef = useRef<HTMLDivElement>(null);
@@ -3389,6 +3467,23 @@ function PartDetailsFields({
           suggestions={manufacturerSuggestions}
           onValueChange={onManufacturerNameChange}
         />
+      </div>
+      <label
+        className="grid gap-2 text-sm font-medium text-slate-700"
+        htmlFor={descriptionInputId}
+      >
+        {copy.description}
+        <textarea
+          className="min-h-20 resize-y rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-950 outline-none transition placeholder:text-slate-400 hover:border-slate-400 focus:border-slate-500 focus:ring-2 focus:ring-slate-200 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400"
+          id={descriptionInputId}
+          name="description"
+          placeholder={copy.descriptionPlaceholder}
+          value={description}
+          disabled={disabled}
+          onChange={(event) => onDescriptionChange(event.target.value)}
+        />
+      </label>
+      <div className="grid grid-cols-2 gap-3">
         <label className="grid gap-2 text-sm font-medium text-slate-700">
           <LabelWithError
             error={errors.unitId}
@@ -3415,22 +3510,27 @@ function PartDetailsFields({
             ))}
           </select>
         </label>
+        <div className="grid gap-2 text-sm font-medium text-slate-700">
+          <LabelWithError>{copy.defaultLocation}</LabelWithError>
+          <LocationTreeSelect
+            locations={dialogLocations}
+            locationTree={dialogLocationTree}
+            copy={{
+              chooseLocation: copy.chooseDefaultLocation,
+              searchLocations: copy.searchLocations,
+              noMatchingLocations: copy.noMatchingLocations,
+              expandLocation: copy.expandLocation,
+              collapseLocation: copy.collapseLocation
+            } satisfies LocationTreeSelectCopy}
+            name="defaultLocationId-picker"
+            selectedId={defaultLocationId}
+            onSelectedIdChange={onDefaultLocationChange}
+            clearable={true}
+            buttonClassName={formLocationSelectButtonClassName}
+            className="w-full"
+          />
+        </div>
       </div>
-      <label
-        className="grid gap-2 text-sm font-medium text-slate-700"
-        htmlFor={descriptionInputId}
-      >
-        {copy.description}
-        <textarea
-          className="min-h-20 resize-y rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-950 outline-none transition placeholder:text-slate-400 hover:border-slate-400 focus:border-slate-500 focus:ring-2 focus:ring-slate-200 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400"
-          id={descriptionInputId}
-          name="description"
-          placeholder={copy.descriptionPlaceholder}
-          value={description}
-          disabled={disabled}
-          onChange={(event) => onDescriptionChange(event.target.value)}
-        />
-      </label>
       <div className="grid grid-cols-2 gap-3">
         <CategoryTreeSelect
           categories={partCategories}
@@ -4077,103 +4177,69 @@ function CategoryTreeSelect({
         <LabelWithError error={error}>{label}</LabelWithError>
       </span>
       <input name={name} type="hidden" value={currentSelectedId} />
-      <button
-        id={buttonId}
-        aria-expanded={isOpen}
-        aria-haspopup="listbox"
-        aria-label={`${label} ${
-          currentSelectedCategory?.path ?? noSelectionLabel
-        }`}
-        aria-invalid={error ? true : undefined}
-        className={getFieldInputClassName(buttonClassName, Boolean(error))}
+      <TreeSelectButton
+        ariaExpanded={isOpen}
+        ariaInvalid={error ? true : undefined}
+        ariaLabel={`${label} ${currentSelectedCategory?.path ?? noSelectionLabel}`}
+        buttonClassName={buttonClassName}
+        buttonId={buttonId}
         disabled={disabled}
-        type="button"
-        onClick={() => (isOpen ? setIsOpen(false) : openSelect())}
+        hasSelection={Boolean(currentSelectedCategory)}
+        selectedLabel={currentSelectedCategory?.path ?? noSelectionLabel}
         onKeyDown={handleComboboxKeyDown}
-      >
-        <span className={currentSelectedCategory ? "truncate" : "text-slate-400"}>
-          {currentSelectedCategory?.path ?? noSelectionLabel}
-        </span>
-        <span aria-hidden="true" className="text-sm text-slate-500">
-          ▾
-        </span>
-      </button>
-      {isOpen
-        ? createPortal(
-            <div
-              ref={panelRef}
-              className="fixed z-50 flex overflow-hidden rounded-md border border-slate-200 bg-white shadow-lg"
-              style={panelStyle}
-              onKeyDown={handleComboboxKeyDown}
-            >
-              <div className="flex min-h-0 w-full flex-col">
-                <div className="border-b border-slate-200 p-2">
-                  <label className="sr-only" htmlFor={searchId}>
-                    {copy.searchCategories}
-                  </label>
-                  <input
-                    id={searchId}
-                    autoFocus
-                    className="min-h-10 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-950 outline-none transition placeholder:text-slate-400 hover:border-slate-400 focus:border-slate-500 focus:ring-2 focus:ring-slate-200"
-                    placeholder={copy.searchCategories}
-                    type="search"
-                    value={searchQuery}
-                    onChange={(event) =>
-                      updateSearchQuery(event.currentTarget.value)
-                    }
-                    onKeyDown={handleComboboxKeyDown}
-                  />
-                </div>
-                <div
-                  aria-labelledby={labelId}
-                  className="min-h-0 overflow-auto p-2"
-                  role="listbox"
-                >
-                  <button
-                    aria-selected={currentSelectedId === ""}
-                    className={`mb-1 grid min-h-9 w-full grid-cols-[1.75rem_1fr] items-center rounded-md px-2 py-1.5 text-left text-sm transition focus:outline-none focus:ring-2 focus:ring-slate-300 ${
-                      activeCategoryId === ""
-                        ? "bg-[var(--color-accent-soft)] font-semibold text-slate-950 hover:bg-[var(--color-accent-soft)]"
-                        : "text-slate-700 hover:bg-slate-50"
-                    }`}
-                    role="option"
-                    type="button"
-                    onClick={() => setSelectedCategory("")}
-                  >
-                    <span />
-                    <span>{noSelectionLabel}</span>
-                  </button>
-                  {visibleTree.length > 0 ? (
-                    <ol className="grid gap-1">
-                      {visibleTree.map((category) => (
-                        <CategoryTreeSelectNode
-                          key={category.id}
-                          category={category}
-                          allowOrganizationalCategories={
-                            allowOrganizationalCategories
-                          }
-                          copy={copy}
-                          excludedCategoryId={excludedCategoryId}
-                          expandedCategoryIds={effectiveExpandedCategoryIds}
-                          activeCategoryId={activeCategoryId}
-                          level={0}
-                          selectedId={currentSelectedId}
-                          onSelect={setSelectedCategory}
-                          onToggleExpanded={toggleExpanded}
-                        />
-                      ))}
-                    </ol>
-                  ) : (
-                    <p className="px-2 py-6 text-center text-sm text-slate-500">
-                      {copy.noMatchingCategories}
-                    </p>
-                  )}
-                </div>
-              </div>
-            </div>,
-            portalTarget ?? document.body
-          )
-        : null}
+        onToggle={() => (isOpen ? setIsOpen(false) : openSelect())}
+      />
+      {isOpen ? (
+        <TreeSelectPanel
+          listboxAriaLabelledby={labelId}
+          panelRef={panelRef}
+          panelStyle={panelStyle}
+          portalTarget={portalTarget}
+          searchId={searchId}
+          searchLabel={copy.searchCategories}
+          searchQuery={searchQuery}
+          onKeyDown={handleComboboxKeyDown}
+          onSearchChange={updateSearchQuery}
+        >
+          <button
+            aria-selected={currentSelectedId === ""}
+            className={`mb-1 grid min-h-9 w-full grid-cols-[1.75rem_1fr] items-center rounded-md px-2 py-1.5 text-left text-sm transition focus:outline-none focus:ring-2 focus:ring-slate-300 ${
+              activeCategoryId === ""
+                ? "bg-[var(--color-accent-soft)] font-semibold text-slate-950 hover:bg-[var(--color-accent-soft)]"
+                : "text-slate-700 hover:bg-slate-50"
+            }`}
+            role="option"
+            type="button"
+            onClick={() => setSelectedCategory("")}
+          >
+            <span />
+            <span>{noSelectionLabel}</span>
+          </button>
+          {visibleTree.length > 0 ? (
+            <ol className="grid gap-1">
+              {visibleTree.map((category) => (
+                <CategoryTreeSelectNode
+                  key={category.id}
+                  category={category}
+                  allowOrganizationalCategories={allowOrganizationalCategories}
+                  copy={copy}
+                  excludedCategoryId={excludedCategoryId}
+                  expandedCategoryIds={effectiveExpandedCategoryIds}
+                  activeCategoryId={activeCategoryId}
+                  level={0}
+                  selectedId={currentSelectedId}
+                  onSelect={setSelectedCategory}
+                  onToggleExpanded={toggleExpanded}
+                />
+              ))}
+            </ol>
+          ) : (
+            <p className="px-2 py-6 text-center text-sm text-slate-500">
+              {copy.noMatchingCategories}
+            </p>
+          )}
+        </TreeSelectPanel>
+      ) : null}
     </div>
   );
 }

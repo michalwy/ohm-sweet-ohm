@@ -33,6 +33,7 @@ export type PurchaseOrderItem = {
   currency: string | null;
   taxRate: string | null;
   notes: string | null;
+  partDefaultLocationId: string | null;
 };
 
 export type PurchaseOrderDetail = {
@@ -365,6 +366,7 @@ export async function getPurchaseOrderDetail(
             select: {
               catalogNumber: true,
               description: true,
+              defaultLocationId: true,
               manufacturer: { select: { name: true } }
             }
           }
@@ -413,7 +415,8 @@ export async function getPurchaseOrderDetail(
       lineGrossValuePrimary: item.lineGrossValuePrimary?.toFixed(2) ?? null,
       currency: item.currency,
       taxRate: item.taxRate?.toString() ?? null,
-      notes: item.notes
+      notes: item.notes,
+      partDefaultLocationId: item.part.defaultLocationId ?? null
     }))
   };
 }

@@ -57,6 +57,7 @@ export async function createPart(
     formData,
     "secondaryCategoryId"
   );
+  const defaultLocationId = getOptionalFormValue(formData, "defaultLocationId");
   const submittedAttributeValues = getSubmittedAttributeValues(formData);
   const supplierMatchingPayload = getSupplierMatchingPayload(formData);
   const partsPath = getPartsPath(workspaceSlug);
@@ -107,6 +108,17 @@ export async function createPart(
         if (!attributeValueWrites) {
           formError = "invalid-attribute-value";
         } else {
+          if (defaultLocationId) {
+            const loc = await prisma.storageLocation.findFirst({
+              where: { id: defaultLocationId, workspaceId: context.workspace.id, isArchived: false }
+            });
+            if (!loc) {
+              formError = "invalid-default-location";
+            }
+          }
+        }
+
+        if (!formError && attributeValueWrites) {
           const manufacturer = await ensureOrganizationWithRole({
             workspaceId: context.workspace.id,
             name: manufacturerName,
@@ -123,7 +135,8 @@ export async function createPart(
                   description,
                   manufacturerId: manufacturer.id,
                   primaryCategoryId,
-                  secondaryCategoryId
+                  secondaryCategoryId,
+                  defaultLocationId: defaultLocationId ?? null
                 },
                 select: {
                   id: true
@@ -193,6 +206,7 @@ export async function updatePart(
     formData,
     "secondaryCategoryId"
   );
+  const defaultLocationId = getOptionalFormValue(formData, "defaultLocationId");
   const submittedAttributeValues = getSubmittedAttributeValues(formData);
   const partsPath = getPartsPath(workspaceSlug);
   let part: PartsListItem | null = null;
@@ -242,6 +256,17 @@ export async function updatePart(
         if (!attributeValueWrites) {
           formError = "invalid-attribute-value";
         } else {
+          if (defaultLocationId) {
+            const loc = await prisma.storageLocation.findFirst({
+              where: { id: defaultLocationId, workspaceId: context.workspace.id, isArchived: false }
+            });
+            if (!loc) {
+              formError = "invalid-default-location";
+            }
+          }
+        }
+
+        if (!formError && attributeValueWrites) {
           const manufacturer = await ensureOrganizationWithRole({
             workspaceId: context.workspace.id,
             name: manufacturerName,
@@ -261,7 +286,8 @@ export async function updatePart(
                   description,
                   manufacturerId: manufacturer.id,
                   primaryCategoryId,
-                  secondaryCategoryId
+                  secondaryCategoryId,
+                  defaultLocationId: defaultLocationId ?? null
                 }
               });
 
@@ -772,6 +798,12 @@ async function getPartListItem({
         },
         primaryCategoryId: true,
         secondaryCategoryId: true,
+        defaultLocation: {
+          select: {
+            id: true,
+            name: true
+          }
+        },
         attributeValues: {
           orderBy: [{ attribute: { name: "asc" } }, { id: "asc" }],
           select: {
@@ -826,6 +858,8 @@ async function getPartListItem({
     secondaryCategoryPath: part.secondaryCategoryId
       ? categoryPathsById.get(part.secondaryCategoryId) ?? null
       : null,
+    defaultLocationId: part.defaultLocation?.id ?? null,
+    defaultLocationName: part.defaultLocation?.name ?? null,
     currentStock: part.currentStock.toString(),
     plannedQuantity: part.plannedQty.toString(),
     onOrderQuantity: part.onOrderQty.toString(),

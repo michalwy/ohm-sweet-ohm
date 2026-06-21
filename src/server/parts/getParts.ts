@@ -26,6 +26,8 @@ export type PartsListItem = {
   primaryCategoryPath: string | null;
   secondaryCategoryId: string | null;
   secondaryCategoryPath: string | null;
+  defaultLocationId: string | null;
+  defaultLocationName: string | null;
   currentStock: string | null;
   plannedQuantity: string | null;
   onOrderQuantity: string | null;
@@ -326,6 +328,12 @@ const partListSelect = {
   },
   primaryCategoryId: true,
   secondaryCategoryId: true,
+  defaultLocation: {
+    select: {
+      id: true,
+      name: true
+    }
+  },
   attributeValues: {
     orderBy: [{ attribute: { name: "asc" } }, { id: "asc" }],
     select: {
@@ -694,6 +702,8 @@ function mapPartListItem({
     secondaryCategoryPath: part.secondaryCategoryId
       ? categoryPathsById.get(part.secondaryCategoryId) ?? null
       : null,
+    defaultLocationId: part.defaultLocation?.id ?? null,
+    defaultLocationName: part.defaultLocation?.name ?? null,
     currentStock: canReadInventory ? part.currentStock.toString() : null,
     plannedQuantity: canReadShoppingLists ? part.plannedQty.toString() : null,
     onOrderQuantity: canReadPurchaseOrders ? part.onOrderQty.toString() : null,

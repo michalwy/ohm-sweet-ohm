@@ -20,9 +20,12 @@ import {
   getFieldInputClassName,
   openDialog
 } from "@/app/dialog-shell";
-import { buildTree, type TreeNode } from "@/app/tree-picker-utils";
-
-type LocationTreeItem = TreeNode<StorageLocationListItem>;
+import { buildTree } from "@/app/tree-picker-utils";
+import {
+  LocationTreeSelect,
+  type LocationTreeItem,
+  type LocationTreeSelectCopy
+} from "@/app/location-tree-select";
 
 type Copy = {
   addLocation: string;
@@ -46,6 +49,9 @@ type Copy = {
   archived: string;
   yes: string;
   no: string;
+  chooseParentLocation: string;
+  searchLocations: string;
+  noMatchingLocations: string;
   expandLocation: string;
   collapseLocation: string;
   noLocations: string;
@@ -82,6 +88,7 @@ export function LocationsClient({
   );
   const [isCreateMode, setIsCreateMode] = useState(false);
   const [createParentId, setCreateParentId] = useState("");
+  const [editParentId, setEditParentId] = useState("");
   const [locationPendingDelete, setLocationPendingDelete] =
     useState<StorageLocationListItem | null>(null);
   const [errors, setErrors] = useState<LocationFormErrors>({});
@@ -132,14 +139,12 @@ export function LocationsClient({
     }
   });
 
-  const locationOptions = useMemo(
-    () =>
-      locations
-        .filter((location) => !editingLocation || location.id !== editingLocation.id)
-        .sort((a, b) => a.name.localeCompare(b.name, "en")),
+  const locationTree = useMemo(() => buildTree(locations), [locations]);
+  const parentPickerLocations = useMemo(
+    () => locations.filter((l) => !editingLocation || l.id !== editingLocation.id),
     [locations, editingLocation]
   );
-  const locationTree = useMemo(() => buildTree(locations), [locations]);
+  const parentPickerTree = useMemo(() => buildTree(parentPickerLocations), [parentPickerLocations]);
 
   function openCreateForm(parentId = "") {
     setEditingLocation(null);
@@ -153,6 +158,7 @@ export function LocationsClient({
   function openEditForm(location: StorageLocationListItem) {
     setEditingLocation(location);
     setIsCreateMode(false);
+    setEditParentId(location.parentId ?? "");
     setErrors({});
     setFormKey((current) => current + 1);
     window.requestAnimationFrame(() => openDialog(dialogRef.current));
@@ -164,6 +170,7 @@ export function LocationsClient({
     setEditingLocation(null);
     setIsCreateMode(false);
     setCreateParentId("");
+    setEditParentId("");
   }
 
   function submit(formData: FormData) {
@@ -293,23 +300,36 @@ export function LocationsClient({
                   )}
                 />
               </label>
-              <label className="grid gap-2 text-sm font-medium text-slate-700">
-                {copy.parentLocation}
-                <select
+              <div className="grid gap-2 text-sm font-medium text-slate-700">
+                <span>{copy.parentLocation}</span>
+                <input
                   name="parentId"
-                  defaultValue={
-                    isCreateMode ? createParentId : editingLocation?.parentId ?? ""
+                  type="hidden"
+                  value={isCreateMode ? createParentId : editParentId}
+                />
+                <LocationTreeSelect
+                  locations={parentPickerLocations}
+                  locationTree={parentPickerTree}
+                  copy={{
+                    chooseLocation: copy.chooseParentLocation,
+                    searchLocations: copy.searchLocations,
+                    noMatchingLocations: copy.noMatchingLocations,
+                    expandLocation: copy.expandLocation,
+                    collapseLocation: copy.collapseLocation
+                  } satisfies LocationTreeSelectCopy}
+                  name="parentId-picker"
+                  selectedId={isCreateMode ? createParentId : editParentId}
+                  onSelectedIdChange={(id) =>
+                    isCreateMode ? setCreateParentId(id) : setEditParentId(id)
                   }
-                  className="min-h-10 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-950 outline-none"
-                >
-                  <option value="">{copy.rootLocation}</option>
-                  {locationOptions.map((location) => (
-                    <option key={location.id} value={location.id}>
-                      {location.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
+                  emptyLabel={copy.rootLocation}
+                  clearable={true}
+                  onClear={() =>
+                    isCreateMode ? setCreateParentId("") : setEditParentId("")
+                  }
+                  className="w-full"
+                />
+              </div>
               <fieldset className="grid gap-2">
                 <legend className="text-sm font-medium text-slate-700">
                   {copy.type}

@@ -100,12 +100,22 @@ Both columns support sorting with cursor-based pagination so they work efficient
 2. Fill in manufacturer and catalog number.
 3. Select unit and primary category.
 4. Optionally select a secondary category and fill attribute values.
-5. Save.
+5. Optionally choose a **Default location** — a storage location that will be pre-selected whenever you receive or move this part.
+6. Save.
 
 ### Editing Or Deleting A Part
 
 - Use row actions to open edit mode for a selected part.
 - Update fields and save, or remove the part if needed.
+
+### Default Location
+
+A part can have an optional default storage location set in its edit dialog. When set:
+
+- The receive-order dialog pre-selects this location for that part's line item. You can still override it before saving.
+- If the default location is later archived, it is treated as unset until you choose a new one.
+
+To clear the default location, click the **×** button next to the location picker in the edit dialog.
 
 ## 4. Organize Your Category Structure
 
@@ -269,7 +279,7 @@ Deleting a draft order returns any quantities it contributed to the **Planned** 
 When parts arrive:
 
 1. Click **Receive items** in the detail panel.
-2. For each item, enter the quantity received and choose a destination storage location using the tree picker. The picker shows your full location hierarchy — click the arrow to expand a node, or type in the search box to filter by name.
+2. For each item, enter the quantity received and choose a destination storage location using the tree picker. If the part has a default location set, the picker is pre-filled with that location. The picker shows your full location hierarchy — click the arrow to expand a node, or type in the search box to filter by name.
 3. Save.
 
 Each received item creates a **Receipt** inventory movement automatically. Items with a checkmark (✓) are fully received.
