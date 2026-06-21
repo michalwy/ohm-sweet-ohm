@@ -732,3 +732,47 @@ describe("purchase orders — revert to draft", () => {
     );
   });
 });
+
+describe("purchase orders — quick-add part flow", () => {
+  test("getDraftPurchaseOrders returns only DRAFT orders", async () => {
+    const { getDraftPurchaseOrders } = await import("../../src/server/purchase-orders/purchaseOrderMutations");
+    const suffix = uniqueSuffix("qa-po-draft-filter");
+    const { workspaceId, partId, supplierId } = await createFixture(suffix);
+
+    const draft = await createPurchaseOrder({ workspaceId, supplierId });
+    const ordered = await createPurchaseOrder({ workspaceId, supplierId });
+    await addOrderItem({ workspaceId, orderId: ordered.id, partId, quantity: "1" });
+    await markOrdered({ workspaceId, orderId: ordered.id });
+
+    const drafts = await getDraftPurchaseOrders(workspaceId);
+    const ids = drafts.map((po) => po.id);
+    assert.ok(ids.includes(draft.id), "draft PO should appear");
+    assert.ok(!ids.includes(ordered.id), "ordered PO should not appear");
+  });
+
+  test("createPurchaseOrder + addOrderItem creates PO with part in history", async () => {
+    const suffix = uniqueSuffix("qa-po-create-add");
+    const { workspaceId, partId, supplierId } = await createFixture(suffix);
+
+    const order = await createPurchaseOrder({ workspaceId, supplierId });
+    await addOrderItem({ workspaceId, orderId: order.id, partId, quantity: "3" });
+
+    const detail = await getPurchaseOrderDetail(workspaceId, order.id);
+    assert.ok(detail, "PO detail should exist");
+    assert.equal(detail.items.length, 1);
+    assert.equal(detail.items[0].partId, partId);
+    assert.equal(detail.items[0].quantity, "3");
+  });
+
+  test("updateOrderItem merges quantity on existing PO line", async () => {
+    const suffix = uniqueSuffix("qa-po-update-qty");
+    const { workspaceId, partId, supplierId } = await createFixture(suffix);
+
+    const order = await createPurchaseOrder({ workspaceId, supplierId });
+    const item = await addOrderItem({ workspaceId, orderId: order.id, partId, quantity: "5" });
+    await updateOrderItem({ workspaceId, orderId: order.id, itemId: item.id, quantity: "8" });
+
+    const detail = await getPurchaseOrderDetail(workspaceId, order.id);
+    assert.equal(detail?.items[0].quantity, "8");
+  });
+});

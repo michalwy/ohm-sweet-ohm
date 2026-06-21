@@ -187,6 +187,32 @@ const copy = {
   slMembershipColList: "List",
   slMembershipColQty: "Qty",
   slMembershipColNotes: "Notes",
+  addToPurchaseOrder: "Add to PO",
+  addToShoppingList: "Add to shopping list",
+  quickAddPOTitle: "Add to Purchase Order",
+  quickAddSLTitle: "Add to Shopping List",
+  choosePO: "Choose a purchase order",
+  noPoAvailable: "No draft purchase orders.",
+  createNewPO: "Create new purchase order",
+  chooseSupplier: "Choose supplier",
+  noSuppliers: "No matching suppliers",
+  loadingLabel: "Loading...",
+  chooseSL: "Choose a shopping list",
+  noSLAvailable: "No shopping lists.",
+  createNewSL: "Create new shopping list",
+  slName: "List name",
+  slNamePlaceholder: "Shopping list name",
+  notes: "Notes",
+  notesPlaceholder: "Optional notes",
+  orderNumber: "Order number",
+  orderNumberPlaceholder: "Optional order number",
+  addedToPoToast: "Part added to purchase order",
+  addedToSlToast: "Part added to shopping list",
+  quickAddError: "Something went wrong. Please try again.",
+  missingQuantity: "Enter a quantity.",
+  missingList: "Choose a purchase order or shopping list.",
+  missingSLName: "Enter a list name.",
+  missingSupplier: "Choose a supplier.",
   databaseUnavailable:
     "Database is not available, so the list is shown empty for now."
 };
@@ -274,7 +300,7 @@ export default async function PartsPage({
   const activeSupplierProvider = isDatabaseAvailable
     ? await getWorkspaceActiveSupplierProvider(context.workspace.id).catch(() => null)
     : null;
-  const [canReadInventory, canWriteInventory, canReadShoppingLists, canReadPurchaseOrders] =
+  const [canReadInventory, canWriteInventory, canReadShoppingLists, canReadPurchaseOrders, canWriteShoppingLists, canWritePurchaseOrders] =
     isDatabaseAvailable
       ? await Promise.all([
           hasWorkspacePermission({
@@ -296,9 +322,19 @@ export default async function PartsPage({
             userId: context.user.id,
             workspaceId: context.workspace.id,
             permission: "purchase-orders:read"
+          }).catch(() => false),
+          hasWorkspacePermission({
+            userId: context.user.id,
+            workspaceId: context.workspace.id,
+            permission: "shopping-lists:write"
+          }).catch(() => false),
+          hasWorkspacePermission({
+            userId: context.user.id,
+            workspaceId: context.workspace.id,
+            permission: "purchase-orders:write"
           }).catch(() => false)
         ])
-      : [false, false, false, false];
+      : [false, false, false, false, false, false];
 
   return (
     <WorkspaceShell
@@ -333,6 +369,8 @@ export default async function PartsPage({
         canWriteInventory={canWriteInventory}
         canReadShoppingLists={canReadShoppingLists}
         canReadPurchaseOrders={canReadPurchaseOrders}
+        canWriteShoppingLists={canWriteShoppingLists}
+        canWritePurchaseOrders={canWritePurchaseOrders}
         primaryCurrency={context.workspace.primaryCurrency}
         initialSelectedPartId={initialSelectedPartId}
       />

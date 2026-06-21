@@ -73,23 +73,35 @@ export async function getPartShoppingListMembershipForWorkspace(input: {
   }
 }
 
+export async function getAllShoppingListsForWorkspace(input: {
+  workspaceSlug: string;
+}): Promise<ShoppingListActionResult<Array<{ id: string; name: string; itemCount: number }>>> {
+  try {
+    const context = await getAuthorizedContext(input.workspaceSlug, "shopping-lists:read");
+    const page = await getShoppingLists(context.workspace.id, { pageSize: 500, sortBy: "name", sortDirection: "asc" });
+    return success(page.items.map((sl) => ({ id: sl.id, name: sl.name, itemCount: sl.itemCount })));
+  } catch (error) {
+    return failure(error);
+  }
+}
+
 // --- Mutations ---
 
 export async function createShoppingListForWorkspace(input: {
   workspaceSlug: string;
   name: string;
   description?: string | null;
-}): Promise<ShoppingListActionResult<null>> {
+}): Promise<ShoppingListActionResult<{ listId: string }>> {
   try {
     const context = await getAuthorizedContext(input.workspaceSlug, "shopping-lists:write");
-    await createShoppingList({
+    const list = await createShoppingList({
       workspaceId: context.workspace.id,
       name: input.name,
       description: input.description,
       createdByUserId: context.user.id
     });
     revalidatePath(workspacePath(input.workspaceSlug));
-    return success(null);
+    return success({ listId: list.id });
   } catch (error) {
     return failure(error);
   }

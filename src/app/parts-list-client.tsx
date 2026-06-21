@@ -61,6 +61,8 @@ import {
   openDialog
 } from "@/app/dialog-shell";
 import { PartStockDialog } from "@/app/part-stock-dialog";
+import { QuickAddToPODialog } from "@/app/part-quick-add-po-dialog";
+import { QuickAddToSLDialog } from "@/app/part-quick-add-sl-dialog";
 import { useDebouncedValue } from "@/app/use-debounced-value";
 import {
   getPartBalancesForWorkspace,
@@ -237,6 +239,32 @@ type Copy = {
   slMembershipColList: string;
   slMembershipColQty: string;
   slMembershipColNotes: string;
+  addToPurchaseOrder: string;
+  addToShoppingList: string;
+  quickAddPOTitle: string;
+  quickAddSLTitle: string;
+  choosePO: string;
+  noPoAvailable: string;
+  createNewPO: string;
+  chooseSupplier: string;
+  noSuppliers: string;
+  loadingLabel: string;
+  chooseSL: string;
+  noSLAvailable: string;
+  createNewSL: string;
+  slName: string;
+  slNamePlaceholder: string;
+  notes: string;
+  notesPlaceholder: string;
+  orderNumber: string;
+  orderNumberPlaceholder: string;
+  addedToPoToast: string;
+  addedToSlToast: string;
+  quickAddError: string;
+  missingQuantity: string;
+  missingList: string;
+  missingSLName: string;
+  missingSupplier: string;
 };
 
 type ListPage<TItem> = {
@@ -289,6 +317,8 @@ type PartsListClientProps = {
   canWriteInventory: boolean;
   canReadShoppingLists: boolean;
   canReadPurchaseOrders: boolean;
+  canWriteShoppingLists: boolean;
+  canWritePurchaseOrders: boolean;
   primaryCurrency: string;
   initialSelectedPartId?: string;
 };
@@ -311,6 +341,8 @@ export function PartsListClient({
   canWriteInventory,
   canReadShoppingLists,
   canReadPurchaseOrders,
+  canWriteShoppingLists,
+  canWritePurchaseOrders,
   primaryCurrency,
   initialSelectedPartId
 }: PartsListClientProps) {
@@ -378,6 +410,8 @@ export function PartsListClient({
   const [partForStockDialog, setPartForStockDialog] = useState<PartsListItem | null>(
     null
   );
+  const [partForPODialog, setPartForPODialog] = useState<PartsListItem | null>(null);
+  const [partForSLDialog, setPartForSLDialog] = useState<PartsListItem | null>(null);
   const [selectedPartId, setSelectedPartId] = useState<string | null>(
     initialSelectedPartId ?? null
   );
@@ -982,9 +1016,9 @@ export function PartsListClient({
       columnHelper.display({
         id: "actions",
         header: "",
-        size: 104,
-        minSize: 104,
-        maxSize: 104,
+        size: 104 + (canWritePurchaseOrders ? 48 : 0) + (canWriteShoppingLists ? 48 : 0),
+        minSize: 104 + (canWritePurchaseOrders ? 48 : 0) + (canWriteShoppingLists ? 48 : 0),
+        maxSize: 104 + (canWritePurchaseOrders ? 48 : 0) + (canWriteShoppingLists ? 48 : 0),
         enableResizing: false,
         cell: ({ row }) => (
           <div className="flex justify-end gap-2">
@@ -1014,6 +1048,62 @@ export function PartsListClient({
                 />
               </svg>
             </button>
+            {canWritePurchaseOrders ? (
+              <button
+                className="min-h-8 rounded-md border border-slate-300 bg-white px-2.5 py-1 text-sm font-medium text-slate-700 transition hover:border-slate-400 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400"
+                aria-label={copy.addToPurchaseOrder}
+                disabled={!isDatabaseAvailable}
+                type="button"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  setPartForPODialog(row.original);
+                }}
+              >
+                <svg
+                  aria-hidden="true"
+                  className="h-4 w-4"
+                  viewBox="0 0 20 20"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path
+                    d="M3 4h2l2.5 8h7l2-5.5H6.5M8 15.5a1 1 0 1 0 2 0 1 1 0 0 0-2 0Zm5.5 0a1 1 0 1 0 2 0 1 1 0 0 0-2 0Z"
+                    stroke="currentColor"
+                    strokeWidth="1.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              </button>
+            ) : null}
+            {canWriteShoppingLists ? (
+              <button
+                className="min-h-8 rounded-md border border-slate-300 bg-white px-2.5 py-1 text-sm font-medium text-slate-700 transition hover:border-slate-400 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400"
+                aria-label={copy.addToShoppingList}
+                disabled={!isDatabaseAvailable}
+                type="button"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  setPartForSLDialog(row.original);
+                }}
+              >
+                <svg
+                  aria-hidden="true"
+                  className="h-4 w-4"
+                  viewBox="0 0 20 20"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path
+                    d="M5 5h10M5 8h6M5 11h4M13 11v6m-3-3h6"
+                    stroke="currentColor"
+                    strokeWidth="1.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              </button>
+            ) : null}
             <button
               className="min-h-8 rounded-md border border-[var(--color-error-border)] bg-white px-2.5 py-1 text-sm font-medium text-[var(--color-error)] transition hover:bg-[var(--color-error-soft)] focus:outline-none focus:ring-2 focus:ring-[var(--color-error-border)] focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400"
               aria-label={copy.deletePart}
@@ -1049,6 +1139,8 @@ export function PartsListClient({
     canReadInventory,
     canReadShoppingLists,
     canReadPurchaseOrders,
+    canWriteShoppingLists,
+    canWritePurchaseOrders,
     copy,
     deletePartMutation.isPending,
     isDatabaseAvailable,
@@ -2201,6 +2293,18 @@ export function PartsListClient({
                       </table>
                     </div>
                   )}
+                  {canWritePurchaseOrders ? (
+                    <div className="pt-2">
+                      <button
+                        className="min-h-8 rounded-md border border-slate-300 bg-white px-2.5 py-1 text-sm font-medium text-slate-700 transition hover:border-slate-400 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400"
+                        disabled={!isDatabaseAvailable}
+                        type="button"
+                        onClick={() => setPartForPODialog(selectedPart)}
+                      >
+                        {copy.addToPurchaseOrder}
+                      </button>
+                    </div>
+                  ) : null}
                 </section>
               ) : null}
               {canReadShoppingLists ? (
@@ -2253,6 +2357,18 @@ export function PartsListClient({
                       </table>
                     </div>
                   )}
+                  {canWriteShoppingLists ? (
+                    <div className="pt-2">
+                      <button
+                        className="min-h-8 rounded-md border border-slate-300 bg-white px-2.5 py-1 text-sm font-medium text-slate-700 transition hover:border-slate-400 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400"
+                        disabled={!isDatabaseAvailable}
+                        type="button"
+                        onClick={() => setPartForSLDialog(selectedPart)}
+                      >
+                        {copy.addToShoppingList}
+                      </button>
+                    </div>
+                  ) : null}
                 </section>
               ) : null}
           </DetailPanel>
@@ -2826,6 +2942,32 @@ export function PartsListClient({
         part={partForStockDialog}
         workspaceSlug={workspaceSlug}
         onClose={() => setPartForStockDialog(null)}
+      />
+      <QuickAddToPODialog
+        copy={copy}
+        open={Boolean(partForPODialog)}
+        part={partForPODialog}
+        workspaceSlug={workspaceSlug}
+        onClose={() => setPartForPODialog(null)}
+        onSuccess={(msg) => {
+          addToastMessage({ id: getNextToastId(nextToastIdRef), message: msg });
+          setPartForPODialog(null);
+          queryClient.invalidateQueries({ queryKey: ["part-po-history", workspaceSlug] });
+          queryClient.invalidateQueries({ queryKey: ["draft-pos", workspaceSlug] });
+        }}
+      />
+      <QuickAddToSLDialog
+        copy={copy}
+        open={Boolean(partForSLDialog)}
+        part={partForSLDialog}
+        workspaceSlug={workspaceSlug}
+        onClose={() => setPartForSLDialog(null)}
+        onSuccess={(msg) => {
+          addToastMessage({ id: getNextToastId(nextToastIdRef), message: msg });
+          setPartForSLDialog(null);
+          queryClient.invalidateQueries({ queryKey: ["part-sl-membership", workspaceSlug] });
+          queryClient.invalidateQueries({ queryKey: ["all-sls", workspaceSlug] });
+        }}
       />
       <DeleteConfirmationDialog
         body={`${copy.confirmSkipMatchingBody} ${copy.noLearningSaved}`}

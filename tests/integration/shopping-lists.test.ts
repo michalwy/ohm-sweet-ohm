@@ -516,3 +516,47 @@ describe("plannedQty / onOrderQty maintenance — shopping lists", () => {
     assert.equal(plannedQty, 5);
   });
 });
+
+describe("shopping lists — quick-add part flow", () => {
+  test("addShoppingListItem for the same part twice creates two separate rows", async () => {
+    const suffix = uniqueSuffix("qa-sl-two-rows");
+    const { workspaceId, partId } = await createFixture(suffix);
+
+    const list = await createShoppingList({ workspaceId, name: "QA Two Rows" });
+    await addShoppingListItem({ workspaceId, listId: list.id, partId, quantity: "3" });
+    await addShoppingListItem({ workspaceId, listId: list.id, partId, quantity: "2" });
+
+    const detail = await getShoppingListDetail(workspaceId, list.id);
+    assert.equal(detail?.items.length, 2, "two separate rows should exist");
+  });
+
+  test("updateShoppingListItem changes quantity on the last existing line", async () => {
+    const suffix = uniqueSuffix("qa-sl-update-qty");
+    const { workspaceId, partId } = await createFixture(suffix);
+
+    const list = await createShoppingList({ workspaceId, name: "QA Update Qty" });
+    const item1 = await addShoppingListItem({ workspaceId, listId: list.id, partId, quantity: "3" });
+    const item2 = await addShoppingListItem({ workspaceId, listId: list.id, partId, quantity: "2" });
+
+    await updateShoppingListItem({ workspaceId, listId: list.id, itemId: item2.id, quantity: "7" });
+
+    const detail = await getShoppingListDetail(workspaceId, list.id);
+    const row1 = detail?.items.find((i) => i.id === item1.id);
+    const row2 = detail?.items.find((i) => i.id === item2.id);
+    assert.equal(row1?.quantity, "3", "first row unchanged");
+    assert.equal(row2?.quantity, "7", "last row updated");
+  });
+
+  test("createShoppingList + addShoppingListItem creates a list with one item", async () => {
+    const suffix = uniqueSuffix("qa-sl-create-add");
+    const { workspaceId, partId } = await createFixture(suffix);
+
+    const list = await createShoppingList({ workspaceId, name: "QA Create Add" });
+    await addShoppingListItem({ workspaceId, listId: list.id, partId, quantity: "5" });
+
+    const detail = await getShoppingListDetail(workspaceId, list.id);
+    assert.equal(detail?.items.length, 1);
+    assert.equal(detail?.items[0].partId, partId);
+    assert.equal(detail?.items[0].quantity, "5");
+  });
+});

@@ -124,8 +124,30 @@ Click any row in the parts list to open the detail panel on the right. The panel
 - **Attributes** — all attribute values recorded for the part.
 - **Locations and stock** — current stock quantity per storage location, plus a button to record a new movement. Requires Inventory read access.
 - **Movement history** — the 50 most recent inventory entries (receipts, issues, transfers, adjustments). Requires Inventory read access.
-- **Purchase Orders** — all purchase order lines that reference this part, ordered by date descending (most recent first), up to 50 rows. Shows order reference, supplier, status (Draft / Ordered / Received), order date, quantity, and unit price with currency. Requires Purchase Orders read access.
-- **Shopping Lists** — all shopping lists that currently contain this part, ordered alphabetically by list name. Shows list name (click to open that list), quantity requested, and notes. Requires Shopping Lists read access.
+- **Purchase Orders** — all purchase order lines that reference this part, ordered by date descending (most recent first), up to 50 rows. Shows order reference, supplier, status (Draft / Ordered / Received), order date, quantity, and unit price with currency. An **Add to PO** button below the table opens a quick-add dialog. Requires Purchase Orders read access; the button additionally requires Purchase Orders write access.
+- **Shopping Lists** — all shopping lists that currently contain this part, ordered alphabetically by list name. Shows list name (click to open that list), quantity requested, and notes. An **Add to shopping list** button below the table opens a quick-add dialog. Requires Shopping Lists read access; the button additionally requires Shopping Lists write access.
+
+### Quick-Add to Purchase Order
+
+From either the row action button (visible in each part row when you have Purchase Orders write access) or the **Add to PO** button in the detail panel, you can add the part to a draft Purchase Order without leaving the parts list.
+
+The dialog lets you:
+- Choose an existing **Draft** PO from a list (displayed as order number and supplier). If the part is already on the selected PO, the quantity is merged into the last matching line rather than creating a duplicate.
+- Or switch to **Create new purchase order** mode: choose a supplier from the autocomplete and optionally set an order number. A new Draft PO is created and the part is added in one step.
+- Enter the **Quantity** to add.
+
+On success a toast confirms the action and the PO history section refreshes automatically.
+
+### Quick-Add to Shopping List
+
+From either the row action button (visible in each part row when you have Shopping Lists write access) or the **Add to shopping list** button in the detail panel, you can add the part to a shopping list without leaving the parts list.
+
+The dialog lets you:
+- Choose an existing shopping list from a list (displayed as name and item count). If the part is already on the selected list, the quantity is merged into the last matching line rather than creating a duplicate.
+- Or switch to **Create new shopping list** mode: enter a list name. The list is created and the part is added in one step.
+- Enter the **Quantity** to add and optionally a **Notes** field (shown when adding to an existing list).
+
+On success a toast confirms the action and the Shopping Lists section in the detail panel refreshes automatically.
 
 ## 4. Organize Your Category Structure
 
