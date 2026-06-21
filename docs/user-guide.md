@@ -236,6 +236,17 @@ A shopping list has no supplier and no formal status — it is a flexible scratc
 2. Click **Add item**, search for a part by catalog number or description, set a quantity, and save.
 3. Items show an **On order** badge when they have been included in a purchase order. The badge shows the order number (e.g. **On order: #PO-2026-001**) when available, or the supplier name as a fallback.
 
+### Adding Multiple Items At Once
+
+Click **Add multiple items** (next to **Add item** in the detail panel) to open the part picker wizard. This is a two-step flow:
+
+**Step 1 — Select parts.** A full-featured parts list opens in a dialog. You can search, filter by category or manufacturer, sort and resize columns, and configure which columns are visible — the same way as the main parts list. Column layout is saved independently per context (so the shopping list picker and the purchase order picker each remember their own column configuration). Parts already on the list are shown with an **Already on list** badge; you may still select them (the quantity will be merged). Select parts using the checkbox column, then click **Set quantities**.
+
+**Step 2 — Set quantities.** Each selected part appears in a table with a quantity input (default: 1). Parts already on the list are flagged. Click **Add item(s)** to commit.
+
+- **Back** returns to step 1 with your selection and any quantities you already entered preserved.
+- If a selected part is already on the list, its existing quantity is incremented rather than creating a duplicate line.
+
 ### Converting Items To A Purchase Order
 
 1. Select one or more items using the checkboxes in the detail panel. Items already on a purchase order have a disabled checkbox and cannot be re-converted.
@@ -287,6 +298,18 @@ OSO tracks net prices and computes gross amounts on the fly.
 
 1. Click an order row to open the detail panel on the right.
 2. Click **Add item**, search for a part, enter a quantity, and optionally fill in a supplier SKU, price (net or gross depending on the PO's price entry mode), and a per-item tax rate override.
+
+### Adding Multiple Items At Once
+
+Click **Add multiple items** (next to **Add item** in the detail panel, visible when the order is not yet Received) to open the part picker wizard. This is a two-step flow:
+
+**Step 1 — Select parts.** A full-featured parts list opens in a dialog. You can search, filter by category or manufacturer, sort and resize columns, and configure which columns are visible — the same way as the main parts list. Column layout is saved independently per context. Parts already on the order are shown with an **Already on order** badge; you may still select them. Select parts using the checkbox column, then click **Set quantities**.
+
+**Step 2 — Set quantities.** Each selected part appears in a table with a quantity input (default: 1). Parts already on the order are flagged. Click **Add item(s)** to commit.
+
+- **Back** returns to step 1 with your selection and quantities preserved.
+- If a selected part is already on the order, its existing quantity is incremented rather than creating a duplicate line.
+- Price fields are not set at this stage; edit individual items afterwards to add prices.
 3. A computed panel shows the complementary price (gross if net mode, net if gross mode). If the order is marked as ordered and the currencies differ, primary-currency equivalents are also shown.
 4. Click **Look up** next to the supplier SKU field to auto-fill the SKU from the active DigiKey or TME integration.
 

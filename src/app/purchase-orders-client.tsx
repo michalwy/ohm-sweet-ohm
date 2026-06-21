@@ -70,6 +70,7 @@ import {
 } from "@/app/list-table-config";
 import { ListPageToolbar, ListTableHeaderCell, useColumnDragReorder, useColumnResizeCursor } from "@/app/list-page-toolbar";
 import { DetailPanel, useDetailsPanelWidth } from "@/app/detail-panel";
+import { MultiAddToPODialog, type MultiAddToPOCopy } from "@/app/multi-add-to-po-dialog";
 
 function roundDisplay(n: number): string {
   return n.toFixed(2);
@@ -196,10 +197,13 @@ type Copy = {
   exchangeRateUnavailableBody: string;
   manualRateLabel: string;
   manualRateSubmit: string;
+  multiAdd: MultiAddToPOCopy;
 };
 
 type PurchaseOrdersClientProps = {
   canWrite: boolean;
+  canReadInventory: boolean;
+  canReadShoppingLists: boolean;
   copy: Copy;
   initialPage: ListPage<PurchaseOrderSummary>;
   initialSelectedOrderId?: string;
@@ -217,6 +221,8 @@ const columnHelper = createColumnHelper<PurchaseOrderSummary>();
 
 export function PurchaseOrdersClient({
   canWrite,
+  canReadInventory,
+  canReadShoppingLists,
   copy,
   initialPage,
   initialSelectedOrderId,
@@ -256,6 +262,7 @@ export function PurchaseOrdersClient({
   const [itemTaxRate, setItemTaxRate] = useState("");
   const [itemCurrency, setItemCurrency] = useState("");
   const [dialogFormKey, setDialogFormKey] = useState(0);
+  const [multiAddPOOpen, setMultiAddPOOpen] = useState(false);
   const { isResizingColumn, setIsResizingColumn, containerClassName } = useColumnResizeCursor();
   const [toastMessages, setToastMessages] = useState<ToastMessage[]>([]);
   const nextToastIdRef = useRef(0);
@@ -759,6 +766,10 @@ export function PurchaseOrdersClient({
 
   const detail = orderDetail as PurchaseOrderDetail | null | undefined;
   const detailItems = detail?.items ?? [];
+  const existingParts = useMemo(
+    () => new Map(detailItems.map((item) => [item.partId, item.quantity])),
+    [detailItems]
+  );
   const unreceived = detailItems.filter(
     (item) => parseFloat(item.receivedQuantity) < parseFloat(item.quantity)
   );
@@ -1216,14 +1227,24 @@ export function PurchaseOrdersClient({
               <div className="flex items-center justify-between">
                 <h3 className="text-sm font-semibold text-slate-900">{copy.items}</h3>
                 {detail?.status !== "RECEIVED" ? (
-                  <button
-                    className="inline-flex min-h-8 items-center rounded-md bg-[var(--color-accent)] px-3 text-sm font-semibold text-white transition hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-60"
-                    type="button"
-                    disabled={!canWrite}
-                    onClick={openCreateItemDialog}
-                  >
-                    {copy.addItem}
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <button
+                      className="inline-flex min-h-8 items-center rounded-md border border-slate-300 bg-white px-3 text-sm font-medium text-slate-700 transition hover:border-slate-400 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+                      type="button"
+                      disabled={!canWrite}
+                      onClick={() => setMultiAddPOOpen(true)}
+                    >
+                      {copy.multiAdd.pickerTitle}
+                    </button>
+                    <button
+                      className="inline-flex min-h-8 items-center rounded-md bg-[var(--color-accent)] px-3 text-sm font-semibold text-white transition hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-60"
+                      type="button"
+                      disabled={!canWrite}
+                      onClick={openCreateItemDialog}
+                    >
+                      {copy.addItem}
+                    </button>
+                  </div>
                 ) : null}
               </div>
 
@@ -2051,6 +2072,25 @@ export function PurchaseOrdersClient({
           </div>
         ) : null}
       </DialogShell>
+
+      {selectedOrderId ? (
+        <MultiAddToPODialog
+          workspaceSlug={workspaceSlug}
+          orderId={selectedOrderId}
+          existingParts={existingParts}
+          open={multiAddPOOpen}
+          copy={copy.multiAdd}
+          canReadInventory={canReadInventory}
+          canReadShoppingLists={canReadShoppingLists}
+          canReadPurchaseOrders={true}
+          onClose={() => setMultiAddPOOpen(false)}
+          onSuccess={() => {
+            refreshDetail(selectedOrderId);
+            reloadOrders();
+            addToast(copy.itemAddedToast);
+          }}
+        />
+      ) : null}
 
       <ToastNotice messages={toastMessages} onDismiss={(id) => setToastMessages((msgs) => msgs.filter((m) => m.id !== id))} />
     </>

@@ -288,4 +288,105 @@ test.describe("purchase orders", () => {
     await page.locator("dialog[open]").filter({ hasText: "This cannot be undone." }).getByRole("button", { name: "Delete" }).click();
     await expect(page.getByRole("status")).toHaveText("Order deleted");
   });
+
+  test("adds multiple items to a purchase order via part picker", async ({ page }, testInfo) => {
+    const supplierName = uniqueName("E2E PO MultiAdd Supplier", testInfo);
+
+    await ensureSupplierOrg(supplierName);
+
+    await signInAsOwner(page);
+    await page.getByRole("link", { name: "Purchase Orders" }).click();
+    await expect(page).toHaveURL(/\/w\/default\/purchase-orders$/);
+
+    // Create PO
+    await page.getByRole("button", { name: "New order" }).click();
+    const dialog = page.getByRole("dialog", { name: "New purchase order" });
+    await dialog.locator('select[name="supplierId"]').selectOption({ label: supplierName });
+    await dialog.getByRole("button", { name: "Create order" }).click();
+    await expect(page.getByRole("status")).toHaveText("Order created");
+
+    // Detail panel auto-opens
+    await expect(page.getByText("No items yet. Add parts to this order.")).toBeVisible();
+
+    // Open multi-add picker
+    await page.getByRole("button", { name: "Add multiple items" }).click();
+    const pickerDialog = page.getByRole("dialog", { name: "Add multiple items" });
+    await expect(pickerDialog).toBeVisible();
+
+    // Wait for parts to load and select both
+    await expect(pickerDialog.getByRole("checkbox", { name: "NE555P" })).toBeVisible({ timeout: 10000 });
+    await pickerDialog.getByRole("checkbox", { name: "NE555P" }).check();
+    await pickerDialog.getByRole("checkbox", { name: "1N4148W" }).check();
+
+    // Confirm selection → move to quantities step
+    await pickerDialog.getByRole("button", { name: /Set quantities/ }).click();
+
+    // Step 2 — quantities dialog
+    const qtyDialog = page.getByRole("dialog", { name: "Set quantities" });
+    await expect(qtyDialog).toBeVisible();
+    await expect(qtyDialog.getByText("NE555P")).toBeVisible();
+    await expect(qtyDialog.getByText("1N4148W")).toBeVisible();
+
+    // Set custom quantity for NE555P
+    const ne555pRow = qtyDialog.locator("tr").filter({ hasText: "NE555P" });
+    await ne555pRow.getByRole("spinbutton").fill("5");
+
+    // Submit
+    await qtyDialog.getByRole("button", { name: /Add 2 items/ }).click();
+
+    await expect(page.getByRole("status")).toHaveText("Item added");
+    // Both parts should now appear in the order detail
+    await expect(page.getByRole("cell", { name: /NE555P/ }).first()).toBeVisible();
+    await expect(page.getByRole("cell", { name: /1N4148W/ }).first()).toBeVisible();
+  });
+
+  test("back button in multi-add wizard preserves selection and quantities", async ({ page }, testInfo) => {
+    const supplierName = uniqueName("E2E PO Back Supplier", testInfo);
+
+    await ensureSupplierOrg(supplierName);
+
+    await signInAsOwner(page);
+    await page.getByRole("link", { name: "Purchase Orders" }).click();
+    await expect(page).toHaveURL(/\/w\/default\/purchase-orders$/);
+
+    // Create PO
+    await page.getByRole("button", { name: "New order" }).click();
+    const dialog = page.getByRole("dialog", { name: "New purchase order" });
+    await dialog.locator('select[name="supplierId"]').selectOption({ label: supplierName });
+    await dialog.getByRole("button", { name: "Create order" }).click();
+    await expect(page.getByRole("status")).toHaveText("Order created");
+    await expect(page.getByText("No items yet. Add parts to this order.")).toBeVisible();
+
+    // Open picker, select NE555P
+    await page.getByRole("button", { name: "Add multiple items" }).click();
+    const pickerDialog = page.getByRole("dialog", { name: "Add multiple items" });
+    await expect(pickerDialog.getByRole("checkbox", { name: "NE555P" })).toBeVisible({ timeout: 10000 });
+    await pickerDialog.getByRole("checkbox", { name: "NE555P" }).check();
+
+    // Go to step 2
+    await pickerDialog.getByRole("button", { name: /Set quantities/ }).click();
+    const qtyDialog = page.getByRole("dialog", { name: "Set quantities" });
+    await expect(qtyDialog).toBeVisible();
+
+    // Set a qty
+    const row = qtyDialog.locator("tr").filter({ hasText: "NE555P" });
+    await row.getByRole("spinbutton").fill("3");
+
+    // Click Back
+    await qtyDialog.getByRole("button", { name: "← Back" }).click();
+
+    // Picker reopens with NE555P still checked
+    const pickerDialog2 = page.getByRole("dialog", { name: "Add multiple items" });
+    await expect(pickerDialog2.getByRole("checkbox", { name: "NE555P" })).toBeChecked({ timeout: 5000 });
+
+    // Go back to step 2 — quantity should be preserved
+    await pickerDialog2.getByRole("button", { name: /Set quantities/ }).click();
+    const qtyDialog2 = page.getByRole("dialog", { name: "Set quantities" });
+    const row2 = qtyDialog2.locator("tr").filter({ hasText: "NE555P" });
+    await expect(row2.getByRole("spinbutton")).toHaveValue("3");
+
+    // Submit
+    await qtyDialog2.getByRole("button", { name: /Add/ }).click();
+    await expect(page.getByRole("status")).toHaveText("Item added");
+  });
 });

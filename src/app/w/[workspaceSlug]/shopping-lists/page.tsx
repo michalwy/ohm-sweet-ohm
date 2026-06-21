@@ -97,7 +97,61 @@ const copy = {
   sortingLabel: "Sort",
   clearSorting: "None",
   resetListConfiguration: "Reset defaults",
-  listCountSummary: "{visible} of {total} lists"
+  listCountSummary: "{visible} of {total} lists",
+  multiAdd: {
+    // picker step
+    pickerTitle: "Add multiple items",
+    title: "Add multiple items",
+    cancel: "Cancel",
+    confirmSelection: "Set quantities ({count})",
+    partsSelected: "{count} selected",
+    alreadyAdded: "Already on list",
+    filteredPartsSummary: "{visible} of {total} parts",
+    configureList: "Configure list",
+    clearFilters: "Clear filters",
+    visibleColumns: "Columns",
+    attributeColumns: "Attribute columns",
+    emptyTitle: "No parts yet",
+    emptyBody: "Add parts to your workspace to start building lists.",
+    noMatchingPartsTitle: "No matching parts",
+    noMatchingPartsBody: "Try a different search or clear the filters.",
+    loadingParts: "Loading parts…",
+    loadingMoreParts: "Loading more…",
+    databaseUnavailable: "Database is not available.",
+    // filter bar
+    searchParts: "Search parts",
+    searchPartsPlaceholder: "Search by catalog number or description",
+    filterByCategory: "Category",
+    allCategories: "All categories",
+    filterByManufacturer: "Manufacturer",
+    allManufacturers: "All manufacturers",
+    noMatchingManufacturers: "No matching manufacturers",
+    searchCategories: "Search categories",
+    noMatchingCategories: "No matching categories",
+    expandCategory: "Expand",
+    collapseCategory: "Collapse",
+    // column headers
+    noCategory: "—",
+    categories: "Category",
+    manufacturer: "Manufacturer",
+    catalogNumber: "Catalog number",
+    description: "Description",
+    value: "Value",
+    stock: "Stock",
+    planned: "Planned",
+    onOrder: "On order",
+    avgNetCost: "Avg net cost",
+    avgGrossCost: "Avg gross cost",
+    defaultLocation: "Default location",
+    // quantities step
+    quantitiesTitle: "Set quantities",
+    part: "Part",
+    quantity: "Quantity",
+    back: "← Back",
+    addItems: "Add {count} items",
+    addItem: "Add item",
+    submitting: "Adding…"
+  }
 };
 
 type ShoppingListsPageProps = {
@@ -125,12 +179,22 @@ export default async function ShoppingListsPage({
 
   const emptyPage = { items: [], nextCursor: null, totalCount: 0, filteredCount: 0 };
 
-  const [initialPage, canWrite] = await Promise.all([
+  const [initialPage, canWrite, canReadInventory, canReadPurchaseOrders] = await Promise.all([
     getShoppingLists(context.workspace.id).catch(() => emptyPage),
     hasWorkspacePermission({
       userId: context.user.id,
       workspaceId: context.workspace.id,
       permission: "shopping-lists:write"
+    }).catch(() => false),
+    hasWorkspacePermission({
+      userId: context.user.id,
+      workspaceId: context.workspace.id,
+      permission: "inventory:read"
+    }).catch(() => false),
+    hasWorkspacePermission({
+      userId: context.user.id,
+      workspaceId: context.workspace.id,
+      permission: "purchase-orders:read"
     }).catch(() => false)
   ]);
 
@@ -145,6 +209,8 @@ export default async function ShoppingListsPage({
     >
       <ShoppingListsClient
         canWrite={canWrite}
+        canReadInventory={canReadInventory}
+        canReadPurchaseOrders={canReadPurchaseOrders}
         copy={copy}
         initialPage={initialPage}
         initialSelectedListId={resolvedSearchParams?.selectedListId}

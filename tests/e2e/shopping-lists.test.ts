@@ -213,4 +213,106 @@ test.describe("shopping lists", () => {
     await expect(page.getByRole("status")).toHaveText("List deleted");
     await expect(page.getByRole("cell", { name: updatedName })).toHaveCount(0);
   });
+
+  test("adds multiple items to a shopping list via part picker", async ({ page }, testInfo) => {
+    const listName = uniqueName("E2E SL MultiAdd", testInfo);
+
+    await signInAsOwner(page);
+    await page.getByRole("link", { name: "Shopping Lists" }).click();
+    await expect(page).toHaveURL(/\/w\/default\/shopping-lists$/);
+
+    // Create list
+    await page.getByRole("button", { name: "New list" }).click();
+    const dialog = page.getByRole("dialog", { name: "New shopping list" });
+    await dialog.getByLabel("Name").fill(listName);
+    await dialog.getByRole("button", { name: "Create list" }).click();
+    await expect(page.getByRole("status")).toHaveText("List created");
+
+    // Select the new list
+    const listRow = page.getByRole("button", { name: new RegExp(listName) });
+    await listRow.click();
+    await expect(page.getByText("No items yet")).toBeVisible();
+
+    // Open multi-add picker
+    await page.getByRole("button", { name: "Add multiple items" }).click();
+    const pickerDialog = page.getByRole("dialog", { name: "Add multiple items" });
+    await expect(pickerDialog).toBeVisible();
+
+    // Wait for parts and select both
+    await expect(pickerDialog.getByRole("checkbox", { name: "NE555P" })).toBeVisible({ timeout: 10000 });
+    await pickerDialog.getByRole("checkbox", { name: "NE555P" }).check();
+    await pickerDialog.getByRole("checkbox", { name: "1N4148W" }).check();
+
+    // Move to quantities step
+    await pickerDialog.getByRole("button", { name: /Set quantities/ }).click();
+
+    // Step 2 — quantities
+    const qtyDialog = page.getByRole("dialog", { name: "Set quantities" });
+    await expect(qtyDialog).toBeVisible();
+    await expect(qtyDialog.getByText("NE555P")).toBeVisible();
+    await expect(qtyDialog.getByText("1N4148W")).toBeVisible();
+
+    // Set quantities
+    const ne555pRow = qtyDialog.locator("tr").filter({ hasText: "NE555P" });
+    await ne555pRow.getByRole("spinbutton").fill("10");
+    const diodeRow = qtyDialog.locator("tr").filter({ hasText: "1N4148W" });
+    await diodeRow.getByRole("spinbutton").fill("20");
+
+    await qtyDialog.getByRole("button", { name: /Add 2 items/ }).click();
+
+    await expect(page.getByRole("status")).toHaveText("Item added");
+    // Both parts should appear in the list
+    await expect(page.getByRole("cell", { name: /NE555P/ }).first()).toBeVisible();
+    await expect(page.getByRole("cell", { name: /1N4148W/ }).first()).toBeVisible();
+  });
+
+  test("multi-add merges quantity when part already on shopping list", async ({ page }, testInfo) => {
+    const listName = uniqueName("E2E SL Merge", testInfo);
+
+    await signInAsOwner(page);
+    await page.getByRole("link", { name: "Shopping Lists" }).click();
+    await expect(page).toHaveURL(/\/w\/default\/shopping-lists$/);
+
+    // Create list
+    await page.getByRole("button", { name: "New list" }).click();
+    const dialog = page.getByRole("dialog", { name: "New shopping list" });
+    await dialog.getByLabel("Name").fill(listName);
+    await dialog.getByRole("button", { name: "Create list" }).click();
+    await expect(page.getByRole("status")).toHaveText("List created");
+
+    const listRow = page.getByRole("button", { name: new RegExp(listName) });
+    await listRow.click();
+    await expect(page.getByText("No items yet")).toBeVisible();
+
+    // Add NE555P via single-add (qty=2)
+    await page.getByRole("button", { name: "Add item" }).click();
+    const itemDialog = page.getByRole("dialog", { name: "Add item" });
+    await itemDialog.getByPlaceholder("Search by catalog number or description").fill("NE555P");
+    const partButton = page.locator("button").filter({ hasText: /NE555P/ }).first();
+    await expect(partButton).toBeVisible();
+    await partButton.click();
+    await itemDialog.getByLabel("Quantity").fill("2");
+    await itemDialog.getByRole("button", { name: "Add item" }).click();
+    await expect(page.getByRole("status")).toHaveText("Item added");
+    await expect(page.getByRole("cell", { name: /NE555P/ }).first()).toBeVisible();
+
+    // Now multi-add NE555P again (qty=3) — should merge to 5
+    await page.getByRole("button", { name: "Add multiple items" }).click();
+    const pickerDialog = page.getByRole("dialog", { name: "Add multiple items" });
+    await expect(pickerDialog.getByRole("checkbox", { name: "NE555P" })).toBeVisible({ timeout: 10000 });
+    // NE555P shows "Already on list" badge but is still selectable
+    await pickerDialog.getByRole("checkbox", { name: "NE555P" }).check();
+    await pickerDialog.getByRole("button", { name: /Set quantities/ }).click();
+
+    const qtyDialog = page.getByRole("dialog", { name: "Set quantities" });
+    await expect(qtyDialog).toBeVisible();
+    const ne555pRow = qtyDialog.locator("tr").filter({ hasText: "NE555P" });
+    await ne555pRow.getByRole("spinbutton").fill("3");
+    await qtyDialog.getByRole("button", { name: /Add/ }).click();
+    await expect(page.getByRole("status")).toHaveText("Item added");
+
+    // Only one row for NE555P (no duplicate), qty should be 5
+    await expect(page.getByRole("cell", { name: /NE555P/ })).toHaveCount(1);
+    await expect(page.getByRole("cell", { name: "5" })).toBeVisible();
+  });
 });

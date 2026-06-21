@@ -59,6 +59,7 @@ import {
   CreatePurchaseOrderDialog,
   type CreatePurchaseOrderDialogCopy,
 } from "@/app/create-purchase-order-dialog";
+import { MultiAddToSLDialog, type MultiAddToSLCopy } from "@/app/multi-add-to-sl-dialog";
 
 
 type Copy = {
@@ -148,10 +149,13 @@ type Copy = {
   clearSorting: string;
   resetListConfiguration: string;
   listCountSummary: string;
+  multiAdd: MultiAddToSLCopy;
 };
 
 type ShoppingListsClientProps = {
   canWrite: boolean;
+  canReadInventory: boolean;
+  canReadPurchaseOrders: boolean;
   copy: Copy;
   initialPage: ListPage<ShoppingListSummary>;
   initialSelectedListId?: string;
@@ -162,6 +166,8 @@ const columnHelper = createColumnHelper<ShoppingListSummary>();
 
 export function ShoppingListsClient({
   canWrite,
+  canReadInventory,
+  canReadPurchaseOrders,
   copy,
   initialPage,
   initialSelectedListId,
@@ -189,6 +195,7 @@ export function ShoppingListsClient({
   const [itemFormErrors, setItemFormErrors] = useState<Record<string, string>>({});
   const [convertFormErrors, setConvertFormErrors] = useState<Record<string, string>>({});
   const [dialogFormKey, setDialogFormKey] = useState(0);
+  const [multiAddSLOpen, setMultiAddSLOpen] = useState(false);
   const { isResizingColumn, setIsResizingColumn, containerClassName } = useColumnResizeCursor();
   const [toastMessages, setToastMessages] = useState<ToastMessage[]>([]);
   const nextToastIdRef = useRef(0);
@@ -681,6 +688,10 @@ export function ShoppingListsClient({
     convertMutation.isPending;
 
   const items = (listDetail as ShoppingListDetail | null | undefined)?.items ?? [];
+  const existingParts = useMemo(
+    () => new Map(items.map((item) => [item.partId, item.quantity])),
+    [items]
+  );
 
   return (
     <>
@@ -838,6 +849,14 @@ export function ShoppingListsClient({
                       {copy.convertToOrder} ({selectedItemIds.size})
                     </button>
                   ) : null}
+                  <button
+                    className="inline-flex min-h-8 items-center rounded-md border border-slate-300 bg-white px-3 text-sm font-medium text-slate-700 transition hover:border-slate-400 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+                    disabled={!canWrite}
+                    type="button"
+                    onClick={() => setMultiAddSLOpen(true)}
+                  >
+                    {copy.multiAdd.pickerTitle}
+                  </button>
                   <button
                     className="inline-flex min-h-8 items-center rounded-md bg-[var(--color-accent)] px-3 text-sm font-semibold text-white transition hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-60"
                     disabled={!canWrite}
@@ -1249,6 +1268,25 @@ export function ShoppingListsClient({
           }
         }}
       />
+
+      {selectedListId ? (
+        <MultiAddToSLDialog
+          workspaceSlug={workspaceSlug}
+          listId={selectedListId}
+          existingParts={existingParts}
+          open={multiAddSLOpen}
+          copy={copy.multiAdd}
+          canReadInventory={canReadInventory}
+          canReadShoppingLists={true}
+          canReadPurchaseOrders={canReadPurchaseOrders}
+          onClose={() => setMultiAddSLOpen(false)}
+          onSuccess={() => {
+            void queryClient.invalidateQueries({ queryKey: ["shopping-list-detail", workspaceSlug, selectedListId] });
+            void queryClient.invalidateQueries({ queryKey: ["shopping-lists", workspaceSlug] });
+            addToast(copy.itemAddedToast);
+          }}
+        />
+      ) : null}
 
       <ToastNotice
         messages={toastMessages}

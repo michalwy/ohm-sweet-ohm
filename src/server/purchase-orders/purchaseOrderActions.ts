@@ -364,6 +364,45 @@ export async function getDraftPurchaseOrdersForWorkspace(input: {
   }
 }
 
+export async function addMultipleOrderItemsForWorkspace(input: {
+  workspaceSlug: string;
+  orderId: string;
+  items: Array<{ partId: string; quantity: string }>;
+}): Promise<PurchaseOrderActionResult<{ addedCount: number }>> {
+  try {
+    const context = await getAuthorizedContext(input.workspaceSlug, "purchase-orders:write");
+    const order = await getPurchaseOrderDetail(context.workspace.id, input.orderId);
+    if (!order) throw new Error("order-not-found");
+
+    const existingByPartId = new Map(order.items.map((item) => [item.partId, item]));
+
+    for (const item of input.items) {
+      const existing = existingByPartId.get(item.partId);
+      if (existing) {
+        const mergedQty = (parseFloat(existing.quantity) + parseFloat(item.quantity)).toString();
+        await updateOrderItem({
+          workspaceId: context.workspace.id,
+          orderId: input.orderId,
+          itemId: existing.id,
+          quantity: mergedQty
+        });
+      } else {
+        await addOrderItem({
+          workspaceId: context.workspace.id,
+          orderId: input.orderId,
+          partId: item.partId,
+          quantity: item.quantity
+        });
+      }
+    }
+
+    revalidatePath(workspacePath(input.workspaceSlug));
+    return success({ addedCount: input.items.length });
+  } catch (error) {
+    return failure(error);
+  }
+}
+
 // --- Helpers ---
 
 async function getAuthorizedContext(

@@ -136,7 +136,61 @@ const copy = {
   exchangeRateUnavailableTitle: "Exchange rate unavailable",
   exchangeRateUnavailableBody: "The exchange rate for {from} → {to} on {date} could not be fetched automatically. Please enter it manually to continue.",
   manualRateLabel: "1 {from} =",
-  manualRateSubmit: "Save rate and continue"
+  manualRateSubmit: "Save rate and continue",
+  multiAdd: {
+    // picker step
+    pickerTitle: "Add multiple items",
+    title: "Add multiple items",
+    cancel: "Cancel",
+    confirmSelection: "Set quantities ({count})",
+    partsSelected: "{count} selected",
+    alreadyAdded: "Already on order",
+    filteredPartsSummary: "{visible} of {total} parts",
+    configureList: "Configure list",
+    clearFilters: "Clear filters",
+    visibleColumns: "Columns",
+    attributeColumns: "Attribute columns",
+    emptyTitle: "No parts yet",
+    emptyBody: "Add parts to your workspace to start building orders.",
+    noMatchingPartsTitle: "No matching parts",
+    noMatchingPartsBody: "Try a different search or clear the filters.",
+    loadingParts: "Loading parts…",
+    loadingMoreParts: "Loading more…",
+    databaseUnavailable: "Database is not available.",
+    // filter bar
+    searchParts: "Search parts",
+    searchPartsPlaceholder: "Search by catalog number or description",
+    filterByCategory: "Category",
+    allCategories: "All categories",
+    filterByManufacturer: "Manufacturer",
+    allManufacturers: "All manufacturers",
+    noMatchingManufacturers: "No matching manufacturers",
+    searchCategories: "Search categories",
+    noMatchingCategories: "No matching categories",
+    expandCategory: "Expand",
+    collapseCategory: "Collapse",
+    // column headers
+    noCategory: "—",
+    categories: "Category",
+    manufacturer: "Manufacturer",
+    catalogNumber: "Catalog number",
+    description: "Description",
+    value: "Value",
+    stock: "Stock",
+    planned: "Planned",
+    onOrder: "On order",
+    avgNetCost: "Avg net cost",
+    avgGrossCost: "Avg gross cost",
+    defaultLocation: "Default location",
+    // quantities step
+    quantitiesTitle: "Set quantities",
+    part: "Part",
+    quantity: "Quantity",
+    back: "← Back",
+    addItems: "Add {count} items",
+    addItem: "Add item",
+    submitting: "Adding…"
+  }
 };
 
 type PurchaseOrdersPageProps = {
@@ -161,13 +215,23 @@ export default async function PurchaseOrdersPage({ params, searchParams }: Purch
 
   const emptyPage = { items: [], nextCursor: null, totalCount: 0, filteredCount: 0 };
 
-  const [initialPage, locations, canWrite] = await Promise.all([
+  const [initialPage, locations, canWrite, canReadInventory, canReadShoppingLists] = await Promise.all([
     getPurchaseOrders(context.workspace.id).catch(() => emptyPage),
     getStorageLocations(context.workspace.id).catch(() => []),
     hasWorkspacePermission({
       userId: context.user.id,
       workspaceId: context.workspace.id,
       permission: "purchase-orders:write"
+    }).catch(() => false),
+    hasWorkspacePermission({
+      userId: context.user.id,
+      workspaceId: context.workspace.id,
+      permission: "inventory:read"
+    }).catch(() => false),
+    hasWorkspacePermission({
+      userId: context.user.id,
+      workspaceId: context.workspace.id,
+      permission: "shopping-lists:read"
     }).catch(() => false)
   ]);
 
@@ -186,6 +250,8 @@ export default async function PurchaseOrdersPage({ params, searchParams }: Purch
       <PurchaseOrdersClient
         copy={copy}
         canWrite={canWrite}
+        canReadInventory={canReadInventory}
+        canReadShoppingLists={canReadShoppingLists}
         initialPage={initialPage}
         initialSelectedOrderId={resolvedSearchParams?.selectedOrderId}
         allLocations={allLocations}

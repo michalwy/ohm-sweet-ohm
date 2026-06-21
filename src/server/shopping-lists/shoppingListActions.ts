@@ -233,6 +233,46 @@ export async function convertShoppingListToOrderForWorkspace(input: {
   }
 }
 
+export async function addMultipleShoppingListItemsForWorkspace(input: {
+  workspaceSlug: string;
+  listId: string;
+  items: Array<{ partId: string; quantity: string }>;
+}): Promise<ShoppingListActionResult<{ addedCount: number }>> {
+  try {
+    const context = await getAuthorizedContext(input.workspaceSlug, "shopping-lists:write");
+    const list = await getShoppingListDetail(context.workspace.id, input.listId);
+    if (!list) throw new Error("list-not-found");
+
+    const existingByPartId = new Map(list.items.map((item) => [item.partId, item]));
+
+    for (const item of input.items) {
+      const existing = existingByPartId.get(item.partId);
+      if (existing) {
+        const mergedQty = (parseFloat(existing.quantity) + parseFloat(item.quantity)).toString();
+        await updateShoppingListItem({
+          workspaceId: context.workspace.id,
+          listId: input.listId,
+          itemId: existing.id,
+          quantity: mergedQty,
+          description: existing.description
+        });
+      } else {
+        await addShoppingListItem({
+          workspaceId: context.workspace.id,
+          listId: input.listId,
+          partId: item.partId,
+          quantity: item.quantity
+        });
+      }
+    }
+
+    revalidatePath(workspacePath(input.workspaceSlug));
+    return success({ addedCount: input.items.length });
+  } catch (error) {
+    return failure(error);
+  }
+}
+
 // --- Helpers ---
 
 async function getAuthorizedContext(

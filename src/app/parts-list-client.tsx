@@ -15,8 +15,6 @@ import {
   useQueryClient
 } from "@tanstack/react-query";
 import {
-  createColumnHelper,
-  flexRender,
   getCoreRowModel,
   useReactTable
 } from "@tanstack/react-table";
@@ -28,7 +26,6 @@ import {
   searchSupplierPartsForWorkspace
 } from "@/server/integrations/supplierActions";
 import { getSupplierMatchingSuggestionsForWorkspace } from "@/server/integrations/matching";
-import { getPartsListPageForWorkspace } from "@/server/parts/listActions";
 import { ManufacturerAutocomplete, type ManufacturerSuggestion } from "@/app/manufacturer-autocomplete";
 import type { PartCategoryListItem } from "@/server/parts/categories";
 import type { PartsListItem } from "@/server/parts/getParts";
@@ -36,12 +33,11 @@ import type { EffectiveCategoryAttribute } from "@/server/parts/attributes";
 import type { AttributeListItem } from "@/server/parts/attributeMutations";
 import type { SupplierProviderKey } from "@/server/integrations/types";
 import type { UnitListItem } from "@/server/units/getUnits";
-import { InfiniteListViewport } from "@/app/infinite-list";
 import { DetailPanel, useDetailsPanelWidth } from "@/app/detail-panel";
 import {
   useListTableConfiguration
 } from "@/app/list-table-config";
-import { ListPageToolbar, ListTableHeaderCell, useColumnDragReorder, useColumnResizeCursor } from "@/app/list-page-toolbar";
+import { ListPageToolbar } from "@/app/list-page-toolbar";
 import {
   getNextToastId,
   ToastNotice,
@@ -64,6 +60,18 @@ import { PartStockDialog } from "@/app/part-stock-dialog";
 import { QuickAddToPODialog } from "@/app/part-quick-add-po-dialog";
 import { QuickAddToSLDialog } from "@/app/part-quick-add-sl-dialog";
 import { useDebouncedValue } from "@/app/use-debounced-value";
+import { usePartsListQuery } from "@/app/use-parts-list-query";
+import { PartsListFilters } from "@/app/parts-list-filters";
+import { buildPartsListColumnDefs, buildPartsListColumns } from "@/app/parts-list-columns";
+import { PartsListTable } from "@/app/parts-list-table";
+import { formatFilteredPartsSummary } from "@/app/parts-list-sort-utils";
+import {
+  CategoryTreeSelect,
+  buildCategoryTree,
+  getCreatePrimaryCategoryFromFilter,
+  getFloatingPanelStyle,
+  type CategoryTreeItem
+} from "@/app/parts-category-tree-select";
 import {
   getPartBalancesForWorkspace,
   getPartInventoryHistoryForWorkspace
@@ -274,10 +282,6 @@ type ListPage<TItem> = {
   filteredCount: number;
 };
 
-type CategoryTreeItem = PartCategoryListItem & {
-  children: CategoryTreeItem[];
-};
-
 type PartDialogTab = "details" | "attributes";
 type PartFormField = "catalogNumber" | "manufacturerName" | "unitId" | "primaryCategoryId" | "secondaryCategoryId" | "submit" | "delete";
 type PartFormErrors = Partial<Record<PartFormField, string>>;
@@ -354,9 +358,6 @@ export function PartsListClient({
   const editDetailsContentRef = useRef<HTMLDivElement>(null);
   const nextToastIdRef = useRef(0);
   const categoryTree = buildCategoryTree(partCategories);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [categoryFilterId, setCategoryFilterId] = useState("");
-  const [manufacturerFilter, setManufacturerFilter] = useState("");
   const [currentManufacturerSuggestions, setCurrentManufacturerSuggestions] =
     useState(manufacturerSuggestions);
   const [toastMessages, setToastMessages] = useState<ToastMessage[]>([]);
@@ -415,141 +416,33 @@ export function PartsListClient({
   const [selectedPartId, setSelectedPartId] = useState<string | null>(
     initialSelectedPartId ?? null
   );
-  const [hoveredPartId, setHoveredPartId] = useState<string | null>(null);
   const {
     width: detailsPanelWidth,
     hasLoaded: hasLoadedDetailsPanelWidth,
     startResizing: startResizingDetailsPanel
   } = useDetailsPanelWidth(`oso:parts-details-panel-width:${workspaceSlug}`, 384);
-  const { isResizingColumn, setIsResizingColumn } = useColumnResizeCursor();
-  const attributeColumnDefinitions = useMemo(
-    () =>
-      workspaceAttributes.map((attribute) => ({
-        id: `attribute:${attribute.id}`,
-        label: attribute.name,
-        group: "attribute" as const,
-        defaultVisible: false,
-        defaultWidth: 160,
-        minWidth: 80,
-        sortable: true,
-        align: "center" as const
-      })),
-    [workspaceAttributes]
-  );
   const listColumns = useMemo(
-    () => [
-      {
-        id: "categories",
-        label: copy.categories,
-        group: "base" as const,
-        defaultWidth: 300,
-        minWidth: 120
-      },
-      {
-        id: "manufacturerName",
-        label: copy.manufacturer,
-        group: "base" as const,
-        defaultWidth: 160,
-        minWidth: 72,
-        sortable: true
-      },
-      {
-        id: "catalogNumber",
-        label: copy.catalogNumber,
-        group: "base" as const,
-        defaultWidth: 190,
-        minWidth: 64,
-        sortable: true
-      },
-      {
-        id: "description",
-        label: copy.description,
-        group: "base" as const,
-        defaultWidth: 360,
-        minWidth: 96,
-        sortable: true
-      },
-      {
-        id: "valueDisplayValue",
-        label: copy.value,
-        group: "base" as const,
-        defaultWidth: 110,
-        minWidth: 64,
-        sortable: true,
-        align: "center" as const
-      },
-      ...(canReadInventory
-        ? [
-            {
-              id: "currentStock",
-              label: copy.stock,
-              group: "base" as const,
-              defaultWidth: 120,
-              minWidth: 72,
-              sortable: true,
-              align: "right" as const
-            }
-          ]
-        : []),
-      ...(canReadShoppingLists
-        ? [
-            {
-              id: "plannedQuantity",
-              label: copy.planned,
-              group: "base" as const,
-              defaultVisible: false,
-              defaultWidth: 120,
-              minWidth: 72,
-              sortable: true,
-              align: "right" as const
-            }
-          ]
-        : []),
-      ...(canReadPurchaseOrders
-        ? [
-            {
-              id: "onOrderQuantity",
-              label: copy.onOrder,
-              group: "base" as const,
-              defaultVisible: false,
-              defaultWidth: 120,
-              minWidth: 72,
-              sortable: true,
-              align: "right" as const
-            },
-            {
-              id: "avgNetCost",
-              label: copy.avgNetCost,
-              group: "base" as const,
-              defaultVisible: false,
-              defaultWidth: 140,
-              minWidth: 80,
-              sortable: true,
-              align: "right" as const
-            },
-            {
-              id: "avgGrossCost",
-              label: copy.avgGrossCost,
-              group: "base" as const,
-              defaultVisible: false,
-              defaultWidth: 140,
-              minWidth: 80,
-              sortable: true,
-              align: "right" as const
-            }
-          ]
-        : []),
-      {
-        id: "defaultLocationName",
-        label: copy.defaultLocation,
-        group: "base" as const,
-        defaultVisible: false,
-        defaultWidth: 160,
-        minWidth: 80
-      },
-      ...attributeColumnDefinitions
-    ],
-    [attributeColumnDefinitions, canReadInventory, canReadShoppingLists, canReadPurchaseOrders, copy]
+    () =>
+      buildPartsListColumnDefs({
+        copy: {
+          categories: copy.categories,
+          manufacturer: copy.manufacturer,
+          catalogNumber: copy.catalogNumber,
+          description: copy.description,
+          value: copy.value,
+          stock: copy.stock,
+          planned: copy.planned,
+          onOrder: copy.onOrder,
+          avgNetCost: copy.avgNetCost,
+          avgGrossCost: copy.avgGrossCost,
+          defaultLocation: copy.defaultLocation
+        },
+        canReadInventory,
+        canReadShoppingLists,
+        canReadPurchaseOrders,
+        workspaceAttributes
+      }),
+    [canReadInventory, canReadShoppingLists, canReadPurchaseOrders, copy, workspaceAttributes]
   );
   const fixedListColumnIds = useMemo(() => ["actions"], []);
   const {
@@ -571,8 +464,28 @@ export function PartsListClient({
     columns: listColumns,
     fixedColumnIds: fixedListColumnIds
   });
-
-  const { draggedColumnId, onDragEnd, onStartDrag, onDropOnto } = useColumnDragReorder(setColumnOrder);
+  const {
+    currentParts,
+    partsCounts,
+    hasActiveFilters,
+    isLoading: partsQueryIsLoading,
+    isError: partsQueryIsError,
+    isFetchingNextPage: partsQueryIsFetchingNextPage,
+    hasNextPage: partsQueryHasNextPage,
+    fetchNextPage: partsQueryFetchNextPage,
+    searchQuery,
+    setSearchQuery,
+    categoryFilterId,
+    setCategoryFilterId,
+    manufacturerFilter,
+    setManufacturerFilter,
+    clearFilters
+  } = usePartsListQuery({
+    workspaceSlug,
+    sorting,
+    initialPage,
+    enabled: isDatabaseAvailable
+  });
 
   const createHasAttributesTab =
     getPartAttributeGroups({
@@ -590,78 +503,13 @@ export function PartsListClient({
       selectedPrimaryCategoryId: editPrimaryCategoryId,
       selectedSecondaryCategoryId: editSecondaryCategoryId
     }).attributes.length > 0;
-  const debouncedSearchQuery = useDebouncedValue(searchQuery, 300);
-  const debouncedManufacturerFilter = useDebouncedValue(manufacturerFilter, 300);
-  const partsQueryKey = [
-    "parts-list",
-    workspaceSlug,
-    {
-      searchQuery: debouncedSearchQuery,
-      categoryFilterId,
-      manufacturerFilter: debouncedManufacturerFilter,
-      sorting
-    }
-  ] as const;
-  const activeSorting = sorting[0] ?? null;
-  const partsQuery = useInfiniteQuery({
-    queryKey: partsQueryKey,
-    enabled: isDatabaseAvailable,
-    initialPageParam: null as string | null,
-    queryFn: async ({ pageParam }) => {
-      const result = await getPartsListPageForWorkspace({
-        workspaceSlug,
-        cursor: pageParam,
-        searchQuery: debouncedSearchQuery,
-        categoryFilterId,
-        manufacturerFilter: debouncedManufacturerFilter,
-        sortBy: activeSorting?.id ?? null,
-        sortDirection: activeSorting?.desc ? "desc" : "asc"
-      });
-
-      if (!result.ok) {
-        throw new Error(result.error);
-      }
-
-      return result.page;
-    },
-    getNextPageParam: (lastPage) => lastPage.nextCursor,
-    placeholderData: keepPreviousData,
-    initialData:
-      !debouncedSearchQuery &&
-      !categoryFilterId &&
-      !debouncedManufacturerFilter &&
-      sorting.length === 0
-        ? {
-            pages: [initialPage],
-            pageParams: [null]
-          }
-        : undefined
-  });
-  const currentParts = useMemo(
-    () => partsQuery.data?.pages.flatMap((page) => page.items) ?? [],
-    [partsQuery.data]
-  );
   const currentPartsById = useMemo(
     () => new Map(currentParts.map((part) => [part.id, part])),
     [currentParts]
   );
-  const partsCounts = partsQuery.data?.pages[0] ?? initialPage;
   const selectedPart = selectedPartId
     ? currentPartsById.get(selectedPartId) ?? null
     : null;
-  const manufacturerFilterOptions = useMemo(
-    () =>
-      currentManufacturerSuggestions
-        .map((suggestion) => suggestion.name)
-        .sort((left, right) =>
-          left.localeCompare(right, "en", { sensitivity: "base" })
-        ),
-    [currentManufacturerSuggestions]
-  );
-  const hasActiveFilters =
-    Boolean(searchQuery.trim()) ||
-    Boolean(categoryFilterId) ||
-    Boolean(manufacturerFilter);
   async function refreshPartsLists() {
     await queryClient.invalidateQueries({
       queryKey: ["parts-list", workspaceSlug]
@@ -788,354 +636,39 @@ export function PartsListClient({
       closeDialog(editDialogRef.current);
     }
   });
-  const columns = useMemo(() => {
-    const columnHelper = createColumnHelper<PartsListItem>();
-    const attributeColumns = workspaceAttributes.map((attribute) =>
-      columnHelper.accessor(
-        (row) =>
-          row.attributeValues.find(
-            (attributeValue) => attributeValue.attributeId === attribute.id
-          )?.displayValue ?? "",
-        {
-          id: `attribute:${attribute.id}`,
-          header: attribute.name,
-          size: 160,
-          minSize: 80,
-          sortingFn: (rowA, rowB) => {
-            const valueA =
-              rowA.original.attributeValues.find(
-                (attributeValue) => attributeValue.attributeId === attribute.id
-              )?.displayValue ?? "";
-            const valueB =
-              rowB.original.attributeValues.find(
-                (attributeValue) => attributeValue.attributeId === attribute.id
-              )?.displayValue ?? "";
-
-            if (attribute.type === "QUANTITY") {
-              return compareQuantityDisplayValues(valueA, valueB);
-            }
-
-            if (attribute.type === "NUMBER") {
-              return compareNumericDisplayValues(valueA, valueB);
-            }
-
-            return compareTextValues(valueA, valueB);
-          },
-          cell: ({ getValue }) => {
-            const value = getValue();
-
-            return value ? (
-              <span className="text-slate-700">{value}</span>
-            ) : (
-              <span className="text-slate-400">-</span>
-            );
-          }
-        }
-      )
-    );
-
-    return [
-      columnHelper.display({
-        id: "categories",
-        header: copy.categories,
-        size: 300,
-        minSize: 120,
-        cell: ({ row }) => (
-          <PartCategoriesSummary copy={copy} part={row.original} />
-        )
-      }),
-      columnHelper.accessor("manufacturerName", {
-        header: copy.manufacturer,
-        size: 160,
-        minSize: 72,
-        cell: ({ getValue }) => (
-          <span className="text-slate-950">{getValue()}</span>
-        )
-      }),
-      columnHelper.accessor("catalogNumber", {
-        header: copy.catalogNumber,
-        size: 190,
-        minSize: 64,
-        cell: ({ getValue }) => (
-          <span className="font-mono text-slate-950">{getValue()}</span>
-        )
-      }),
-      columnHelper.accessor("description", {
-        header: copy.description,
-        size: 360,
-        minSize: 96,
-        cell: ({ getValue }) => {
-          const value = getValue();
-
-          return value ? (
-            <span className="text-slate-700">{value}</span>
-          ) : (
-            <span className="text-slate-400">-</span>
-          );
-        }
-      }),
-      columnHelper.accessor("valueDisplayValue", {
-        header: copy.value,
-        size: 110,
-        minSize: 64,
-        sortingFn: (rowA, rowB) =>
-          compareQuantityDisplayValues(
-            rowA.original.valueDisplayValue ?? "",
-            rowB.original.valueDisplayValue ?? ""
-          ),
-        cell: ({ getValue }) => {
-          const value = getValue();
-
-          return value ? (
-            <span className="text-slate-950">{value}</span>
-          ) : (
-            <span className="text-slate-400">-</span>
-          );
-        }
-      }),
-      ...(canReadInventory
-        ? [
-            columnHelper.accessor("currentStock", {
-              header: () => (
-                <span className="block w-full text-right">{copy.stock}</span>
-              ),
-              size: 120,
-              minSize: 72,
-              sortingFn: (rowA, rowB) =>
-                compareNumericDisplayValues(
-                  rowA.original.currentStock ?? "",
-                  rowB.original.currentStock ?? ""
-                ),
-              cell: ({ getValue }) => {
-                const value = getValue();
-
-                return value ? (
-                  <span className="block text-right text-slate-950">{value}</span>
-                ) : (
-                  <span className="block text-right text-slate-400">-</span>
-                );
-              }
-            })
-          ]
-        : []),
-      ...(canReadShoppingLists
-        ? [
-            columnHelper.accessor("plannedQuantity", {
-              header: () => (
-                <span className="block w-full text-right">{copy.planned}</span>
-              ),
-              size: 120,
-              minSize: 72,
-              sortingFn: (rowA, rowB) =>
-                compareNumericDisplayValues(
-                  rowA.original.plannedQuantity ?? "",
-                  rowB.original.plannedQuantity ?? ""
-                ),
-              cell: ({ getValue }) => {
-                const value = getValue();
-
-                return value ? (
-                  <span className="block text-right text-slate-950">{value}</span>
-                ) : (
-                  <span className="block text-right text-slate-400">-</span>
-                );
-              }
-            })
-          ]
-        : []),
-      ...(canReadPurchaseOrders
-        ? [
-            columnHelper.accessor("onOrderQuantity", {
-              header: () => (
-                <span className="block w-full text-right">{copy.onOrder}</span>
-              ),
-              size: 120,
-              minSize: 72,
-              sortingFn: (rowA, rowB) =>
-                compareNumericDisplayValues(
-                  rowA.original.onOrderQuantity ?? "",
-                  rowB.original.onOrderQuantity ?? ""
-                ),
-              cell: ({ getValue }) => {
-                const value = getValue();
-
-                return value ? (
-                  <span className="block text-right text-slate-950">{value}</span>
-                ) : (
-                  <span className="block text-right text-slate-400">-</span>
-                );
-              }
-            }),
-            columnHelper.accessor("avgNetCost", {
-              id: "avgNetCost",
-              header: () => (
-                <span className="block w-full text-right">{copy.avgNetCost}</span>
-              ),
-              size: 140,
-              minSize: 80,
-              cell: ({ getValue }) => {
-                const value = getValue();
-                return value ? (
-                  <span className="block text-right font-mono text-slate-700">{value}</span>
-                ) : (
-                  <span className="block text-right text-slate-400">-</span>
-                );
-              }
-            }),
-            columnHelper.accessor("avgGrossCost", {
-              id: "avgGrossCost",
-              header: () => (
-                <span className="block w-full text-right">{copy.avgGrossCost}</span>
-              ),
-              size: 140,
-              minSize: 80,
-              cell: ({ getValue }) => {
-                const value = getValue();
-                return value ? (
-                  <span className="block text-right font-mono text-slate-700">{value}</span>
-                ) : (
-                  <span className="block text-right text-slate-400">-</span>
-                );
-              }
-            })
-          ]
-        : []),
-      columnHelper.accessor("defaultLocationName", {
-        header: () => copy.defaultLocation,
-        size: 160,
-        minSize: 80,
-        cell: ({ getValue }) => {
-          const value = getValue();
-          return value ? (
-            <span className="text-slate-950">{value}</span>
-          ) : (
-            <span className="text-slate-400">-</span>
-          );
-        }
-      }),
-      columnHelper.display({
-        id: "actions",
-        header: "",
-        size: 104 + (canWritePurchaseOrders ? 48 : 0) + (canWriteShoppingLists ? 48 : 0),
-        minSize: 104 + (canWritePurchaseOrders ? 48 : 0) + (canWriteShoppingLists ? 48 : 0),
-        maxSize: 104 + (canWritePurchaseOrders ? 48 : 0) + (canWriteShoppingLists ? 48 : 0),
-        enableResizing: false,
-        cell: ({ row }) => (
-          <div className="flex justify-end gap-2">
-            <button
-              className="min-h-8 rounded-md border border-slate-300 bg-white px-2.5 py-1 text-sm font-medium text-slate-700 transition hover:border-slate-400 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400"
-              aria-label={copy.editPart}
-              disabled={!isDatabaseAvailable}
-              type="button"
-              onClick={(event) => {
-                event.stopPropagation();
-                openEditDialog(row.original);
-              }}
-            >
-              <svg
-                aria-hidden="true"
-                className="h-4 w-4"
-                viewBox="0 0 20 20"
-                fill="none"
-                xmlns="http://www.w3.org/2000/svg"
-              >
-                <path
-                  d="M13.9 3.3a1.5 1.5 0 0 1 2.1 0l.7.7a1.5 1.5 0 0 1 0 2.1l-8.4 8.4-3.3.8.8-3.3 8.4-8.4Z"
-                  stroke="currentColor"
-                  strokeWidth="1.5"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </svg>
-            </button>
-            {canWritePurchaseOrders ? (
-              <button
-                className="min-h-8 rounded-md border border-slate-300 bg-white px-2.5 py-1 text-sm font-medium text-slate-700 transition hover:border-slate-400 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400"
-                aria-label={copy.addToPurchaseOrder}
-                disabled={!isDatabaseAvailable}
-                type="button"
-                onClick={(event) => {
-                  event.stopPropagation();
-                  setPartForPODialog(row.original);
-                }}
-              >
-                <svg
-                  aria-hidden="true"
-                  className="h-4 w-4"
-                  viewBox="0 0 20 20"
-                  fill="none"
-                  xmlns="http://www.w3.org/2000/svg"
-                >
-                  <path
-                    d="M3 4h2l2.5 8h7l2-5.5H6.5M8 15.5a1 1 0 1 0 2 0 1 1 0 0 0-2 0Zm5.5 0a1 1 0 1 0 2 0 1 1 0 0 0-2 0Z"
-                    stroke="currentColor"
-                    strokeWidth="1.5"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                </svg>
-              </button>
-            ) : null}
-            {canWriteShoppingLists ? (
-              <button
-                className="min-h-8 rounded-md border border-slate-300 bg-white px-2.5 py-1 text-sm font-medium text-slate-700 transition hover:border-slate-400 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400"
-                aria-label={copy.addToShoppingList}
-                disabled={!isDatabaseAvailable}
-                type="button"
-                onClick={(event) => {
-                  event.stopPropagation();
-                  setPartForSLDialog(row.original);
-                }}
-              >
-                <svg
-                  aria-hidden="true"
-                  className="h-4 w-4"
-                  viewBox="0 0 20 20"
-                  fill="none"
-                  xmlns="http://www.w3.org/2000/svg"
-                >
-                  <path
-                    d="M5 5h10M5 8h6M5 11h4M13 11v6m-3-3h6"
-                    stroke="currentColor"
-                    strokeWidth="1.5"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                </svg>
-              </button>
-            ) : null}
-            <button
-              className="min-h-8 rounded-md border border-[var(--color-error-border)] bg-white px-2.5 py-1 text-sm font-medium text-[var(--color-error)] transition hover:bg-[var(--color-error-soft)] focus:outline-none focus:ring-2 focus:ring-[var(--color-error-border)] focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400"
-              aria-label={copy.deletePart}
-              disabled={!isDatabaseAvailable || deletePartMutation.isPending}
-              type="button"
-              onClick={(event) => {
-                event.stopPropagation();
-                handleDeletePart(row.original);
-              }}
-            >
-              <svg
-                aria-hidden="true"
-                className="h-4 w-4"
-                viewBox="0 0 20 20"
-                fill="none"
-                xmlns="http://www.w3.org/2000/svg"
-              >
-                <path
-                  d="M5.5 6h9m-7.5 0V4.75A1.75 1.75 0 0 1 8.75 3h2.5A1.75 1.75 0 0 1 13 4.75V6m-6.5 0 .6 9.1A1.75 1.75 0 0 0 8.84 16.75h2.32a1.75 1.75 0 0 0 1.74-1.65L13.5 6M8.75 8.5v5m2.5-5v5"
-                  stroke="currentColor"
-                  strokeWidth="1.5"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </svg>
-            </button>
-          </div>
-        )
-      }),
-      ...attributeColumns
-    ];
-  }, [
+  const columns = useMemo(() => buildPartsListColumns({
+    mode: "full",
+    copy: {
+      noCategory: copy.noCategory,
+      categories: copy.categories,
+      manufacturer: copy.manufacturer,
+      catalogNumber: copy.catalogNumber,
+      description: copy.description,
+      value: copy.value,
+      stock: copy.stock,
+      planned: copy.planned,
+      onOrder: copy.onOrder,
+      avgNetCost: copy.avgNetCost,
+      avgGrossCost: copy.avgGrossCost,
+      defaultLocation: copy.defaultLocation,
+      editPart: copy.editPart,
+      deletePart: copy.deletePart,
+      addToPurchaseOrder: copy.addToPurchaseOrder,
+      addToShoppingList: copy.addToShoppingList
+    },
+    canReadInventory,
+    canReadShoppingLists,
+    canReadPurchaseOrders,
+    workspaceAttributes,
+    isDatabaseAvailable,
+    isDeletePending: deletePartMutation.isPending,
+    canWriteShoppingLists,
+    canWritePurchaseOrders,
+    onEditPart: openEditDialog,
+    onDeletePart: handleDeletePart,
+    onAddToPO: canWritePurchaseOrders ? (part) => setPartForPODialog(part) : undefined,
+    onAddToSL: canWriteShoppingLists ? (part) => setPartForSLDialog(part) : undefined
+  }), [
     canReadInventory,
     canReadShoppingLists,
     canReadPurchaseOrders,
@@ -1841,54 +1374,20 @@ export function PartsListClient({
           totalCount={partsCounts.totalCount}
           visibleColumnsLabel={copy.visibleColumns}
           setColumnVisible={setColumnVisible}
-          onClearFilters={() => {
-            setSearchQuery("");
-            setCategoryFilterId("");
-            setManufacturerFilter("");
-          }}
+          onClearFilters={clearFilters}
           filterContent={
-            <>
-              <label className="grid min-w-72 gap-1.5 text-sm font-medium text-slate-700">
-                {copy.searchParts}
-                <input
-                  className="min-h-9 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-950 outline-none transition placeholder:text-slate-400 hover:border-slate-400 focus:border-slate-500 focus:ring-2 focus:ring-slate-200"
-                  placeholder={copy.searchPartsPlaceholder}
-                  type="search"
-                  value={searchQuery}
-                  onChange={(event) => setSearchQuery(event.currentTarget.value)}
-                />
-              </label>
-              <div className="min-w-56">
-                <CategoryTreeSelect
-                  allowOrganizationalCategories
-                  buttonClassName={compactCategorySelectButtonClassName}
-                  categories={partCategories}
-                  categoryTree={categoryTree}
-                  copy={copy}
-                  disabled={!isDatabaseAvailable}
-                  label={copy.filterByCategory}
-                  name="categoryFilterId"
-                  noSelectionLabel={copy.allCategories}
-                  selectedId={categoryFilterId}
-                  onSelectedIdChange={setCategoryFilterId}
-                />
-              </div>
-              <ManufacturerAutocomplete
-                compact
-                disabled={!isDatabaseAvailable}
-                inputId="manufacturer-filter"
-                label={copy.filterByManufacturer}
-                noMatchingLabel={copy.noMatchingManufacturers}
-                name="manufacturerFilter"
-                placeholder={copy.allManufacturers}
-                suggestions={manufacturerFilterOptions.map((manufacturerName) => ({
-                  id: manufacturerName,
-                  name: manufacturerName
-                }))}
-                value={manufacturerFilter}
-                onValueChange={setManufacturerFilter}
-              />
-            </>
+            <PartsListFilters
+              copy={copy}
+              searchQuery={searchQuery}
+              onSearchChange={setSearchQuery}
+              categoryFilterId={categoryFilterId}
+              onCategoryChange={setCategoryFilterId}
+              manufacturerFilter={manufacturerFilter}
+              onManufacturerChange={setManufacturerFilter}
+              partCategories={partCategories}
+              manufacturerOptions={currentManufacturerSuggestions}
+              disabled={!isDatabaseAvailable}
+            />
           }
           primaryAction={
             <button
@@ -1901,7 +1400,19 @@ export function PartsListClient({
             </button>
           }
         />
-        <InfiniteListViewport
+        <PartsListTable
+          table={partsTable}
+          columnDefs={listColumns}
+          setColumnSorting={setColumnSorting}
+          setColumnWidth={setColumnWidth}
+          hasNextPage={partsQueryHasNextPage}
+          isFetchingNextPage={partsQueryIsFetchingNextPage}
+          isInitialLoading={partsQueryIsLoading || !isListConfigurationLoaded}
+          isError={partsQueryIsError}
+          isEmpty={currentParts.length === 0}
+          loadMore={partsQueryFetchNextPage}
+          loadingLabel={copy.loadingParts}
+          loadingMoreLabel={copy.loadingMoreParts}
           emptyState={
             <div className="px-4 py-10">
               <p className="text-base font-medium text-slate-950">
@@ -1917,108 +1428,13 @@ export function PartsListClient({
               {copy.databaseUnavailable}
             </p>
           }
-          hasNextPage={Boolean(partsQuery.hasNextPage)}
-          isEmpty={currentParts.length === 0}
-          isError={partsQuery.isError}
-          isFetchingNextPage={partsQuery.isFetchingNextPage}
-          isInitialLoading={partsQuery.isLoading || !isListConfigurationLoaded}
-          loadingLabel={copy.loadingParts}
-          loadingMoreLabel={copy.loadingMoreParts}
-          loadMore={() => {
-            void partsQuery.fetchNextPage();
-          }}
           testId="parts-list-viewport"
-        >
-          <table
-            className="table-fixed border-separate border-spacing-0 text-left text-sm"
-            style={{ width: partsTable.getTotalSize() }}
-          >
-            <colgroup>
-              {partsTable.getVisibleLeafColumns().map((column) => (
-                <col key={column.id} style={{ width: column.getSize() }} />
-              ))}
-            </colgroup>
-            <thead className="sticky top-0 z-10 bg-slate-50">
-              {partsTable.getHeaderGroups().map((headerGroup) => (
-                <tr key={headerGroup.id}>
-                  {headerGroup.headers.map((header) => (
-                    <ListTableHeaderCell
-                      key={header.id}
-                      columnDefs={listColumns}
-                      className={
-                        header.column.id === "actions"
-                          ? "sticky right-0 z-20 bg-slate-50"
-                          : undefined
-                      }
-                      draggedColumnId={draggedColumnId}
-                      header={header}
-                      isResizingColumn={isResizingColumn}
-                      setColumnSorting={setColumnSorting}
-                      setColumnWidth={setColumnWidth}
-                      setIsResizingColumn={setIsResizingColumn}
-                      onDragEnd={onDragEnd}
-                      onDropOnto={onDropOnto}
-                      onStartDrag={onStartDrag}
-                    />
-                  ))}
-                </tr>
-              ))}
-            </thead>
-            <tbody className="bg-white">
-              {partsTable.getRowModel().rows.map((row) => (
-                <tr
-                  key={row.id}
-                  className={`border-b border-slate-100 ${
-                    row.original.id === selectedPartId
-                      ? "bg-slate-100"
-                      : row.original.id === hoveredPartId
-                        ? "bg-slate-50"
-                        : ""
-                  }`}
-                  role="button"
-                  tabIndex={0}
-                  onClick={() => openPartDetails(row.original)}
-                  onMouseEnter={() => setHoveredPartId(row.original.id)}
-                  onMouseLeave={() => setHoveredPartId((current) =>
-                    current === row.original.id ? null : current
-                  )}
-                  onKeyDown={(event) => {
-                    if (event.key === "Enter" || event.key === " ") {
-                      event.preventDefault();
-                      openPartDetails(row.original);
-                    }
-                  }}
-                >
-                  {row.getVisibleCells().map((cell) => (
-                    <td
-                      key={cell.id}
-                      className={`overflow-hidden border-b border-slate-100 px-2 py-2 text-slate-700 ${
-                        cell.column.id === "actions"
-                          ? row.original.id === selectedPartId
-                            ? "sticky right-0 z-10 bg-slate-100 px-1 py-1.5"
-                            : row.original.id === hoveredPartId
-                              ? "sticky right-0 z-10 bg-slate-50 px-1 py-1.5"
-                              : "sticky right-0 z-10 bg-white px-1 py-1.5"
-                          : cell.column.id.startsWith("attribute:") ||
-                              cell.column.id === "valueDisplayValue"
-                            ? "text-center"
-                            : ""
-                      }`}
-                      style={{ width: cell.column.getSize() }}
-                    >
-                      <div className="overflow-hidden text-ellipsis">
-                        {flexRender(
-                          cell.column.columnDef.cell,
-                          cell.getContext()
-                        )}
-                      </div>
-                    </td>
-                  ))}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </InfiniteListViewport>
+          onRowClick={openPartDetails}
+          getRowHighlightClass={(part) =>
+            part.id === selectedPartId ? "bg-slate-100" : ""
+          }
+          setColumnOrder={setColumnOrder}
+        />
         </section>
         {selectedPart && hasLoadedDetailsPanelWidth ? (
           <DetailPanel
@@ -3226,109 +2642,6 @@ function getPartAttributeValueState(part: PartsListItem) {
   );
 }
 
-const siPrefixFactorBySymbol: Record<string, number> = {
-  p: 1e-12,
-  n: 1e-9,
-  u: 1e-6,
-  µ: 1e-6,
-  m: 1e-3,
-  "": 1,
-  k: 1e3,
-  M: 1e6,
-  G: 1e9
-};
-
-function parseQuantityDisplayValue(value: string) {
-  const normalized = value.trim();
-  if (!normalized) {
-    return null;
-  }
-
-  const match = normalized.match(
-    /^([+-]?\d+(?:[.,]\d+)?)\s*([pnumkMGµ]?)([a-zA-Z]+)?$/u
-  );
-
-  if (!match) {
-    return null;
-  }
-
-  const numericPart = Number(match[1].replace(",", "."));
-  if (!Number.isFinite(numericPart)) {
-    return null;
-  }
-
-  const prefix = match[2] ?? "";
-  const factor = siPrefixFactorBySymbol[prefix];
-
-  if (!factor) {
-    return null;
-  }
-
-  return numericPart * factor;
-}
-
-function compareNumericDisplayValues(left: string, right: string) {
-  const leftNumber = Number(left.replace(",", "."));
-  const rightNumber = Number(right.replace(",", "."));
-  const leftValid = Number.isFinite(leftNumber);
-  const rightValid = Number.isFinite(rightNumber);
-
-  if (!leftValid && !rightValid) {
-    return compareTextValues(left, right);
-  }
-  if (!leftValid) {
-    return 1;
-  }
-  if (!rightValid) {
-    return -1;
-  }
-  if (leftNumber < rightNumber) {
-    return -1;
-  }
-  if (leftNumber > rightNumber) {
-    return 1;
-  }
-  return 0;
-}
-
-function compareQuantityDisplayValues(left: string, right: string) {
-  const leftQuantity = parseQuantityDisplayValue(left);
-  const rightQuantity = parseQuantityDisplayValue(right);
-
-  if (leftQuantity === null && rightQuantity === null) {
-    return compareTextValues(left, right);
-  }
-  if (leftQuantity === null) {
-    return 1;
-  }
-  if (rightQuantity === null) {
-    return -1;
-  }
-  if (leftQuantity < rightQuantity) {
-    return -1;
-  }
-  if (leftQuantity > rightQuantity) {
-    return 1;
-  }
-  return 0;
-}
-
-function compareTextValues(left: string, right: string) {
-  return left.localeCompare(right, "en", {
-    sensitivity: "base",
-    numeric: true
-  });
-}
-
-function formatFilteredPartsSummary(
-  copy: Pick<Copy, "filteredPartsSummary">,
-  counts: { total: number; visible: number }
-) {
-  return copy.filteredPartsSummary
-    .replace("{visible}", counts.visible.toLocaleString("en"))
-    .replace("{total}", counts.total.toLocaleString("en"));
-}
-
 function getPartFormErrorMessage(copy: Copy, error: string) {
   if (error === "missing-required-fields") {
     return copy.missingRequiredFields;
@@ -4235,681 +3548,5 @@ function PartAttributeField({
   );
 }
 
-function CategoryTreeSelect({
-  allowOrganizationalCategories = false,
-  buttonClassName = defaultCategorySelectButtonClassName,
-  categories,
-  categoryTree,
-  copy,
-  disabled,
-  excludedCategoryId,
-  label,
-  name,
-  noSelectionLabel,
-  selectedId,
-  error,
-  onSelectedIdChange
-}: {
-  allowOrganizationalCategories?: boolean;
-  buttonClassName?: string;
-  categories: PartCategoryListItem[];
-  categoryTree: CategoryTreeItem[];
-  copy: Copy;
-  disabled: boolean;
-  excludedCategoryId?: string;
-  label: string;
-  name: string;
-  noSelectionLabel: string;
-  selectedId: string;
-  error?: string;
-  onSelectedIdChange: (categoryId: string) => void;
-}) {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const panelRef = useRef<HTMLDivElement>(null);
-  const labelId = `${name}-label`;
-  const buttonId = `${name}-button`;
-  const searchId = `${name}-search`;
-  const currentSelectedId = selectedId;
-  const currentSelectedCategory = categories.find(
-    (category) => category.id === currentSelectedId
-  );
-  const [isOpen, setIsOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [panelStyle, setPanelStyle] = useState<CSSProperties>({});
-  const [portalTarget, setPortalTarget] = useState<HTMLElement | null>(null);
-  const [activeCategoryId, setActiveCategoryId] = useState(currentSelectedId);
-  const [expandedCategoryIds, setExpandedCategoryIds] = useState<Set<string>>(
-    () => getAncestorIds(categories, selectedId)
-  );
-  const normalizedSearchQuery = searchQuery.trim().toLocaleLowerCase("en");
-  const visibleTree = normalizedSearchQuery
-    ? filterCategoryTree(categoryTree, normalizedSearchQuery)
-    : categoryTree;
-  const searchExpandedCategoryIds = normalizedSearchQuery
-    ? getExpandableCategoryIds(visibleTree)
-    : expandedCategoryIds;
-  const effectiveExpandedCategoryIds = normalizedSearchQuery
-    ? searchExpandedCategoryIds
-    : expandedCategoryIds;
-  const visibleCategoryOptions = getVisibleCategoryOptions(
-    visibleTree,
-    effectiveExpandedCategoryIds
-  );
-  const activeCategory = visibleCategoryOptions.find(
-    (category) => category.id === activeCategoryId
-  );
-  const keyboardOptionIds = [
-    "",
-    ...visibleCategoryOptions.map((category) => category.id)
-  ];
-
-  useEffect(() => {
-    if (!isOpen) {
-      return;
-    }
-
-    function onPointerDown(event: PointerEvent) {
-      if (
-        event.target instanceof Node &&
-        !containerRef.current?.contains(event.target) &&
-        !panelRef.current?.contains(event.target)
-      ) {
-        setIsOpen(false);
-        setSearchQuery("");
-      }
-    }
-
-    function onKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") {
-        setIsOpen(false);
-        setSearchQuery("");
-      }
-    }
-
-    function onReposition() {
-      const nextStyle = getFloatingPanelStyle(containerRef.current);
-
-      if (nextStyle) {
-        setPanelStyle(nextStyle);
-      }
-    }
-
-    document.addEventListener("pointerdown", onPointerDown);
-    document.addEventListener("keydown", onKeyDown);
-    window.addEventListener("resize", onReposition);
-    window.addEventListener("scroll", onReposition, true);
-
-    return () => {
-      document.removeEventListener("pointerdown", onPointerDown);
-      document.removeEventListener("keydown", onKeyDown);
-      window.removeEventListener("resize", onReposition);
-      window.removeEventListener("scroll", onReposition, true);
-    };
-  }, [isOpen]);
-
-  function openSelect() {
-    if (disabled) {
-      return;
-    }
-
-    setExpandedCategoryIds(getAncestorIds(categories, currentSelectedId));
-    setActiveCategoryId(currentSelectedId);
-    setPanelStyle(getFloatingPanelStyle(containerRef.current) ?? {});
-    setPortalTarget(containerRef.current?.closest("dialog") ?? document.body);
-    setIsOpen(true);
-  }
-
-  function setSelectedCategory(categoryId: string) {
-    onSelectedIdChange(categoryId);
-    setIsOpen(false);
-    setSearchQuery("");
-    setActiveCategoryId(categoryId);
-    setExpandedCategoryIds(getAncestorIds(categories, categoryId));
-  }
-
-  function updateSearchQuery(query: string) {
-    const normalizedQuery = query.trim().toLocaleLowerCase("en");
-
-    setSearchQuery(query);
-
-    if (!normalizedQuery) {
-      return;
-    }
-
-    const firstMatchingCategory = findFirstAssignableCategory(
-      filterCategoryTree(categoryTree, normalizedQuery),
-      excludedCategoryId,
-      allowOrganizationalCategories
-    );
-
-    if (!firstMatchingCategory) {
-      return;
-    }
-
-    setActiveCategoryId(firstMatchingCategory.id);
-    if (firstMatchingCategory.id === currentSelectedId) {
-      return;
-    }
-
-    onSelectedIdChange(firstMatchingCategory.id);
-    setExpandedCategoryIds(getAncestorIds(categories, firstMatchingCategory.id));
-  }
-
-  function moveActiveCategory(direction: 1 | -1) {
-    if (keyboardOptionIds.length === 0) {
-      return;
-    }
-
-    const currentIndex = keyboardOptionIds.indexOf(activeCategoryId);
-    const nextIndex =
-      currentIndex === -1
-        ? direction === 1
-          ? 0
-          : keyboardOptionIds.length - 1
-        : (currentIndex + direction + keyboardOptionIds.length) %
-          keyboardOptionIds.length;
-
-    setActiveCategoryId(keyboardOptionIds[nextIndex]);
-  }
-
-  function commitActiveCategory() {
-    if (!keyboardOptionIds.includes(activeCategoryId)) {
-      return;
-    }
-
-    if (activeCategoryId === "") {
-      setSelectedCategory("");
-      return;
-    }
-
-    if (!activeCategory) {
-      return;
-    }
-
-    if (
-      isCategorySelectable({
-        allowOrganizationalCategories,
-        category: activeCategory,
-        excludedCategoryId
-      })
-    ) {
-      setSelectedCategory(activeCategory.id);
-      return;
-    }
-
-    if (activeCategory.children.length > 0) {
-      toggleExpanded(activeCategory.id);
-    }
-  }
-
-  function handleComboboxKeyDown(event: ReactKeyboardEvent) {
-    if (event.key === "ArrowDown") {
-      event.preventDefault();
-
-      if (!isOpen) {
-        openSelect();
-      } else {
-        moveActiveCategory(1);
-      }
-    }
-
-    if (event.key === "ArrowUp") {
-      event.preventDefault();
-
-      if (!isOpen) {
-        openSelect();
-      } else {
-        moveActiveCategory(-1);
-      }
-    }
-
-    if (event.key === "Enter" && isOpen) {
-      event.preventDefault();
-      commitActiveCategory();
-    }
-
-    if (event.key === "ArrowRight" && isOpen) {
-      if (!activeCategory || activeCategory.children.length === 0) {
-        return;
-      }
-
-      event.preventDefault();
-      setExpandedCategoryIds(
-        new Set(expandedCategoryIds).add(activeCategory.id)
-      );
-    }
-
-    if (event.key === "ArrowLeft" && isOpen) {
-      if (!activeCategory || activeCategory.children.length === 0) {
-        return;
-      }
-
-      event.preventDefault();
-      const nextIds = new Set(expandedCategoryIds);
-      nextIds.delete(activeCategory.id);
-      setExpandedCategoryIds(nextIds);
-    }
-  }
-
-  function toggleExpanded(categoryId: string) {
-    const nextIds = new Set(expandedCategoryIds);
-
-    if (nextIds.has(categoryId)) {
-      nextIds.delete(categoryId);
-    } else {
-      nextIds.add(categoryId);
-    }
-
-    setExpandedCategoryIds(nextIds);
-  }
-
-  return (
-    <div ref={containerRef} className="relative grid gap-2">
-      <span id={labelId}>
-        <LabelWithError error={error}>{label}</LabelWithError>
-      </span>
-      <input name={name} type="hidden" value={currentSelectedId} />
-      <TreeSelectButton
-        ariaExpanded={isOpen}
-        ariaInvalid={error ? true : undefined}
-        ariaLabel={`${label} ${currentSelectedCategory?.path ?? noSelectionLabel}`}
-        buttonClassName={buttonClassName}
-        buttonId={buttonId}
-        disabled={disabled}
-        hasSelection={Boolean(currentSelectedCategory)}
-        selectedLabel={currentSelectedCategory?.path ?? noSelectionLabel}
-        onKeyDown={handleComboboxKeyDown}
-        onToggle={() => (isOpen ? setIsOpen(false) : openSelect())}
-      />
-      {isOpen ? (
-        <TreeSelectPanel
-          listboxAriaLabelledby={labelId}
-          panelRef={panelRef}
-          panelStyle={panelStyle}
-          portalTarget={portalTarget}
-          searchId={searchId}
-          searchLabel={copy.searchCategories}
-          searchQuery={searchQuery}
-          onKeyDown={handleComboboxKeyDown}
-          onSearchChange={updateSearchQuery}
-        >
-          <button
-            aria-selected={currentSelectedId === ""}
-            className={`mb-1 grid min-h-9 w-full grid-cols-[1.75rem_1fr] items-center rounded-md px-2 py-1.5 text-left text-sm transition focus:outline-none focus:ring-2 focus:ring-slate-300 ${
-              activeCategoryId === ""
-                ? "bg-[var(--color-accent-soft)] font-semibold text-slate-950 hover:bg-[var(--color-accent-soft)]"
-                : "text-slate-700 hover:bg-slate-50"
-            }`}
-            role="option"
-            type="button"
-            onClick={() => setSelectedCategory("")}
-          >
-            <span />
-            <span>{noSelectionLabel}</span>
-          </button>
-          {visibleTree.length > 0 ? (
-            <ol className="grid gap-1">
-              {visibleTree.map((category) => (
-                <CategoryTreeSelectNode
-                  key={category.id}
-                  category={category}
-                  allowOrganizationalCategories={allowOrganizationalCategories}
-                  copy={copy}
-                  excludedCategoryId={excludedCategoryId}
-                  expandedCategoryIds={effectiveExpandedCategoryIds}
-                  activeCategoryId={activeCategoryId}
-                  level={0}
-                  selectedId={currentSelectedId}
-                  onSelect={setSelectedCategory}
-                  onToggleExpanded={toggleExpanded}
-                />
-              ))}
-            </ol>
-          ) : (
-            <p className="px-2 py-6 text-center text-sm text-slate-500">
-              {copy.noMatchingCategories}
-            </p>
-          )}
-        </TreeSelectPanel>
-      ) : null}
-    </div>
-  );
-}
-
-function CategoryTreeSelectNode({
-  allowOrganizationalCategories,
-  category,
-  copy,
-  excludedCategoryId,
-  expandedCategoryIds,
-  activeCategoryId,
-  level,
-  selectedId,
-  onSelect,
-  onToggleExpanded
-}: {
-  allowOrganizationalCategories: boolean;
-  category: CategoryTreeItem;
-  copy: Copy;
-  excludedCategoryId?: string;
-  expandedCategoryIds: Set<string>;
-  activeCategoryId: string;
-  level: number;
-  selectedId: string;
-  onSelect: (categoryId: string) => void;
-  onToggleExpanded: (categoryId: string) => void;
-}) {
-  const hasChildren = category.children.length > 0;
-  const isExpanded = expandedCategoryIds.has(category.id);
-  const isSelectable = isCategorySelectable({
-    allowOrganizationalCategories,
-    category,
-    excludedCategoryId
-  });
-  const isSelected = selectedId === category.id;
-  const isActive = activeCategoryId === category.id;
-  const activeClassName = isSelectable
-    ? "bg-[var(--color-accent-soft)] font-semibold text-slate-950 hover:bg-[var(--color-accent-soft)]"
-    : "bg-white font-medium text-slate-800 ring-2 ring-inset ring-slate-400";
-  const toggleLabel = isExpanded
-    ? `${copy.collapseCategory} ${category.name}`
-    : `${copy.expandCategory} ${category.name}`;
-
-  return (
-    <li>
-      <div
-        className="grid min-h-9 grid-cols-[1.75rem_1fr] items-center rounded-md"
-        style={{ paddingLeft: `${level}rem` }}
-      >
-        {hasChildren ? (
-          <button
-            aria-expanded={isExpanded}
-            aria-label={toggleLabel}
-            className="grid h-7 w-7 place-items-center rounded text-slate-500 transition hover:bg-slate-100 hover:text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-300"
-            type="button"
-            onClick={() => onToggleExpanded(category.id)}
-          >
-            <span
-              aria-hidden="true"
-              className={`text-xs leading-none transition-transform ${
-                isExpanded ? "rotate-90" : ""
-              }`}
-            >
-              ▶
-            </span>
-          </button>
-        ) : (
-          <span />
-        )}
-        <button
-          aria-disabled={!isSelectable}
-          aria-selected={isSelected}
-          className={`min-h-9 rounded-md px-2 py-1.5 text-left text-sm transition focus:outline-none focus:ring-2 focus:ring-slate-300 ${
-            isActive ? activeClassName : "text-slate-700"
-          } ${
-            isSelectable && !isSelected ? "hover:bg-slate-50" : ""
-          } ${
-            !isSelectable && !isActive ? "text-slate-500" : ""
-          }`}
-          role="option"
-          type="button"
-          onClick={() =>
-            isSelectable ? onSelect(category.id) : onToggleExpanded(category.id)
-          }
-        >
-          <span className="block truncate">{category.name}</span>
-        </button>
-      </div>
-      {hasChildren && isExpanded ? (
-        <ol className="mt-1 grid gap-1">
-          {category.children.map((child) => (
-            <CategoryTreeSelectNode
-              key={child.id}
-              allowOrganizationalCategories={allowOrganizationalCategories}
-              category={child}
-              copy={copy}
-              excludedCategoryId={excludedCategoryId}
-              expandedCategoryIds={expandedCategoryIds}
-              activeCategoryId={activeCategoryId}
-              level={level + 1}
-              selectedId={selectedId}
-              onSelect={onSelect}
-              onToggleExpanded={onToggleExpanded}
-            />
-          ))}
-        </ol>
-      ) : null}
-    </li>
-  );
-}
-
-function getFloatingPanelStyle(
-  anchor: HTMLElement | null
-): CSSProperties | null {
-  if (!anchor) {
-    return null;
-  }
-
-  const viewportPadding = 16;
-  const gap = 4;
-  const minimumHeight = 220;
-  const rect = anchor.getBoundingClientRect();
-  const spaceBelow = window.innerHeight - rect.bottom - viewportPadding - gap;
-  const spaceAbove = rect.top - viewportPadding - gap;
-  const opensDown = spaceBelow >= minimumHeight || spaceBelow >= spaceAbove;
-  const maxHeight = Math.max(160, Math.floor(opensDown ? spaceBelow : spaceAbove));
-
-  return {
-    left: rect.left,
-    width: rect.width,
-    maxHeight,
-    ...(opensDown
-      ? { top: rect.bottom + gap }
-      : { bottom: window.innerHeight - rect.top + gap })
-  };
-}
-
-function buildCategoryTree(categories: PartCategoryListItem[]) {
-  const nodesById = new Map<string, CategoryTreeItem>();
-
-  for (const category of categories) {
-    nodesById.set(category.id, { ...category, children: [] });
-  }
-
-  const roots: CategoryTreeItem[] = [];
-
-  for (const category of categories) {
-    const node = nodesById.get(category.id);
-
-    if (!node) {
-      continue;
-    }
-
-    const parent = category.parentId
-      ? nodesById.get(category.parentId)
-      : undefined;
-
-    if (parent) {
-      parent.children.push(node);
-    } else {
-      roots.push(node);
-    }
-  }
-
-  sortCategoryTree(roots);
-
-  return roots;
-}
-
-function sortCategoryTree(categories: CategoryTreeItem[]) {
-  categories.sort((left, right) =>
-    left.name.localeCompare(right.name, "en", { sensitivity: "base" })
-  );
-
-  for (const category of categories) {
-    sortCategoryTree(category.children);
-  }
-}
-
-function getAncestorIds(categories: PartCategoryListItem[], categoryId: string) {
-  const categoriesById = new Map(
-    categories.map((category) => [category.id, category])
-  );
-  const ancestorIds = new Set<string>();
-  let currentCategory = categoriesById.get(categoryId);
-
-  while (currentCategory?.parentId) {
-    ancestorIds.add(currentCategory.parentId);
-    currentCategory = categoriesById.get(currentCategory.parentId);
-  }
-
-  return ancestorIds;
-}
-
-function getExpandableCategoryIds(categories: CategoryTreeItem[]) {
-  const expandableIds = new Set<string>();
-
-  for (const category of categories) {
-    if (category.children.length > 0) {
-      expandableIds.add(category.id);
-    }
-
-    for (const childId of getExpandableCategoryIds(category.children)) {
-      expandableIds.add(childId);
-    }
-  }
-
-  return expandableIds;
-}
-
-function filterCategoryTree(
-  categories: CategoryTreeItem[],
-  normalizedSearchQuery: string
-) {
-  const filteredCategories: CategoryTreeItem[] = [];
-
-  for (const category of categories) {
-    const children = filterCategoryTree(category.children, normalizedSearchQuery);
-    const matches =
-      category.name.toLocaleLowerCase("en").includes(normalizedSearchQuery) ||
-      category.path.toLocaleLowerCase("en").includes(normalizedSearchQuery);
-
-    if (matches || children.length > 0) {
-      filteredCategories.push({ ...category, children });
-    }
-  }
-
-  return filteredCategories;
-}
-
-function findFirstAssignableCategory(
-  categories: CategoryTreeItem[],
-  excludedCategoryId: string | undefined,
-  allowOrganizationalCategories: boolean
-): CategoryTreeItem | null {
-  for (const category of categories) {
-    if (
-      isCategorySelectable({
-        allowOrganizationalCategories,
-        category,
-        excludedCategoryId
-      })
-    ) {
-      return category;
-    }
-
-    const matchingChild = findFirstAssignableCategory(
-      category.children,
-      excludedCategoryId,
-      allowOrganizationalCategories
-    );
-
-    if (matchingChild) {
-      return matchingChild;
-    }
-  }
-
-  return null;
-}
-
-function isCategorySelectable({
-  allowOrganizationalCategories,
-  category,
-  excludedCategoryId
-}: {
-  allowOrganizationalCategories: boolean;
-  category: CategoryTreeItem;
-  excludedCategoryId?: string;
-}) {
-  return (
-    category.id !== excludedCategoryId &&
-    (allowOrganizationalCategories || category.isAssignable)
-  );
-}
-
-function getVisibleCategoryOptions(
-  categories: CategoryTreeItem[],
-  expandedCategoryIds: Set<string>
-) {
-  const visibleCategories: CategoryTreeItem[] = [];
-
-  for (const category of categories) {
-    visibleCategories.push(category);
-
-    if (expandedCategoryIds.has(category.id)) {
-      visibleCategories.push(
-        ...getVisibleCategoryOptions(category.children, expandedCategoryIds)
-      );
-    }
-  }
-
-  return visibleCategories;
-}
-
-function getCreatePrimaryCategoryFromFilter({
-  categories,
-  categoryFilterId
-}: {
-  categories: PartCategoryListItem[];
-  categoryFilterId: string;
-}) {
-  if (!categoryFilterId) {
-    return "";
-  }
-
-  const filteredCategory = categories.find(
-    (category) => category.id === categoryFilterId
-  );
-
-  return filteredCategory?.isAssignable ? filteredCategory.id : "";
-}
-
 const primaryButtonClassName =
   "min-h-9 rounded-md border border-[var(--color-action-primary)] bg-[var(--color-action-primary)] px-3 py-1.5 text-sm font-semibold text-white transition hover:border-[var(--color-action-primary-hover)] hover:bg-[var(--color-action-primary-hover)] focus:outline-none focus:ring-2 focus:ring-[var(--color-action-focus)] focus:ring-offset-2 disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-100 disabled:text-slate-400";
-const defaultCategorySelectButtonClassName =
-  "grid min-h-11 grid-cols-[1fr_auto] items-center gap-3 rounded-md border border-slate-300 bg-white px-3 py-2 text-left text-base text-slate-950 outline-none transition hover:border-slate-400 focus:border-slate-500 focus:ring-2 focus:ring-slate-200 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400";
-const compactCategorySelectButtonClassName =
-  "grid min-h-9 grid-cols-[1fr_auto] items-center gap-3 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-left text-sm text-slate-950 outline-none transition hover:border-slate-400 focus:border-slate-500 focus:ring-2 focus:ring-slate-200 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400";
-
-function PartCategoriesSummary({
-  copy,
-  part
-}: {
-  copy: Copy;
-  part: PartsListItem;
-}) {
-  if (!part.primaryCategoryPath && !part.secondaryCategoryPath) {
-    return <span className="text-slate-400">{copy.noCategory}</span>;
-  }
-
-  return (
-    <div className="grid gap-1">
-      {part.primaryCategoryPath ? (
-        <span>{part.primaryCategoryPath}</span>
-      ) : null}
-      {part.secondaryCategoryPath && part.secondaryCategoryPath !== part.primaryCategoryPath ? (
-        <span className="text-slate-500">{part.secondaryCategoryPath}</span>
-      ) : null}
-    </div>
-  );
-}
