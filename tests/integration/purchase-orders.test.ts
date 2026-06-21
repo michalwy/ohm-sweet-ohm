@@ -418,6 +418,37 @@ describe("purchase orders — receive flow", () => {
     );
   });
 
+  test("rejects receive to an archived location", async () => {
+    const suffix = uniqueSuffix("archived-loc");
+    const { workspaceId, supplierId, partId, userId } = await createFixture(suffix);
+
+    const normalized = suffix.toLowerCase().replace(/[^a-z0-9]+/g, "-");
+    const archivedLocation = await prisma.storageLocation.create({
+      data: {
+        workspaceId,
+        name: `PO Archived Loc ${suffix}`,
+        normalizedName: `po-archived-loc-${normalized}`,
+        isAssignable: true,
+        isArchived: true
+      }
+    });
+
+    const order = await createPurchaseOrder({ workspaceId, supplierId });
+    const item = await addOrderItem({ workspaceId, orderId: order.id, partId, quantity: "2" });
+    await markOrdered({ workspaceId, orderId: order.id });
+
+    await assert.rejects(
+      () =>
+        receiveItems({
+          workspaceId,
+          orderId: order.id,
+          createdByUserId: userId,
+          items: [{ itemId: item.id, quantity: "2", locationId: archivedLocation.id }]
+        }),
+      { message: "location-archived" }
+    );
+  });
+
   test("rejects receive on draft order", async () => {
     const suffix = uniqueSuffix("receive-draft");
     const { workspaceId, supplierId, partId, locationId, userId } = await createFixture(suffix);
