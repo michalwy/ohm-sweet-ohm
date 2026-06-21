@@ -182,6 +182,11 @@ const copy = {
   poHistoryColQty: "Qty",
   poHistoryColUnitPriceNet: "Unit Price (net)",
   poHistoryColUnitPriceGross: "Unit Price (gross)",
+  shoppingLists: "Shopping Lists",
+  noShoppingLists: "Not on any shopping list.",
+  slMembershipColList: "List",
+  slMembershipColQty: "Qty",
+  slMembershipColNotes: "Notes",
   databaseUnavailable:
     "Database is not available, so the list is shown empty for now."
 };

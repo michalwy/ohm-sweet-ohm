@@ -7,9 +7,11 @@ import {
   convertShoppingListToOrder,
   createShoppingList,
   deleteShoppingList,
+  getPartShoppingListMembership,
   getShoppingListDetail,
   getShoppingLists,
   removeShoppingListItem,
+  type PartShoppingListMembershipItem,
   type ShoppingListDetail,
   type ShoppingListSummary,
   type ShoppingListsPageInput,
@@ -50,6 +52,22 @@ export async function getShoppingListDetailForWorkspace(input: {
     const context = await getAuthorizedContext(input.workspaceSlug, "shopping-lists:read");
     const detail = await getShoppingListDetail(context.workspace.id, input.listId);
     return success(detail);
+  } catch (error) {
+    return failure(error);
+  }
+}
+
+export async function getPartShoppingListMembershipForWorkspace(input: {
+  workspaceSlug: string;
+  partId: string;
+}): Promise<ShoppingListActionResult<PartShoppingListMembershipItem[]>> {
+  try {
+    const context = await getAuthorizedContext(input.workspaceSlug, "shopping-lists:read");
+    const data = await getPartShoppingListMembership({
+      workspaceId: context.workspace.id,
+      partId: input.partId
+    });
+    return success(data);
   } catch (error) {
     return failure(error);
   }

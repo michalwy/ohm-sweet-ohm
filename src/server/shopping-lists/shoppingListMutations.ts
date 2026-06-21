@@ -553,3 +553,35 @@ function normalizeOptionalText(value?: string | null) {
   const normalized = value?.trim();
   return normalized ? normalized : null;
 }
+
+export type PartShoppingListMembershipItem = {
+  shoppingListId: string;
+  shoppingListName: string;
+  quantity: string;
+  notes: string | null;
+};
+
+export async function getPartShoppingListMembership(input: {
+  workspaceId: string;
+  partId: string;
+}): Promise<PartShoppingListMembershipItem[]> {
+  const items = await prisma.shoppingListItem.findMany({
+    where: {
+      partId: input.partId,
+      shoppingList: { workspaceId: input.workspaceId }
+    },
+    select: {
+      quantity: true,
+      description: true,
+      shoppingList: { select: { id: true, name: true } }
+    },
+    orderBy: { shoppingList: { name: "asc" } }
+  });
+
+  return items.map((item) => ({
+    shoppingListId: item.shoppingList.id,
+    shoppingListName: item.shoppingList.name,
+    quantity: item.quantity.toString(),
+    notes: item.description
+  }));
+}

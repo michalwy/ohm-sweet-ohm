@@ -78,6 +78,8 @@ import {
 import { TreeSelectButton, TreeSelectPanel } from "@/app/tree-select";
 import { getPartPurchaseOrderHistoryForWorkspace } from "@/server/purchase-orders/purchaseOrderActions";
 import type { PartPurchaseOrderHistoryItem } from "@/server/purchase-orders/purchaseOrderMutations";
+import { getPartShoppingListMembershipForWorkspace } from "@/server/shopping-lists/shoppingListActions";
+import type { PartShoppingListMembershipItem } from "@/server/shopping-lists/shoppingListMutations";
 
 type Copy = {
   title: string;
@@ -230,6 +232,11 @@ type Copy = {
   poHistoryColQty: string;
   poHistoryColUnitPriceNet: string;
   poHistoryColUnitPriceGross: string;
+  shoppingLists: string;
+  noShoppingLists: string;
+  slMembershipColList: string;
+  slMembershipColQty: string;
+  slMembershipColNotes: string;
 };
 
 type ListPage<TItem> = {
@@ -1259,6 +1266,19 @@ export function PartsListClient({
     }
   });
 
+  const partShoppingListMembershipQuery = useQuery({
+    queryKey: ["part-sl-membership", workspaceSlug, selectedPartId],
+    enabled: Boolean(selectedPartId) && canReadShoppingLists,
+    queryFn: async () => {
+      const result = await getPartShoppingListMembershipForWorkspace({
+        workspaceSlug,
+        partId: selectedPartId as string
+      });
+      if (!result.ok) throw new Error(result.error);
+      return result.data;
+    }
+  });
+
   const dialogLocationsQuery = useQuery({
     queryKey: ["locations-all", workspaceSlug, "part-dialog"],
     queryFn: async () => {
@@ -2174,6 +2194,58 @@ export function PartsListClient({
                                 ) : entry.unitPriceGross != null ? (
                                   <span>{entry.unitPriceGross}{entry.currency ? ` ${entry.currency}` : ""}</span>
                                 ) : "—"}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </section>
+              ) : null}
+              {canReadShoppingLists ? (
+                <section className="grid gap-2">
+                  <h3 className="text-sm font-semibold text-slate-900">
+                    {copy.shoppingLists}
+                  </h3>
+                  {partShoppingListMembershipQuery.isLoading ? (
+                    <p className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-600">
+                      {copy.loadingParts}
+                    </p>
+                  ) : partShoppingListMembershipQuery.isError ? (
+                    <p className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-600">
+                      {copy.databaseUnavailable}
+                    </p>
+                  ) : (partShoppingListMembershipQuery.data ?? []).length === 0 ? (
+                    <p className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-600">
+                      {copy.noShoppingLists}
+                    </p>
+                  ) : (
+                    <div className="max-h-64 overflow-y-auto rounded-md border border-slate-200">
+                      <table className="w-full text-left text-sm">
+                        <thead className="sticky top-0 bg-slate-50 text-slate-600">
+                          <tr>
+                            <th className="px-3 py-2 font-semibold">{copy.slMembershipColList}</th>
+                            <th className="px-3 py-2 text-right font-semibold">{copy.slMembershipColQty}</th>
+                            <th className="px-3 py-2 font-semibold">{copy.slMembershipColNotes}</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {(partShoppingListMembershipQuery.data ?? []).map((entry: PartShoppingListMembershipItem) => (
+                            <tr key={entry.shoppingListId} className="border-t border-slate-100 first:border-t-0">
+                              <td className="px-3 py-2 align-middle">
+                                <a
+                                  href={`/w/${encodeURIComponent(workspaceSlug)}/shopping-lists?selectedListId=${entry.shoppingListId}`}
+                                  className="text-accent hover:underline"
+                                >
+                                  {entry.shoppingListName}
+                                </a>
+                              </td>
+                              <td className="px-3 py-2 align-middle text-right tabular-nums text-slate-950">
+                                {entry.quantity}
+                              </td>
+                              <td className="px-3 py-2 align-middle text-slate-500">
+                                {entry.notes ?? "—"}
                               </td>
                             </tr>
                           ))}

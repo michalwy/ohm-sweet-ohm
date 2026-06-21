@@ -125,6 +125,7 @@ Click any row in the parts list to open the detail panel on the right. The panel
 - **Locations and stock** — current stock quantity per storage location, plus a button to record a new movement. Requires Inventory read access.
 - **Movement history** — the 50 most recent inventory entries (receipts, issues, transfers, adjustments). Requires Inventory read access.
 - **Purchase Orders** — all purchase order lines that reference this part, ordered by date descending (most recent first), up to 50 rows. Shows order reference, supplier, status (Draft / Ordered / Received), order date, quantity, and unit price with currency. Requires Purchase Orders read access.
+- **Shopping Lists** — all shopping lists that currently contain this part, ordered alphabetically by list name. Shows list name (click to open that list), quantity requested, and notes. Requires Shopping Lists read access.
 
 ## 4. Organize Your Category Structure
 
