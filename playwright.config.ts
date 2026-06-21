@@ -20,7 +20,7 @@ export default defineConfig({
     timeout: 10000
   },
   webServer: {
-    command: `DATABASE_URL="${databaseUrl}" BETTER_AUTH_URL="${baseURL}" BETTER_AUTH_SECRET="ohm-sweet-ohm-e2e-auth-secret-value" OSO_E2E_SUPPLIER_FIXTURE=1 NEXT_TELEMETRY_DISABLED=1 pnpm dev --hostname 127.0.0.1 --port 3100 --webpack`,
+    command: `DATABASE_URL="${databaseUrl}" BETTER_AUTH_URL="${baseURL}" BETTER_AUTH_SECRET="ohm-sweet-ohm-e2e-auth-secret-value" OSO_E2E_SUPPLIER_FIXTURE=1 NEXT_TELEMETRY_DISABLED=1 NEXT_DIST_DIR=".next-e2e" pnpm dev --hostname 127.0.0.1 --port 3100 --webpack`,
     url: baseURL,
     reuseExistingServer: false,
     timeout: 120_000

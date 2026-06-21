@@ -152,6 +152,7 @@ Do not use multiple roles to invent product behavior. Product decisions still re
 - The user tests the app through Docker Compose. Do not leave manually started dev servers running for handoff.
 - If an agent starts a manual local dev server for verification, it must stop that server before finishing the turn.
 - When starting a local Next.js dev server manually for browser verification, use webpack mode, for example `pnpm exec next dev --webpack -p 3002`. Avoid Turbopack for local verification in this project because it has repeatedly produced unstable dev-server failures.
+- The e2e Playwright WebServer uses `NEXT_DIST_DIR=".next-e2e"` so its build output is isolated from the local dev server's `.next/` directory. Running `pnpm test:e2e` while a local dev server is active is safe.
 
 ## Before Implementing Features
 

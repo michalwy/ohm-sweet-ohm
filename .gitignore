@@ -4,6 +4,7 @@ node_modules/
 
 # next
 .next/
+.next-e2e/
 next-env.d.ts
 out/
 tsconfig.tsbuildinfo
