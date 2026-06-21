@@ -31,7 +31,7 @@ This project is intentionally vibe-coded. Future agents must preserve product in
 - Keep the project runnable locally and deployable to cloud infrastructure.
 - Favor boring, well-supported tools over novelty.
 - Preserve existing user changes. Do not rewrite unrelated files.
-- Use GitHub Issues as the shared backlog for explicitly requested but unfinished work. Before starting related work, check whether an issue already exists; if not, create one. When an item is completed, close the corresponding issue with a short completion note.
+- Use GitHub Issues as the shared backlog for explicitly requested but unfinished work. Before starting related work, check whether an issue already exists; if not, create one. When an item is completed, close the corresponding issue by including a closing keyword in the commit message (e.g. `Closes #70`), which GitHub resolves automatically on push. Only use `gh issue close` directly when no commit is being made (e.g. the issue turned out to be invalid or a duplicate).
 - Do not close a completion-related GitHub Issue until the implementation is committed and pushed (or intentionally handed off unpushed at explicit user request).
 - When creating or updating backlog issues, always assign appropriate labels during the same task. At minimum, apply `backlog` plus one type label (for example `enhancement`, `bug`, or `question`), and add priority labels when known.
 - Do not maintain a local `TODO.md` backlog file. Keep backlog items only in GitHub Issues.
