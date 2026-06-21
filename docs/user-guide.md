@@ -47,6 +47,16 @@ After sign-in, you land on **Workspaces**. This is your entry point to everythin
 
 Think of a workspace as one workshop environment with its own parts, categories, attributes, locations, and settings.
 
+### Starting data presets
+
+When creating a workspace you can choose one of three starting data options:
+
+- **Empty workspace** (default) — the workspace starts with no data. Best when you want to build your part library from scratch.
+- **Demo parts** — seeds the workspace with ~250 real electronic parts across common categories (resistors, capacitors, MOSFETs, microcontrollers, connectors, and more), complete with categories, attributes, manufacturers, and storage locations.
+- **Demo parts + orders** — everything in "Demo parts" plus two shopping lists and three purchase orders (one received, one ordered, one draft) so you can explore the full ordering workflow immediately.
+
+Seeded data behaves identically to data you create yourself — you can edit, delete, or extend any of it. The preset cannot be changed after the workspace is created.
+
 ## 2. Manage Organizations
 
 Use **Organizations** to manage the manufacturers, suppliers, and other external entities you work with. Each organization can hold one or more roles:

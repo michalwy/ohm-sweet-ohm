@@ -23,6 +23,13 @@ const copy = {
   namePlaceholder: "Bench projects",
   currency: "Primary currency",
   currencyHelp: "Used for valuations and cost tracking. Cannot be changed after creation.",
+  preset: "Starting data",
+  presetEmpty: "Empty workspace",
+  presetEmptyHelp: "Start from scratch with no data.",
+  presetPartsOnly: "Demo parts",
+  presetPartsOnlyHelp: "~250 real parts with categories, attributes, and stock.",
+  presetPartsAndOrders: "Demo parts + orders",
+  presetPartsAndOrdersHelp: "Everything above, plus shopping lists and purchase orders.",
   create: "Create workspace",
   emptyTitle: "No workspaces yet",
   emptyBody: "Create a workspace to start tracking parts.",
@@ -181,6 +188,33 @@ export default async function WorkspacesPage({
                 </select>
                 <p className="text-xs text-slate-500">{copy.currencyHelp}</p>
               </div>
+              <fieldset className="grid gap-2">
+                <legend className="text-sm font-medium text-slate-700">{copy.preset}</legend>
+                {(
+                  [
+                    { value: "empty", label: copy.presetEmpty, help: copy.presetEmptyHelp },
+                    { value: "parts-only", label: copy.presetPartsOnly, help: copy.presetPartsOnlyHelp },
+                    { value: "parts-and-orders", label: copy.presetPartsAndOrders, help: copy.presetPartsAndOrdersHelp }
+                  ] as const
+                ).map(({ value, label, help }) => (
+                  <label
+                    key={value}
+                    className="flex cursor-pointer items-start gap-3 rounded-md border border-slate-200 px-3 py-2.5 transition hover:border-slate-400 hover:bg-slate-50 has-[:checked]:border-[var(--color-accent)] has-[:checked]:bg-[color-mix(in_srgb,var(--color-accent)_6%,white)]"
+                  >
+                    <input
+                      className="mt-0.5 shrink-0 accent-[var(--color-accent)]"
+                      defaultChecked={value === "empty"}
+                      name="preset"
+                      type="radio"
+                      value={value}
+                    />
+                    <span className="grid gap-0.5">
+                      <span className="text-sm font-medium text-slate-900">{label}</span>
+                      <span className="text-xs text-slate-500">{help}</span>
+                    </span>
+                  </label>
+                ))}
+              </fieldset>
               <button
                 className="min-h-10 rounded-md border border-[var(--color-action-primary)] bg-[var(--color-action-primary)] px-4 py-2 text-sm font-semibold text-white transition hover:border-[var(--color-action-primary-hover)] hover:bg-[var(--color-action-primary-hover)] focus:outline-none focus:ring-2 focus:ring-[var(--color-action-focus)] focus:ring-offset-2"
                 type="submit"

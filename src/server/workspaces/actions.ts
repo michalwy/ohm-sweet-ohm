@@ -4,7 +4,11 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 import { getCurrentSession } from "@/server/auth/currentContext";
+import { prisma } from "@/server/db/prisma";
+import { getDefaultPartUnitId } from "@/server/units/defaultUnits";
+import { applyDemoPreset, type DemoPreset } from "@/server/workspaces/applyDemoPreset";
 import { createWorkspaceForOwner } from "@/server/workspaces/createWorkspace";
+import { DEMO_PRESET_FIXTURE } from "@/server/workspaces/demoPresetFixture";
 
 const workspaceCopy = {
   missingName: "missing-name",
@@ -26,6 +30,9 @@ export async function createWorkspace(formData: FormData) {
 
   const name = getRequiredFormValue(formData, "name");
   const currency = getRequiredFormValue(formData, "currency").toUpperCase();
+  const rawPreset = getRequiredFormValue(formData, "preset");
+  const preset: DemoPreset =
+    rawPreset === "parts-only" || rawPreset === "parts-and-orders" ? rawPreset : "empty";
 
   if (!name) {
     redirect(`/workspaces?error=${workspaceCopy.missingName}`);
@@ -46,6 +53,11 @@ export async function createWorkspace(formData: FormData) {
 
     workspaceSlug = workspace.slug;
     revalidatePath("/workspaces");
+
+    if (preset !== "empty") {
+      const unitId = await getDefaultPartUnitId(prisma, workspace.id);
+      await applyDemoPreset(prisma, workspace.id, unitId, preset, DEMO_PRESET_FIXTURE, workspace.primaryCurrency);
+    }
   } catch {
     redirect(`/workspaces?error=${workspaceCopy.unavailable}`);
   }
