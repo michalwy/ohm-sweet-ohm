@@ -78,6 +78,18 @@ The workspace immediately reappears in the active list and is accessible again t
 
 **What members see:** If a member navigates to an archived workspace URL, they are redirected to the Workspaces page with a notice that the workspace has been archived.
 
+### Permanently deleting a workspace
+
+Permanent deletion removes the workspace and all of its data — parts, inventory, purchase orders, organizations, attributes, and everything else — completely and irreversibly.
+
+**Requirements:**
+- The workspace must be archived first. Permanent deletion is only available from the archived state.
+- Only workspace admins can trigger deletion.
+
+Once deletion is confirmed, the workspace enters a **"Deletion in progress"** state visible on the Workspaces page. The Restore button disappears; restoration is no longer possible. The actual deletion runs in the background and the workspace disappears from all views when complete.
+
+**There is no undo.** If you are unsure, restore the workspace first and leave it archived until you are certain.
+
 ## 2. Manage Organizations
 
 Use **Organizations** to manage the manufacturers, suppliers, and other external entities you work with. Each organization can hold one or more roles:

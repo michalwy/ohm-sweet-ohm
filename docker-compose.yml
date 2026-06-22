@@ -31,5 +31,17 @@ services:
       timeout: 5s
       retries: 10
 
+  worker:
+    build:
+      context: .
+      target: runner
+    command: pnpm worker
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-oso}:${POSTGRES_PASSWORD:-oso_dev_password}@db:5432/${POSTGRES_DB:-ohm_sweet_ohm}?schema=public
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
 volumes:
   postgres-data:

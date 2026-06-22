@@ -97,7 +97,8 @@ export async function getCurrentUserArchivedWorkspaces() {
           id: true,
           name: true,
           slug: true,
-          archivedAt: true
+          archivedAt: true,
+          deletionScheduledAt: true
         }
       }
     }

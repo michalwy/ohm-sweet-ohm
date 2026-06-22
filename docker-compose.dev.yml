@@ -10,6 +10,20 @@ services:
       - pnpm-store:/root/.local/share/pnpm/store
       - node-modules:/workspace/node_modules
 
+  worker:
+    build:
+      context: .
+      target: dev
+    working_dir: /workspace
+    command: sh -c "pnpm install && pnpm prisma:generate && pnpm worker"
+    volumes:
+      - .:/workspace
+      - pnpm-store:/root/.local/share/pnpm/store
+      - node-modules:/workspace/node_modules
+    depends_on:
+      db:
+        condition: service_healthy
+
 volumes:
   node-modules:
   pnpm-store:

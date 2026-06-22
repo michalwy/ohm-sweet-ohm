@@ -399,7 +399,8 @@ model Workspace {
   defaultPriceEntryMode String   @default("net")
   defaultTaxRate        Decimal?
   activeSupplierProvider SupplierProvider?
-  archivedAt      DateTime?
+  archivedAt          DateTime?
+  deletionScheduledAt DateTime?
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 

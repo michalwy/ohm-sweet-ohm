@@ -43,7 +43,8 @@ const copy = {
   unavailable: "Workspace could not be created. Try again.",
   archivedSection: "Archived workspaces",
   restore: "Restore",
-  archivedNotice: "This workspace has been archived and is no longer accessible."
+  archivedNotice: "This workspace has been archived and is no longer accessible.",
+  deletionInProgress: "Deletion in progress"
 };
 
 
@@ -185,20 +186,27 @@ export default async function WorkspacesPage({
                               }).format(new Date(workspace.archivedAt))}
                             </p>
                           )}
+                          {workspace.deletionScheduledAt && (
+                            <p className="mt-1 text-xs font-medium text-[var(--color-error)]">
+                              {copy.deletionInProgress}
+                            </p>
+                          )}
                         </div>
-                        <form action={restoreWorkspaceFromPicker}>
-                          <input
-                            type="hidden"
-                            name="workspaceSlug"
-                            value={workspace.slug}
-                          />
-                          <button
-                            className="inline-flex min-h-9 items-center justify-center rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:border-slate-400 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2"
-                            type="submit"
-                          >
-                            {copy.restore}
-                          </button>
-                        </form>
+                        {!workspace.deletionScheduledAt && (
+                          <form action={restoreWorkspaceFromPicker}>
+                            <input
+                              type="hidden"
+                              name="workspaceSlug"
+                              value={workspace.slug}
+                            />
+                            <button
+                              className="inline-flex min-h-9 items-center justify-center rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:border-slate-400 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2"
+                              type="submit"
+                            >
+                              {copy.restore}
+                            </button>
+                          </form>
+                        )}
                       </li>
                     ))}
                   </ul>
