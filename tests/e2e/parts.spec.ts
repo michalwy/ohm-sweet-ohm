@@ -402,7 +402,7 @@ test.describe("parts list", () => {
       })
       .first();
     await integratedCircuitsNode.getByRole("button", { name: "Delete" }).click();
-    let deleteCategoryDialog = page.getByRole("dialog", {
+    const deleteCategoryDialog = page.getByRole("dialog", {
       name: "Delete Integrated circuits?"
     });
     await expect(deleteCategoryDialog).toBeVisible();
@@ -505,7 +505,7 @@ test.describe("parts list", () => {
       })
       .first();
     await childNode.getByRole("button", { name: "Edit" }).click();
-    let editCategoryDialog = page.getByRole("dialog", {
+    const editCategoryDialog = page.getByRole("dialog", {
       name: "Edit category"
     });
     await expect(editCategoryDialog).toBeVisible();
@@ -655,7 +655,7 @@ test.describe("parts list", () => {
       name: new RegExp(`${mountingName}.*SMD`)
     });
     await mountingRow.getByRole("button", { name: "Edit" }).click();
-    let editAttributeDialog = page.getByRole("dialog", {
+    const editAttributeDialog = page.getByRole("dialog", {
       name: "Edit attribute"
     });
     await expect(editAttributeDialog).toBeVisible();

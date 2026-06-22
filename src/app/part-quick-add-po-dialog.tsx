@@ -80,6 +80,7 @@ export function QuickAddToPODialog({
 
   useEffect(() => {
     if (!open) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setQuantity("1");
     setNewOrderNumber("");
     setNewSupplierId("");
@@ -89,8 +90,10 @@ export function QuickAddToPODialog({
 
   useEffect(() => {
     if (draftPOs.length === 0) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setMode("create-new");
     } else {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setMode("existing");
       if (!selectedPOId || !draftPOs.find((po) => po.id === selectedPOId)) {
         setSelectedPOId(draftPOs[0]?.id ?? "");

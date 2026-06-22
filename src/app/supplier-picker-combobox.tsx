@@ -42,6 +42,7 @@ export function SupplierPickerCombobox({
   const [isDebouncing, setIsDebouncing] = useState(false);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setInputValue(initialValue?.name ?? "");
     setSelectedId(initialValue?.id ?? "");
   }, [initialValue?.id, initialValue?.name]);

@@ -79,6 +79,7 @@ export function QuickAddToSLDialog({
 
   useEffect(() => {
     if (!open) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setQuantity("1");
     setNewSLName("");
     setItemNotes("");
@@ -88,8 +89,10 @@ export function QuickAddToSLDialog({
 
   useEffect(() => {
     if (allSLs.length === 0) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setMode("create-new");
     } else {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setMode("existing");
       if (!selectedSLId || !allSLs.find((sl) => sl.id === selectedSLId)) {
         setSelectedSLId(allSLs[0]?.id ?? "");

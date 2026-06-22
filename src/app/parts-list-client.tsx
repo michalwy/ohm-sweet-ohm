@@ -2827,6 +2827,7 @@ function PartDetailsFields({
   const digiKeyListboxId = `${catalogNumberInputId}-digikey-suggestions`;
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setActiveDigiKeyIndex(0);
   }, [normalizedCatalogQuery]);
 

@@ -137,6 +137,7 @@ Do not use multiple roles to invent product behavior. Product decisions still re
 
 ## Testing Direction
 
+- Use `pnpm lint` for ESLint verification. Run it before finishing any task that touches source files. Fix all errors; warnings may be left as-is.
 - Use `pnpm typecheck` for TypeScript verification.
 - Use `pnpm test:unit` for unit tests (`tsx --test tests/unit/**/*.test.ts`). Unit tests must not import Prisma or any server infrastructure — pure logic only.
 - Use `pnpm test:integration` for server-side integration tests that require a real database. Integration tests live in `tests/integration/`, use `node:test` (not `@playwright/test`), and run against the isolated e2e PostgreSQL service in `docker-compose.e2e.yml`. A `tests/integration/tsconfig.json` with a `server-only` shim is required — do not remove it. `pnpm test:integration` starts the DB container, applies pending migrations, and runs the tests. It does NOT reset or re-seed the database; use `pnpm e2e:db:reset` separately if a clean slate is needed.

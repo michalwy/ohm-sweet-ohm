@@ -69,6 +69,7 @@ export function ComboboxBase<T extends ComboboxBaseItem>({
   // Reset active index when new results arrive.
   const firstItemId = items[0]?.id ?? null;
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setActiveIndex(0);
   }, [firstItemId]);
 

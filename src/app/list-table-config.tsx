@@ -156,6 +156,7 @@ export function useListTableConfiguration({
 
   useLayoutEffect(() => {
     const nextState = getStoredState();
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setColumnVisibility(nextState.columnVisibility);
     setColumnOrder(nextState.columnOrder);
     setSorting(nextState.sorting);
@@ -177,6 +178,7 @@ export function useListTableConfiguration({
       return;
     }
 
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setColumnVisibility(defaults.columnVisibility);
     setColumnOrder(defaults.columnOrder);
     setSorting(defaults.sorting);

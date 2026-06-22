@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef } from "react";
+import { useId } from "react";
 import { useInfiniteQuery } from "@tanstack/react-query";
 
 import { useDebouncedValue } from "@/app/use-debounced-value";
@@ -38,7 +38,8 @@ export function PartPickerCombobox({
   onInputChange,
   onSelect,
 }: PartPickerComboboxProps) {
-  const inputId = useRef(`part-picker-${Math.random().toString(36).slice(2)}`).current;
+  const baseId = useId();
+  const inputId = `part-picker-${baseId}`;
 
   const debouncedInputValue = useDebouncedValue(inputValue, 300);
   const isDebouncing = inputValue.trim() !== debouncedInputValue.trim();
