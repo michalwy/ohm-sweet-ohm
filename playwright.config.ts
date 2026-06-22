@@ -17,7 +17,7 @@ export default defineConfig({
     baseURL,
     trace: "on-first-retry"
   },
-  timeout: 90000,
+  timeout: process.env.CI ? 120_000 : 90_000,
   expect: {
     timeout: 30000
   },
