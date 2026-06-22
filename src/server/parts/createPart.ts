@@ -1,6 +1,5 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
 
 import { Prisma } from "@/generated/prisma/client";
 import { authorizeWorkspacePermission } from "@/server/access-control/authorize";
@@ -188,7 +187,6 @@ export async function createPart(
     return getFormErrorState("database-unavailable");
   }
 
-  revalidatePath(partsPath);
   return getFormSuccessState(part);
 }
 
@@ -329,7 +327,6 @@ export async function updatePart(
     return getFormErrorState("database-unavailable");
   }
 
-  revalidatePath(partsPath);
   return getFormSuccessState(part);
 }
 
@@ -375,7 +372,6 @@ export async function deletePart(formData: FormData): Promise<PartDeleteResult> 
     return getDeleteErrorState(formError);
   }
 
-  revalidatePath(partsPath);
   return {
     ok: true,
     id,

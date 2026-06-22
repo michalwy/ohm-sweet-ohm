@@ -1,12 +1,13 @@
 import { expect, test } from "@playwright/test";
 import { Pool } from "pg";
+import { signInAsOwner } from "./helpers";
 
 test.describe("inventory", () => {
   test("adds a receipt movement and shows updated stock in the parts list", async ({ page }, testInfo) => {
     const suffix = `${testInfo.project.name}-${testInfo.retry}`.replace(/[^a-zA-Z0-9]/g, "-");
     const locationName = `Bin Receipt ${suffix}`;
 
-    await signIn(page);
+    await signInAsOwner(page);
 
     await page.goto("/w/default/locations");
     await page.getByRole("button", { name: "Add location" }).click();
@@ -47,7 +48,7 @@ test.describe("inventory", () => {
     const suffix = `${testInfo.project.name}-${testInfo.retry}`.replace(/[^a-zA-Z0-9]/g, "-");
     const locationName = `Bin Issue ${suffix}`;
 
-    await signIn(page);
+    await signInAsOwner(page);
     await seedLocationWithStock(locationName, 10);
 
     await page.goto("/w/default/parts");
@@ -83,7 +84,7 @@ test.describe("inventory", () => {
     const locationName = `Bin History ${suffix}`;
     const note = `e2e-receipt-${suffix}`;
 
-    await signIn(page);
+    await signInAsOwner(page);
 
     await page.goto("/w/default/locations");
     await page.getByRole("button", { name: "Add location" }).click();
@@ -123,7 +124,7 @@ test.describe("inventory", () => {
     const suffix = `${testInfo.project.name}-${testInfo.retry}`.replace(/[^a-zA-Z0-9]/g, "-");
     const locationName = `Bin Balance ${suffix}`;
 
-    await signIn(page);
+    await signInAsOwner(page);
     await seedLocationWithStock(locationName, 7);
 
     await page.goto("/w/default/parts");
@@ -138,18 +139,6 @@ test.describe("inventory", () => {
   });
 });
 
-async function signIn(page: import("@playwright/test").Page) {
-  await page.goto("/");
-  await page.getByLabel("Email").fill("owner@ohmsweetohm.local");
-  await page.getByLabel("Password").fill("ohm-sweet-ohm-owner");
-  await page.getByRole("button", { name: "Sign in" }).click();
-  await expect(page).toHaveURL(/\/(workspaces|w\/default\/parts)$/);
-
-  const openWorkspaceLink = page.getByRole("link", { name: "Open" });
-  if (await openWorkspaceLink.count()) {
-    await openWorkspaceLink.click();
-  }
-}
 
 async function getPartStock(catalogNumber: string): Promise<number> {
   const connectionString =

@@ -1,21 +1,13 @@
 import { expect, test } from "@playwright/test";
 import { Pool } from "pg";
+import { signInAsOwner } from "./helpers";
 
 test.describe("locations", () => {
   test("blocks archiving when location still has stock", async ({ page }, testInfo) => {
     const suffix = `${testInfo.project.name}-${testInfo.retry}`.replace(/[^a-zA-Z0-9]/g, "-");
     const locationName = `Archive Block ${suffix}`;
 
-    await page.goto("/");
-    await page.getByLabel("Email").fill("owner@ohmsweetohm.local");
-    await page.getByLabel("Password").fill("ohm-sweet-ohm-owner");
-    await page.getByRole("button", { name: "Sign in" }).click();
-    await expect(page).toHaveURL(/\/(workspaces|w\/default\/parts)$/);
-
-    const openWorkspaceLink = page.getByRole("link", { name: "Open" });
-    if (await openWorkspaceLink.count()) {
-      await openWorkspaceLink.click();
-    }
+    await signInAsOwner(page);
 
     await page.goto("/w/default/locations");
     await expect(page).toHaveURL(/\/w\/default\/locations$/);
@@ -52,7 +44,7 @@ test.describe("locations", () => {
     const locationName = `Shelf A ${suffix}`;
     const updatedName = `Shelf A Updated ${suffix}`;
 
-    await signIn(page);
+    await signInAsOwner(page);
     await page.goto("/w/default/locations");
     await expect(page).toHaveURL(/\/w\/default\/locations$/);
 
@@ -87,7 +79,7 @@ test.describe("locations", () => {
     const suffix = `${testInfo.project.name}-${testInfo.retry}`.replace(/[^a-zA-Z0-9]/g, "-");
     const locationName = `Duplicate Test ${suffix}`;
 
-    await signIn(page);
+    await signInAsOwner(page);
     await page.goto("/w/default/locations");
 
     await page.getByRole("button", { name: "Add location" }).click();
@@ -109,7 +101,7 @@ test.describe("locations", () => {
     const parentName = `Cabinet ${suffix}`;
     const childName = `Drawer 1 ${suffix}`;
 
-    await signIn(page);
+    await signInAsOwner(page);
     await page.goto("/w/default/locations");
 
     await page.getByRole("button", { name: "Add location" }).click();
@@ -140,7 +132,7 @@ test.describe("locations", () => {
     const suffix = `${testInfo.project.name}-${testInfo.retry}`.replace(/[^a-zA-Z0-9]/g, "-");
     const locationName = `To Delete ${suffix}`;
 
-    await signIn(page);
+    await signInAsOwner(page);
     await page.goto("/w/default/locations");
 
     await page.getByRole("button", { name: "Add location" }).click();
@@ -169,7 +161,7 @@ test.describe("locations", () => {
     const parentName = `Has Children ${suffix}`;
     const childName = `Child Of ${suffix}`;
 
-    await signIn(page);
+    await signInAsOwner(page);
     await page.goto("/w/default/locations");
 
     await page.getByRole("button", { name: "Add location" }).click();
@@ -200,18 +192,6 @@ test.describe("locations", () => {
   });
 });
 
-async function signIn(page: import("@playwright/test").Page) {
-  await page.goto("/");
-  await page.getByLabel("Email").fill("owner@ohmsweetohm.local");
-  await page.getByLabel("Password").fill("ohm-sweet-ohm-owner");
-  await page.getByRole("button", { name: "Sign in" }).click();
-  await expect(page).toHaveURL(/\/(workspaces|w\/default\/parts)$/);
-
-  const openWorkspaceLink = page.getByRole("link", { name: "Open" });
-  if (await openWorkspaceLink.count()) {
-    await openWorkspaceLink.click();
-  }
-}
 
 async function seedStockInLocationByName(locationName: string) {
   const connectionString =

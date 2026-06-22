@@ -11,7 +11,6 @@ import {
 } from "@/server/organizations/organizations";
 
 export type { OrganizationSummary };
-import { revalidatePath } from "next/cache";
 
 export type OrganizationActionResult<T> =
   | { ok: true; data: T; submittedAt: number }
@@ -62,7 +61,6 @@ export async function createOrganizationAction(input: {
       defaultTaxRate: input.defaultTaxRate
     });
     if (!result.ok) throw new Error(result.error);
-    revalidatePath(workspacePath(input.workspaceSlug));
     return success({ id: result.id });
   } catch (error) {
     return failure(error);
@@ -91,7 +89,6 @@ export async function updateOrganizationAction(input: {
       defaultTaxRate: input.defaultTaxRate
     });
     if (!result.ok) throw new Error(result.error);
-    revalidatePath(workspacePath(input.workspaceSlug));
     return success(null);
   } catch (error) {
     return failure(error);
@@ -110,7 +107,6 @@ export async function deleteOrganizationAction(input: {
       id: input.id
     });
     if (!result.ok) throw new Error(result.error);
-    revalidatePath(workspacePath(input.workspaceSlug));
     return success(null);
   } catch (error) {
     return failure(error);
@@ -125,9 +121,6 @@ async function getContext(workspaceSlug: string) {
   return context;
 }
 
-function workspacePath(workspaceSlug: string) {
-  return `/w/${encodeURIComponent(workspaceSlug)}`;
-}
 
 function success<T>(data: T): OrganizationActionResult<T> {
   return { ok: true, data, submittedAt: Date.now() };

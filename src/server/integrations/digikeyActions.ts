@@ -1,6 +1,5 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
 
 import { authorizeWorkspacePermission } from "@/server/access-control/authorize";
 import { getCurrentWorkspaceContextBySlug } from "@/server/auth/currentContext";
@@ -53,7 +52,6 @@ export async function updateDigiKeyIntegrationSettings(
       clientSecret
     });
 
-    revalidatePath(`/w/${workspaceSlug}/settings/integrations`);
 
     return {
       ok: true

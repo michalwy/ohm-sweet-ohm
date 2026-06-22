@@ -1,6 +1,5 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
 
 import { authorizeWorkspacePermission } from "@/server/access-control/authorize";
 import { getCurrentWorkspaceContextBySlug } from "@/server/auth/currentContext";
@@ -55,7 +54,6 @@ export async function createLocationForWorkspace(input: {
       name: input.name,
       isAssignable: input.isAssignable
     });
-    revalidatePath(getWorkspacePath(input.workspaceSlug));
     return getSuccessState(location);
   } catch (error) {
     return getErrorState(getLocationActionError(error));
@@ -83,7 +81,6 @@ export async function updateLocationForWorkspace(input: {
       isAssignable: input.isAssignable,
       isArchived: input.isArchived
     });
-    revalidatePath(getWorkspacePath(input.workspaceSlug));
     return getSuccessState(location);
   } catch (error) {
     return getErrorState(getLocationActionError(error));
@@ -103,7 +100,6 @@ export async function deleteLocationForWorkspace(input: {
       workspaceId: context.workspace.id,
       locationId: input.locationId
     });
-    revalidatePath(getWorkspacePath(input.workspaceSlug));
     return getSuccessState(null);
   } catch (error) {
     return getErrorState(getLocationActionError(error));

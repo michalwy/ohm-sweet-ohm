@@ -29,7 +29,6 @@ import {
 import { ExchangeRateUnavailableError, getExchangeRate, saveManualExchangeRate } from "@/server/currency/exchangeRates";
 import type { ListPage } from "@/server/pagination";
 import { getSupplierOrganizationsForWorkspace, type SupplierSummary } from "@/server/organizations/organizations";
-import { revalidatePath } from "next/cache";
 
 export type PurchaseOrderActionResult<T> =
   | { ok: true; data: T; submittedAt: number }
@@ -144,7 +143,6 @@ export async function createPurchaseOrderForWorkspace(input: {
       priceEntryMode: input.priceEntryMode,
       notes: input.notes
     });
-    revalidatePath(workspacePath(input.workspaceSlug));
     return success({ orderId: order.id });
   } catch (error) {
     return failure(error);
@@ -181,7 +179,6 @@ export async function updatePurchaseOrderForWorkspace(input: {
       orderedAt,
       notes: input.notes
     });
-    revalidatePath(workspacePath(input.workspaceSlug));
     return success(null);
   } catch (error) {
     return failure(error);
@@ -195,7 +192,6 @@ export async function deletePurchaseOrderForWorkspace(input: {
   try {
     const context = await getAuthorizedContext(input.workspaceSlug, "purchase-orders:write");
     await deletePurchaseOrder({ workspaceId: context.workspace.id, orderId: input.orderId });
-    revalidatePath(workspacePath(input.workspaceSlug));
     return success(null);
   } catch (error) {
     return failure(error);
@@ -230,7 +226,6 @@ export async function addOrderItemForWorkspace(input: {
       notes: input.notes,
       sourceShoppingListItemId: input.sourceShoppingListItemId
     });
-    revalidatePath(workspacePath(input.workspaceSlug));
     return success(null);
   } catch (error) {
     return failure(error);
@@ -263,7 +258,6 @@ export async function updateOrderItemForWorkspace(input: {
       taxRate: input.taxRate,
       notes: input.notes
     });
-    revalidatePath(workspacePath(input.workspaceSlug));
     return success(null);
   } catch (error) {
     return failure(error);
@@ -282,7 +276,6 @@ export async function removeOrderItemForWorkspace(input: {
       orderId: input.orderId,
       itemId: input.itemId
     });
-    revalidatePath(workspacePath(input.workspaceSlug));
     return success(null);
   } catch (error) {
     return failure(error);
@@ -296,7 +289,6 @@ export async function markOrderedForWorkspace(input: {
   try {
     const context = await getAuthorizedContext(input.workspaceSlug, "purchase-orders:write");
     await markOrdered({ workspaceId: context.workspace.id, orderId: input.orderId });
-    revalidatePath(workspacePath(input.workspaceSlug));
     return success(null);
   } catch (error) {
     return failure(error);
@@ -316,7 +308,6 @@ export async function receiveItemsForWorkspace(input: {
       createdByUserId: context.user.id,
       items: input.items
     });
-    revalidatePath(workspacePath(input.workspaceSlug));
     return success(null);
   } catch (error) {
     return failure(error);
@@ -330,7 +321,6 @@ export async function revertOrderToDraftForWorkspace(input: {
   try {
     const context = await getAuthorizedContext(input.workspaceSlug, "purchase-orders:write");
     await revertOrderToDraft({ workspaceId: context.workspace.id, orderId: input.orderId });
-    revalidatePath(workspacePath(input.workspaceSlug));
     return success(null);
   } catch (error) {
     return failure(error);
@@ -396,7 +386,6 @@ export async function addMultipleOrderItemsForWorkspace(input: {
       }
     }
 
-    revalidatePath(workspacePath(input.workspaceSlug));
     return success({ addedCount: input.items.length });
   } catch (error) {
     return failure(error);
@@ -421,9 +410,6 @@ async function getAuthorizedContext(
   return context;
 }
 
-function workspacePath(workspaceSlug: string) {
-  return `/w/${encodeURIComponent(workspaceSlug)}`;
-}
 
 function success<T>(data: T): PurchaseOrderActionResult<T> {
   return { ok: true, data, submittedAt: Date.now() };

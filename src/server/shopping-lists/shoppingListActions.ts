@@ -19,7 +19,6 @@ import {
   updateShoppingListItem
 } from "@/server/shopping-lists/shoppingListMutations";
 import type { ListPage } from "@/server/pagination";
-import { revalidatePath } from "next/cache";
 
 export type ShoppingListActionResult<T> =
   | { ok: true; data: T; submittedAt: number }
@@ -100,7 +99,6 @@ export async function createShoppingListForWorkspace(input: {
       description: input.description,
       createdByUserId: context.user.id
     });
-    revalidatePath(workspacePath(input.workspaceSlug));
     return success({ listId: list.id });
   } catch (error) {
     return failure(error);
@@ -121,7 +119,6 @@ export async function updateShoppingListForWorkspace(input: {
       name: input.name,
       description: input.description
     });
-    revalidatePath(workspacePath(input.workspaceSlug));
     return success(null);
   } catch (error) {
     return failure(error);
@@ -138,7 +135,6 @@ export async function deleteShoppingListForWorkspace(input: {
       workspaceId: context.workspace.id,
       listId: input.listId
     });
-    revalidatePath(workspacePath(input.workspaceSlug));
     return success(null);
   } catch (error) {
     return failure(error);
@@ -161,7 +157,6 @@ export async function addShoppingListItemForWorkspace(input: {
       quantity: input.quantity,
       description: input.description
     });
-    revalidatePath(workspacePath(input.workspaceSlug));
     return success(null);
   } catch (error) {
     return failure(error);
@@ -184,7 +179,6 @@ export async function updateShoppingListItemForWorkspace(input: {
       quantity: input.quantity,
       description: input.description
     });
-    revalidatePath(workspacePath(input.workspaceSlug));
     return success(null);
   } catch (error) {
     return failure(error);
@@ -203,7 +197,6 @@ export async function removeShoppingListItemForWorkspace(input: {
       listId: input.listId,
       itemId: input.itemId
     });
-    revalidatePath(workspacePath(input.workspaceSlug));
     return success(null);
   } catch (error) {
     return failure(error);
@@ -226,7 +219,6 @@ export async function convertShoppingListToOrderForWorkspace(input: {
       supplierId: input.supplierId,
       existingOrderId: input.existingOrderId
     });
-    revalidatePath(workspacePath(input.workspaceSlug));
     return success({ purchaseOrderId: order.id });
   } catch (error) {
     return failure(error);
@@ -266,7 +258,6 @@ export async function addMultipleShoppingListItemsForWorkspace(input: {
       }
     }
 
-    revalidatePath(workspacePath(input.workspaceSlug));
     return success({ addedCount: input.items.length });
   } catch (error) {
     return failure(error);
@@ -291,9 +282,6 @@ async function getAuthorizedContext(
   return context;
 }
 
-function workspacePath(workspaceSlug: string) {
-  return `/w/${encodeURIComponent(workspaceSlug)}`;
-}
 
 function success<T>(data: T): ShoppingListActionResult<T> {
   return { ok: true, data, submittedAt: Date.now() };

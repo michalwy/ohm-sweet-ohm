@@ -1,6 +1,5 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 import { getCurrentSession, getCurrentWorkspaceContextBySlug } from "@/server/auth/currentContext";
@@ -59,7 +58,6 @@ export async function createWorkspace(formData: FormData) {
     });
 
     workspaceSlug = workspace.slug;
-    revalidatePath("/workspaces");
 
     if (preset !== "empty") {
       const unitId = await getDefaultPartUnitId(prisma, workspace.id);
@@ -106,7 +104,6 @@ export async function archiveWorkspace(
   }
 
   await archiveWorkspaceMutation(context.workspace.id);
-  revalidatePath("/workspaces");
   return { ok: true, redirectTo: "/workspaces" };
 }
 
@@ -150,7 +147,6 @@ export async function restoreWorkspaceFromPicker(formData: FormData) {
   }
 
   await restoreWorkspaceMutation(membership.workspace.id);
-  revalidatePath("/workspaces");
   redirect("/workspaces");
 }
 
@@ -198,7 +194,6 @@ export async function scheduleWorkspaceDeletion(
   }
 
   await enqueueWorkspaceDeletion(membership.workspace.id, "manual", await getPgBoss());
-  revalidatePath("/workspaces");
   return { ok: true };
 }
 

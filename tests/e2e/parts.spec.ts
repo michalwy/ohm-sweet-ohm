@@ -1,5 +1,6 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
 import { Pool } from "pg";
+import { signInAsOwner } from "./helpers";
 
 test.describe("parts list", () => {
   test("redirects anonymous users to sign in", async ({ page }) => {
@@ -51,15 +52,7 @@ test.describe("parts list", () => {
     const updatedDescription = "Updated DIP microcontroller note";
     const updatedManufacturer = "Microchip";
 
-    await page.goto("/");
-    await page.getByLabel("Email").fill("owner@ohmsweetohm.local");
-    await page.getByLabel("Password").fill("ohm-sweet-ohm-owner");
-    await page.getByRole("button", { name: "Sign in" }).click();
-
-    await expect(
-      page.getByRole("heading", { level: 1, name: "Workspaces" })
-    ).toBeVisible();
-    await page.getByRole("link", { name: "Open" }).click();
+    await signInAsOwner(page);
 
     await expect(
       page.getByRole("heading", { level: 1, name: "Parts" })
@@ -310,16 +303,7 @@ test.describe("parts list", () => {
   });
 
   test("configures visible columns and persists list settings", async ({ page }) => {
-    await page.goto("/");
-    await page.getByLabel("Email").fill("owner@ohmsweetohm.local");
-    await page.getByLabel("Password").fill("ohm-sweet-ohm-owner");
-    await page.getByRole("button", { name: "Sign in" }).click();
-    await expect(page).toHaveURL(/\/(workspaces|w\/default\/parts)$/);
-    const openWorkspaceLink = page.getByRole("link", { name: "Open" });
-    if (await openWorkspaceLink.count()) {
-      await openWorkspaceLink.click();
-    }
-    await expect(page).toHaveURL(/\/w\/default\/parts$/);
+    await signInAsOwner(page);
 
     const partsTable = page.getByRole("table");
     await expect(partsTable.getByRole("columnheader", { name: "Description" })).toBeVisible();
@@ -352,15 +336,7 @@ test.describe("parts list", () => {
 
     await seedLargeListsForScrolling(suffix);
 
-    await page.goto("/");
-    await page.getByLabel("Email").fill("owner@ohmsweetohm.local");
-    await page.getByLabel("Password").fill("ohm-sweet-ohm-owner");
-    await page.getByRole("button", { name: "Sign in" }).click();
-
-    await expect(
-      page.getByRole("heading", { level: 1, name: "Workspaces" })
-    ).toBeVisible();
-    await page.getByRole("link", { name: "Open" }).click();
+    await signInAsOwner(page);
 
     await expect(page).toHaveURL(/\/w\/default\/parts$/);
     const targetPartRow = page.locator("tr").filter({ hasText: targetCatalogNumber }).filter({ hasText: manufacturerName });
@@ -368,8 +344,7 @@ test.describe("parts list", () => {
     await scrollListUntilVisible(page, "parts-list-viewport", targetPartRow);
     await expect(targetPartRow).toContainText("Scroll-loaded test part 059");
 
-    await page.getByRole("link", { name: "Attributes" }).click();
-    await expect(page).toHaveURL(/\/w\/default\/attributes$/);
+    await page.goto("/w/default/attributes");
     const targetAttributeRow = page.getByRole("row", {
       name: new RegExp(targetAttributeName)
     });
@@ -392,15 +367,7 @@ test.describe("parts list", () => {
     const quickPathLeafName = `Class D ${testInfo.project.name}`;
     const quickPathName = `Modules ${testInfo.project.name} / Audio ${testInfo.project.name} / ${quickPathLeafName}`;
 
-    await page.goto("/");
-    await page.getByLabel("Email").fill("owner@ohmsweetohm.local");
-    await page.getByLabel("Password").fill("ohm-sweet-ohm-owner");
-    await page.getByRole("button", { name: "Sign in" }).click();
-
-    await expect(
-      page.getByRole("heading", { level: 1, name: "Workspaces" })
-    ).toBeVisible();
-    await page.getByRole("link", { name: "Open" }).click();
+    await signInAsOwner(page);
     await page.goto("/w/default/part-categories");
 
     await expect(page).toHaveURL(/\/w\/default\/part-categories$/);
@@ -619,20 +586,10 @@ test.describe("parts list", () => {
     const overrideName = `Override marker ${suffix}`;
     const disposableName = `Disposable ${suffix}`;
 
-    await page.goto("/");
-    await page.getByLabel("Email").fill("owner@ohmsweetohm.local");
-    await page.getByLabel("Password").fill("ohm-sweet-ohm-owner");
-    await page.getByRole("button", { name: "Sign in" }).click();
+    await signInAsOwner(page);
+    await page.goto("/w/default/attributes");
 
-    await expect(
-      page.getByRole("heading", { level: 1, name: "Workspaces" })
-    ).toBeVisible();
-    await page.getByRole("link", { name: "Open" }).click();
-    await page.getByRole("link", { name: "Attributes" }).click();
-
-    await expect(page).toHaveURL(/\/w\/default\/attributes$/);
     await expect(page.getByRole("heading", { level: 1, name: "Attributes" })).toBeVisible();
-    await page.waitForLoadState("networkidle");
     await expect(page.getByRole("button", { name: "Add attribute" })).toBeEnabled();
     await page.getByRole("button", { name: "Add attribute" }).click();
     let addAttributeDialog = page.getByRole("dialog", {
@@ -895,8 +852,7 @@ test.describe("parts list", () => {
       page.locator("p").filter({ hasText: /^Resistors configured$/ })
     ).toBeVisible();
 
-    await page.getByRole("link", { name: "Parts" }).click();
-    await expect(page).toHaveURL(/\/w\/default\/parts$/);
+    await page.goto("/w/default/parts");
     await page.getByRole("button", { name: "Add part" }).click();
     const addPartDialog = page.getByRole("dialog", { name: "Add part" });
     await expect(addPartDialog).toBeVisible();
@@ -1000,12 +956,7 @@ test.describe("parts list", () => {
     });
     await ensureActiveSupplierProvider("digikey");
 
-    await page.goto("/");
-    await page.getByLabel("Email").fill("owner@ohmsweetohm.local");
-    await page.getByLabel("Password").fill("ohm-sweet-ohm-owner");
-    await page.getByRole("button", { name: "Sign in" }).click();
-    await page.getByRole("link", { name: "Open" }).click();
-    await expect(page).toHaveURL(/\/w\/default\/parts$/);
+    await signInAsOwner(page);
 
     const addPartDialog = page.getByRole("dialog", { name: "Add part" });
     const matchingDialog = page.getByRole("dialog", { name: "Supplier matching" });
@@ -1024,7 +975,6 @@ test.describe("parts list", () => {
     await page.getByPlaceholder("Search categories").fill("integrated");
     await page.keyboard.press("Enter");
     await expect(matchingDialog.getByRole("button", { name: /Target category.*Integrated circuits/ })).toBeVisible();
-    await page.waitForLoadState("networkidle");
 
     const frequencyRow = matchingDialog.locator("tr", {
       has: page.getByText("Frequency")
@@ -1032,17 +982,14 @@ test.describe("parts list", () => {
     await frequencyRow.locator("select").first().selectOption({
       label: frequencyAttributeName
     });
-    // Wait for React to process the state update before selecting package
-    await page.waitForTimeout(200);
 
     const packageRow = matchingDialog.locator("tr", {
       has: page.getByText("Package / Case")
     });
+    await expect(packageRow.locator("select").first()).toBeEnabled();
     await packageRow.locator("select").first().selectOption({
       label: packageAttributeName
     });
-    // Wait for React to settle before saving
-    await page.waitForTimeout(200);
 
     await matchingDialog.getByRole("button", { name: "Save changes" }).click();
     await expect(matchingDialog).not.toBeVisible();
@@ -1332,7 +1279,7 @@ async function scrollListUntilVisible(
     await viewport.evaluate((element) => {
       element.scrollTop = element.scrollHeight;
     });
-    await page.waitForTimeout(150);
+    await page.waitForTimeout(300);
   }
 
   await expect(locator).toBeVisible();

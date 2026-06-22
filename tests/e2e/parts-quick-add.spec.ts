@@ -1,23 +1,10 @@
 import { expect, test } from "@playwright/test";
 import { Pool } from "pg";
+import { signInAsOwner } from "./helpers";
 
 const DB_URL =
   process.env.DATABASE_URL ??
   "postgresql://oso:oso_e2e_password@localhost:5433/ohm_sweet_ohm_e2e?schema=public";
-
-async function signInAsOwner(page: import("@playwright/test").Page) {
-  await page.goto("/");
-  await page.getByLabel("Email").fill("owner@ohmsweetohm.local");
-  await page.getByLabel("Password").fill("ohm-sweet-ohm-owner");
-  await page.getByRole("button", { name: "Sign in" }).click();
-
-  await expect(page).toHaveURL(/\/(workspaces|w\/default\/parts)$/, { timeout: 10000 });
-  const openLink = page.getByRole("link", { name: "Open" });
-  if (await openLink.count()) {
-    await openLink.click();
-  }
-  await expect(page).toHaveURL(/\/w\/default\/parts$/);
-}
 
 function uniqueName(base: string, info: import("@playwright/test").TestInfo) {
   return `${base} ${info.project.name} ${info.workerIndex} ${info.retry}`;

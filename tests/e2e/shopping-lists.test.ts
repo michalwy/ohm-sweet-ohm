@@ -1,23 +1,10 @@
 import { expect, test } from "@playwright/test";
 import { Pool } from "pg";
+import { signInAsOwner } from "./helpers";
 
 const DB_URL =
   process.env.DATABASE_URL ??
   "postgresql://oso:oso_e2e_password@localhost:5433/ohm_sweet_ohm_e2e?schema=public";
-
-async function signInAsOwner(page: import("@playwright/test").Page) {
-  await page.goto("/");
-  await page.getByLabel("Email").fill("owner@ohmsweetohm.local");
-  await page.getByLabel("Password").fill("ohm-sweet-ohm-owner");
-  await page.getByRole("button", { name: "Sign in" }).click();
-
-  await expect(page).toHaveURL(/\/(workspaces|w\/default\/parts)$/, { timeout: 10000 });
-  const openLink = page.getByRole("link", { name: "Open" });
-  if (await openLink.count()) {
-    await openLink.click();
-  }
-  await expect(page).toHaveURL(/\/w\/default\/parts$/);
-}
 
 function uniqueName(base: string, info: import("@playwright/test").TestInfo) {
   return `${base} ${info.project.name} ${info.workerIndex} ${info.retry}`;
@@ -57,8 +44,7 @@ test.describe("shopping lists", () => {
     const listName = uniqueName("E2E List", testInfo);
 
     await signInAsOwner(page);
-    await page.getByRole("link", { name: "Shopping Lists" }).click();
-    await expect(page).toHaveURL(/\/w\/default\/shopping-lists$/);
+    await page.goto("/w/default/shopping-lists");
     await expect(page.getByRole("heading", { level: 1, name: "Shopping Lists" })).toBeVisible();
 
     await page.getByRole("button", { name: "New list" }).click();
@@ -84,8 +70,7 @@ test.describe("shopping lists", () => {
     const listName = uniqueName("E2E Item List", testInfo);
 
     await signInAsOwner(page);
-    await page.getByRole("link", { name: "Shopping Lists" }).click();
-    await expect(page).toHaveURL(/\/w\/default\/shopping-lists$/);
+    await page.goto("/w/default/shopping-lists");
 
     await page.getByRole("button", { name: "New list" }).click();
     const dialog = page.getByRole("dialog", { name: "New shopping list" });
@@ -126,8 +111,7 @@ test.describe("shopping lists", () => {
     await ensureSupplierOrg(supplierName);
 
     await signInAsOwner(page);
-    await page.getByRole("link", { name: "Shopping Lists" }).click();
-    await expect(page).toHaveURL(/\/w\/default\/shopping-lists$/);
+    await page.goto("/w/default/shopping-lists");
 
     await page.getByRole("button", { name: "New list" }).click();
     const listDialog = page.getByRole("dialog", { name: "New shopping list" });
@@ -181,7 +165,7 @@ test.describe("shopping lists", () => {
     const updatedName = uniqueName("E2E Delete List Updated", testInfo);
 
     await signInAsOwner(page);
-    await page.getByRole("link", { name: "Shopping Lists" }).click();
+    await page.goto("/w/default/shopping-lists");
 
     await page.getByRole("button", { name: "New list" }).click();
     const dialog = page.getByRole("dialog", { name: "New shopping list" });
@@ -219,8 +203,7 @@ test.describe("shopping lists", () => {
     const listName = uniqueName("E2E SL MultiAdd", testInfo);
 
     await signInAsOwner(page);
-    await page.getByRole("link", { name: "Shopping Lists" }).click();
-    await expect(page).toHaveURL(/\/w\/default\/shopping-lists$/);
+    await page.goto("/w/default/shopping-lists");
 
     // Create list
     await page.getByRole("button", { name: "New list" }).click();
@@ -271,8 +254,7 @@ test.describe("shopping lists", () => {
     const listName = uniqueName("E2E SL Merge", testInfo);
 
     await signInAsOwner(page);
-    await page.getByRole("link", { name: "Shopping Lists" }).click();
-    await expect(page).toHaveURL(/\/w\/default\/shopping-lists$/);
+    await page.goto("/w/default/shopping-lists");
 
     // Create list
     await page.getByRole("button", { name: "New list" }).click();

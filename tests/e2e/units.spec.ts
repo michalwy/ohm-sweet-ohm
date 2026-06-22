@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { signInAsOwner } from "./helpers";
 
 test.describe("units", () => {
   test("creates a unit, edits it, and deletes it", async ({ page }, testInfo) => {
@@ -6,7 +7,7 @@ test.describe("units", () => {
     const unitName = `E2E Unit ${suffix}`;
     const unitSymbol = "e2u";
 
-    await signIn(page);
+    await signInAsOwner(page);
     await page.goto("/w/default/units");
     await expect(page).toHaveURL(/\/w\/default\/units$/);
     await expect(page.getByRole("heading", { level: 1, name: "Units" })).toBeVisible();
@@ -60,7 +61,7 @@ test.describe("units", () => {
     const suffix = `${testInfo.project.name}-${testInfo.retry}`.replace(/[^a-zA-Z0-9]/g, "-");
     const unitName = `Dup Unit ${suffix}`;
 
-    await signIn(page);
+    await signInAsOwner(page);
     await page.goto("/w/default/units");
 
     await page.getByRole("button", { name: "Add unit" }).click();
@@ -80,7 +81,7 @@ test.describe("units", () => {
   });
 
   test("prevents deleting a unit that is in use by a part", async ({ page }) => {
-    await signIn(page);
+    await signInAsOwner(page);
     await page.goto("/w/default/units");
 
     const pcsRow = page.getByRole("row", { name: /Pieces/ });
@@ -98,26 +99,13 @@ test.describe("units", () => {
   });
 
   test("shows seeded units", async ({ page }) => {
-    await signIn(page);
+    await signInAsOwner(page);
     await page.goto("/w/default/units");
 
     await expect(page.getByRole("row", { name: /Pieces/ })).toBeVisible();
     await expect(page.getByRole("row", { name: /Meters/ })).toBeVisible();
   });
 });
-
-async function signIn(page: import("@playwright/test").Page) {
-  await page.goto("/");
-  await page.getByLabel("Email").fill("owner@ohmsweetohm.local");
-  await page.getByLabel("Password").fill("ohm-sweet-ohm-owner");
-  await page.getByRole("button", { name: "Sign in" }).click();
-  await expect(page).toHaveURL(/\/(workspaces|w\/default\/parts)$/);
-
-  const openWorkspaceLink = page.getByRole("link", { name: "Open" });
-  if (await openWorkspaceLink.count()) {
-    await openWorkspaceLink.click();
-  }
-}
 
 function escapeRegex(value: string) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");

@@ -1,6 +1,5 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
 
 import { authorizeWorkspacePermission } from "@/server/access-control/authorize";
 import { getCurrentWorkspaceContextBySlug } from "@/server/auth/currentContext";
@@ -93,7 +92,6 @@ export async function createPartCategoryFromForm(
     return getMutationErrorState("database-unavailable");
   }
 
-  revalidatePath(categoriesPath);
   return getMutationSuccessState(category, categories);
 }
 
@@ -152,7 +150,6 @@ export async function createPartCategoryPathFromForm(
     return getMutationErrorState("database-unavailable");
   }
 
-  revalidatePath(categoriesPath);
   return getMutationSuccessState(category, categories);
 }
 
@@ -212,7 +209,6 @@ export async function updatePartCategoryFromForm(
     return getMutationErrorState("database-unavailable");
   }
 
-  revalidatePath(categoriesPath);
   return getMutationSuccessState(category, categories);
 }
 
@@ -256,7 +252,6 @@ export async function deletePartCategoryFromForm(
     return getDeleteErrorState(formError);
   }
 
-  revalidatePath(categoriesPath);
   return {
     ok: true,
     id,

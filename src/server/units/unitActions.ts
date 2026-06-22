@@ -1,6 +1,5 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
 
 import { Prisma } from "@/generated/prisma/client";
 import { authorizeWorkspacePermission } from "@/server/access-control/authorize";
@@ -58,7 +57,6 @@ export async function createUnitForWorkspace(input: {
       allowsFraction: input.allowsFraction
     });
 
-    revalidatePath(getWorkspacePath(input.workspaceSlug));
     return getSuccessState(unit);
   } catch (error) {
     return getErrorState(getUnitActionError(error));
@@ -85,7 +83,6 @@ export async function updateUnitForWorkspace(input: {
       allowsFraction: input.allowsFraction
     });
 
-    revalidatePath(getWorkspacePath(input.workspaceSlug));
     return getSuccessState(unit);
   } catch (error) {
     return getErrorState(getUnitActionError(error));
@@ -106,7 +103,6 @@ export async function deleteUnitForWorkspace(input: {
       unitId: input.unitId
     });
 
-    revalidatePath(getWorkspacePath(input.workspaceSlug));
     return getSuccessState(null);
   } catch (error) {
     return getErrorState(getUnitActionError(error));

@@ -1,6 +1,5 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
 
 import { authorizeWorkspacePermission } from "@/server/access-control/authorize";
 import { getCurrentWorkspaceContextBySlug } from "@/server/auth/currentContext";
@@ -101,7 +100,6 @@ export async function createAttributeForWorkspace(input: {
       choiceOptions: input.choiceOptions
     });
 
-    revalidatePath(getWorkspacePath(input.workspaceSlug));
     return getSuccessState(attribute);
   } catch (error) {
     return getErrorState(getAttributeActionError(error));
@@ -132,7 +130,6 @@ export async function updateAttributeForWorkspace(input: {
       choiceOptions: input.choiceOptions
     });
 
-    revalidatePath(getWorkspacePath(input.workspaceSlug));
     return getSuccessState(attribute);
   } catch (error) {
     return getErrorState(getAttributeActionError(error));
@@ -153,7 +150,6 @@ export async function deleteAttributeForWorkspace(input: {
       workspaceId: context.workspace.id,
       attributeId: input.attributeId
     });
-    revalidatePath(getWorkspacePath(input.workspaceSlug));
     return getSuccessState(null);
   } catch (error) {
     return getErrorState(getAttributeActionError(error));
@@ -178,7 +174,6 @@ export async function createChoiceOptionForWorkspace(input: {
       sortOrder: input.sortOrder
     });
 
-    revalidatePath(getWorkspacePath(input.workspaceSlug));
     return getSuccessState(option);
   } catch (error) {
     return getErrorState(getAttributeActionError(error));
@@ -203,7 +198,6 @@ export async function updateChoiceOptionForWorkspace(input: {
       sortOrder: input.sortOrder
     });
 
-    revalidatePath(getWorkspacePath(input.workspaceSlug));
     return getSuccessState(option);
   } catch (error) {
     return getErrorState(getAttributeActionError(error));
@@ -224,7 +218,6 @@ export async function deleteChoiceOptionForWorkspace(input: {
       workspaceId: context.workspace.id,
       optionId: input.optionId
     });
-    revalidatePath(getWorkspacePath(input.workspaceSlug));
     return getSuccessState(null);
   } catch (error) {
     return getErrorState(getAttributeActionError(error));
@@ -293,7 +286,6 @@ export async function attachCategoryAttributeForWorkspace(input: {
       defaultValue: input.defaultValue,
       isPrimary: input.isPrimary ?? false
     });
-    revalidatePath(getWorkspacePath(input.workspaceSlug));
     return getSuccessState(null);
   } catch (error) {
     return getErrorState(getAttributeActionError(error));
@@ -316,7 +308,6 @@ export async function detachCategoryAttributeForWorkspace(input: {
       categoryId: input.categoryId,
       attributeId: input.attributeId
     });
-    revalidatePath(getWorkspacePath(input.workspaceSlug));
     return getSuccessState(null);
   } catch (error) {
     return getErrorState(getAttributeActionError(error));
@@ -339,7 +330,6 @@ export async function setCategoryValueAttributeForWorkspace(input: {
       categoryId: input.categoryId,
       attributeId: input.attributeId
     });
-    revalidatePath(getWorkspacePath(input.workspaceSlug));
     return getSuccessState(null);
   } catch (error) {
     return getErrorState(getAttributeActionError(error));
@@ -417,7 +407,6 @@ export async function saveCategoryAttributeConfigurationForWorkspace(input: {
       categoryId: input.categoryId
     });
 
-    revalidatePath(getWorkspacePath(input.workspaceSlug));
     return getSuccessState(effectiveAttributes);
   } catch (error) {
     return getErrorState(getAttributeActionError(error));
@@ -474,7 +463,6 @@ export async function saveWorkspaceAttributeConfigurationForWorkspace(input: {
       workspaceId: context.workspace.id
     });
 
-    revalidatePath(getWorkspacePath(input.workspaceSlug));
     return getSuccessState(effectiveAttributes);
   } catch (error) {
     return getErrorState(getAttributeActionError(error));
