@@ -12,6 +12,7 @@ type WorkspaceNavItem =
   | "part-categories"
   | "attributes"
   | "units"
+  | "settings-general"
   | "settings-integrations"
   | "settings-ordering";
 
@@ -42,6 +43,7 @@ const copy = {
   partCategories: "Part categories",
   attributes: "Attributes",
   units: "Units",
+  general: "General",
   integrations: "Integrations",
   ordering: "Ordering"
 };
@@ -150,6 +152,15 @@ export function WorkspaceShell({
               aria-current={activeNavItem === "units" ? "page" : undefined}
             >
               {copy.units}
+            </Link>
+            <Link
+              className={getNavLinkClass(activeNavItem === "settings-general")}
+              href={`/w/${workspaceSlug}/settings/general`}
+              aria-current={
+                activeNavItem === "settings-general" ? "page" : undefined
+              }
+            >
+              {copy.general}
             </Link>
             <Link
               className={getNavLinkClass(activeNavItem === "settings-integrations")}

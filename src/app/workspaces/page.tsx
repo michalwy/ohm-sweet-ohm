@@ -4,9 +4,13 @@ import { redirect } from "next/navigation";
 import { signOut } from "@/server/auth/actions";
 import {
   getCurrentSession,
-  getCurrentUserWorkspaces
+  getCurrentUserWorkspaces,
+  getCurrentUserArchivedWorkspaces
 } from "@/server/auth/currentContext";
-import { createWorkspace } from "@/server/workspaces/actions";
+import {
+  createWorkspace,
+  restoreWorkspaceFromPicker
+} from "@/server/workspaces/actions";
 import { CURRENCIES } from "@/app/currencies";
 
 export const dynamic = "force-dynamic";
@@ -36,13 +40,17 @@ const copy = {
   open: "Open",
   missingName: "Enter a workspace name.",
   missingCurrency: "Choose a primary currency.",
-  unavailable: "Workspace could not be created. Try again."
+  unavailable: "Workspace could not be created. Try again.",
+  archivedSection: "Archived workspaces",
+  restore: "Restore",
+  archivedNotice: "This workspace has been archived and is no longer accessible."
 };
 
 
 type WorkspacesPageProps = {
   searchParams?: Promise<{
     error?: string;
+    notice?: string;
   }>;
 };
 
@@ -55,10 +63,16 @@ export default async function WorkspacesPage({
     redirect("/sign-in");
   }
 
-  const memberships = await getCurrentUserWorkspaces();
+  const [memberships, archivedMemberships] = await Promise.all([
+    getCurrentUserWorkspaces(),
+    getCurrentUserArchivedWorkspaces()
+  ]);
   const workspaces = memberships?.map(({ workspace }) => workspace) ?? [];
+  const archivedWorkspaces =
+    archivedMemberships?.map(({ workspace }) => workspace) ?? [];
   const resolvedSearchParams = await searchParams;
   const error = resolvedSearchParams?.error;
+  const notice = resolvedSearchParams?.notice;
 
   return (
     <main className="min-h-screen bg-slate-100 text-slate-950">
@@ -101,6 +115,12 @@ export default async function WorkspacesPage({
               </p>
             </div>
 
+            {notice === "workspace-archived" && (
+              <p className="mb-4 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+                {copy.archivedNotice}
+              </p>
+            )}
+
             {workspaces.length > 0 ? (
               <div className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
                 <ul className="divide-y divide-slate-200">
@@ -135,6 +155,54 @@ export default async function WorkspacesPage({
                 <p className="mt-2 text-sm leading-6 text-slate-500">
                   {copy.emptyBody}
                 </p>
+              </div>
+            )}
+
+            {archivedWorkspaces.length > 0 && (
+              <div className="mt-8">
+                <h2 className="mb-3 text-base font-semibold text-slate-700">
+                  {copy.archivedSection}
+                </h2>
+                <div className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
+                  <ul className="divide-y divide-slate-200">
+                    {archivedWorkspaces.map((workspace) => (
+                      <li
+                        className="flex items-center justify-between gap-3 px-4 py-4"
+                        key={workspace.id}
+                      >
+                        <div className="min-w-0">
+                          <p className="truncate text-base font-semibold text-slate-950">
+                            {workspace.name}
+                          </p>
+                          <p className="mt-1 truncate font-mono text-xs text-slate-500">
+                            /w/{workspace.slug}
+                          </p>
+                          {workspace.archivedAt && (
+                            <p className="mt-0.5 text-xs text-slate-400">
+                              Archived{" "}
+                              {new Intl.DateTimeFormat("en-US", {
+                                dateStyle: "medium"
+                              }).format(new Date(workspace.archivedAt))}
+                            </p>
+                          )}
+                        </div>
+                        <form action={restoreWorkspaceFromPicker}>
+                          <input
+                            type="hidden"
+                            name="workspaceSlug"
+                            value={workspace.slug}
+                          />
+                          <button
+                            className="inline-flex min-h-9 items-center justify-center rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:border-slate-400 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2"
+                            type="submit"
+                          >
+                            {copy.restore}
+                          </button>
+                        </form>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
               </div>
             )}
           </section>

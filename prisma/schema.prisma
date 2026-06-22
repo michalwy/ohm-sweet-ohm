@@ -399,6 +399,7 @@ model Workspace {
   defaultPriceEntryMode String   @default("net")
   defaultTaxRate        Decimal?
   activeSupplierProvider SupplierProvider?
+  archivedAt      DateTime?
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
@@ -423,6 +424,8 @@ model Workspace {
   supplierManufacturerMappingStats SupplierManufacturerMappingStat[]
   shoppingLists    ShoppingList[]
   purchaseOrders   PurchaseOrder[]
+
+  @@index([archivedAt])
 }
 
 model ExchangeRate {

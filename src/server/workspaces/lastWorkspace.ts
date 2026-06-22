@@ -25,7 +25,8 @@ export async function getLastWorkspaceRedirectPath(userId: string) {
     where: {
       userId,
       workspace: {
-        slug: workspaceSlug
+        slug: workspaceSlug,
+        archivedAt: null
       }
     },
     select: {

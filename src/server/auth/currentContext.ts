@@ -56,7 +56,8 @@ export async function getCurrentUserWorkspaces() {
 
   return prisma.workspaceMember.findMany({
     where: {
-      userId: session.user.id
+      userId: session.user.id,
+      workspace: { archivedAt: null }
     },
     orderBy: {
       createdAt: "asc"
@@ -67,7 +68,36 @@ export async function getCurrentUserWorkspaces() {
           id: true,
           name: true,
           slug: true,
+          archivedAt: true,
           createdAt: true
+        }
+      }
+    }
+  });
+}
+
+export async function getCurrentUserArchivedWorkspaces() {
+  const session = await getCurrentSession();
+
+  if (!session) {
+    return null;
+  }
+
+  return prisma.workspaceMember.findMany({
+    where: {
+      userId: session.user.id,
+      workspace: { archivedAt: { not: null } }
+    },
+    orderBy: {
+      createdAt: "asc"
+    },
+    select: {
+      workspace: {
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+          archivedAt: true
         }
       }
     }
@@ -120,7 +150,20 @@ export async function getCurrentWorkspaceContextBySlug(workspaceSlug: string) {
     },
     select: {
       user: true,
-      workspace: true
+      workspace: {
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+          primaryCurrency: true,
+          defaultPriceEntryMode: true,
+          defaultTaxRate: true,
+          activeSupplierProvider: true,
+          archivedAt: true,
+          createdAt: true,
+          updatedAt: true
+        }
+      }
     }
   });
 

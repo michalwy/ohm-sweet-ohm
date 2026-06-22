@@ -57,6 +57,27 @@ When creating a workspace you can choose one of three starting data options:
 
 Seeded data behaves identically to data you create yourself — you can edit, delete, or extend any of it. The preset cannot be changed after the workspace is created.
 
+### Archiving and restoring a workspace
+
+If you no longer actively use a workspace, you can archive it. Archiving removes it from the active workspace list and makes it inaccessible to members until it is restored. All data is preserved.
+
+**To archive a workspace** (admins only):
+
+1. Open the workspace.
+2. Navigate to **Settings → General**.
+3. Click **Archive workspace** in the danger zone.
+4. Confirm in the dialog. You are redirected to the Workspaces page.
+
+**To restore an archived workspace** (admins only):
+
+1. Open the Workspaces page.
+2. Scroll to the **Archived workspaces** section (only visible when at least one workspace is archived).
+3. Click **Restore** next to the workspace you want to reactivate.
+
+The workspace immediately reappears in the active list and is accessible again to all members.
+
+**What members see:** If a member navigates to an archived workspace URL, they are redirected to the Workspaces page with a notice that the workspace has been archived.
+
 ## 2. Manage Organizations
 
 Use **Organizations** to manage the manufacturers, suppliers, and other external entities you work with. Each organization can hold one or more roles:
