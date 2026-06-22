@@ -31,12 +31,12 @@ Only workspace admins (the `admin` permission wildcard) may archive or restore. 
 **Client-side redirect after archiving.**  
 The `archiveWorkspace` server action returns `{ ok: true, redirectTo: "/workspaces" }` instead of calling `redirect()` directly. The client `GeneralSettingsClient` calls `window.location.assign(redirectTo)` after receiving the success response. This allows the client component to close the confirmation dialog cleanly before navigating.
 
-**Restore as a plain form action on `/workspaces`.**  
-The `/workspaces` page uses server-rendered forms throughout (`createWorkspace` is a form action). Restore uses the same pattern: a small `<form action={restoreWorkspaceFromPicker}>` with a hidden slug field. No client component needed.
+**Restore and permanent-delete actions in a client component on `/workspaces`.**  
+The restore form (`<form action={restoreWorkspaceFromPicker}>`) and the permanent-delete button both live in the `ArchivedWorkspaceActions` client component (`src/app/workspaces/archived-workspace-actions.tsx`). The restore action is still a plain form POST server action; the delete action uses `useMutation` to call `scheduleWorkspaceDeletion` and reloads the page on success.
 
 ## Consequences
 
 - `getCurrentUserWorkspaces()` now returns only active workspaces. Any future code that needs to enumerate all workspaces (active + archived) must use `getCurrentUserArchivedWorkspaces()` or a direct Prisma query.
 - The workspace layout (`src/app/w/[workspaceSlug]/layout.tsx`) adds two DB calls (session + workspace context) for every workspace page request. These duplicate calls exist with the per-page calls as well; a future optimization could wrap them in `React.cache()` to deduplicate within a render.
 - The `lastWorkspace` cookie redirect filters out archived workspaces so users are not sent back to an archived workspace after sign-in.
-- Workspace deletion (permanent, issue #55) will build on top of this — archived workspaces are the input set for deletion.
+- Workspace deletion (permanent, issue #55) builds on top of this — archived workspaces are the input set for deletion. The **Permanently delete** button appears next to the **Restore** button in the **Archived workspaces** section of the Workspaces page (`/workspaces`). It is not in workspace settings. Clicking it opens a typed-name confirmation dialog; on confirm, the server action `scheduleWorkspaceDeletion` calls `enqueueWorkspaceDeletion("manual", ...)` which sets `deletionScheduledAt` and enqueues a pg-boss job (see ADR 0017). Restoration is no longer possible once `deletionScheduledAt` is set.

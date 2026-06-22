@@ -7,10 +7,8 @@ import {
   getCurrentUserWorkspaces,
   getCurrentUserArchivedWorkspaces
 } from "@/server/auth/currentContext";
-import {
-  createWorkspace,
-  restoreWorkspaceFromPicker
-} from "@/server/workspaces/actions";
+import { createWorkspace } from "@/server/workspaces/actions";
+import { ArchivedWorkspaceActions } from "@/app/workspaces/archived-workspace-actions";
 import { CURRENCIES } from "@/app/currencies";
 
 export const dynamic = "force-dynamic";
@@ -42,9 +40,7 @@ const copy = {
   missingCurrency: "Choose a primary currency.",
   unavailable: "Workspace could not be created. Try again.",
   archivedSection: "Archived workspaces",
-  restore: "Restore",
-  archivedNotice: "This workspace has been archived and is no longer accessible.",
-  deletionInProgress: "Deletion in progress"
+  archivedNotice: "This workspace has been archived and is no longer accessible."
 };
 
 
@@ -186,27 +182,12 @@ export default async function WorkspacesPage({
                               }).format(new Date(workspace.archivedAt))}
                             </p>
                           )}
-                          {workspace.deletionScheduledAt && (
-                            <p className="mt-1 text-xs font-medium text-[var(--color-error)]">
-                              {copy.deletionInProgress}
-                            </p>
-                          )}
                         </div>
-                        {!workspace.deletionScheduledAt && (
-                          <form action={restoreWorkspaceFromPicker}>
-                            <input
-                              type="hidden"
-                              name="workspaceSlug"
-                              value={workspace.slug}
-                            />
-                            <button
-                              className="inline-flex min-h-9 items-center justify-center rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:border-slate-400 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2"
-                              type="submit"
-                            >
-                              {copy.restore}
-                            </button>
-                          </form>
-                        )}
+                        <ArchivedWorkspaceActions
+                          workspaceName={workspace.name}
+                          workspaceSlug={workspace.slug}
+                          deletionScheduledAt={workspace.deletionScheduledAt}
+                        />
                       </li>
                     ))}
                   </ul>

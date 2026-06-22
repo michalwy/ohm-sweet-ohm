@@ -139,6 +139,70 @@ describe("enqueueWorkspaceDeletion", () => {
   });
 });
 
+async function populateWorkspace(workspaceId: string) {
+  await prisma.$transaction(async (tx) => {
+    const unit = await tx.unit.create({
+      data: { workspaceId, name: "Piece", normalizedName: "piece", symbol: "pcs", allowsFraction: false }
+    });
+
+    const org = await tx.organization.create({
+      data: {
+        workspaceId,
+        name: "ACME Corp",
+        normalizedName: "acme corp",
+        roles: { create: [{ role: "manufacturer" }] }
+      }
+    });
+
+    const parentLocation = await tx.storageLocation.create({
+      data: { workspaceId, name: "Shelf A", normalizedName: "shelf a" }
+    });
+
+    await tx.storageLocation.create({
+      data: { workspaceId, parentId: parentLocation.id, name: "Bin 1", normalizedName: "bin 1" }
+    });
+
+    const attr = await tx.attribute.create({
+      data: { workspaceId, name: "Resistance", normalizedName: "resistance", type: "NUMBER" }
+    });
+
+    const parentCategory = await tx.partCategory.create({
+      data: { workspaceId, name: "Passives", valueAttributeId: attr.id }
+    });
+
+    await tx.partCategory.create({
+      data: { workspaceId, parentId: parentCategory.id, name: "Resistors" }
+    });
+
+    const part = await tx.part.create({
+      data: {
+        workspaceId,
+        catalogNumber: "R-100",
+        unitId: unit.id,
+        manufacturerId: org.id
+      }
+    });
+
+    await tx.inventoryEntry.create({
+      data: {
+        workspaceId,
+        partId: part.id,
+        toLocationId: parentLocation.id,
+        entryType: "RECEIPT",
+        quantity: 10
+      }
+    });
+
+    const list = await tx.shoppingList.create({
+      data: { workspaceId, name: "Buy list" }
+    });
+
+    await tx.shoppingListItem.create({
+      data: { shoppingListId: list.id, partId: part.id, quantity: 5 }
+    });
+  });
+}
+
 describe("executeWorkspaceDeletion", () => {
   test("deletes the workspace and all cascade data", async () => {
     const workspaceId = await createArchivedWorkspace(uniqueSuffix());
@@ -160,6 +224,17 @@ describe("executeWorkspaceDeletion", () => {
 
     // should not throw when called again on a deleted workspace
     await assert.doesNotReject(() => executeWorkspaceDeletion(workspaceId, "manual"));
+  });
+
+  test("deletes a populated workspace with parts, locations, categories, and inventory", async () => {
+    const workspaceId = await createArchivedWorkspace(uniqueSuffix());
+    await populateWorkspace(workspaceId);
+    await enqueueWorkspaceDeletion(workspaceId, "manual", boss);
+
+    await executeWorkspaceDeletion(workspaceId, "manual");
+
+    const after = await prisma.workspace.findUnique({ where: { id: workspaceId } });
+    assert.equal(after, null, "populated workspace should be fully deleted");
   });
 
   test("is a no-op when deletionScheduledAt is null", async () => {

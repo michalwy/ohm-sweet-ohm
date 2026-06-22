@@ -14,11 +14,23 @@ async function main() {
 
   await boss.createQueue(WORKSPACE_DELETION_JOB);
 
+  const allJobs = await boss.findJobs<WorkspaceDeletionJobData>(WORKSPACE_DELETION_JOB);
+  const failedIds = allJobs.filter((j) => j.state === "failed").map((j) => j.id);
+  if (failedIds.length > 0) {
+    await boss.retry(WORKSPACE_DELETION_JOB, failedIds);
+    console.log(JSON.stringify({ event: "failed-jobs-rescheduled", count: failedIds.length, ids: failedIds }));
+  }
+
   await boss.work<WorkspaceDeletionJobData>(WORKSPACE_DELETION_JOB, async (jobs) => {
     for (const job of jobs) {
       const { workspaceId, triggeredBy } = job.data;
       console.log(JSON.stringify({ event: "workspace-deletion-started", workspaceId, triggeredBy }));
-      await executeWorkspaceDeletion(workspaceId, triggeredBy);
+      try {
+        await executeWorkspaceDeletion(workspaceId, triggeredBy);
+      } catch (err) {
+        console.error(JSON.stringify({ event: "workspace-deletion-error", workspaceId, triggeredBy, error: String(err) }));
+        throw err;
+      }
     }
   });
 

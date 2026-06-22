@@ -44,6 +44,7 @@ test.describe("workspace archiving", () => {
     await expect(page.getByRole("button", { name: "Archive workspace" })).toBeVisible();
 
     // Open confirmation dialog and confirm
+    await page.waitForLoadState("networkidle");
     await page.getByRole("button", { name: "Archive workspace" }).click();
     await expect(page.getByRole("heading", { name: "Archive workspace?" })).toBeVisible();
     await page.getByRole("button", { name: "Archive", exact: true }).click();
@@ -57,7 +58,7 @@ test.describe("workspace archiving", () => {
 
     // Archived workspaces section should show the archived workspace
     await expect(page.getByText("Archived workspaces")).toBeVisible();
-    await expect(page.getByText(`Archive Flow ${slug}`)).toBeVisible();
+    await expect(page.getByText(`Archive Flow ${slug}`, { exact: true })).toBeVisible();
   });
 
   test("restore flow: archived workspace returns to active list", async ({
@@ -71,13 +72,14 @@ test.describe("workspace archiving", () => {
 
     // Archive the workspace
     await page.goto(`/w/${workspaceSlug}/settings/general`);
+    await page.waitForLoadState("networkidle");
     await page.getByRole("button", { name: "Archive workspace" }).click();
     await page.getByRole("button", { name: "Archive", exact: true }).click();
     await page.waitForURL("/workspaces", { timeout: 10000 });
 
     // Confirm it's in the archived section
     await expect(page.getByText("Archived workspaces")).toBeVisible();
-    await expect(page.getByText(`Restore Flow ${slug}`)).toBeVisible();
+    await expect(page.getByText(`Restore Flow ${slug}`, { exact: true })).toBeVisible();
 
     // Restore it
     await page.getByRole("button", { name: "Restore" }).click();
@@ -86,7 +88,7 @@ test.describe("workspace archiving", () => {
     await page.waitForURL("/workspaces", { timeout: 10000 });
 
     // Workspace should be back in the active list
-    await expect(page.getByText(`Restore Flow ${slug}`)).toBeVisible();
+    await expect(page.getByText(`Restore Flow ${slug}`, { exact: true })).toBeVisible();
     await expect(page.getByRole("link", { name: "Open" })).toBeVisible();
 
     // Archived section should be gone
@@ -104,6 +106,7 @@ test.describe("workspace archiving", () => {
 
     // Archive the workspace
     await page.goto(`/w/${workspaceSlug}/settings/general`);
+    await page.waitForLoadState("networkidle");
     await page.getByRole("button", { name: "Archive workspace" }).click();
     await page.getByRole("button", { name: "Archive", exact: true }).click();
     await page.waitForURL("/workspaces", { timeout: 10000 });
@@ -116,5 +119,55 @@ test.describe("workspace archiving", () => {
     await expect(
       page.getByText("This workspace has been archived and is no longer accessible.")
     ).toBeVisible();
+  });
+
+  test("permanent delete flow: archived workspace enters deletion-in-progress state", async ({
+    page
+  }, testInfo) => {
+    const slug = `${testInfo.project.name}-${testInfo.retry}-${Date.now()}`;
+    const email = `perm-delete-${slug}@ohmsweetohm.local`;
+    const workspaceName = `Perm Delete ${slug}`;
+
+    await signUpFreshUser(page, email);
+    const workspaceSlug = await createWorkspace(page, workspaceName);
+
+    // Archive the workspace
+    await page.goto(`/w/${workspaceSlug}/settings/general`);
+    await page.waitForLoadState("networkidle");
+    await page.getByRole("button", { name: "Archive workspace" }).click();
+    await page.getByRole("button", { name: "Archive", exact: true }).click();
+    await page.waitForURL("/workspaces", { timeout: 10000 });
+
+    // Verify workspace is in the archived section with action buttons
+    await expect(page.getByText("Archived workspaces")).toBeVisible();
+    await expect(page.getByText(workspaceName, { exact: true })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Permanently delete" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Restore" })).toBeVisible();
+
+    // Open the permanent delete dialog
+    await page.getByRole("button", { name: "Permanently delete" }).click();
+    await expect(page.getByRole("heading", { name: "Permanently delete workspace?" })).toBeVisible();
+
+    // Delete button should be disabled with empty input
+    await expect(page.getByRole("button", { name: "Delete", exact: true })).toBeDisabled();
+
+    // Type the workspace name to enable the delete button
+    await page.getByLabel("Type the workspace name to confirm:").fill(workspaceName);
+    await expect(page.getByRole("button", { name: "Delete", exact: true })).toBeEnabled();
+
+    // Confirm deletion
+    await page.getByRole("button", { name: "Delete", exact: true }).click();
+
+    // Wait for the page to reload
+    await page.waitForURL("/workspaces", { timeout: 10000 });
+
+    // Workspace should still appear in the archived section with "Deletion in progress"
+    await expect(page.getByText("Archived workspaces")).toBeVisible();
+    await expect(page.getByText(workspaceName, { exact: true })).toBeVisible();
+    await expect(page.getByText("Deletion in progress")).toBeVisible();
+
+    // Action buttons should be gone
+    await expect(page.getByRole("button", { name: "Permanently delete" })).not.toBeVisible();
+    await expect(page.getByRole("button", { name: "Restore" })).not.toBeVisible();
   });
 });

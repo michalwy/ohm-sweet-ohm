@@ -86,6 +86,13 @@ Permanent deletion removes the workspace and all of its data — parts, inventor
 - The workspace must be archived first. Permanent deletion is only available from the archived state.
 - Only workspace admins can trigger deletion.
 
+**To permanently delete an archived workspace** (admins only):
+
+1. Open the Workspaces page.
+2. Scroll to the **Archived workspaces** section.
+3. Click **Permanently delete** next to the workspace.
+4. In the confirmation dialog, type the exact workspace name and click **Delete**.
+
 Once deletion is confirmed, the workspace enters a **"Deletion in progress"** state visible on the Workspaces page. The Restore button disappears; restoration is no longer possible. The actual deletion runs in the background and the workspace disappears from all views when complete.
 
 **There is no undo.** If you are unsure, restore the workspace first and leave it archived until you are certain.
