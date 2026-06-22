@@ -168,7 +168,8 @@ test.describe("shopping lists", () => {
     await expect(createPODialog.getByText("Select a supplier.")).toBeVisible();
 
     // Select supplier and create — triggers auto-conversion
-    await createPODialog.locator('select[name="supplierId"]').selectOption({ label: supplierName });
+    await createPODialog.locator('#create-po-supplier').fill(supplierName);
+    await page.locator('[role="option"]').filter({ hasText: supplierName }).click();
     await createPODialog.getByRole("button", { name: "Create order" }).click();
 
     await expect(page.getByRole("status")).toHaveText("Items added to purchase order");
@@ -312,7 +313,8 @@ test.describe("shopping lists", () => {
     await expect(page.getByRole("status")).toHaveText("Item added");
 
     // Only one row for NE555P (no duplicate), qty should be 5
-    await expect(page.getByRole("cell", { name: /NE555P/ })).toHaveCount(1);
-    await expect(page.getByRole("cell", { name: "5" })).toBeVisible();
+    await expect(page.getByRole("cell", { name: /NE555P Texas Instruments/ })).toHaveCount(1);
+    const ne555pMergeRow = page.locator("tr").filter({ has: page.getByRole("cell", { name: /NE555P Texas Instruments/ }) });
+    await expect(ne555pMergeRow.locator("td").nth(2)).toHaveText("5");
   });
 });

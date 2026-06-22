@@ -134,7 +134,7 @@ test.describe("inventory", () => {
     await seededPartRow.click();
 
     await expect(page.getByRole("heading", { name: "Locations and stock" })).toBeVisible();
-    await expect(page.getByText(locationName)).toBeVisible();
+    await expect(page.getByText(locationName, { exact: true })).toBeVisible();
   });
 });
 

@@ -101,7 +101,8 @@ test.describe("purchase orders", () => {
     await dialog.getByRole("button", { name: "Create order" }).click();
     await expect(dialog.getByText("Select a supplier.")).toBeVisible();
 
-    await dialog.locator('select[name="supplierId"]').selectOption({ label: supplierName });
+    await dialog.locator('#create-po-supplier').fill(supplierName);
+    await page.locator('[role="option"]').filter({ hasText: supplierName }).click();
     await dialog.getByLabel("Order number").fill("PO-E2E-CREATE");
     await dialog.getByRole("button", { name: "Create order" }).click();
 
@@ -123,7 +124,8 @@ test.describe("purchase orders", () => {
 
     await page.getByRole("button", { name: "New order" }).click();
     const dialog = page.getByRole("dialog", { name: "New purchase order" });
-    await dialog.locator('select[name="supplierId"]').selectOption({ label: supplierName });
+    await dialog.locator('#create-po-supplier').fill(supplierName);
+    await page.locator('[role="option"]').filter({ hasText: supplierName }).click();
     await dialog.getByRole("button", { name: "Create order" }).click();
     await expect(page.getByRole("status")).toHaveText("Order created");
 
@@ -143,14 +145,13 @@ test.describe("purchase orders", () => {
     await partButton.click();
 
     await itemDialog.getByLabel("Qty ordered").fill("10");
-    await itemDialog.getByLabel("Supplier SKU").fill("TI-NE555P");
     await itemDialog.getByRole("button", { name: "Add item" }).click();
 
     await expect(page.getByRole("status")).toHaveText("Item added");
     // Reload to reinitialise detail panel with selectedOrderId from URL
     await page.reload();
     const orderRow = page.getByRole("button", { name: new RegExp(supplierName) }).first();
-    await expect(orderRow.getByText("1")).toBeVisible();
+    await expect(orderRow.getByText("1", { exact: true }).first()).toBeVisible();
     await expect(page.getByRole("cell", { name: "NE555P Texas Instruments", exact: true })).toBeVisible();
   });
 
@@ -165,7 +166,8 @@ test.describe("purchase orders", () => {
 
     await page.getByRole("button", { name: "New order" }).click();
     const dialog = page.getByRole("dialog", { name: "New purchase order" });
-    await dialog.locator('select[name="supplierId"]').selectOption({ label: supplierName });
+    await dialog.locator('#create-po-supplier').fill(supplierName);
+    await page.locator('[role="option"]').filter({ hasText: supplierName }).click();
     await dialog.getByRole("button", { name: "Create order" }).click();
     await expect(page.getByRole("status")).toHaveText("Order created");
 
@@ -207,7 +209,8 @@ test.describe("purchase orders", () => {
 
     await page.getByRole("button", { name: "New order" }).click();
     const dialog = page.getByRole("dialog", { name: "New purchase order" });
-    await dialog.locator('select[name="supplierId"]').selectOption({ label: supplierName });
+    await dialog.locator('#create-po-supplier').fill(supplierName);
+    await page.locator('[role="option"]').filter({ hasText: supplierName }).click();
     await dialog.getByRole("button", { name: "Create order" }).click();
     await expect(page.getByRole("status")).toHaveText("Order created");
 
@@ -239,8 +242,8 @@ test.describe("purchase orders", () => {
     const receiveDialog = page.getByRole("dialog", { name: "Receive items" });
     await expect(receiveDialog).toBeVisible();
 
-    const locationSelect = receiveDialog.locator("select").first();
-    await locationSelect.selectOption({ label: locationName });
+    await receiveDialog.getByRole("button", { name: "Choose a location" }).click();
+    await page.getByRole("option", { name: locationName }).click();
 
     await receiveDialog.getByRole("button", { name: "Receive items" }).click();
     await expect(page.getByRole("status")).toHaveText("Items received");
@@ -260,7 +263,8 @@ test.describe("purchase orders", () => {
 
     await page.getByRole("button", { name: "New order" }).click();
     const dialog = page.getByRole("dialog", { name: "New purchase order" });
-    await dialog.locator('select[name="supplierId"]').selectOption({ label: supplierName });
+    await dialog.locator('#create-po-supplier').fill(supplierName);
+    await page.locator('[role="option"]').filter({ hasText: supplierName }).click();
     await dialog.getByLabel("Order number").fill("PO-DEL-001");
     await dialog.getByRole("button", { name: "Create order" }).click();
     await expect(page.getByRole("status")).toHaveText("Order created");
@@ -269,8 +273,8 @@ test.describe("purchase orders", () => {
     await orderRow.getByRole("button", { name: "Edit" }).click();
     const editDialog = page.getByRole("dialog", { name: "Edit purchase order" });
     await expect(editDialog).toBeVisible();
-    await expect(editDialog.getByLabel("Order number")).toHaveValue("PO-DEL-001");
-    await editDialog.getByLabel("Order number").fill("PO-DEL-002");
+    await expect(editDialog.getByLabel("Order number", { exact: true })).toHaveValue("PO-DEL-001");
+    await editDialog.getByLabel("Order number", { exact: true }).fill("PO-DEL-002");
     await editDialog.getByRole("button", { name: "Save changes" }).click();
 
     await expect(page.getByRole("status")).toHaveText("Order updated");
@@ -301,7 +305,8 @@ test.describe("purchase orders", () => {
     // Create PO
     await page.getByRole("button", { name: "New order" }).click();
     const dialog = page.getByRole("dialog", { name: "New purchase order" });
-    await dialog.locator('select[name="supplierId"]').selectOption({ label: supplierName });
+    await dialog.locator('#create-po-supplier').fill(supplierName);
+    await page.locator('[role="option"]').filter({ hasText: supplierName }).click();
     await dialog.getByRole("button", { name: "Create order" }).click();
     await expect(page.getByRole("status")).toHaveText("Order created");
 
@@ -352,7 +357,8 @@ test.describe("purchase orders", () => {
     // Create PO
     await page.getByRole("button", { name: "New order" }).click();
     const dialog = page.getByRole("dialog", { name: "New purchase order" });
-    await dialog.locator('select[name="supplierId"]').selectOption({ label: supplierName });
+    await dialog.locator('#create-po-supplier').fill(supplierName);
+    await page.locator('[role="option"]').filter({ hasText: supplierName }).click();
     await dialog.getByRole("button", { name: "Create order" }).click();
     await expect(page.getByRole("status")).toHaveText("Order created");
     await expect(page.getByText("No items yet. Add parts to this order.")).toBeVisible();

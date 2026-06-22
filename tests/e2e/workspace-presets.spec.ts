@@ -42,8 +42,9 @@ test.describe("workspace creation presets", () => {
 
     // Parts table should be populated
     await expect(page.getByText("No parts yet")).not.toBeVisible();
-    // A known part from the fixture should appear
-    await expect(page.getByText("NE555P").first()).toBeVisible({ timeout: 10000 });
+    // Search for a known part from the fixture
+    await page.getByRole("searchbox", { name: "Search parts" }).fill("NE555P");
+    await expect(page.getByText("NE555P").first()).toBeVisible();
   });
 
   test("parts-and-orders preset: workspace shows parts, POs, and shopping lists", async ({
@@ -64,7 +65,9 @@ test.describe("workspace creation presets", () => {
 
     // Parts should be visible
     await expect(page.getByText("No parts yet")).not.toBeVisible();
-    await expect(page.getByText("NE555P").first()).toBeVisible({ timeout: 10000 });
+    // Search for a known part from the fixture
+    await page.getByRole("searchbox", { name: "Search parts" }).fill("NE555P");
+    await expect(page.getByText("NE555P").first()).toBeVisible();
 
     // Extract workspace slug from URL
     const url = page.url();

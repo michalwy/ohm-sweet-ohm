@@ -61,6 +61,7 @@ export function ComboboxBase<T extends ComboboxBaseItem>({
 
   const anchorRef = useRef<HTMLDivElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
+  const blurTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const [panelStyle, setPanelStyle] = useState<CSSProperties>({});
   const [portalTarget, setPortalTarget] = useState<HTMLElement | null>(null);
   const listboxId = `${inputId}-listbox`;
@@ -205,8 +206,8 @@ export function ComboboxBase<T extends ComboboxBaseItem>({
           onInputChange(e.target.value);
           openDropdown();
         }}
-        onFocus={() => openDropdown()}
-        onBlur={() => setTimeout(() => closeDropdown(), 150)}
+        onFocus={() => { clearTimeout(blurTimerRef.current); openDropdown(); }}
+        onBlur={() => { blurTimerRef.current = setTimeout(() => closeDropdown(), 150); }}
         onKeyDown={handleKeyDown}
       />
       {isOpen

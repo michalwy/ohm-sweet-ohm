@@ -90,7 +90,7 @@ test.describe("parts list", () => {
     await page.getByRole("button", {
       name: /Filter by category.*All categories/
     }).click();
-    await page.locator('button[role="option"]').filter({
+    await page.locator('[role="option"]').filter({
       hasText: /^Semiconductors$/
     }).click();
     await expect(page.getByText("2 of 2 parts")).toBeVisible();
@@ -98,7 +98,7 @@ test.describe("parts list", () => {
       name: /Filter by category.*Semiconductors/
     }).click();
     await page.getByRole("button", { name: "Expand Semiconductors" }).click();
-    await page.locator('button[role="option"]').filter({
+    await page.locator('[role="option"]').filter({
       hasText: /^Integrated circuits$/
     }).click();
     await expect(seededPartRow).toBeVisible();
@@ -114,7 +114,7 @@ test.describe("parts list", () => {
     await addPartDialog.getByRole("button", { name: "Close" }).click();
     await page.getByLabel("Filter by manufacturer").fill("tex");
     await expect(
-      page.locator('button[role="option"]').filter({
+      page.locator('[role="option"]').filter({
         hasText: /^Texas Instruments$/
       })
     ).toBeVisible();
@@ -134,7 +134,7 @@ test.describe("parts list", () => {
     const createManufacturerInput = addPartDialog.getByLabel("Manufacturer");
     await createManufacturerInput.fill("tex");
     await expect(
-      page.locator('button[role="option"]').filter({
+      page.locator('[role="option"]').filter({
         hasText: /^Texas Instruments$/
       })
     ).toBeVisible();
@@ -144,10 +144,10 @@ test.describe("parts list", () => {
     await addPartDialog.getByLabel("Unit").selectOption({ label: "Pieces (pcs)" });
     await addPartDialog.getByLabel("Primary category").click();
     await expect(
-      page.locator('button[role="option"]').filter({ hasText: /^Passives$/ })
+      page.locator('[role="option"]').filter({ hasText: /^Passives$/ })
     ).toBeVisible();
     await expect(
-      page.locator('button[role="option"]').filter({ hasText: /Capacitors/ })
+      page.locator('[role="option"]').filter({ hasText: /Capacitors/ })
     ).toHaveCount(0);
     await page.getByPlaceholder("Search categories").fill("integrated");
     await expect(
@@ -240,30 +240,30 @@ test.describe("parts list", () => {
     await editPartDialog.getByLabel("Primary category").click();
     await expect(
       page
-        .locator('button[role="option"]')
+        .locator('[role="option"]')
         .filter({ hasText: /Integrated circuits/ })
     ).toBeVisible();
     await expect(
-      page.locator('button[role="option"]').filter({ hasText: /Capacitors/ })
+      page.locator('[role="option"]').filter({ hasText: /Capacitors/ })
     ).toHaveCount(0);
     await page.keyboard.press("ArrowUp");
     await page.keyboard.press("ArrowUp");
     await page.keyboard.press("Enter");
     await expect(
       page
-        .locator('button[role="option"]')
+        .locator('[role="option"]')
         .filter({ hasText: /Integrated circuits/ })
     ).toHaveCount(0);
     await page.keyboard.press("ArrowRight");
     await expect(
       page
-        .locator('button[role="option"]')
+        .locator('[role="option"]')
         .filter({ hasText: /Integrated circuits/ })
     ).toBeVisible();
     await page.keyboard.press("ArrowUp");
     await page.keyboard.press("ArrowRight");
     await expect(
-      page.locator('button[role="option"]').filter({ hasText: /Capacitors/ })
+      page.locator('[role="option"]').filter({ hasText: /Capacitors/ })
     ).toBeVisible();
     await page.keyboard.press("ArrowDown");
     await page.keyboard.press("Enter");
