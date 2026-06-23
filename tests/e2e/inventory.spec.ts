@@ -26,7 +26,7 @@ test.describe("inventory", () => {
     const stockBefore = await getPartStock("NE555P");
 
     await seededPartRow.click();
-    await page.getByRole("button", { name: "Add movement" }).click();
+    await page.getByRole("button", { name: "Move" }).click();
 
     const stockDialog = page.getByRole("dialog", { name: /Stock:/ });
     await expect(stockDialog).toBeVisible();
@@ -34,7 +34,7 @@ test.describe("inventory", () => {
     await stockDialog.getByLabel("Entry type").selectOption("RECEIPT");
     await stockDialog.getByLabel("Quantity").fill("5");
     await stockDialog.getByLabel("To location").selectOption({ label: locationName });
-    await stockDialog.getByRole("button", { name: "Add movement" }).click();
+    await stockDialog.getByRole("button", { name: "Move" }).click();
 
     await expect(stockDialog.getByLabel("Quantity")).toHaveValue("");
 
@@ -61,7 +61,7 @@ test.describe("inventory", () => {
     const stockBefore = await getPartStock("NE555P");
 
     await seededPartRow.click();
-    await page.getByRole("button", { name: "Add movement" }).click();
+    await page.getByRole("button", { name: "Move" }).click();
 
     const stockDialog = page.getByRole("dialog", { name: /Stock:/ });
     await expect(stockDialog).toBeVisible();
@@ -69,7 +69,7 @@ test.describe("inventory", () => {
     await stockDialog.getByLabel("Entry type").selectOption("ISSUE");
     await stockDialog.getByLabel("Quantity").fill("3");
     await stockDialog.getByLabel("From location").selectOption({ label: locationName });
-    await stockDialog.getByRole("button", { name: "Add movement" }).click();
+    await stockDialog.getByRole("button", { name: "Move" }).click();
 
     await expect(stockDialog.getByLabel("Quantity")).toHaveValue("");
 
@@ -100,7 +100,7 @@ test.describe("inventory", () => {
     await expect(seededPartRow).toBeVisible();
     await seededPartRow.click();
 
-    await page.getByRole("button", { name: "Add movement" }).click();
+    await page.getByRole("button", { name: "Move" }).click();
     const stockDialog = page.getByRole("dialog", { name: /Stock:/ });
     await expect(stockDialog).toBeVisible();
 
@@ -108,7 +108,7 @@ test.describe("inventory", () => {
     await stockDialog.getByLabel("Quantity").fill("2");
     await stockDialog.getByLabel("To location").selectOption({ label: locationName });
     await stockDialog.getByLabel("Note").fill(note);
-    await stockDialog.getByRole("button", { name: "Add movement" }).click();
+    await stockDialog.getByRole("button", { name: "Move" }).click();
 
     await expect(stockDialog.getByLabel("Quantity")).toHaveValue("");
 

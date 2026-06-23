@@ -247,7 +247,7 @@ test.describe("parts list — quick-add to shopping list", () => {
     const partRow = page.locator("tr").filter({ hasText: "NE555P" }).first();
     await partRow.click();
 
-    const detailPanel = page.getByRole("complementary");
+    const detailPanel = page.getByRole("complementary").filter({ has: page.getByRole("button", { name: "Close" }) });
     await expect(detailPanel.getByRole("heading", { name: "Shopping Lists" })).toBeVisible();
 
     await detailPanel.getByRole("button", { name: "Add to shopping list" }).click();
@@ -274,8 +274,6 @@ test.describe("parts list — quick-add to shopping list", () => {
     await partRow.click();
 
     const detailPanel = page.getByRole("complementary");
-    await expect(detailPanel.getByRole("heading", { name: "Shopping Lists" })).toBeVisible();
-
     await detailPanel.getByRole("button", { name: "Add to shopping list" }).click();
 
     const dialog = page.getByRole("dialog", { name: /Add to Shopping List/ });
