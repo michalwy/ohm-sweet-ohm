@@ -78,6 +78,7 @@ export function SupplierPickerCombobox({
         inputValue={inputValue}
         placeholder={placeholder}
         disabled={disabled}
+        openGate={!selectedId}
         isLoading={isDebouncing || isFetching}
         noItemsLabel={noItemsLabel}
         loadingLabel={loadingLabel}
