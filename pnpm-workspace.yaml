@@ -1,6 +1,8 @@
 packages:
   - "."
 
+confirmModulesPurge: false
+
 allowBuilds:
   '@prisma/engines': true
   esbuild: true
