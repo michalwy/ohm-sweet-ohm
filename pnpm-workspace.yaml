@@ -7,4 +7,3 @@ onlyBuiltDependencies:
   - prisma
   - sharp
   - unrs-resolver
-
