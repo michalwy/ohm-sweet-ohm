@@ -59,6 +59,9 @@ test.describe("workspace archiving", () => {
     // Archived workspaces section should show the archived workspace
     await expect(page.getByText("Archived workspaces")).toBeVisible();
     await expect(page.getByText(`Archive Flow ${slug}`, { exact: true })).toBeVisible();
+
+    // Scheduled deletion deadline should be visible
+    await expect(page.getByText(/Scheduled for deletion on/)).toBeVisible();
   });
 
   test("restore flow: archived workspace returns to active list", async ({

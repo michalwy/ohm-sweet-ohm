@@ -8,6 +8,7 @@ import {
   getCurrentUserArchivedWorkspaces
 } from "@/server/auth/currentContext";
 import { createWorkspace } from "@/server/workspaces/actions";
+import { getRetentionDays } from "@/server/workspaces/retentionConfig";
 import { ArchivedWorkspaceActions } from "@/app/workspaces/archived-workspace-actions";
 import { CURRENCIES } from "@/app/currencies";
 
@@ -64,6 +65,7 @@ export default async function WorkspacesPage({
     getCurrentUserWorkspaces(),
     getCurrentUserArchivedWorkspaces()
   ]);
+  const retentionDays = getRetentionDays();
   const workspaces = memberships?.map(({ workspace }) => workspace) ?? [];
   const archivedWorkspaces =
     archivedMemberships?.map(({ workspace }) => workspace) ?? [];
@@ -186,6 +188,8 @@ export default async function WorkspacesPage({
                         <ArchivedWorkspaceActions
                           workspaceName={workspace.name}
                           workspaceSlug={workspace.slug}
+                          archivedAt={workspace.archivedAt!}
+                          retentionDays={retentionDays}
                           deletionScheduledAt={workspace.deletionScheduledAt}
                         />
                       </li>

@@ -78,6 +78,8 @@ The workspace immediately reappears in the active list and is accessible again t
 
 **What members see:** If a member navigates to an archived workspace URL, they are redirected to the Workspaces page with a notice that the workspace has been archived.
 
+**Automatic deletion after the retention period:** Archived workspaces are automatically and permanently deleted after a retention period (default: 30 days). The Workspaces page shows the scheduled deletion date next to each archived workspace. If you restore the workspace before that date, the automatic deletion is cancelled. Once the retention period expires and deletion is scheduled, restoration is no longer possible.
+
 ### Resetting a workspace to demo data
 
 If you use a workspace as a sandbox or playground, you can wipe all its domain data and replace it with a fresh demo preset in one step — without deleting and recreating the workspace.
@@ -104,9 +106,13 @@ If you use a workspace as a sandbox or playground, you can wipe all its domain d
 
 Permanent deletion removes the workspace and all of its data — parts, inventory, purchase orders, organizations, attributes, and everything else — completely and irreversibly.
 
+Deletion can happen in two ways:
+- **Automatically** — after the retention period expires (default: 30 days after archiving), the system schedules deletion without any manual action. See the note above under archiving.
+- **Manually** — an admin triggers deletion immediately from the Workspaces page.
+
 **Requirements:**
 - The workspace must be archived first. Permanent deletion is only available from the archived state.
-- Only workspace admins can trigger deletion.
+- Only workspace admins can trigger manual deletion.
 
 **To permanently delete an archived workspace** (admins only):
 

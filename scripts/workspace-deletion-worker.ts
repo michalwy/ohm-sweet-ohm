@@ -4,6 +4,7 @@ import {
   WORKSPACE_DELETION_JOB,
   type WorkspaceDeletionJobData
 } from "@/server/workspaces/deletionQueue";
+import { enqueueExpiredArchivedWorkspaces } from "@/server/workspaces/retentionSweep";
 
 async function main() {
   const boss = await getPgBoss();
@@ -13,6 +14,15 @@ async function main() {
   });
 
   await boss.createQueue(WORKSPACE_DELETION_JOB);
+
+  const RETENTION_CHECK_JOB = "retention-check";
+  await boss.createQueue(RETENTION_CHECK_JOB);
+  await boss.schedule(RETENTION_CHECK_JOB, "0 2 * * *", {});
+
+  await boss.work(RETENTION_CHECK_JOB, async () => {
+    const count = await enqueueExpiredArchivedWorkspaces(boss);
+    console.log(JSON.stringify({ event: "retention-sweep-complete", enqueuedCount: count }));
+  });
 
   const allJobs = await boss.findJobs<WorkspaceDeletionJobData>(WORKSPACE_DELETION_JOB);
   const failedIds = allJobs.filter((j) => j.state === "failed").map((j) => j.id);

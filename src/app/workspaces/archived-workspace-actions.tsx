@@ -15,6 +15,8 @@ import { restoreWorkspaceFromPicker, scheduleWorkspaceDeletion } from "@/server/
 type ArchivedWorkspaceActionsProps = {
   workspaceName: string;
   workspaceSlug: string;
+  archivedAt: Date;
+  retentionDays: number;
   deletionScheduledAt: Date | null;
 };
 
@@ -22,6 +24,7 @@ const copy = {
   restore: "Restore",
   permanentlyDelete: "Permanently delete",
   deletionInProgress: "Deletion in progress",
+  scheduledForDeletion: (date: string) => `Scheduled for deletion on ${date}`,
   dialogTitle: "Permanently delete workspace?",
   dialogBody: (name: string) =>
     `This will permanently delete "${name}" and all its data. This action cannot be undone.`,
@@ -37,6 +40,8 @@ const copy = {
 export function ArchivedWorkspaceActions({
   workspaceName,
   workspaceSlug,
+  archivedAt,
+  retentionDays,
   deletionScheduledAt
 }: ArchivedWorkspaceActionsProps) {
   const dialogRef = useRef<HTMLDialogElement>(null);
@@ -75,6 +80,13 @@ export function ArchivedWorkspaceActions({
     }
   }
 
+  const deletionDeadline = new Date(
+    new Date(archivedAt).getTime() + retentionDays * 24 * 60 * 60 * 1000
+  );
+  const deletionDeadlineFormatted = new Intl.DateTimeFormat("en-US", {
+    dateStyle: "medium"
+  }).format(deletionDeadline);
+
   if (deletionScheduledAt) {
     return (
       <p className="mt-1 text-xs font-medium text-[var(--color-error)]">
@@ -84,7 +96,11 @@ export function ArchivedWorkspaceActions({
   }
 
   return (
-    <div className="flex shrink-0 items-center gap-2">
+    <div className="flex shrink-0 flex-col items-end gap-1.5">
+      <p className="text-xs text-slate-400">
+        {copy.scheduledForDeletion(deletionDeadlineFormatted)}
+      </p>
+      <div className="flex items-center gap-2">
       <form action={restoreWorkspaceFromPicker}>
         <input type="hidden" name="workspaceSlug" value={workspaceSlug} />
         <button
@@ -169,6 +185,7 @@ export function ArchivedWorkspaceActions({
           </DialogFooter>
         </form>
       </DialogShell>
+      </div>
     </div>
   );
 }
