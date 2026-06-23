@@ -185,6 +185,7 @@ Both columns support sorting with cursor-based pagination so they work efficient
 
 - Use row actions to open edit mode for a selected part.
 - Update fields and save, or remove the part if needed.
+- If deletion fails (for example, due to a server error), an error notification appears and the part remains in the list.
 
 ### Default Location
 

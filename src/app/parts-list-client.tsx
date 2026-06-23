@@ -225,6 +225,7 @@ type Copy = {
   loadingParts: string;
   loadingMoreParts: string;
   databaseUnavailable: string;
+  deleteError: string;
   locationsAndStock: string;
   noAttributes: string;
   movementHistory: string;
@@ -609,13 +610,21 @@ export function PartsListClient({
   const deletePartMutation = useMutation({
     mutationFn: deletePart,
     onError: () => {
-      setEditFieldErrors({
-        delete: getPartFormErrorMessage(copy, "database-unavailable")
+      setPartPendingDelete(null);
+      addToastMessage({
+        id: getNextToastId(nextToastIdRef),
+        message: copy.deleteError,
+        variant: "error"
       });
     },
     onSuccess: async (result) => {
       if (!result.ok) {
-        setEditFieldErrors({ delete: getPartFormErrorMessage(copy, result.error) });
+        setPartPendingDelete(null);
+        addToastMessage({
+          id: getNextToastId(nextToastIdRef),
+          message: copy.deleteError,
+          variant: "error"
+        });
         return;
       }
 
@@ -2304,11 +2313,6 @@ export function PartsListClient({
             </form>
           ) : null}
       </DialogShell>
-      {editFieldErrors.delete ? (
-        <div className="mt-3">
-          <ErrorBubble align="start">{editFieldErrors.delete}</ErrorBubble>
-        </div>
-      ) : null}
       <DeleteConfirmationDialog
         body={copy.deleteConfirmationBody}
         cancelLabel={copy.cancelDelete}

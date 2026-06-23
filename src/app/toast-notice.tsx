@@ -5,6 +5,7 @@ import type { RefObject } from "react";
 export type ToastMessage = {
   id: number;
   message: string;
+  variant?: "success" | "error";
 };
 
 type ToastNoticeProps = {
@@ -26,6 +27,7 @@ export function ToastNotice({ messages, onDismiss }: ToastNoticeProps) {
           key={toast.id}
           isLatest={toast.id === latestToastId}
           message={toast.message}
+          variant={toast.variant}
           onDismiss={() => onDismiss(toast.id)}
         />
       ))}
@@ -36,16 +38,23 @@ export function ToastNotice({ messages, onDismiss }: ToastNoticeProps) {
 function ToastNoticeItem({
   isLatest,
   message,
-  onDismiss
+  onDismiss,
+  variant = "success"
 }: {
   isLatest: boolean;
   message: string;
   onDismiss: () => void;
+  variant?: "success" | "error";
 }) {
+  const variantClassName =
+    variant === "error"
+      ? "bg-red-700 shadow-red-900/20"
+      : "bg-emerald-600 shadow-emerald-900/20";
+
   return (
     <div
       aria-live={isLatest ? "polite" : undefined}
-      className="animate-[toast-notice_5500ms_ease-in-out_forwards] rounded-md bg-emerald-600 px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-emerald-900/20"
+      className={`animate-[toast-notice_5500ms_ease-in-out_forwards] rounded-md px-4 py-3 text-sm font-semibold text-white shadow-lg ${variantClassName}`}
       role={isLatest ? "status" : undefined}
       onAnimationEnd={onDismiss}
     >

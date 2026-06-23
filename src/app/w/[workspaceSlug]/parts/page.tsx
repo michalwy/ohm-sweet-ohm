@@ -148,6 +148,7 @@ const copy = {
   createdToast: "Part created",
   updatedToast: "Part updated",
   deletedToast: "Part deleted",
+  deleteError: "Part could not be deleted.",
   missingRequiredFields: "Enter catalog number, manufacturer, and unit.",
   missingCatalogNumber: "Enter a catalog number.",
   missingManufacturer: "Enter a manufacturer.",
