@@ -12,7 +12,7 @@ export const dynamic = "force-dynamic";
 
 const copy = {
   title: "General",
-  intro: "Workspace name, URL, and archive options."
+  intro: "Workspace name, URL, archive, and reset options."
 };
 
 type GeneralPageProps = {
@@ -50,6 +50,7 @@ export default async function GeneralSettingsPage({ params }: GeneralPageProps) 
     >
       <GeneralSettingsClient
         canArchive={canArchive}
+        canReset={canArchive}
         workspaceName={context.workspace.name}
         workspaceSlug={workspaceSlug}
       />

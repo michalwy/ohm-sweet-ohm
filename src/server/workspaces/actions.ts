@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { getCurrentSession, getCurrentWorkspaceContextBySlug } from "@/server/auth/currentContext";
 import { hasWorkspacePermission } from "@/server/access-control/authorize";
 import { prisma } from "@/server/db/prisma";
-import { getDefaultPartUnitId } from "@/server/units/defaultUnits";
+import { ensureDefaultUnitsForWorkspace, getDefaultPartUnitId } from "@/server/units/defaultUnits";
 import { applyDemoPreset, type DemoPreset } from "@/server/workspaces/applyDemoPreset";
 import {
   archiveWorkspace as archiveWorkspaceMutation,
@@ -15,6 +15,7 @@ import { createWorkspaceForOwner } from "@/server/workspaces/createWorkspace";
 import { enqueueWorkspaceDeletion } from "@/server/workspaces/deletionQueue";
 import { getPgBoss } from "@/server/db/pgBoss";
 import { DEMO_PRESET_FIXTURE } from "@/server/workspaces/demoPresetFixture";
+import { wipeDomainData } from "@/server/workspaces/resetMutations";
 
 const workspaceCopy = {
   missingName: "missing-name",
@@ -194,6 +195,47 @@ export async function scheduleWorkspaceDeletion(
   }
 
   await enqueueWorkspaceDeletion(membership.workspace.id, "manual", await getPgBoss());
+  return { ok: true };
+}
+
+export async function resetWorkspaceToDemoPreset(
+  workspaceSlug: string,
+  preset: "parts-only" | "parts-and-orders"
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const session = await getCurrentSession();
+
+  if (!session) {
+    return { ok: false, error: "unauthenticated" };
+  }
+
+  const context = await getCurrentWorkspaceContextBySlug(workspaceSlug);
+
+  if (!context) {
+    return { ok: false, error: "workspace-not-found" };
+  }
+
+  const allowed = await hasWorkspacePermission({
+    userId: context.user.id,
+    workspaceId: context.workspace.id,
+    permission: "admin"
+  }).catch(() => false);
+
+  if (!allowed) {
+    return { ok: false, error: "workspace-permission-denied" };
+  }
+
+  await wipeDomainData(context.workspace.id);
+  await ensureDefaultUnitsForWorkspace(prisma, context.workspace.id);
+  const unitId = await getDefaultPartUnitId(prisma, context.workspace.id);
+  await applyDemoPreset(
+    prisma,
+    context.workspace.id,
+    unitId,
+    preset,
+    DEMO_PRESET_FIXTURE,
+    context.workspace.primaryCurrency
+  );
+
   return { ok: true };
 }
 

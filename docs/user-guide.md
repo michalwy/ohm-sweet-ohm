@@ -78,6 +78,28 @@ The workspace immediately reappears in the active list and is accessible again t
 
 **What members see:** If a member navigates to an archived workspace URL, they are redirected to the Workspaces page with a notice that the workspace has been archived.
 
+### Resetting a workspace to demo data
+
+If you use a workspace as a sandbox or playground, you can wipe all its domain data and replace it with a fresh demo preset in one step — without deleting and recreating the workspace.
+
+**What is preserved:** the workspace name, URL slug, member list, roles, and integration settings.
+
+**What is deleted:** all parts, inventory entries, categories, attributes, locations, organizations, purchase orders, and shopping lists currently in the workspace.
+
+**Presets available:**
+- **Parts only** — categories, attributes, manufacturers, storage locations, and 200+ real electronic parts with plausible stock levels.
+- **Parts + POs & shopping lists** — everything in "Parts only", plus sample purchase orders in various states and a couple of shopping lists.
+
+**To reset a workspace** (admins only):
+
+1. Open the workspace.
+2. Navigate to **Settings → General**.
+3. Click **Reset to demo data** in the danger zone.
+4. Select the desired preset.
+5. Click **Reset workspace** to confirm. The operation runs synchronously; the page navigates to the parts list when complete.
+
+**There is no undo.** All current workspace data is permanently deleted before the new preset is imported.
+
 ### Permanently deleting a workspace
 
 Permanent deletion removes the workspace and all of its data — parts, inventory, purchase orders, organizations, attributes, and everything else — completely and irreversibly.
