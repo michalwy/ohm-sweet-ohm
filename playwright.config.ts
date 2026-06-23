@@ -19,7 +19,7 @@ export default defineConfig({
   },
   timeout: process.env.CI ? 120_000 : 90_000,
   expect: {
-    timeout: 30000
+    timeout: process.env.CI ? 60_000 : 30_000,
   },
   webServer: {
     command: `DATABASE_URL="${databaseUrl}" BETTER_AUTH_URL="${baseURL}" BETTER_AUTH_SECRET="ohm-sweet-ohm-e2e-auth-secret-value" OSO_E2E_SUPPLIER_FIXTURE=1 NEXT_TELEMETRY_DISABLED=1 NEXT_DIST_DIR=".next-e2e" pnpm dev --hostname 127.0.0.1 --port 3100 --webpack`,
