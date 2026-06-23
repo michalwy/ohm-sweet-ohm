@@ -17,6 +17,8 @@ type DialogShellProps = {
   title: string;
   titleId: string;
   widthClassName?: string;
+  /** Forces the dialog inner container to a fixed height. Use to prevent height-jumping when list content changes. Omit for dialogs that should size to their content. */
+  heightClassName?: string;
   onClose?: () => void;
   onCancel?: (event: SyntheticEvent<HTMLDialogElement, Event>) => void;
   onCloseClick?: (event: MouseEvent<HTMLButtonElement>) => void;
@@ -61,6 +63,7 @@ export const DialogShell = forwardRef<HTMLDialogElement, DialogShellProps>(
       title,
       titleId,
       widthClassName = "w-[min(48rem,calc(100vw-3rem))]",
+      heightClassName,
       onClose,
       onCancel,
       onCloseClick
@@ -75,7 +78,7 @@ export const DialogShell = forwardRef<HTMLDialogElement, DialogShellProps>(
         onClose={onClose}
         onCancel={onCancel}
       >
-        <div className="flex max-h-[calc(100vh-2rem)] min-h-0 flex-col">
+        <div className={`flex max-h-[calc(100vh-2rem)] min-h-0 flex-col${heightClassName ? ` ${heightClassName}` : ""}`}>
           <div className="flex items-start justify-between gap-4 border-b border-slate-200 px-5 py-4">
             <div>
               <h2 id={titleId} className="text-lg font-semibold text-slate-950">

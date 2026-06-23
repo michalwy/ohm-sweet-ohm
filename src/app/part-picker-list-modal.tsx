@@ -237,6 +237,7 @@ export function PartPickerListModal({
       title={copy.title}
       titleId="part-picker-title"
       widthClassName="w-[min(90rem,calc(100vw-3rem))]"
+      heightClassName="h-[calc(100vh-2rem)]"
       onClose={onClose}
       onCancel={(event) => {
         event.preventDefault();
