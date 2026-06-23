@@ -1454,6 +1454,40 @@ export function PartsListClient({
             onClose={closePartDetails}
             onStartResize={startResizingDetailsPanel}
           >
+              {(canWriteInventory || canWritePurchaseOrders || canWriteShoppingLists) ? (
+                <div className="flex flex-wrap gap-2">
+                  {canWriteInventory ? (
+                    <button
+                      className="min-h-8 rounded-md border border-slate-300 bg-white px-2.5 py-1 text-sm font-medium text-slate-700 transition hover:border-slate-400 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400"
+                      disabled={!isDatabaseAvailable}
+                      type="button"
+                      onClick={() => setPartForStockDialog(selectedPart)}
+                    >
+                      {copy.addMovement}
+                    </button>
+                  ) : null}
+                  {canWritePurchaseOrders ? (
+                    <button
+                      className="min-h-8 rounded-md border border-slate-300 bg-white px-2.5 py-1 text-sm font-medium text-slate-700 transition hover:border-slate-400 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400"
+                      disabled={!isDatabaseAvailable}
+                      type="button"
+                      onClick={() => setPartForPODialog(selectedPart)}
+                    >
+                      {copy.addToPurchaseOrder}
+                    </button>
+                  ) : null}
+                  {canWriteShoppingLists ? (
+                    <button
+                      className="min-h-8 rounded-md border border-slate-300 bg-white px-2.5 py-1 text-sm font-medium text-slate-700 transition hover:border-slate-400 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400"
+                      disabled={!isDatabaseAvailable}
+                      type="button"
+                      onClick={() => setPartForSLDialog(selectedPart)}
+                    >
+                      {copy.addToShoppingList}
+                    </button>
+                  ) : null}
+                </div>
+              ) : null}
               <section className="grid gap-2">
                 <h3 className="text-sm font-semibold text-slate-900">
                   {copy.attributes}
@@ -1544,18 +1578,6 @@ export function PartsListClient({
                       </table>
                     </div>
                   )}
-                  {canWriteInventory ? (
-                    <div className="pt-2">
-                      <button
-                        className="min-h-8 rounded-md border border-slate-300 bg-white px-2.5 py-1 text-sm font-medium text-slate-700 transition hover:border-slate-400 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400"
-                        disabled={!isDatabaseAvailable}
-                        type="button"
-                        onClick={() => setPartForStockDialog(selectedPart)}
-                      >
-                        {copy.addMovement}
-                      </button>
-                    </div>
-                  ) : null}
                 </section>
               ) : null}
               {canReadInventory ? (
@@ -1619,172 +1641,126 @@ export function PartsListClient({
                   )}
                 </section>
               ) : null}
-              {canReadPurchaseOrders ? (
+              {canReadPurchaseOrders &&
+               !partPurchaseOrderHistoryQuery.isLoading &&
+               !partPurchaseOrderHistoryQuery.isError &&
+               (partPurchaseOrderHistoryQuery.data ?? []).length > 0 ? (
                 <section className="grid gap-2">
                   <h3 className="text-sm font-semibold text-slate-900">
                     {copy.poHistory}
                   </h3>
-                  {partPurchaseOrderHistoryQuery.isLoading ? (
-                    <p className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-600">
-                      {copy.loadingParts}
-                    </p>
-                  ) : partPurchaseOrderHistoryQuery.isError ? (
-                    <p className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-600">
-                      {copy.databaseUnavailable}
-                    </p>
-                  ) : (partPurchaseOrderHistoryQuery.data ?? []).length === 0 ? (
-                    <p className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-600">
-                      {copy.noPurchaseOrders}
-                    </p>
-                  ) : (
-                    <div className="max-h-64 overflow-y-auto rounded-md border border-slate-200">
-                      <table className="w-full text-left text-sm">
-                        <thead className="sticky top-0 bg-slate-50 text-slate-600">
-                          <tr>
-                            <th className="px-3 py-2 font-semibold">{copy.poHistoryColOrder}</th>
-                            <th className="px-3 py-2 font-semibold">{copy.poHistoryColSupplier}</th>
-                            <th className="px-3 py-2 font-semibold">{copy.poHistoryColStatus}</th>
-                            <th className="px-3 py-2 font-semibold">{copy.poHistoryColDate}</th>
-                            <th className="px-3 py-2 text-right font-semibold">{copy.poHistoryColQty}</th>
-                            <th className="px-3 py-2 text-right font-semibold">{copy.poHistoryColUnitPriceNet}</th>
-                            <th className="px-3 py-2 text-right font-semibold">{copy.poHistoryColUnitPriceGross}</th>
+                  <div className="max-h-64 overflow-y-auto rounded-md border border-slate-200">
+                    <table className="w-full text-left text-sm">
+                      <thead className="sticky top-0 bg-slate-50 text-slate-600">
+                        <tr>
+                          <th className="px-3 py-2 font-semibold">{copy.poHistoryColOrder}</th>
+                          <th className="px-3 py-2 font-semibold">{copy.poHistoryColSupplier}</th>
+                          <th className="px-3 py-2 font-semibold">{copy.poHistoryColStatus}</th>
+                          <th className="px-3 py-2 font-semibold">{copy.poHistoryColDate}</th>
+                          <th className="px-3 py-2 text-right font-semibold">{copy.poHistoryColQty}</th>
+                          <th className="px-3 py-2 text-right font-semibold">{copy.poHistoryColUnitPriceNet}</th>
+                          <th className="px-3 py-2 text-right font-semibold">{copy.poHistoryColUnitPriceGross}</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {(partPurchaseOrderHistoryQuery.data ?? []).map((entry: PartPurchaseOrderHistoryItem) => (
+                          <tr key={`${entry.orderId}`} className="border-t border-slate-100 first:border-t-0">
+                            <td className="px-3 py-2 align-middle font-mono text-xs text-slate-700">
+                              {entry.orderNumber ?? entry.orderId.slice(0, 8)}
+                            </td>
+                            <td className="px-3 py-2 align-middle text-slate-700">
+                              {entry.supplierName}
+                            </td>
+                            <td className="px-3 py-2 align-middle">
+                              <span className={[
+                                "inline-block rounded px-1.5 py-0.5 font-mono text-xs font-medium",
+                                entry.status === "RECEIVED"
+                                  ? "bg-green-100 text-green-800"
+                                  : entry.status === "ORDERED"
+                                    ? "bg-amber-100 text-amber-800"
+                                    : "bg-slate-100 text-slate-700"
+                              ].join(" ")}>
+                                {entry.status}
+                              </span>
+                            </td>
+                            <td className="whitespace-nowrap px-3 py-2 align-middle text-xs text-slate-400">
+                              {entry.orderedAt
+                                ? new Date(entry.orderedAt).toLocaleDateString()
+                                : "—"}
+                            </td>
+                            <td className="px-3 py-2 align-middle text-right tabular-nums text-slate-950">
+                              {entry.quantity}
+                            </td>
+                            <td className="px-3 py-2 align-middle text-right tabular-nums text-slate-700">
+                              {entry.unitPriceNetPrimary != null ? (
+                                <>
+                                  <span>{entry.unitPriceNetPrimary} {primaryCurrency}</span>
+                                  {entry.currency && entry.currency !== primaryCurrency && entry.unitPriceNet != null ? (
+                                    <p className="text-xs text-slate-400">{entry.unitPriceNet} {entry.currency}</p>
+                                  ) : null}
+                                </>
+                              ) : entry.unitPriceNet != null ? (
+                                <span>{entry.unitPriceNet}{entry.currency ? ` ${entry.currency}` : ""}</span>
+                              ) : "—"}
+                            </td>
+                            <td className="px-3 py-2 align-middle text-right tabular-nums text-slate-700">
+                              {entry.unitPriceGrossPrimary != null ? (
+                                <>
+                                  <span>{entry.unitPriceGrossPrimary} {primaryCurrency}</span>
+                                  {entry.currency && entry.currency !== primaryCurrency && entry.unitPriceGross != null ? (
+                                    <p className="text-xs text-slate-400">{entry.unitPriceGross} {entry.currency}</p>
+                                  ) : null}
+                                </>
+                              ) : entry.unitPriceGross != null ? (
+                                <span>{entry.unitPriceGross}{entry.currency ? ` ${entry.currency}` : ""}</span>
+                              ) : "—"}
+                            </td>
                           </tr>
-                        </thead>
-                        <tbody>
-                          {(partPurchaseOrderHistoryQuery.data ?? []).map((entry: PartPurchaseOrderHistoryItem) => (
-                            <tr key={`${entry.orderId}`} className="border-t border-slate-100 first:border-t-0">
-                              <td className="px-3 py-2 align-middle font-mono text-xs text-slate-700">
-                                {entry.orderNumber ?? entry.orderId.slice(0, 8)}
-                              </td>
-                              <td className="px-3 py-2 align-middle text-slate-700">
-                                {entry.supplierName}
-                              </td>
-                              <td className="px-3 py-2 align-middle">
-                                <span className={[
-                                  "inline-block rounded px-1.5 py-0.5 font-mono text-xs font-medium",
-                                  entry.status === "RECEIVED"
-                                    ? "bg-green-100 text-green-800"
-                                    : entry.status === "ORDERED"
-                                      ? "bg-amber-100 text-amber-800"
-                                      : "bg-slate-100 text-slate-700"
-                                ].join(" ")}>
-                                  {entry.status}
-                                </span>
-                              </td>
-                              <td className="whitespace-nowrap px-3 py-2 align-middle text-xs text-slate-400">
-                                {entry.orderedAt
-                                  ? new Date(entry.orderedAt).toLocaleDateString()
-                                  : "—"}
-                              </td>
-                              <td className="px-3 py-2 align-middle text-right tabular-nums text-slate-950">
-                                {entry.quantity}
-                              </td>
-                              <td className="px-3 py-2 align-middle text-right tabular-nums text-slate-700">
-                                {entry.unitPriceNetPrimary != null ? (
-                                  <>
-                                    <span>{entry.unitPriceNetPrimary} {primaryCurrency}</span>
-                                    {entry.currency && entry.currency !== primaryCurrency && entry.unitPriceNet != null ? (
-                                      <p className="text-xs text-slate-400">{entry.unitPriceNet} {entry.currency}</p>
-                                    ) : null}
-                                  </>
-                                ) : entry.unitPriceNet != null ? (
-                                  <span>{entry.unitPriceNet}{entry.currency ? ` ${entry.currency}` : ""}</span>
-                                ) : "—"}
-                              </td>
-                              <td className="px-3 py-2 align-middle text-right tabular-nums text-slate-700">
-                                {entry.unitPriceGrossPrimary != null ? (
-                                  <>
-                                    <span>{entry.unitPriceGrossPrimary} {primaryCurrency}</span>
-                                    {entry.currency && entry.currency !== primaryCurrency && entry.unitPriceGross != null ? (
-                                      <p className="text-xs text-slate-400">{entry.unitPriceGross} {entry.currency}</p>
-                                    ) : null}
-                                  </>
-                                ) : entry.unitPriceGross != null ? (
-                                  <span>{entry.unitPriceGross}{entry.currency ? ` ${entry.currency}` : ""}</span>
-                                ) : "—"}
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
-                  {canWritePurchaseOrders ? (
-                    <div className="pt-2">
-                      <button
-                        className="min-h-8 rounded-md border border-slate-300 bg-white px-2.5 py-1 text-sm font-medium text-slate-700 transition hover:border-slate-400 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400"
-                        disabled={!isDatabaseAvailable}
-                        type="button"
-                        onClick={() => setPartForPODialog(selectedPart)}
-                      >
-                        {copy.addToPurchaseOrder}
-                      </button>
-                    </div>
-                  ) : null}
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 </section>
               ) : null}
-              {canReadShoppingLists ? (
+              {canReadShoppingLists &&
+               !partShoppingListMembershipQuery.isLoading &&
+               !partShoppingListMembershipQuery.isError &&
+               (partShoppingListMembershipQuery.data ?? []).length > 0 ? (
                 <section className="grid gap-2">
                   <h3 className="text-sm font-semibold text-slate-900">
                     {copy.shoppingLists}
                   </h3>
-                  {partShoppingListMembershipQuery.isLoading ? (
-                    <p className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-600">
-                      {copy.loadingParts}
-                    </p>
-                  ) : partShoppingListMembershipQuery.isError ? (
-                    <p className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-600">
-                      {copy.databaseUnavailable}
-                    </p>
-                  ) : (partShoppingListMembershipQuery.data ?? []).length === 0 ? (
-                    <p className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-600">
-                      {copy.noShoppingLists}
-                    </p>
-                  ) : (
-                    <div className="max-h-64 overflow-y-auto rounded-md border border-slate-200">
-                      <table className="w-full text-left text-sm">
-                        <thead className="sticky top-0 bg-slate-50 text-slate-600">
-                          <tr>
-                            <th className="px-3 py-2 font-semibold">{copy.slMembershipColList}</th>
-                            <th className="px-3 py-2 text-right font-semibold">{copy.slMembershipColQty}</th>
-                            <th className="px-3 py-2 font-semibold">{copy.slMembershipColNotes}</th>
+                  <div className="max-h-64 overflow-y-auto rounded-md border border-slate-200">
+                    <table className="w-full text-left text-sm">
+                      <thead className="sticky top-0 bg-slate-50 text-slate-600">
+                        <tr>
+                          <th className="px-3 py-2 font-semibold">{copy.slMembershipColList}</th>
+                          <th className="px-3 py-2 text-right font-semibold">{copy.slMembershipColQty}</th>
+                          <th className="px-3 py-2 font-semibold">{copy.slMembershipColNotes}</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {(partShoppingListMembershipQuery.data ?? []).map((entry: PartShoppingListMembershipItem) => (
+                          <tr key={entry.shoppingListId} className="border-t border-slate-100 first:border-t-0">
+                            <td className="px-3 py-2 align-middle">
+                              <a
+                                href={`/w/${encodeURIComponent(workspaceSlug)}/shopping-lists?selectedListId=${entry.shoppingListId}`}
+                                className="text-accent hover:underline"
+                              >
+                                {entry.shoppingListName}
+                              </a>
+                            </td>
+                            <td className="px-3 py-2 align-middle text-right tabular-nums text-slate-950">
+                              {entry.quantity}
+                            </td>
+                            <td className="px-3 py-2 align-middle text-slate-500">
+                              {entry.notes ?? "—"}
+                            </td>
                           </tr>
-                        </thead>
-                        <tbody>
-                          {(partShoppingListMembershipQuery.data ?? []).map((entry: PartShoppingListMembershipItem) => (
-                            <tr key={entry.shoppingListId} className="border-t border-slate-100 first:border-t-0">
-                              <td className="px-3 py-2 align-middle">
-                                <a
-                                  href={`/w/${encodeURIComponent(workspaceSlug)}/shopping-lists?selectedListId=${entry.shoppingListId}`}
-                                  className="text-accent hover:underline"
-                                >
-                                  {entry.shoppingListName}
-                                </a>
-                              </td>
-                              <td className="px-3 py-2 align-middle text-right tabular-nums text-slate-950">
-                                {entry.quantity}
-                              </td>
-                              <td className="px-3 py-2 align-middle text-slate-500">
-                                {entry.notes ?? "—"}
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
-                  {canWriteShoppingLists ? (
-                    <div className="pt-2">
-                      <button
-                        className="min-h-8 rounded-md border border-slate-300 bg-white px-2.5 py-1 text-sm font-medium text-slate-700 transition hover:border-slate-400 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400"
-                        disabled={!isDatabaseAvailable}
-                        type="button"
-                        onClick={() => setPartForSLDialog(selectedPart)}
-                      >
-                        {copy.addToShoppingList}
-                      </button>
-                    </div>
-                  ) : null}
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 </section>
               ) : null}
           </DetailPanel>

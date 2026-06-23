@@ -131,7 +131,7 @@ const copy = {
   fromLocation: "From location",
   toLocation: "To location",
   note: "Note",
-  addMovement: "Add movement",
+  addMovement: "Move",
   stockEntryType: "Entry type",
   receipt: "Receipt",
   issue: "Issue",
