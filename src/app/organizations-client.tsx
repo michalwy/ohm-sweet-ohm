@@ -42,6 +42,7 @@ import {
   type ListColumnDefinition
 } from "@/app/list-table-config";
 import { ListPageToolbar, ListTableHeaderCell, useColumnDragReorder, useColumnResizeCursor } from "@/app/list-page-toolbar";
+import { EmptyCell } from "@/app/list-table-cell";
 
 type Copy = {
   title: string;
@@ -328,7 +329,7 @@ export function OrganizationsClient({
         enableSorting: false,
         cell: ({ getValue }) => {
           const roles = getValue();
-          if (roles.length === 0) return <span className="text-slate-400">—</span>;
+          if (roles.length === 0) return <EmptyCell />;
           return (
             <span className="flex flex-wrap gap-1">
               {roles.map((r) => (

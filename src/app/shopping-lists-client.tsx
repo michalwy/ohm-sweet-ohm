@@ -54,6 +54,7 @@ import {
   type ListColumnDefinition
 } from "@/app/list-table-config";
 import { ListPageToolbar, ListTableHeaderCell, useColumnDragReorder, useColumnResizeCursor } from "@/app/list-page-toolbar";
+import { EmptyCell } from "@/app/list-table-cell";
 import { DetailPanel, useDetailsPanelWidth } from "@/app/detail-panel";
 import {
   CreatePurchaseOrderDialog,
@@ -583,7 +584,7 @@ export function ShoppingListsClient({
           const v = getValue();
           return v
             ? <span className="text-slate-700">{v}</span>
-            : <span className="text-slate-400">—</span>;
+            : <EmptyCell />;
         }
       }),
       columnHelper.accessor("itemCount", {
@@ -611,7 +612,7 @@ export function ShoppingListsClient({
           const v = getValue();
           return v
             ? <span className="text-slate-700">{v}</span>
-            : <span className="text-slate-400">—</span>;
+            : <EmptyCell />;
         }
       }),
       columnHelper.display({

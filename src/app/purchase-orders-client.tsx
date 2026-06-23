@@ -70,6 +70,7 @@ import {
 } from "@/app/list-table-config";
 import { ListPageToolbar, ListTableHeaderCell, useColumnDragReorder, useColumnResizeCursor } from "@/app/list-page-toolbar";
 import { DetailPanel, useDetailsPanelWidth } from "@/app/detail-panel";
+import { EmptyCell } from "@/app/list-table-cell";
 import { MultiAddToPODialog, type MultiAddToPOCopy } from "@/app/multi-add-to-po-dialog";
 
 function roundDisplay(n: number): string {
@@ -834,7 +835,7 @@ export function PurchaseOrdersClient({
           const v = getValue();
           return v
             ? <span className="text-slate-700">{v}</span>
-            : <span className="text-slate-400">—</span>;
+            : <EmptyCell />;
         }
       }),
       columnHelper.accessor("status", {
@@ -867,7 +868,7 @@ export function PurchaseOrdersClient({
           const v = getValue();
           return v
             ? <span className="text-slate-700">{v}</span>
-            : <span className="text-slate-400">—</span>;
+            : <EmptyCell />;
         }
       }),
       columnHelper.accessor("createdAt", {
@@ -888,7 +889,7 @@ export function PurchaseOrdersClient({
           const v = getValue();
           return v
             ? <span className="text-slate-700">{v}</span>
-            : <span className="text-slate-400">—</span>;
+            : <EmptyCell />;
         }
       }),
       columnHelper.accessor("orderedAt", {
@@ -900,7 +901,7 @@ export function PurchaseOrdersClient({
           const v = getValue();
           return v
             ? <span className="text-slate-700">{new Date(v).toLocaleDateString()}</span>
-            : <span className="text-slate-400">—</span>;
+            : <EmptyCell />;
         }
       }),
       columnHelper.accessor("currency", {
@@ -912,7 +913,7 @@ export function PurchaseOrdersClient({
           const v = getValue();
           return v
             ? <span className="text-slate-700">{v}</span>
-            : <span className="text-slate-400">—</span>;
+            : <EmptyCell />;
         }
       }),
       columnHelper.accessor("totalNetValue", {
@@ -925,7 +926,7 @@ export function PurchaseOrdersClient({
           const cur = row.original.currency;
           return v
             ? <span className="block text-right font-mono text-slate-700">{v}{cur ? ` ${cur}` : ""}</span>
-            : <span className="block text-right text-slate-400">—</span>;
+            : <span className="block text-right"><EmptyCell /></span>;
         }
       }),
       columnHelper.accessor("totalGrossValue", {
@@ -938,7 +939,7 @@ export function PurchaseOrdersClient({
           const cur = row.original.currency;
           return v
             ? <span className="block text-right font-mono text-slate-700">{v}{cur ? ` ${cur}` : ""}</span>
-            : <span className="block text-right text-slate-400">—</span>;
+            : <span className="block text-right"><EmptyCell /></span>;
         }
       }),
       columnHelper.accessor("totalNetValuePrimary", {
@@ -950,7 +951,7 @@ export function PurchaseOrdersClient({
           const v = getValue();
           return v
             ? <span className="block text-right font-mono text-slate-700">{v} {primaryCurrency}</span>
-            : <span className="block text-right text-slate-400">—</span>;
+            : <span className="block text-right"><EmptyCell /></span>;
         }
       }),
       columnHelper.accessor("totalGrossValuePrimary", {
@@ -962,7 +963,7 @@ export function PurchaseOrdersClient({
           const v = getValue();
           return v
             ? <span className="block text-right font-mono text-slate-700">{v} {primaryCurrency}</span>
-            : <span className="block text-right text-slate-400">—</span>;
+            : <span className="block text-right"><EmptyCell /></span>;
         }
       }),
       columnHelper.display({

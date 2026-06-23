@@ -12,6 +12,7 @@ import {
   compareNumericDisplayValues,
   compareQuantityDisplayValues
 } from "@/app/parts-list-sort-utils";
+import { EmptyCell } from "@/app/list-table-cell";
 
 // ---------------------------------------------------------------------------
 // Copy types
@@ -308,7 +309,7 @@ export function buildPartsListColumns(
           return value ? (
             <span className="text-slate-700">{value}</span>
           ) : (
-            <span className="text-slate-400">-</span>
+            <EmptyCell />
           );
         }
       }
@@ -352,7 +353,7 @@ export function buildPartsListColumns(
         return value ? (
           <span className="text-slate-700">{value}</span>
         ) : (
-          <span className="text-slate-400">-</span>
+          <EmptyCell />
         );
       }
     }),
@@ -371,7 +372,7 @@ export function buildPartsListColumns(
         return value ? (
           <span className="text-slate-950">{value}</span>
         ) : (
-          <span className="text-slate-400">-</span>
+          <EmptyCell />
         );
       }
     }),
@@ -394,7 +395,7 @@ export function buildPartsListColumns(
               return value ? (
                 <span className="block text-right text-slate-950">{value}</span>
               ) : (
-                <span className="block text-right text-slate-400">-</span>
+                <span className="block text-right"><EmptyCell /></span>
               );
             }
           })
@@ -419,7 +420,7 @@ export function buildPartsListColumns(
               return value ? (
                 <span className="block text-right text-slate-950">{value}</span>
               ) : (
-                <span className="block text-right text-slate-400">-</span>
+                <span className="block text-right"><EmptyCell /></span>
               );
             }
           })
@@ -444,7 +445,7 @@ export function buildPartsListColumns(
               return value ? (
                 <span className="block text-right text-slate-950">{value}</span>
               ) : (
-                <span className="block text-right text-slate-400">-</span>
+                <span className="block text-right"><EmptyCell /></span>
               );
             }
           }),
@@ -462,7 +463,7 @@ export function buildPartsListColumns(
                   {value}
                 </span>
               ) : (
-                <span className="block text-right text-slate-400">-</span>
+                <span className="block text-right"><EmptyCell /></span>
               );
             }
           }),
@@ -482,7 +483,7 @@ export function buildPartsListColumns(
                   {value}
                 </span>
               ) : (
-                <span className="block text-right text-slate-400">-</span>
+                <span className="block text-right"><EmptyCell /></span>
               );
             }
           })
@@ -497,7 +498,7 @@ export function buildPartsListColumns(
         return value ? (
           <span className="text-slate-950">{value}</span>
         ) : (
-          <span className="text-slate-400">-</span>
+          <EmptyCell />
         );
       }
     }),
