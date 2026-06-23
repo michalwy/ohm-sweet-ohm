@@ -1,4 +1,4 @@
-FROM node:24-bookworm-slim AS base
+FROM node:24.17.0-bookworm-slim AS base
 WORKDIR /app
 ENV NEXT_TELEMETRY_DISABLED=1
 RUN apt-get update -y \
