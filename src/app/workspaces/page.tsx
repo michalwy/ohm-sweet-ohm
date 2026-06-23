@@ -9,7 +9,7 @@ import {
 } from "@/server/auth/currentContext";
 import { createWorkspace } from "@/server/workspaces/actions";
 import { getRetentionDays } from "@/server/workspaces/retentionConfig";
-import { ArchivedWorkspaceActions } from "@/app/workspaces/archived-workspace-actions";
+import { ArchivedWorkspacesSection } from "@/app/workspaces/archived-workspaces-section";
 import { CURRENCIES } from "@/app/currencies";
 
 export const dynamic = "force-dynamic";
@@ -157,47 +157,11 @@ export default async function WorkspacesPage({
               </div>
             )}
 
-            {archivedWorkspaces.length > 0 && (
-              <div className="mt-8">
-                <h2 className="mb-3 text-base font-semibold text-slate-700">
-                  {copy.archivedSection}
-                </h2>
-                <div className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
-                  <ul className="divide-y divide-slate-200">
-                    {archivedWorkspaces.map((workspace) => (
-                      <li
-                        className="flex items-center justify-between gap-3 px-4 py-4"
-                        key={workspace.id}
-                      >
-                        <div className="min-w-0">
-                          <p className="truncate text-base font-semibold text-slate-950">
-                            {workspace.name}
-                          </p>
-                          <p className="mt-1 truncate font-mono text-xs text-slate-500">
-                            /w/{workspace.slug}
-                          </p>
-                          {workspace.archivedAt && (
-                            <p className="mt-0.5 text-xs text-slate-400">
-                              Archived{" "}
-                              {new Intl.DateTimeFormat("en-US", {
-                                dateStyle: "medium"
-                              }).format(new Date(workspace.archivedAt))}
-                            </p>
-                          )}
-                        </div>
-                        <ArchivedWorkspaceActions
-                          workspaceName={workspace.name}
-                          workspaceSlug={workspace.slug}
-                          archivedAt={workspace.archivedAt!}
-                          retentionDays={retentionDays}
-                          deletionScheduledAt={workspace.deletionScheduledAt}
-                        />
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              </div>
-            )}
+            <ArchivedWorkspacesSection
+              workspaces={archivedWorkspaces}
+              retentionDays={retentionDays}
+              sectionLabel={copy.archivedSection}
+            />
           </section>
 
           <section
