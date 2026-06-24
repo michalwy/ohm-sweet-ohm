@@ -169,6 +169,7 @@ const copy = {
   locationsAndStock: "Locations and stock",
   noAttributes: "No attributes for this part.",
   movementHistory: "Movement history",
+  viewMovementHistory: "View movement history",
   noHistory: "No movements recorded yet.",
   historyColType: "Type",
   historyColQuantity: "Qty",

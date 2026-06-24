@@ -26,7 +26,7 @@ test.describe("inventory", () => {
     const stockBefore = await getPartStock("NE555P");
 
     await seededPartRow.click();
-    await page.getByRole("button", { name: "Move" }).click();
+    await page.getByRole("button", { name: "Move", exact: true }).click();
 
     const stockDialog = page.getByRole("dialog", { name: /Stock:/ });
     await expect(stockDialog).toBeVisible();
@@ -61,7 +61,7 @@ test.describe("inventory", () => {
     const stockBefore = await getPartStock("NE555P");
 
     await seededPartRow.click();
-    await page.getByRole("button", { name: "Move" }).click();
+    await page.getByRole("button", { name: "Move", exact: true }).click();
 
     const stockDialog = page.getByRole("dialog", { name: /Stock:/ });
     await expect(stockDialog).toBeVisible();
@@ -100,7 +100,7 @@ test.describe("inventory", () => {
     await expect(seededPartRow).toBeVisible();
     await seededPartRow.click();
 
-    await page.getByRole("button", { name: "Move" }).click();
+    await page.getByRole("button", { name: "Move", exact: true }).click();
     const stockDialog = page.getByRole("dialog", { name: /Stock:/ });
     await expect(stockDialog).toBeVisible();
 
@@ -116,8 +116,11 @@ test.describe("inventory", () => {
     await expect(stockDialog).not.toBeVisible();
 
     await expect(page.getByRole("heading", { name: "Movement history" })).toBeVisible();
-    await expect(page.getByText("RECEIPT", { exact: true }).first()).toBeVisible();
-    await expect(page.getByText(note, { exact: true })).toBeVisible();
+    await page.getByRole("button", { name: "View movement history" }).click();
+    const historyDialog = page.getByRole("dialog", { name: /Movement history:/ });
+    await expect(historyDialog).toBeVisible();
+    await expect(historyDialog.getByText("RECEIPT", { exact: true }).first()).toBeVisible();
+    await expect(historyDialog.getByText(note, { exact: true })).toBeVisible();
   });
 
   test("shows per-location stock breakdown in the details panel", async ({ page }, testInfo) => {

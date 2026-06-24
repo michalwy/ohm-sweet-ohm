@@ -56,6 +56,7 @@ import {
   observeDialogContentHeight,
   openDialog
 } from "@/app/dialog-shell";
+import { PartMovementHistoryDialog } from "@/app/part-movement-history-dialog";
 import { PartStockDialog } from "@/app/part-stock-dialog";
 import { QuickAddToPODialog } from "@/app/part-quick-add-po-dialog";
 import { QuickAddToSLDialog } from "@/app/part-quick-add-sl-dialog";
@@ -72,10 +73,7 @@ import {
   getFloatingPanelStyle,
   type CategoryTreeItem
 } from "@/app/parts-category-tree-select";
-import {
-  getPartBalancesForWorkspace,
-  getPartInventoryHistoryForWorkspace
-} from "@/server/inventory/entryActions";
+import { getPartBalancesForWorkspace } from "@/server/inventory/entryActions";
 import { getLocationsForWorkspace } from "@/server/inventory/locationActions";
 import type { StorageLocationListItem } from "@/server/inventory/locationMutations";
 import { buildTree } from "@/app/tree-picker-utils";
@@ -229,6 +227,7 @@ type Copy = {
   locationsAndStock: string;
   noAttributes: string;
   movementHistory: string;
+  viewMovementHistory: string;
   noHistory: string;
   historyColType: string;
   historyColQuantity: string;
@@ -414,6 +413,7 @@ export function PartsListClient({
   );
   const [partForPODialog, setPartForPODialog] = useState<PartsListItem | null>(null);
   const [partForSLDialog, setPartForSLDialog] = useState<PartsListItem | null>(null);
+  const [showHistoryDialog, setShowHistoryDialog] = useState(false);
   const [selectedPartId, setSelectedPartId] = useState<string | null>(
     initialSelectedPartId ?? null
   );
@@ -858,23 +858,6 @@ export function PartsListClient({
     enabled: Boolean(selectedPartId) && canReadInventory,
     queryFn: async () => {
       const result = await getPartBalancesForWorkspace({
-        workspaceSlug,
-        partId: selectedPartId as string
-      });
-
-      if (!result.ok) {
-        throw new Error(result.error);
-      }
-
-      return result.data;
-    }
-  });
-
-  const partInventoryHistoryQuery = useQuery({
-    queryKey: ["part-inventory-history", workspaceSlug, selectedPartId],
-    enabled: Boolean(selectedPartId) && canReadInventory,
-    queryFn: async () => {
-      const result = await getPartInventoryHistoryForWorkspace({
         workspaceSlug,
         partId: selectedPartId as string
       });
@@ -1594,60 +1577,14 @@ export function PartsListClient({
                   <h3 className="text-sm font-semibold text-slate-900">
                     {copy.movementHistory}
                   </h3>
-                  {partInventoryHistoryQuery.isLoading ? (
-                    <p className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-600">
-                      {copy.loadingParts}
-                    </p>
-                  ) : partInventoryHistoryQuery.isError ? (
-                    <p className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-600">
-                      {copy.databaseUnavailable}
-                    </p>
-                  ) : (partInventoryHistoryQuery.data ?? []).length === 0 ? (
-                    <p className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-600">
-                      {copy.noHistory}
-                    </p>
-                  ) : (
-                    <div className="max-h-64 overflow-y-auto rounded-md border border-slate-200">
-                      <table className="w-full text-left text-sm">
-                        <thead className="sticky top-0 bg-slate-50 text-slate-600">
-                          <tr>
-                            <th className="px-3 py-2 font-semibold">{copy.historyColType}</th>
-                            <th className="px-3 py-2 font-semibold">{copy.historyColQuantity}</th>
-                            <th className="px-3 py-2 font-semibold">{copy.historyColLocation}</th>
-                            <th className="px-3 py-2 font-semibold">{copy.historyColDate}</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {(partInventoryHistoryQuery.data ?? []).map((entry) => (
-                            <tr key={entry.id} className="border-t border-slate-100 first:border-t-0">
-                              <td className="px-3 py-2 align-top">
-                                <span className="inline-block rounded bg-slate-100 px-1.5 py-0.5 font-mono text-xs font-medium text-slate-700">
-                                  {entry.entryType}
-                                </span>
-                              </td>
-                              <td className="px-3 py-2 align-top font-semibold tabular-nums text-slate-950">
-                                {entry.quantity}
-                              </td>
-                              <td className="px-3 py-2 align-top text-slate-600">
-                                {[entry.fromLocationName, entry.toLocationName]
-                                  .filter(Boolean)
-                                  .join(" → ") || null}
-                                {entry.note ? (
-                                  <p className="text-xs text-slate-400">{entry.note}</p>
-                                ) : null}
-                              </td>
-                              <td className="whitespace-nowrap px-3 py-2 align-top text-xs text-slate-400">
-                                {new Date(entry.createdAt).toLocaleDateString()}
-                                {entry.authorName ? (
-                                  <p>{entry.authorName}</p>
-                                ) : null}
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
+                  <button
+                    className="min-h-8 rounded-md border border-slate-300 bg-white px-2.5 py-1 text-sm font-medium text-slate-700 transition hover:border-slate-400 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400"
+                    disabled={!isDatabaseAvailable}
+                    type="button"
+                    onClick={() => setShowHistoryDialog(true)}
+                  >
+                    {copy.viewMovementHistory}
+                  </button>
                 </section>
               ) : null}
               {canReadPurchaseOrders &&
@@ -2330,6 +2267,18 @@ export function PartsListClient({
         onConfirm={confirmDeletePart}
       />
 
+      <PartMovementHistoryDialog
+        copy={copy}
+        open={showHistoryDialog}
+        partId={selectedPartId}
+        partTitle={
+          selectedPart
+            ? `${selectedPart.manufacturerName} ${selectedPart.catalogNumber}`
+            : ""
+        }
+        workspaceSlug={workspaceSlug}
+        onClose={() => setShowHistoryDialog(false)}
+      />
       <PartStockDialog
         canReadInventory={canReadInventory}
         canWriteInventory={canWriteInventory}
