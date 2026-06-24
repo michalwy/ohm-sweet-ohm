@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 
 import { signOut } from "@/server/auth/actions";
+import { ThemeToggle } from "@/app/theme-toggle";
 
 type WorkspaceNavItem =
   | "parts"
@@ -183,6 +184,7 @@ export function WorkspaceShell({
           </nav>
           <div className="border-t border-slate-200 p-3">
             <p className="mb-2 truncate text-xs leading-5 text-slate-500">{userEmail}</p>
+            <ThemeToggle />
             <Link
               className="mb-2 flex min-h-10 items-center gap-2 rounded-md border border-slate-300 bg-white px-3 text-sm font-medium text-slate-700 transition hover:border-slate-400 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2"
               href="https://github.com/michalwy/ohm-sweet-ohm/blob/main/docs/user-guide.md"

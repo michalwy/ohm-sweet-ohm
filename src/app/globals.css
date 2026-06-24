@@ -21,6 +21,28 @@
   --color-action-focus: #99f6e4;
 }
 
+/* Theme class layer — swapping the class on <html> swaps the active theme */
+html.theme-light {
+  color-scheme: light;
+  background: #f5f7fb;
+  --color-accent: #0f766e;
+  --color-accent-hover: #115e59;
+  --color-accent-soft: #ccfbf1;
+  --color-accent-border: #5eead4;
+  --color-success: #15803d;
+  --color-success-soft: #dcfce7;
+  --color-success-border: #86efac;
+  --color-error: #b91c1c;
+  --color-error-soft: #fee2e2;
+  --color-error-border: #fecaca;
+  --color-warning: #a16207;
+  --color-warning-soft: #fef3c7;
+  --color-warning-border: #fde68a;
+  --color-action-primary: var(--color-accent);
+  --color-action-primary-hover: var(--color-accent-hover);
+  --color-action-focus: #99f6e4;
+}
+
 * {
   box-sizing: border-box;
 }
