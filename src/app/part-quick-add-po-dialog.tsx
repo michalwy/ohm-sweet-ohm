@@ -98,6 +98,7 @@ export function QuickAddToPODialog({
         setSelectedPOId(draftPOs[0]?.id ?? "");
       }
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- selectedPOId intentionally omitted: effect only syncs mode/selection when the PO list changes, not on every selection change
   }, [draftPOs, draftPOs.length]);
 
   useEffect(() => {

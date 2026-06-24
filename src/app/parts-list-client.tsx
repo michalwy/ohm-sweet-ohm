@@ -2749,6 +2749,7 @@ function PartDetailsFields({
     activeOption?.scrollIntoView({
       block: "nearest"
     });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- digiKeyResults.length intentionally omitted: effect scrolls active item into view on index change; length is only a guard
   }, [
     activeDigiKeyIndex,
     catalogNumberInputId,

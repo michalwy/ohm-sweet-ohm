@@ -2121,7 +2121,7 @@ function CategoryParentTreeSelect({
         aria-label={`${label} ${
           currentSelectedCategory?.path ?? noSelectionLabel
         }`}
-        aria-invalid={error ? true : undefined}
+
         className={getFieldInputClassName(
           defaultCategorySelectButtonClassName,
           Boolean(error)

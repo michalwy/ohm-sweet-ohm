@@ -162,6 +162,7 @@ export function useListTableConfiguration({
     setSorting(nextState.sorting);
     setColumnSizing(nextState.columnSizing);
     setIsLoaded(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- getStoredState closes over storageKey (already in deps); adding it would cause infinite loop
   }, [storageKey]);
 
   useEffect(() => {
@@ -202,6 +203,7 @@ export function useListTableConfiguration({
     };
 
     window.localStorage.setItem(storageKey, JSON.stringify(payload));
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- isLoaded is intentionally omitted: this effect persists data changes, isLoaded is only a guard against writing before initial load
   }, [columnOrder, columnSizing, columnVisibility, sorting, storageKey]);
 
   function setColumnVisible(columnId: ListColumnId, isVisible: boolean) {

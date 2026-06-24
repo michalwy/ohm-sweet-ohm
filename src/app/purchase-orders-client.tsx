@@ -918,7 +918,7 @@ export function PurchaseOrdersClient({
   // --- Derived values ---
 
   const detail = orderDetail as PurchaseOrderDetail | null | undefined;
-  const detailItems = detail?.items ?? [];
+  const detailItems = useMemo(() => detail?.items ?? [], [detail]);
   const existingParts = useMemo(
     () => new Map(detailItems.map((item) => [item.partId, item.quantity])),
     [detailItems]

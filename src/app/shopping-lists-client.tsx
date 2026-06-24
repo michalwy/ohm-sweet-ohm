@@ -685,7 +685,10 @@ export function ShoppingListsClient({
     updateItemMutation.isPending ||
     convertMutation.isPending;
 
-  const items = (listDetail as ShoppingListDetail | null | undefined)?.items ?? [];
+  const items = useMemo(
+    () => (listDetail as ShoppingListDetail | null | undefined)?.items ?? [],
+    [listDetail]
+  );
   const existingParts = useMemo(
     () => new Map(items.map((item) => [item.partId, item.quantity])),
     [items]

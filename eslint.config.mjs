@@ -12,7 +12,9 @@ const eslintConfig = [
       reportUnusedDisableDirectives: "error"
     },
     rules: {
-      "@typescript-eslint/no-unused-vars": "error"
+      "@typescript-eslint/no-unused-vars": "error",
+      "react-hooks/exhaustive-deps": "error",
+      "jsx-a11y/role-supports-aria-props": "error"
     }
   }
 ];

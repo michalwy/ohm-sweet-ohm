@@ -42,7 +42,7 @@ export function TreeSelectButton({
       id={buttonId}
       aria-expanded={ariaExpanded}
       aria-haspopup="listbox"
-      aria-invalid={ariaInvalid ?? undefined}
+
       aria-label={ariaLabel}
       aria-labelledby={ariaLabelledby}
       className={getFieldInputClassName(buttonClassName, Boolean(ariaInvalid))}

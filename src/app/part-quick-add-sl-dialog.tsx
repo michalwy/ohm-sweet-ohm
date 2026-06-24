@@ -97,6 +97,7 @@ export function QuickAddToSLDialog({
         setSelectedSLId(allSLs[0]?.id ?? "");
       }
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- selectedSLId intentionally omitted: effect only syncs mode/selection when the SL list changes, not on every selection change
   }, [allSLs, allSLs.length]);
 
   useEffect(() => {
