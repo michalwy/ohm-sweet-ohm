@@ -121,10 +121,6 @@ async function getAuthorizedInventoryContext({
   return context;
 }
 
-function getWorkspacePath(workspaceSlug: string) {
-  return `/w/${encodeURIComponent(workspaceSlug)}`;
-}
-
 function getSuccessState<T>(data: T): InventoryActionResult<T> {
   return {
     ok: true,

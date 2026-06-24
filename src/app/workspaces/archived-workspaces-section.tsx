@@ -32,7 +32,6 @@ export function ArchivedWorkspacesSection({
     const stored = localStorage.getItem(STORAGE_KEY);
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setIsExpanded(stored === "true");
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setMounted(true);
   }, []);
 

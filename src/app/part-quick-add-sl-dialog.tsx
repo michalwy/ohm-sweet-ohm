@@ -92,7 +92,6 @@ export function QuickAddToSLDialog({
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setMode("create-new");
     } else {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setMode("existing");
       if (!selectedSLId || !allSLs.find((sl) => sl.id === selectedSLId)) {
         setSelectedSLId(allSLs[0]?.id ?? "");

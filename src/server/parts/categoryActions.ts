@@ -45,7 +45,7 @@ export async function createPartCategoryFromForm(
   const name = getRequiredFormValue(formData, "name");
   const parentId = getOptionalFormValue(formData, "parentId");
   const isAssignable = getRequiredFormValue(formData, "type") === "assignable";
-  const categoriesPath = getPartCategoriesPath(workspaceSlug);
+
   let category: PartCategoryListItem | null = null;
   let categories: PartCategoryListItem[] = [];
 
@@ -103,7 +103,7 @@ export async function createPartCategoryPathFromForm(
   const parentId = getOptionalFormValue(formData, "parentId");
   const finalIsAssignable =
     getRequiredFormValue(formData, "finalType") !== "organizational";
-  const categoriesPath = getPartCategoriesPath(workspaceSlug);
+
   let category: PartCategoryListItem | null = null;
   let categories: PartCategoryListItem[] = [];
 
@@ -161,7 +161,7 @@ export async function updatePartCategoryFromForm(
   const name = getRequiredFormValue(formData, "name");
   const parentId = getOptionalFormValue(formData, "parentId");
   const isAssignable = getRequiredFormValue(formData, "type") === "assignable";
-  const categoriesPath = getPartCategoriesPath(workspaceSlug);
+
   let category: PartCategoryListItem | null = null;
   let categories: PartCategoryListItem[] = [];
 
@@ -217,7 +217,7 @@ export async function deletePartCategoryFromForm(
 ): Promise<PartCategoryDeleteResult> {
   const workspaceSlug = getRequiredFormValue(formData, "workspaceSlug");
   const id = getRequiredFormValue(formData, "id");
-  const categoriesPath = getPartCategoriesPath(workspaceSlug);
+
   let categories: PartCategoryListItem[] = [];
 
   if (!workspaceSlug || !id) {
@@ -274,14 +274,6 @@ function getOptionalFormValue(formData: FormData, name: string) {
   const value = getRequiredFormValue(formData, name);
 
   return value || null;
-}
-
-function getPartCategoriesPath(workspaceSlug: string) {
-  if (!workspaceSlug) {
-    return "/workspaces";
-  }
-
-  return `/w/${encodeURIComponent(workspaceSlug)}/part-categories`;
 }
 
 function getPartCategoryFormError(error: unknown) {

@@ -8,7 +8,6 @@ import type {
 } from "react";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import {
-  keepPreviousData,
   useInfiniteQuery,
   useMutation,
   useQuery,
@@ -83,7 +82,6 @@ import {
   type LocationTreeItem,
   type LocationTreeSelectCopy
 } from "@/app/location-tree-select";
-import { TreeSelectButton, TreeSelectPanel } from "@/app/tree-select";
 import { getPartPurchaseOrderHistoryForWorkspace } from "@/server/purchase-orders/purchaseOrderActions";
 import type { PartPurchaseOrderHistoryItem } from "@/server/purchase-orders/purchaseOrderMutations";
 import { getPartShoppingListMembershipForWorkspace } from "@/server/shopping-lists/shoppingListActions";
@@ -1327,21 +1325,6 @@ export function PartsListClient({
     closeDialog(matchingDialogRef.current);
   }
 
-  function toggleColumnSorting(columnId: string) {
-    const currentSort = sorting.find((item) => item.id === columnId);
-    if (!currentSort) {
-      setColumnSorting(columnId, "asc");
-      return;
-    }
-
-    if (!currentSort.desc) {
-      setColumnSorting(columnId, "desc");
-      return;
-    }
-
-    setColumnSorting(columnId, "none");
-  }
-
   return (
     <>
       <div className="flex min-h-0 flex-1 gap-4">
@@ -2554,12 +2537,6 @@ function getFirstTabWithErrors(errors: PartFormErrors): PartDialogTab | null {
   }
 
   return null;
-}
-
-function getFormValue(formData: FormData, name: string) {
-  const value = formData.get(name);
-
-  return typeof value === "string" ? value.trim() : "";
 }
 
 function getPartAttributeValueState(part: PartsListItem) {

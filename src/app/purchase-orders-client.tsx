@@ -2,7 +2,6 @@
 
 import {
   type KeyboardEvent as ReactKeyboardEvent,
-  useEffect,
   useMemo,
   useRef,
   useState
@@ -34,10 +33,7 @@ import {
   updateOrderItemForWorkspace,
   updatePurchaseOrderForWorkspace
 } from "@/server/purchase-orders/purchaseOrderActions";
-import {
-  CreatePurchaseOrderDialog,
-  type CreatePurchaseOrderDialogCopy,
-} from "@/app/create-purchase-order-dialog";
+import { CreatePurchaseOrderDialog } from "@/app/create-purchase-order-dialog";
 import { SupplierPickerCombobox } from "@/app/supplier-picker-combobox";
 import { PartPickerCombobox, type PartPickerOption } from "@/app/part-picker-combobox";
 import type {
@@ -58,7 +54,6 @@ import {
   LabelWithError,
   openDialog
 } from "@/app/dialog-shell";
-import { CURRENCIES } from "@/app/currencies";
 import { getNextToastId, ToastNotice, type ToastMessage } from "@/app/toast-notice";
 import type { StorageLocationListItem } from "@/server/inventory/locationMutations";
 import { buildTree } from "@/app/tree-picker-utils";
@@ -395,7 +390,7 @@ export function PurchaseOrdersClient({
   const [selectedPartId, setSelectedPartId] = useState<string | null>(null);
   const [orderFormErrors, setOrderFormErrors] = useState<Record<string, string>>({});
   const [itemFormErrors, setItemFormErrors] = useState<Record<string, string>>({});
-  const [receiveFormErrors, setReceiveFormErrors] = useState<Record<string, string>>({});
+  const [, setReceiveFormErrors] = useState<Record<string, string>>({});
   const [receiveMissingLocationIds, setReceiveMissingLocationIds] = useState<Set<string>>(new Set());
   const [itemUnitPrice, setItemUnitPrice] = useState("");
   const [itemLineTotal, setItemLineTotal] = useState("");

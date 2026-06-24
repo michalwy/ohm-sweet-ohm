@@ -491,10 +491,6 @@ async function getAuthorizedAttributeContext({
   return context;
 }
 
-function getWorkspacePath(workspaceSlug: string) {
-  return `/w/${encodeURIComponent(workspaceSlug)}`;
-}
-
 function getSuccessState<T>(data: T): AttributeActionResult<T> {
   return {
     ok: true,

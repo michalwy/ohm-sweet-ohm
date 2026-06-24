@@ -127,10 +127,6 @@ async function getAuthorizedLocationContext({
   return context;
 }
 
-function getWorkspacePath(workspaceSlug: string) {
-  return `/w/${encodeURIComponent(workspaceSlug)}`;
-}
-
 function getSuccessState<T>(data: T): LocationActionResult<T> {
   return {
     ok: true,

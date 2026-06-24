@@ -17,7 +17,6 @@ export function useDetailsPanelWidth(storageKey: string, defaultWidth = 384) {
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setWidth(Math.max(320, Math.min(maxWidth, parsedValue)));
     } else {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setWidth(defaultWidth);
     }
 

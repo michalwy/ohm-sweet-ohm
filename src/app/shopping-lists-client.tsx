@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import {
   createColumnHelper,
   flexRender,
@@ -56,10 +56,7 @@ import {
 import { ListPageToolbar, ListTableHeaderCell, useColumnDragReorder, useColumnResizeCursor } from "@/app/list-page-toolbar";
 import { EmptyCell } from "@/app/list-table-cell";
 import { DetailPanel, useDetailsPanelWidth } from "@/app/detail-panel";
-import {
-  CreatePurchaseOrderDialog,
-  type CreatePurchaseOrderDialogCopy,
-} from "@/app/create-purchase-order-dialog";
+import { CreatePurchaseOrderDialog } from "@/app/create-purchase-order-dialog";
 import { MultiAddToSLDialog, type MultiAddToSLCopy } from "@/app/multi-add-to-sl-dialog";
 
 
@@ -355,7 +352,7 @@ export function ShoppingListsClient({
 
   const convertMutation = useMutation({
     mutationFn: convertShoppingListToOrderForWorkspace,
-    onSuccess: (result, variables) => {
+    onSuccess: (result) => {
       if (!result.ok) { setConvertFormErrors({ submit: getErrorMsg(copy, result.error) }); return; }
       closeConvertDialog();
       setSelectedItemIds(new Set());

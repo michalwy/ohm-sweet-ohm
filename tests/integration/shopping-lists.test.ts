@@ -392,7 +392,7 @@ async function getPartQtys(partId: string) {
 describe("plannedQty / onOrderQty maintenance — shopping lists", () => {
   test("addShoppingListItem increments plannedQty", async () => {
     const suffix = uniqueSuffix("sq-add");
-    const { workspaceId, partId, supplierId: _s } = await createFixture(suffix);
+    const { workspaceId, partId } = await createFixture(suffix);
 
     const list = await createShoppingList({ workspaceId, name: "SQ Add List" });
     await addShoppingListItem({ workspaceId, listId: list.id, partId, quantity: "5" });

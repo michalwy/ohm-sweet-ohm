@@ -59,7 +59,7 @@ export async function createPart(
   const defaultLocationId = getOptionalFormValue(formData, "defaultLocationId");
   const submittedAttributeValues = getSubmittedAttributeValues(formData);
   const supplierMatchingPayload = getSupplierMatchingPayload(formData);
-  const partsPath = getPartsPath(workspaceSlug);
+
   let part: PartsListItem | null = null;
 
   if (!workspaceSlug || !unitId || !catalogNumber || !manufacturerName) {
@@ -206,7 +206,7 @@ export async function updatePart(
   );
   const defaultLocationId = getOptionalFormValue(formData, "defaultLocationId");
   const submittedAttributeValues = getSubmittedAttributeValues(formData);
-  const partsPath = getPartsPath(workspaceSlug);
+
   let part: PartsListItem | null = null;
 
   if (!workspaceSlug || !id || !unitId || !catalogNumber || !manufacturerName) {
@@ -333,7 +333,7 @@ export async function updatePart(
 export async function deletePart(formData: FormData): Promise<PartDeleteResult> {
   const workspaceSlug = getRequiredFormValue(formData, "workspaceSlug");
   const id = getRequiredFormValue(formData, "id");
-  const partsPath = getPartsPath(workspaceSlug);
+
 
   if (!workspaceSlug || !id) {
     return getDeleteErrorState("missing-required-fields");
@@ -477,13 +477,6 @@ function isSupplierProviderKey(value: unknown): value is SupplierProviderKey {
   return value === "digikey" || value === "mouser" || value === "tme";
 }
 
-function getPartsPath(workspaceSlug: string) {
-  if (!workspaceSlug) {
-    return "/workspaces";
-  }
-
-  return `/w/${encodeURIComponent(workspaceSlug)}/parts`;
-}
 
 async function validatePartCategoryAssignment({
   workspaceId,

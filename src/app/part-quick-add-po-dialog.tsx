@@ -93,7 +93,6 @@ export function QuickAddToPODialog({
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setMode("create-new");
     } else {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setMode("existing");
       if (!selectedPOId || !draftPOs.find((po) => po.id === selectedPOId)) {
         setSelectedPOId(draftPOs[0]?.id ?? "");
