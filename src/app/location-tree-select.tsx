@@ -1,22 +1,8 @@
 "use client";
 
-import {
-  type CSSProperties,
-  type KeyboardEvent as ReactKeyboardEvent,
-  useEffect,
-  useRef,
-  useState
-} from "react";
-
 import type { StorageLocationListItem } from "@/server/inventory/locationMutations";
-import {
-  getAncestorIds,
-  getExpandableIds,
-  getFloatingPanelStyle,
-  getVisibleOptions,
-  type TreeNode
-} from "@/app/tree-picker-utils";
-import { TreeSelectButton, TreeSelectPanel, defaultTreeSelectButtonClassName } from "@/app/tree-select";
+import { type TreeNode } from "@/app/tree-picker-utils";
+import { TreeSelectButton, TreeSelectPanel, defaultTreeSelectButtonClassName, useTreeSelect } from "@/app/tree-select";
 
 export type LocationTreeItem = TreeNode<StorageLocationListItem>;
 
@@ -76,139 +62,43 @@ export function LocationTreeSelect({
   className?: string;
   buttonClassName?: string;
 }) {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const panelRef = useRef<HTMLDivElement>(null);
   const buttonId = `${name}-button`;
   const searchId = `${name}-search`;
   const currentSelectedLocation = locations.find((loc) => loc.id === selectedId);
-  const [isOpen, setIsOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [panelStyle, setPanelStyle] = useState<CSSProperties>({});
-  const [portalTarget, setPortalTarget] = useState<HTMLElement | null>(null);
-  const [activeId, setActiveId] = useState(selectedId);
-  const [expandedIds, setExpandedIds] = useState<Set<string>>(
-    () => getAncestorIds(locations, selectedId)
-  );
-  const normalizedSearchQuery = searchQuery.trim().toLocaleLowerCase("en");
-  const visibleTree = normalizedSearchQuery
-    ? filterLocationTree(locationTree, normalizedSearchQuery)
-    : locationTree;
-  const effectiveExpandedIds = normalizedSearchQuery
-    ? getExpandableIds(visibleTree)
-    : expandedIds;
-  const visibleOptions = getVisibleOptions(visibleTree, effectiveExpandedIds);
-  const activeLocation = visibleOptions.find((loc) => loc.id === activeId);
-  const keyboardOptionIds = visibleOptions.map((loc) => loc.id);
 
-  useEffect(() => {
-    if (!isOpen) {
-      return;
-    }
-
-    function onPointerDown(event: PointerEvent) {
-      if (
-        event.target instanceof Node &&
-        !containerRef.current?.contains(event.target) &&
-        !panelRef.current?.contains(event.target)
-      ) {
-        setIsOpen(false);
-        setSearchQuery("");
-      }
-    }
-
-    function onKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") {
-        setIsOpen(false);
-        setSearchQuery("");
-      }
-    }
-
-    function onReposition() {
-      const nextStyle = getFloatingPanelStyle(containerRef.current);
-      if (nextStyle) {
-        setPanelStyle(nextStyle);
-      }
-    }
-
-    document.addEventListener("pointerdown", onPointerDown);
-    document.addEventListener("keydown", onKeyDown);
-    window.addEventListener("resize", onReposition);
-    window.addEventListener("scroll", onReposition, true);
-
-    return () => {
-      document.removeEventListener("pointerdown", onPointerDown);
-      document.removeEventListener("keydown", onKeyDown);
-      window.removeEventListener("resize", onReposition);
-      window.removeEventListener("scroll", onReposition, true);
-    };
-  }, [isOpen]);
-
-  function openSelect() {
-    setExpandedIds(getAncestorIds(locations, selectedId));
-    setActiveId(selectedId);
-    setPanelStyle(getFloatingPanelStyle(containerRef.current) ?? {});
-    setPortalTarget(containerRef.current?.closest("dialog") ?? document.body);
-    setIsOpen(true);
-  }
-
-  function setSelectedLocation(locationId: string) {
-    onSelectedIdChange(locationId);
-    setIsOpen(false);
-    setSearchQuery("");
-    setActiveId(locationId);
-    setExpandedIds(getAncestorIds(locations, locationId));
-  }
-
-  function moveActive(direction: 1 | -1) {
-    if (keyboardOptionIds.length === 0) return;
-    const currentIndex = keyboardOptionIds.indexOf(activeId);
-    const nextIndex =
-      currentIndex === -1
-        ? direction === 1
-          ? 0
-          : keyboardOptionIds.length - 1
-        : (currentIndex + direction + keyboardOptionIds.length) % keyboardOptionIds.length;
-    setActiveId(keyboardOptionIds[nextIndex]);
-  }
+  const {
+    containerRef,
+    panelRef,
+    isOpen,
+    setIsOpen,
+    searchQuery,
+    setSearchQuery,
+    panelStyle,
+    portalTarget,
+    activeId,
+    setActiveId,
+    setExpandedIds,
+    visibleTree,
+    effectiveExpandedIds,
+    activeItem: activeLocation,
+    openSelect,
+    setSelected: setSelectedLocation,
+    toggleExpanded,
+    buildHandleKeyDown,
+  } = useTreeSelect({
+    items: locations,
+    tree: locationTree,
+    selectedId,
+    filterTree: filterLocationTree,
+    onSelectedIdChange,
+  });
 
   function commitActive() {
     if (!activeLocation?.isAssignable) return;
     setSelectedLocation(activeId);
   }
 
-  function handleKeyDown(event: ReactKeyboardEvent) {
-    if (event.key === "ArrowDown") {
-      event.preventDefault();
-      if (!isOpen) openSelect();
-      else moveActive(1);
-    }
-    if (event.key === "ArrowUp") {
-      event.preventDefault();
-      if (!isOpen) openSelect();
-      else moveActive(-1);
-    }
-    if (event.key === "Enter" && isOpen) {
-      event.preventDefault();
-      commitActive();
-    }
-    if (event.key === "ArrowRight" && isOpen && activeLocation?.children.length) {
-      event.preventDefault();
-      setExpandedIds(new Set(expandedIds).add(activeId));
-    }
-    if (event.key === "ArrowLeft" && isOpen && activeLocation?.children.length) {
-      event.preventDefault();
-      const next = new Set(expandedIds);
-      next.delete(activeId);
-      setExpandedIds(next);
-    }
-  }
-
-  function toggleExpanded(locationId: string) {
-    const next = new Set(expandedIds);
-    if (next.has(locationId)) next.delete(locationId);
-    else next.add(locationId);
-    setExpandedIds(next);
-  }
+  const handleKeyDown = buildHandleKeyDown(commitActive);
 
   const triggerLabel = currentSelectedLocation?.name ?? emptyLabel ?? copy.chooseLocation;
   const showClear = clearable && Boolean(selectedId);
