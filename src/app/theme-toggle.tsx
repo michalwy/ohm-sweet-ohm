@@ -3,6 +3,7 @@
 import { useTheme } from "@/app/theme-provider";
 
 const themeLabels: Record<string, string> = {
+  auto: "Auto",
   light: "Light",
   dark: "Dark",
 };

@@ -19,7 +19,7 @@ export default function RootLayout({
         {/* Applies the saved theme class before first paint to avoid flash */}
         <script
           dangerouslySetInnerHTML={{
-            __html: `(function(){var t=localStorage.getItem('oso:theme')||'light';document.documentElement.classList.add('theme-'+t);})();`
+            __html: `(function(){var t=localStorage.getItem('oso:theme')||'auto';if(t==='auto'){t=window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';}document.documentElement.classList.add('theme-'+t);})();`
           }}
         />
       </head>

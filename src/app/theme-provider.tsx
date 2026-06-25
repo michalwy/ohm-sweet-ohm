@@ -1,16 +1,25 @@
 "use client";
 
-import { createContext, useContext, useState } from "react";
+import { createContext, useContext, useEffect, useState } from "react";
 
-export type Theme = "light" | "dark";
+export type Theme = "auto" | "light" | "dark";
 
-const THEMES: Theme[] = ["light", "dark"];
+const THEMES: Theme[] = ["auto", "light", "dark"];
 const STORAGE_KEY = "oso:theme";
 
 function readSavedTheme(): Theme {
-  if (typeof window === "undefined") return "light";
+  if (typeof window === "undefined") return "auto";
   const saved = localStorage.getItem(STORAGE_KEY);
-  return saved && (THEMES as string[]).includes(saved) ? (saved as Theme) : "light";
+  return saved && (THEMES as string[]).includes(saved) ? (saved as Theme) : "auto";
+}
+
+function applyThemeClass(resolved: "light" | "dark") {
+  document.documentElement.classList.remove("theme-light", "theme-dark");
+  document.documentElement.classList.add(`theme-${resolved}`);
+}
+
+function resolveAuto(): "light" | "dark" {
+  return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
 }
 
 interface ThemeContextValue {
@@ -20,7 +29,7 @@ interface ThemeContextValue {
 }
 
 const ThemeContext = createContext<ThemeContextValue>({
-  theme: "light",
+  theme: "auto",
   setTheme: () => undefined,
   themes: THEMES
 });
@@ -33,13 +42,19 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [theme, setThemeState] = useState<Theme>(readSavedTheme);
 
   function setTheme(next: Theme) {
-    for (const t of THEMES) {
-      document.documentElement.classList.remove(`theme-${t}`);
-    }
-    document.documentElement.classList.add(`theme-${next}`);
+    applyThemeClass(next === "auto" ? resolveAuto() : next);
     localStorage.setItem(STORAGE_KEY, next);
     setThemeState(next);
   }
+
+  useEffect(() => {
+    if (theme !== "auto") return;
+    const mq = window.matchMedia("(prefers-color-scheme: dark)");
+    const handler = (e: MediaQueryListEvent) =>
+      applyThemeClass(e.matches ? "dark" : "light");
+    mq.addEventListener("change", handler);
+    return () => mq.removeEventListener("change", handler);
+  }, [theme]);
 
   return (
     <ThemeContext.Provider value={{ theme, setTheme, themes: THEMES }}>
