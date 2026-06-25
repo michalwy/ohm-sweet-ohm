@@ -35,14 +35,14 @@ export function ManufacturerAutocomplete({
   const matchingSuggestions = getManufacturerMatches(value, suggestions);
 
   const inputClassName = getFieldInputClassName(
-    `rounded-md border border-slate-300 bg-white px-3 text-slate-950 outline-none transition placeholder:text-slate-400 hover:border-slate-400 focus:border-slate-500 focus:ring-2 focus:ring-slate-200 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400 ${
+    `rounded-md border border-[var(--color-border-strong)] bg-[var(--color-bg-elevated)] px-3 text-[var(--color-text-primary)] outline-none transition placeholder:text-[var(--color-text-placeholder)] hover:border-[var(--color-border-hover)] focus:border-[var(--color-border-hover)] focus:ring-2 focus:ring-[var(--color-ring)] disabled:cursor-not-allowed disabled:bg-[var(--color-bg-subtle)] disabled:text-[var(--color-text-placeholder)] ${
       compact ? "min-h-9 py-1.5 text-sm" : "min-h-11 py-2 text-base"
     }`,
     Boolean(error)
   );
 
   return (
-    <div className={`relative grid text-sm font-medium text-slate-700 ${compact ? "min-w-52 gap-1.5" : "gap-2"}`}>
+    <div className={`relative grid text-sm font-medium text-[var(--color-text-secondary)] ${compact ? "min-w-52 gap-1.5" : "gap-2"}`}>
       <LabelWithError htmlFor={inputId} error={error}>
         {label}
       </LabelWithError>
@@ -61,8 +61,8 @@ export function ManufacturerAutocomplete({
           <div
             className={`min-h-9 w-full rounded-md px-3 py-1.5 text-left text-sm transition ${
               isActive
-                ? "bg-[var(--color-accent-soft)] font-semibold text-slate-950"
-                : "text-slate-700 hover:bg-slate-50"
+                ? "bg-[var(--color-accent-soft)] font-semibold text-[var(--color-text-primary)]"
+                : "text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-subtle)]"
             }`}
           >
             {suggestion.name}

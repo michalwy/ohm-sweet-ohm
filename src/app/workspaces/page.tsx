@@ -74,25 +74,25 @@ export default async function WorkspacesPage({
   const notice = resolvedSearchParams?.notice;
 
   return (
-    <main className="min-h-screen bg-slate-100 text-slate-950">
+    <main className="min-h-screen bg-[var(--color-bg-page)] text-[var(--color-text-primary)]">
       <div className="mx-auto flex min-h-screen w-full max-w-5xl flex-col px-6 py-6">
-        <header className="flex min-h-14 items-center justify-between gap-4 border-b border-slate-200 pb-4">
+        <header className="flex min-h-14 items-center justify-between gap-4 border-b border-[var(--color-border)] pb-4">
           <div className="flex items-center gap-3">
             <div className="grid h-9 w-9 place-items-center rounded-md bg-[var(--color-accent)] text-sm font-semibold text-white">
               {copy.appShortName}
             </div>
             <div>
-              <p className="text-sm font-semibold leading-5 text-slate-950">
+              <p className="text-sm font-semibold leading-5 text-[var(--color-text-primary)]">
                 {copy.appName}
               </p>
-              <p className="text-xs leading-4 text-slate-500">
+              <p className="text-xs leading-4 text-[var(--color-text-muted)]">
                 {copy.appSubtitle}
               </p>
             </div>
           </div>
           <form action={signOut}>
             <button
-              className="min-h-10 rounded-md border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 transition hover:border-slate-400 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2"
+              className="min-h-10 rounded-md border border-[var(--color-border-strong)] bg-[var(--color-bg-elevated)] px-3 py-2 text-sm font-medium text-[var(--color-text-secondary)] transition hover:border-[var(--color-border-hover)] hover:bg-[var(--color-bg-subtle)] focus:outline-none focus:ring-2 focus:ring-[var(--color-ring-strong)] focus:ring-offset-2"
               type="submit"
             >
               {copy.signOut}
@@ -105,34 +105,34 @@ export default async function WorkspacesPage({
             <div className="mb-5">
               <h1
                 id="workspaces-heading"
-                className="text-2xl font-semibold tracking-normal text-slate-950"
+                className="text-2xl font-semibold tracking-normal text-[var(--color-text-primary)]"
               >
                 {copy.title}
               </h1>
-              <p className="mt-1 max-w-2xl text-sm leading-6 text-slate-600">
+              <p className="mt-1 max-w-2xl text-sm leading-6 text-[var(--color-text-secondary)]">
                 {copy.intro}
               </p>
             </div>
 
             {notice === "workspace-archived" && (
-              <p className="mb-4 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+              <p className="mb-4 rounded-md border border-[var(--color-warning-border)] bg-[var(--color-warning-soft)] px-3 py-2 text-sm text-[var(--color-warning)]">
                 {copy.archivedNotice}
               </p>
             )}
 
             {workspaces.length > 0 ? (
-              <div className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
-                <ul className="divide-y divide-slate-200">
+              <div className="overflow-hidden rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-elevated)] shadow-sm">
+                <ul className="divide-y divide-[var(--color-border)]">
                   {workspaces.map((workspace) => (
                     <li
                       className="flex items-center justify-between gap-3 px-4 py-4"
                       key={workspace.id}
                     >
                       <div className="min-w-0">
-                        <p className="truncate text-base font-semibold text-slate-950">
+                        <p className="truncate text-base font-semibold text-[var(--color-text-primary)]">
                           {workspace.name}
                         </p>
-                        <p className="mt-1 truncate font-mono text-xs text-slate-500">
+                        <p className="mt-1 truncate font-mono text-xs text-[var(--color-text-muted)]">
                           /w/{workspace.slug}
                         </p>
                       </div>
@@ -147,11 +147,11 @@ export default async function WorkspacesPage({
                 </ul>
               </div>
             ) : (
-              <div className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
-                <p className="text-base font-semibold text-slate-950">
+              <div className="rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-elevated)] p-6 shadow-sm">
+                <p className="text-base font-semibold text-[var(--color-text-primary)]">
                   {copy.emptyTitle}
                 </p>
-                <p className="mt-2 text-sm leading-6 text-slate-500">
+                <p className="mt-2 text-sm leading-6 text-[var(--color-text-muted)]">
                   {copy.emptyBody}
                 </p>
               </div>
@@ -166,11 +166,11 @@ export default async function WorkspacesPage({
 
           <section
             aria-labelledby="create-workspace-heading"
-            className="h-fit rounded-lg border border-slate-200 bg-white p-5 shadow-sm"
+            className="h-fit rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-elevated)] p-5 shadow-sm"
           >
             <h2
               id="create-workspace-heading"
-              className="text-lg font-semibold text-slate-950"
+              className="text-lg font-semibold text-[var(--color-text-primary)]"
             >
               {copy.createTitle}
             </h2>
@@ -186,10 +186,10 @@ export default async function WorkspacesPage({
             ) : null}
 
             <form action={createWorkspace} className="mt-5 grid gap-4">
-              <label className="grid gap-2 text-sm font-medium text-slate-700">
+              <label className="grid gap-2 text-sm font-medium text-[var(--color-text-secondary)]">
                 {copy.name}
                 <input
-                  className="min-h-11 rounded-md border border-slate-300 bg-white px-3 py-2 text-base text-slate-950 outline-none transition placeholder:text-slate-400 hover:border-slate-400 focus:border-slate-500 focus:ring-2 focus:ring-slate-200"
+                  className="min-h-11 rounded-md border border-[var(--color-border-strong)] bg-[var(--color-bg-elevated)] px-3 py-2 text-base text-[var(--color-text-primary)] outline-none transition placeholder:text-[var(--color-text-placeholder)] hover:border-[var(--color-border-hover)] focus:border-[var(--color-border-hover)] focus:ring-2 focus:ring-[var(--color-ring)]"
                   name="name"
                   placeholder={copy.namePlaceholder}
                   required
@@ -197,7 +197,7 @@ export default async function WorkspacesPage({
                 />
               </label>
               <div className="grid gap-2">
-                <label className="text-sm font-medium text-slate-700" htmlFor="workspace-currency">
+                <label className="text-sm font-medium text-[var(--color-text-secondary)]" htmlFor="workspace-currency">
                   {copy.currency}
                 </label>
                 <select
@@ -205,16 +205,16 @@ export default async function WorkspacesPage({
                   name="currency"
                   required
                   defaultValue="EUR"
-                  className="min-h-11 rounded-md border border-slate-300 bg-white px-3 py-2 text-base text-slate-950 outline-none transition hover:border-slate-400 focus:border-slate-500 focus:ring-2 focus:ring-slate-200"
+                  className="min-h-11 rounded-md border border-[var(--color-border-strong)] bg-[var(--color-bg-elevated)] px-3 py-2 text-base text-[var(--color-text-primary)] outline-none transition hover:border-[var(--color-border-hover)] focus:border-[var(--color-border-hover)] focus:ring-2 focus:ring-[var(--color-ring)]"
                 >
                   {CURRENCIES.map((c) => (
                     <option key={c.code} value={c.code}>{c.label}</option>
                   ))}
                 </select>
-                <p className="text-xs text-slate-500">{copy.currencyHelp}</p>
+                <p className="text-xs text-[var(--color-text-muted)]">{copy.currencyHelp}</p>
               </div>
               <fieldset className="grid gap-2">
-                <legend className="text-sm font-medium text-slate-700">{copy.preset}</legend>
+                <legend className="text-sm font-medium text-[var(--color-text-secondary)]">{copy.preset}</legend>
                 {(
                   [
                     { value: "empty", label: copy.presetEmpty, help: copy.presetEmptyHelp },
@@ -224,7 +224,7 @@ export default async function WorkspacesPage({
                 ).map(({ value, label, help }) => (
                   <label
                     key={value}
-                    className="flex cursor-pointer items-start gap-3 rounded-md border border-slate-200 px-3 py-2.5 transition hover:border-slate-400 hover:bg-slate-50 has-[:checked]:border-[var(--color-accent)] has-[:checked]:bg-[color-mix(in_srgb,var(--color-accent)_6%,white)]"
+                    className="flex cursor-pointer items-start gap-3 rounded-md border border-[var(--color-border)] px-3 py-2.5 transition hover:border-[var(--color-border-hover)] hover:bg-[var(--color-bg-subtle)] has-[:checked]:border-[var(--color-accent)] has-[:checked]:bg-[color-mix(in_srgb,var(--color-accent)_6%,var(--color-bg-elevated))]"
                   >
                     <input
                       className="mt-0.5 shrink-0 accent-[var(--color-accent)]"
@@ -234,8 +234,8 @@ export default async function WorkspacesPage({
                       value={value}
                     />
                     <span className="grid gap-0.5">
-                      <span className="text-sm font-medium text-slate-900">{label}</span>
-                      <span className="text-xs text-slate-500">{help}</span>
+                      <span className="text-sm font-medium text-[var(--color-text-primary)]">{label}</span>
+                      <span className="text-xs text-[var(--color-text-muted)]">{help}</span>
                     </span>
                   </label>
                 ))}

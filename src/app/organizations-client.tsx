@@ -319,7 +319,7 @@ export function OrganizationsClient({
         size: 280,
         minSize: 120,
         cell: ({ getValue }) => (
-          <span className="font-medium text-slate-950">{getValue()}</span>
+          <span className="font-medium text-[var(--color-text-primary)]">{getValue()}</span>
         )
       }),
       columnHelper.accessor("roles", {
@@ -335,7 +335,7 @@ export function OrganizationsClient({
               {roles.map((r) => (
                 <span
                   key={r}
-                  className="inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-700"
+                  className="inline-flex items-center rounded-full bg-[var(--color-bg-muted)] px-2 py-0.5 text-xs font-medium text-[var(--color-text-secondary)]"
                 >
                   {roleLabel(r, copy)}
                 </span>
@@ -350,7 +350,7 @@ export function OrganizationsClient({
         minSize: 100,
         enableSorting: false,
         cell: ({ getValue }) => (
-          <span className="text-slate-500">
+          <span className="text-[var(--color-text-muted)]">
             {new Date(getValue()).toLocaleDateString("en-US", {
               year: "numeric",
               month: "short",
@@ -370,7 +370,7 @@ export function OrganizationsClient({
           <div className="flex justify-end gap-2">
             <button
               aria-label={copy.edit}
-              className="min-h-8 rounded-md border border-slate-300 bg-white px-2.5 py-1 text-sm font-medium text-slate-700 transition hover:border-slate-400 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400"
+              className="min-h-8 rounded-md border border-[var(--color-border-strong)] bg-[var(--color-bg-elevated)] px-2.5 py-1 text-sm font-medium text-[var(--color-text-secondary)] transition hover:border-[var(--color-border-hover)] hover:bg-[var(--color-bg-subtle)] focus:outline-none focus:ring-2 focus:ring-[var(--color-ring-strong)] focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-[var(--color-bg-subtle)] disabled:text-[var(--color-text-placeholder)]"
               disabled={!canWrite}
               type="button"
               onClick={(e) => {
@@ -384,7 +384,7 @@ export function OrganizationsClient({
             </button>
             <button
               aria-label={copy.delete}
-              className="min-h-8 rounded-md border border-[var(--color-error-border)] bg-white px-2.5 py-1 text-sm font-medium text-[var(--color-error)] transition hover:bg-[var(--color-error-soft)] focus:outline-none focus:ring-2 focus:ring-[var(--color-error-border)] focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400"
+              className="min-h-8 rounded-md border border-[var(--color-error-border)] bg-[var(--color-bg-elevated)] px-2.5 py-1 text-sm font-medium text-[var(--color-error)] transition hover:bg-[var(--color-error-soft)] focus:outline-none focus:ring-2 focus:ring-[var(--color-error-border)] focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-[var(--color-bg-subtle)] disabled:text-[var(--color-text-placeholder)]"
               disabled={!canWrite || deleteMutation.isPending}
               type="button"
               onClick={(e) => {
@@ -428,7 +428,7 @@ export function OrganizationsClient({
   return (
     <>
       <div className={`flex min-h-0 flex-1 flex-col overflow-hidden ${containerClassName}`}>
-        <section className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
+        <section className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-elevated)] shadow-sm">
           <ListPageToolbar
             columnVisibility={columnVisibility}
             configurableColumns={configurableColumns}
@@ -456,7 +456,7 @@ export function OrganizationsClient({
 
           <InfiniteListViewport
             emptyState={
-              <p className="px-4 py-10 text-sm text-slate-500">{copy.noOrganizations}</p>
+              <p className="px-4 py-10 text-sm text-[var(--color-text-muted)]">{copy.noOrganizations}</p>
             }
             errorState={
               <p className="px-4 py-10 text-sm text-[var(--color-error)]">{copy.loadError}</p>
@@ -479,7 +479,7 @@ export function OrganizationsClient({
                   <col key={col.id} style={{ width: col.getSize() }} />
                 ))}
               </colgroup>
-              <thead className="sticky top-0 z-10 bg-slate-50">
+              <thead className="sticky top-0 z-10 bg-[var(--color-bg-subtle)]">
                 {table.getHeaderGroups().map((headerGroup) => (
                   <tr key={headerGroup.id}>
                     {headerGroup.headers.map((header) => (
@@ -500,15 +500,15 @@ export function OrganizationsClient({
                   </tr>
                 ))}
               </thead>
-              <tbody className="bg-white">
+              <tbody className="bg-[var(--color-bg-elevated)]">
                 {table.getRowModel().rows.map((row) => (
-                  <tr key={row.id} className="hover:bg-slate-50">
+                  <tr key={row.id} className="hover:bg-[var(--color-bg-subtle)]">
                     {row.getVisibleCells().map((cell) => (
                       <td
                         key={cell.id}
-                        className={`overflow-hidden border-b border-slate-100 px-2 py-2 text-slate-700 ${
+                        className={`overflow-hidden border-b border-[var(--color-border)] px-2 py-2 text-[var(--color-text-secondary)] ${
                           cell.column.id === "actions"
-                            ? "sticky right-0 z-10 bg-white px-1 py-1.5 hover:bg-slate-50"
+                            ? "sticky right-0 z-10 bg-[var(--color-bg-elevated)] px-1 py-1.5 hover:bg-[var(--color-bg-subtle)]"
                             : ""
                         }`}
                         style={{ width: cell.column.getSize() }}
@@ -546,7 +546,7 @@ export function OrganizationsClient({
                   className={`w-full rounded-md border px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] ${
                     formErrors.name
                       ? "border-[var(--color-error-border)] focus:ring-[var(--color-error-border)]"
-                      : "border-slate-300"
+                      : "border-[var(--color-border-strong)]"
                   }`}
                   data-dialog-initial-focus
                   defaultValue={editingOrg?.name ?? ""}
@@ -560,7 +560,7 @@ export function OrganizationsClient({
               <fieldset>
                 <legend
                   className={`mb-2 block text-sm font-medium ${
-                    formErrors.roles ? "text-[var(--color-error)]" : "text-slate-700"
+                    formErrors.roles ? "text-[var(--color-error)]" : "text-[var(--color-text-secondary)]"
                   }`}
                 >
                   {copy.roles}
@@ -574,10 +574,10 @@ export function OrganizationsClient({
                   {ORGANIZATION_ROLES.map((role) => (
                     <label
                       key={role}
-                      className="flex cursor-pointer items-center gap-2 text-sm text-slate-700"
+                      className="flex cursor-pointer items-center gap-2 text-sm text-[var(--color-text-secondary)]"
                     >
                       <input
-                        className="h-4 w-4 rounded border-slate-300 text-[var(--color-accent)] focus:ring-[var(--color-accent)]"
+                        className="h-4 w-4 rounded border-[var(--color-border-strong)] text-[var(--color-accent)] focus:ring-[var(--color-accent)]"
                         defaultChecked={editingOrg?.roles.includes(role) ?? false}
                         name={`role-${role}`}
                         type="checkbox"
@@ -589,14 +589,14 @@ export function OrganizationsClient({
               </fieldset>
 
               <div className="grid gap-1">
-                <label className="block text-sm font-medium text-slate-700" htmlFor="org-currency">
+                <label className="block text-sm font-medium text-[var(--color-text-secondary)]" htmlFor="org-currency">
                   {copy.currency}
                 </label>
                 <select
                   id="org-currency"
                   name="currency"
                   defaultValue={editingOrg?.currency ?? ""}
-                  className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
+                  className="w-full rounded-md border border-[var(--color-border-strong)] bg-[var(--color-bg-elevated)] px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
                 >
                   <option value="">{copy.chooseCurrency}</option>
                   {CURRENCIES.map((c) => (
@@ -606,14 +606,14 @@ export function OrganizationsClient({
               </div>
 
               <div className="grid gap-1">
-                <label className="block text-sm font-medium text-slate-700" htmlFor="org-price-entry-mode">
+                <label className="block text-sm font-medium text-[var(--color-text-secondary)]" htmlFor="org-price-entry-mode">
                   {copy.defaultPriceEntryMode}
                 </label>
                 <select
                   id="org-price-entry-mode"
                   name="defaultPriceEntryMode"
                   defaultValue={editingOrg?.defaultPriceEntryMode ?? ""}
-                  className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
+                  className="w-full rounded-md border border-[var(--color-border-strong)] bg-[var(--color-bg-elevated)] px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
                 >
                   <option value="">{copy.priceEntryModeNone}</option>
                   <option value="net">{copy.priceEntryModeNet}</option>
@@ -622,7 +622,7 @@ export function OrganizationsClient({
               </div>
 
               <div className="grid gap-1">
-                <label className="block text-sm font-medium text-slate-700" htmlFor="org-default-tax-rate">
+                <label className="block text-sm font-medium text-[var(--color-text-secondary)]" htmlFor="org-default-tax-rate">
                   {copy.defaultTaxRate}
                 </label>
                 <input
@@ -632,7 +632,7 @@ export function OrganizationsClient({
                   inputMode="decimal"
                   placeholder={copy.defaultTaxRatePlaceholder}
                   defaultValue={editingOrg?.defaultTaxRate ?? ""}
-                  className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
+                  className="w-full rounded-md border border-[var(--color-border-strong)] bg-[var(--color-bg-elevated)] px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
                 />
               </div>
             </div>
@@ -646,7 +646,7 @@ export function OrganizationsClient({
 
           <DialogFooter>
             <button
-              className="rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2"
+              className="rounded-md border border-[var(--color-border-strong)] bg-[var(--color-bg-elevated)] px-4 py-2 text-sm font-medium text-[var(--color-text-secondary)] transition hover:bg-[var(--color-bg-subtle)] focus:outline-none focus:ring-2 focus:ring-[var(--color-ring-strong)] focus:ring-offset-2"
               type="button"
               onClick={closeOrgDialog}
             >

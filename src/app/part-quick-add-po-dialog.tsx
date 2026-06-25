@@ -206,14 +206,14 @@ export function QuickAddToPODialog({
       >
         <DialogBody className="grid gap-4">
           {draftPOsQuery.isLoading ? (
-            <p className="text-sm text-slate-500">{copy.loadingLabel}</p>
+            <p className="text-sm text-[var(--color-text-muted)]">{copy.loadingLabel}</p>
           ) : (
             <>
               {draftPOs.length > 0 && mode === "existing" ? (
                 <label className="grid gap-1 text-sm">
-                  <span className="font-medium text-slate-700">{copy.choosePO}</span>
+                  <span className="font-medium text-[var(--color-text-secondary)]">{copy.choosePO}</span>
                   <select
-                    className="min-h-10 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-950 outline-none"
+                    className="min-h-10 rounded-md border border-[var(--color-border-strong)] bg-[var(--color-bg-elevated)] px-3 py-1.5 text-sm text-[var(--color-text-primary)] outline-none"
                     value={selectedPOId}
                     onChange={(e) => setSelectedPOId(e.currentTarget.value)}
                   >
@@ -228,10 +228,10 @@ export function QuickAddToPODialog({
               ) : null}
 
               {mode === "create-new" ? (
-                <section className="grid gap-3 rounded-md border border-slate-200 bg-slate-50 p-3">
-                  <p className="text-sm font-medium text-slate-700">{copy.createNewPO}</p>
+                <section className="grid gap-3 rounded-md border border-[var(--color-border)] bg-[var(--color-bg-subtle)] p-3">
+                  <p className="text-sm font-medium text-[var(--color-text-secondary)]">{copy.createNewPO}</p>
                   <label className="grid gap-1 text-sm">
-                    <span className="font-medium text-slate-700">{copy.chooseSupplier}</span>
+                    <span className="font-medium text-[var(--color-text-secondary)]">{copy.chooseSupplier}</span>
                     <SupplierPickerCombobox
                       workspaceSlug={workspaceSlug}
                       inputId="quick-add-po-supplier"
@@ -245,9 +245,9 @@ export function QuickAddToPODialog({
                     ) : null}
                   </label>
                   <label className="grid gap-1 text-sm">
-                    <span className="font-medium text-slate-700">{copy.orderNumber}</span>
+                    <span className="font-medium text-[var(--color-text-secondary)]">{copy.orderNumber}</span>
                     <input
-                      className="min-h-10 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-950 outline-none"
+                      className="min-h-10 rounded-md border border-[var(--color-border-strong)] bg-[var(--color-bg-elevated)] px-3 py-1.5 text-sm text-[var(--color-text-primary)] outline-none"
                       placeholder={copy.orderNumberPlaceholder}
                       value={newOrderNumber}
                       onChange={(e) => setNewOrderNumber(e.currentTarget.value)}
@@ -269,9 +269,9 @@ export function QuickAddToPODialog({
               ) : null}
 
               <label className="grid gap-1 text-sm">
-                <span className="font-medium text-slate-700">{copy.quantity}</span>
+                <span className="font-medium text-[var(--color-text-secondary)]">{copy.quantity}</span>
                 <input
-                  className="min-h-10 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-950 outline-none"
+                  className="min-h-10 rounded-md border border-[var(--color-border-strong)] bg-[var(--color-bg-elevated)] px-3 py-1.5 text-sm text-[var(--color-text-primary)] outline-none"
                   value={quantity}
                   onChange={(e) => setQuantity(e.currentTarget.value)}
                 />
@@ -286,7 +286,7 @@ export function QuickAddToPODialog({
         </DialogBody>
         <DialogFooter className="justify-end gap-3">
           <button
-            className="min-h-10 rounded-md border border-slate-300 px-3 text-sm font-medium text-slate-700 transition hover:border-slate-400 hover:bg-slate-50"
+            className="min-h-10 rounded-md border border-[var(--color-border-strong)] px-3 text-sm font-medium text-[var(--color-text-secondary)] transition hover:border-[var(--color-border-hover)] hover:bg-[var(--color-bg-subtle)]"
             type="button"
             onClick={resetAndClose}
           >

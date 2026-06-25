@@ -42,20 +42,20 @@ export default async function SignUpPage({ searchParams }: SignUpPageProps) {
   const error = resolvedSearchParams?.error;
 
   return (
-    <main className="grid min-h-screen place-items-center bg-slate-100 px-4 py-8 text-slate-950">
+    <main className="grid min-h-screen place-items-center bg-[var(--color-bg-page)] px-4 py-8 text-[var(--color-text-primary)]">
       <section
         aria-labelledby="sign-up-heading"
-        className="w-full max-w-sm rounded-lg border border-slate-200 bg-white p-6 shadow-sm"
+        className="w-full max-w-sm rounded-lg border border-[var(--color-bg-elevated)] bg-[var(--color-bg-elevated)] p-6 shadow-sm"
       >
         <div className="mb-6 flex items-center gap-3">
           <div className="grid h-9 w-9 place-items-center rounded-md bg-[var(--color-accent)] text-sm font-semibold text-white">
             {copy.appShortName}
           </div>
           <div>
-            <p className="text-sm font-semibold leading-5 text-slate-950">
+            <p className="text-sm font-semibold leading-5 text-[var(--color-text-primary)]">
               {copy.appName}
             </p>
-            <p className="text-xs leading-4 text-slate-500">
+            <p className="text-xs leading-4 text-[var(--color-text-muted)]">
               {copy.appSubtitle}
             </p>
           </div>
@@ -63,7 +63,7 @@ export default async function SignUpPage({ searchParams }: SignUpPageProps) {
 
         <h1
           id="sign-up-heading"
-          className="text-2xl font-semibold tracking-normal text-slate-950"
+          className="text-2xl font-semibold tracking-normal text-[var(--color-text-primary)]"
         >
           {copy.title}
         </h1>
@@ -75,11 +75,11 @@ export default async function SignUpPage({ searchParams }: SignUpPageProps) {
         ) : null}
 
         <form action={signUpWithPassword} className="mt-6 grid gap-4">
-          <label className="grid gap-2 text-sm font-medium text-slate-700">
+          <label className="grid gap-2 text-sm font-medium text-[var(--color-text-secondary)]">
             {copy.name}
             <input
               autoComplete="name"
-              className="min-h-11 rounded-md border border-slate-300 bg-white px-3 py-2 text-base text-slate-950 outline-none transition placeholder:text-slate-400 hover:border-slate-400 focus:border-slate-500 focus:ring-2 focus:ring-slate-200"
+              className="min-h-11 rounded-md border border-[var(--color-border-strong)] bg-[var(--color-bg-elevated)] px-3 py-2 text-base text-[var(--color-text-primary)] outline-none transition placeholder:text-[var(--color-text-placeholder)] hover:border-[var(--color-border-hover)] focus:border-[var(--color-border-hover)] focus:ring-2 focus:ring-[var(--color-ring)]"
               name="name"
               placeholder={copy.namePlaceholder}
               required
@@ -87,11 +87,11 @@ export default async function SignUpPage({ searchParams }: SignUpPageProps) {
             />
           </label>
 
-          <label className="grid gap-2 text-sm font-medium text-slate-700">
+          <label className="grid gap-2 text-sm font-medium text-[var(--color-text-secondary)]">
             {copy.email}
             <input
               autoComplete="email"
-              className="min-h-11 rounded-md border border-slate-300 bg-white px-3 py-2 text-base text-slate-950 outline-none transition placeholder:text-slate-400 hover:border-slate-400 focus:border-slate-500 focus:ring-2 focus:ring-slate-200"
+              className="min-h-11 rounded-md border border-[var(--color-border-strong)] bg-[var(--color-bg-elevated)] px-3 py-2 text-base text-[var(--color-text-primary)] outline-none transition placeholder:text-[var(--color-text-placeholder)] hover:border-[var(--color-border-hover)] focus:border-[var(--color-border-hover)] focus:ring-2 focus:ring-[var(--color-ring)]"
               name="email"
               placeholder={copy.emailPlaceholder}
               required
@@ -99,11 +99,11 @@ export default async function SignUpPage({ searchParams }: SignUpPageProps) {
             />
           </label>
 
-          <label className="grid gap-2 text-sm font-medium text-slate-700">
+          <label className="grid gap-2 text-sm font-medium text-[var(--color-text-secondary)]">
             {copy.password}
             <input
               autoComplete="new-password"
-              className="min-h-11 rounded-md border border-slate-300 bg-white px-3 py-2 text-base text-slate-950 outline-none transition placeholder:text-slate-400 hover:border-slate-400 focus:border-slate-500 focus:ring-2 focus:ring-slate-200"
+              className="min-h-11 rounded-md border border-[var(--color-border-strong)] bg-[var(--color-bg-elevated)] px-3 py-2 text-base text-[var(--color-text-primary)] outline-none transition placeholder:text-[var(--color-text-placeholder)] hover:border-[var(--color-border-hover)] focus:border-[var(--color-border-hover)] focus:ring-2 focus:ring-[var(--color-ring)]"
               minLength={8}
               name="password"
               required
@@ -119,7 +119,7 @@ export default async function SignUpPage({ searchParams }: SignUpPageProps) {
           </button>
         </form>
 
-        <p className="mt-5 text-sm text-slate-600">
+        <p className="mt-5 text-sm text-[var(--color-text-secondary)]">
           {copy.signInPrompt}{" "}
           <Link className="font-semibold text-[var(--color-accent)] underline" href="/sign-in">
             {copy.signIn}

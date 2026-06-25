@@ -180,7 +180,7 @@ export function CreatePurchaseOrderDialog({
             </div>
             <div className="grid gap-2">
               <label
-                className="text-sm font-medium text-slate-700"
+                className="text-sm font-medium text-[var(--color-text-secondary)]"
                 htmlFor="create-po-order-number"
               >
                 {copy.orderNumber}
@@ -191,12 +191,12 @@ export function CreatePurchaseOrderDialog({
                 placeholder={orderNumberQuery.isFetching ? "…" : copy.orderNumberPlaceholder}
                 defaultValue={orderNumberQuery.data ?? ""}
                 key={`order-num-${formKey}-${orderNumberQuery.data ?? "loading"}`}
-                className="min-h-10 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-950 outline-none transition hover:border-slate-400 focus:border-slate-500 focus:ring-2 focus:ring-slate-200"
+                className="min-h-10 rounded-md border border-[var(--color-border-strong)] bg-[var(--color-bg-elevated)] px-3 py-1.5 text-sm text-[var(--color-text-primary)] outline-none transition hover:border-[var(--color-border-hover)] focus:border-[var(--color-border-hover)] focus:ring-2 focus:ring-[var(--color-ring)]"
               />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="grid gap-2">
-                <label className="text-sm font-medium text-slate-700" htmlFor="create-po-currency">
+                <label className="text-sm font-medium text-[var(--color-text-secondary)]" htmlFor="create-po-currency">
                   {copy.currency}
                 </label>
                 <select
@@ -204,7 +204,7 @@ export function CreatePurchaseOrderDialog({
                   name="currency"
                   value={currency}
                   onChange={(e) => setCurrency(e.target.value)}
-                  className="min-h-10 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-950 outline-none transition hover:border-slate-400 focus:border-slate-500 focus:ring-2 focus:ring-slate-200"
+                  className="min-h-10 rounded-md border border-[var(--color-border-strong)] bg-[var(--color-bg-elevated)] px-3 py-1.5 text-sm text-[var(--color-text-primary)] outline-none transition hover:border-[var(--color-border-hover)] focus:border-[var(--color-border-hover)] focus:ring-2 focus:ring-[var(--color-ring)]"
                 >
                   <option value="">{copy.chooseCurrency}</option>
                   {CURRENCIES.map((c) => (
@@ -213,7 +213,7 @@ export function CreatePurchaseOrderDialog({
                 </select>
               </div>
               <div className="grid gap-2">
-                <label className="text-sm font-medium text-slate-700" htmlFor="create-po-tax-rate">
+                <label className="text-sm font-medium text-[var(--color-text-secondary)]" htmlFor="create-po-tax-rate">
                   {copy.taxRate}
                 </label>
                 <input
@@ -223,16 +223,16 @@ export function CreatePurchaseOrderDialog({
                   placeholder={copy.taxRatePlaceholder}
                   value={taxRate}
                   onChange={(e) => setTaxRate(e.target.value)}
-                  className="min-h-10 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-950 outline-none transition hover:border-slate-400 focus:border-slate-500 focus:ring-2 focus:ring-slate-200"
+                  className="min-h-10 rounded-md border border-[var(--color-border-strong)] bg-[var(--color-bg-elevated)] px-3 py-1.5 text-sm text-[var(--color-text-primary)] outline-none transition hover:border-[var(--color-border-hover)] focus:border-[var(--color-border-hover)] focus:ring-2 focus:ring-[var(--color-ring)]"
                 />
               </div>
             </div>
             <div className="grid gap-2">
-              <label className="text-sm font-medium text-slate-700">
+              <label className="text-sm font-medium text-[var(--color-text-secondary)]">
                 {copy.priceEntryMode}
               </label>
               <div className="flex gap-4">
-                <label className="flex cursor-pointer items-center gap-2 text-sm text-slate-700">
+                <label className="flex cursor-pointer items-center gap-2 text-sm text-[var(--color-text-secondary)]">
                   <input
                     type="radio"
                     value="net"
@@ -242,7 +242,7 @@ export function CreatePurchaseOrderDialog({
                   />
                   {copy.priceEntryModeNet}
                 </label>
-                <label className="flex cursor-pointer items-center gap-2 text-sm text-slate-700">
+                <label className="flex cursor-pointer items-center gap-2 text-sm text-[var(--color-text-secondary)]">
                   <input
                     type="radio"
                     value="gross"
@@ -256,7 +256,7 @@ export function CreatePurchaseOrderDialog({
             </div>
             <div className="grid gap-2">
               <label
-                className="text-sm font-medium text-slate-700"
+                className="text-sm font-medium text-[var(--color-text-secondary)]"
                 htmlFor="create-po-notes"
               >
                 {copy.notes}
@@ -266,13 +266,13 @@ export function CreatePurchaseOrderDialog({
                 name="notes"
                 rows={3}
                 placeholder={copy.notesPlaceholder}
-                className="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-950 outline-none transition hover:border-slate-400 focus:border-slate-500 focus:ring-2 focus:ring-slate-200 resize-none"
+                className="rounded-md border border-[var(--color-border-strong)] bg-[var(--color-bg-elevated)] px-3 py-1.5 text-sm text-[var(--color-text-primary)] outline-none transition hover:border-[var(--color-border-hover)] focus:border-[var(--color-border-hover)] focus:ring-2 focus:ring-[var(--color-ring)] resize-none"
               />
             </div>
           </DialogBody>
           <DialogFooter className="justify-end gap-2">
             <button
-              className="min-h-10 rounded-md border border-slate-300 px-3 text-sm font-medium text-slate-700 transition hover:border-slate-400 hover:bg-slate-50"
+              className="min-h-10 rounded-md border border-[var(--color-border-strong)] px-3 text-sm font-medium text-[var(--color-text-secondary)] transition hover:border-[var(--color-border-hover)] hover:bg-[var(--color-bg-subtle)]"
               type="button"
               onClick={handleClose}
             >

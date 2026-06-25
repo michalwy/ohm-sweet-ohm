@@ -2,7 +2,7 @@
 
 :root {
   color-scheme: light;
-  background: #f5f7fb;
+  /* Semantic color tokens */
   --color-accent: #0f766e;
   --color-accent-hover: #115e59;
   --color-accent-soft: #ccfbf1;
@@ -19,12 +19,30 @@
   --color-action-primary: var(--color-accent);
   --color-action-primary-hover: var(--color-accent-hover);
   --color-action-focus: #99f6e4;
+  /* Surface tokens */
+  --color-bg-page: #f5f7fb;
+  --color-bg-elevated: #ffffff;
+  --color-bg-subtle: #f8fafc;
+  --color-bg-muted: #f1f5f9;
+  --color-bg-strong: #e2e8f0;
+  /* Text tokens */
+  --color-text-primary: #020617;
+  --color-text-secondary: #334155;
+  --color-text-muted: #64748b;
+  --color-text-placeholder: #94a3b8;
+  /* Border tokens */
+  --color-border: #e2e8f0;
+  --color-border-strong: #cbd5e1;
+  --color-border-hover: #94a3b8;
+  /* Ring tokens */
+  --color-ring: #e2e8f0;
+  --color-ring-strong: #cbd5e1;
 }
 
 /* Theme class layer — swapping the class on <html> swaps the active theme */
 html.theme-light {
   color-scheme: light;
-  background: #f5f7fb;
+  background: var(--color-bg-page);
   --color-accent: #0f766e;
   --color-accent-hover: #115e59;
   --color-accent-soft: #ccfbf1;
@@ -41,6 +59,55 @@ html.theme-light {
   --color-action-primary: var(--color-accent);
   --color-action-primary-hover: var(--color-accent-hover);
   --color-action-focus: #99f6e4;
+  --color-bg-page: #f5f7fb;
+  --color-bg-elevated: #ffffff;
+  --color-bg-subtle: #f8fafc;
+  --color-bg-muted: #f1f5f9;
+  --color-bg-strong: #e2e8f0;
+  --color-text-primary: #020617;
+  --color-text-secondary: #334155;
+  --color-text-muted: #64748b;
+  --color-text-placeholder: #94a3b8;
+  --color-border: #e2e8f0;
+  --color-border-strong: #cbd5e1;
+  --color-border-hover: #94a3b8;
+  --color-ring: #e2e8f0;
+  --color-ring-strong: #cbd5e1;
+}
+
+html.theme-dark {
+  color-scheme: dark;
+  background: var(--color-bg-page);
+  --color-accent: #14b8a6;
+  --color-accent-hover: #0d9488;
+  --color-accent-soft: #0d2622;
+  --color-accent-border: #0d9488;
+  --color-success: #4ade80;
+  --color-success-soft: #052e16;
+  --color-success-border: #16a34a;
+  --color-error: #f87171;
+  --color-error-soft: #450a0a;
+  --color-error-border: #dc2626;
+  --color-warning: #fbbf24;
+  --color-warning-soft: #451a03;
+  --color-warning-border: #d97706;
+  --color-action-primary: var(--color-accent);
+  --color-action-primary-hover: var(--color-accent-hover);
+  --color-action-focus: #0d9488;
+  --color-bg-page: #0f172a;
+  --color-bg-elevated: #1e293b;
+  --color-bg-subtle: #1e293b;
+  --color-bg-muted: #334155;
+  --color-bg-strong: #475569;
+  --color-text-primary: #f8fafc;
+  --color-text-secondary: #cbd5e1;
+  --color-text-muted: #94a3b8;
+  --color-text-placeholder: #64748b;
+  --color-border: #334155;
+  --color-border-strong: #475569;
+  --color-border-hover: #64748b;
+  --color-ring: #334155;
+  --color-ring-strong: #475569;
 }
 
 * {
@@ -54,7 +121,7 @@ body {
 
 body {
   margin: 0;
-  background: #f5f7fb;
+  background: var(--color-bg-page);
 }
 
 @keyframes toast-notice {

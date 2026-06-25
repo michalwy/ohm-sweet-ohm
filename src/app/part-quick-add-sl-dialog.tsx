@@ -206,14 +206,14 @@ export function QuickAddToSLDialog({
       >
         <DialogBody className="grid gap-4">
           {allSLsQuery.isLoading ? (
-            <p className="text-sm text-slate-500">{copy.loadingLabel}</p>
+            <p className="text-sm text-[var(--color-text-muted)]">{copy.loadingLabel}</p>
           ) : (
             <>
               {allSLs.length > 0 && mode === "existing" ? (
                 <label className="grid gap-1 text-sm">
-                  <span className="font-medium text-slate-700">{copy.chooseSL}</span>
+                  <span className="font-medium text-[var(--color-text-secondary)]">{copy.chooseSL}</span>
                   <select
-                    className="min-h-10 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-950 outline-none"
+                    className="min-h-10 rounded-md border border-[var(--color-border-strong)] bg-[var(--color-bg-elevated)] px-3 py-1.5 text-sm text-[var(--color-text-primary)] outline-none"
                     value={selectedSLId}
                     onChange={(e) => setSelectedSLId(e.currentTarget.value)}
                   >
@@ -228,12 +228,12 @@ export function QuickAddToSLDialog({
               ) : null}
 
               {mode === "create-new" ? (
-                <section className="grid gap-3 rounded-md border border-slate-200 bg-slate-50 p-3">
-                  <p className="text-sm font-medium text-slate-700">{copy.createNewSL}</p>
+                <section className="grid gap-3 rounded-md border border-[var(--color-border)] bg-[var(--color-bg-subtle)] p-3">
+                  <p className="text-sm font-medium text-[var(--color-text-secondary)]">{copy.createNewSL}</p>
                   <label className="grid gap-1 text-sm">
-                    <span className="font-medium text-slate-700">{copy.slName}</span>
+                    <span className="font-medium text-[var(--color-text-secondary)]">{copy.slName}</span>
                     <input
-                      className="min-h-10 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-950 outline-none"
+                      className="min-h-10 rounded-md border border-[var(--color-border-strong)] bg-[var(--color-bg-elevated)] px-3 py-1.5 text-sm text-[var(--color-text-primary)] outline-none"
                       placeholder={copy.slNamePlaceholder}
                       value={newSLName}
                       onChange={(e) => setNewSLName(e.currentTarget.value)}
@@ -258,9 +258,9 @@ export function QuickAddToSLDialog({
               ) : null}
 
               <label className="grid gap-1 text-sm">
-                <span className="font-medium text-slate-700">{copy.quantity}</span>
+                <span className="font-medium text-[var(--color-text-secondary)]">{copy.quantity}</span>
                 <input
-                  className="min-h-10 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-950 outline-none"
+                  className="min-h-10 rounded-md border border-[var(--color-border-strong)] bg-[var(--color-bg-elevated)] px-3 py-1.5 text-sm text-[var(--color-text-primary)] outline-none"
                   value={quantity}
                   onChange={(e) => setQuantity(e.currentTarget.value)}
                 />
@@ -271,9 +271,9 @@ export function QuickAddToSLDialog({
 
               {mode !== "create-new" ? (
                 <label className="grid gap-1 text-sm">
-                  <span className="font-medium text-slate-700">{copy.notes}</span>
+                  <span className="font-medium text-[var(--color-text-secondary)]">{copy.notes}</span>
                   <input
-                    className="min-h-10 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-950 outline-none"
+                    className="min-h-10 rounded-md border border-[var(--color-border-strong)] bg-[var(--color-bg-elevated)] px-3 py-1.5 text-sm text-[var(--color-text-primary)] outline-none"
                     placeholder={copy.notesPlaceholder}
                     value={itemNotes}
                     onChange={(e) => setItemNotes(e.currentTarget.value)}
@@ -287,7 +287,7 @@ export function QuickAddToSLDialog({
         </DialogBody>
         <DialogFooter className="justify-end gap-3">
           <button
-            className="min-h-10 rounded-md border border-slate-300 px-3 text-sm font-medium text-slate-700 transition hover:border-slate-400 hover:bg-slate-50"
+            className="min-h-10 rounded-md border border-[var(--color-border-strong)] px-3 text-sm font-medium text-[var(--color-text-secondary)] transition hover:border-[var(--color-border-hover)] hover:bg-[var(--color-bg-subtle)]"
             type="button"
             onClick={resetAndClose}
           >

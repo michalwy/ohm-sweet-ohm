@@ -53,7 +53,7 @@ export function PartCategoriesSummary({
   part: PartsListItem;
 }) {
   if (!part.primaryCategoryPath && !part.secondaryCategoryPath) {
-    return <span className="text-slate-400">{copy.noCategory}</span>;
+    return <span className="text-[var(--color-text-placeholder)]">{copy.noCategory}</span>;
   }
 
   return (
@@ -63,7 +63,7 @@ export function PartCategoriesSummary({
       ) : null}
       {part.secondaryCategoryPath &&
       part.secondaryCategoryPath !== part.primaryCategoryPath ? (
-        <span className="text-slate-500">{part.secondaryCategoryPath}</span>
+        <span className="text-[var(--color-text-muted)]">{part.secondaryCategoryPath}</span>
       ) : null}
     </div>
   );
@@ -307,7 +307,7 @@ export function buildPartsListColumns(
           const value = getValue();
 
           return value ? (
-            <span className="text-slate-700">{value}</span>
+            <span className="text-[var(--color-text-secondary)]">{value}</span>
           ) : (
             <EmptyCell />
           );
@@ -332,7 +332,7 @@ export function buildPartsListColumns(
       size: 160,
       minSize: 72,
       cell: ({ getValue }) => (
-        <span className="text-slate-950">{getValue()}</span>
+        <span className="text-[var(--color-text-primary)]">{getValue()}</span>
       )
     }),
     columnHelper.accessor("catalogNumber", {
@@ -340,7 +340,7 @@ export function buildPartsListColumns(
       size: 190,
       minSize: 64,
       cell: ({ getValue }) => (
-        <span className="font-mono text-slate-950">{getValue()}</span>
+        <span className="font-mono text-[var(--color-text-primary)]">{getValue()}</span>
       )
     }),
     columnHelper.accessor("description", {
@@ -351,7 +351,7 @@ export function buildPartsListColumns(
         const value = getValue();
 
         return value ? (
-          <span className="text-slate-700">{value}</span>
+          <span className="text-[var(--color-text-secondary)]">{value}</span>
         ) : (
           <EmptyCell />
         );
@@ -370,7 +370,7 @@ export function buildPartsListColumns(
         const value = getValue();
 
         return value ? (
-          <span className="text-slate-950">{value}</span>
+          <span className="text-[var(--color-text-primary)]">{value}</span>
         ) : (
           <EmptyCell />
         );
@@ -393,7 +393,7 @@ export function buildPartsListColumns(
               const value = getValue();
 
               return value ? (
-                <span className="block text-right text-slate-950">{value}</span>
+                <span className="block text-right text-[var(--color-text-primary)]">{value}</span>
               ) : (
                 <span className="block text-right"><EmptyCell /></span>
               );
@@ -418,7 +418,7 @@ export function buildPartsListColumns(
               const value = getValue();
 
               return value ? (
-                <span className="block text-right text-slate-950">{value}</span>
+                <span className="block text-right text-[var(--color-text-primary)]">{value}</span>
               ) : (
                 <span className="block text-right"><EmptyCell /></span>
               );
@@ -443,7 +443,7 @@ export function buildPartsListColumns(
               const value = getValue();
 
               return value ? (
-                <span className="block text-right text-slate-950">{value}</span>
+                <span className="block text-right text-[var(--color-text-primary)]">{value}</span>
               ) : (
                 <span className="block text-right"><EmptyCell /></span>
               );
@@ -459,7 +459,7 @@ export function buildPartsListColumns(
             cell: ({ getValue }) => {
               const value = getValue();
               return value ? (
-                <span className="block text-right font-mono text-slate-700">
+                <span className="block text-right font-mono text-[var(--color-text-secondary)]">
                   {value}
                 </span>
               ) : (
@@ -479,7 +479,7 @@ export function buildPartsListColumns(
             cell: ({ getValue }) => {
               const value = getValue();
               return value ? (
-                <span className="block text-right font-mono text-slate-700">
+                <span className="block text-right font-mono text-[var(--color-text-secondary)]">
                   {value}
                 </span>
               ) : (
@@ -496,7 +496,7 @@ export function buildPartsListColumns(
       cell: ({ getValue }) => {
         const value = getValue();
         return value ? (
-          <span className="text-slate-950">{value}</span>
+          <span className="text-[var(--color-text-primary)]">{value}</span>
         ) : (
           <EmptyCell />
         );
@@ -525,7 +525,7 @@ export function buildPartsListColumns(
             <input
               aria-label={row.original.catalogNumber}
               checked={isChecked}
-              className="h-4 w-4 cursor-pointer rounded border-slate-300 accent-[var(--color-accent)]"
+              className="h-4 w-4 cursor-pointer rounded border-[var(--color-border-strong)] accent-[var(--color-accent)]"
               type="checkbox"
               onChange={() => onToggle(partId)}
             />
@@ -571,7 +571,7 @@ export function buildPartsListColumns(
     cell: ({ row }) => (
       <div className="flex justify-end gap-2">
         <button
-          className="min-h-8 rounded-md border border-slate-300 bg-white px-2.5 py-1 text-sm font-medium text-slate-700 transition hover:border-slate-400 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400"
+          className="min-h-8 rounded-md border border-[var(--color-border-strong)] bg-[var(--color-bg-elevated)] px-2.5 py-1 text-sm font-medium text-[var(--color-text-secondary)] transition hover:border-[var(--color-border-hover)] hover:bg-[var(--color-bg-subtle)] focus:outline-none focus:ring-2 focus:ring-[var(--color-ring-strong)] focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-[var(--color-bg-subtle)] disabled:text-[var(--color-text-placeholder)]"
           aria-label={copy.editPart}
           disabled={!isDatabaseAvailable}
           type="button"
@@ -598,7 +598,7 @@ export function buildPartsListColumns(
         </button>
         {canWritePurchaseOrders && onAddToPO ? (
           <button
-            className="min-h-8 rounded-md border border-slate-300 bg-white px-2.5 py-1 text-sm font-medium text-slate-700 transition hover:border-slate-400 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400"
+            className="min-h-8 rounded-md border border-[var(--color-border-strong)] bg-[var(--color-bg-elevated)] px-2.5 py-1 text-sm font-medium text-[var(--color-text-secondary)] transition hover:border-[var(--color-border-hover)] hover:bg-[var(--color-bg-subtle)] focus:outline-none focus:ring-2 focus:ring-[var(--color-ring-strong)] focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-[var(--color-bg-subtle)] disabled:text-[var(--color-text-placeholder)]"
             aria-label={copy.addToPurchaseOrder}
             disabled={!isDatabaseAvailable}
             type="button"
@@ -626,7 +626,7 @@ export function buildPartsListColumns(
         ) : null}
         {canWriteShoppingLists && onAddToSL ? (
           <button
-            className="min-h-8 rounded-md border border-slate-300 bg-white px-2.5 py-1 text-sm font-medium text-slate-700 transition hover:border-slate-400 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400"
+            className="min-h-8 rounded-md border border-[var(--color-border-strong)] bg-[var(--color-bg-elevated)] px-2.5 py-1 text-sm font-medium text-[var(--color-text-secondary)] transition hover:border-[var(--color-border-hover)] hover:bg-[var(--color-bg-subtle)] focus:outline-none focus:ring-2 focus:ring-[var(--color-ring-strong)] focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-[var(--color-bg-subtle)] disabled:text-[var(--color-text-placeholder)]"
             aria-label={copy.addToShoppingList}
             disabled={!isDatabaseAvailable}
             type="button"
@@ -653,7 +653,7 @@ export function buildPartsListColumns(
           </button>
         ) : null}
         <button
-          className="min-h-8 rounded-md border border-[var(--color-error-border)] bg-white px-2.5 py-1 text-sm font-medium text-[var(--color-error)] transition hover:bg-[var(--color-error-soft)] focus:outline-none focus:ring-2 focus:ring-[var(--color-error-border)] focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400"
+          className="min-h-8 rounded-md border border-[var(--color-error-border)] bg-[var(--color-bg-elevated)] px-2.5 py-1 text-sm font-medium text-[var(--color-error)] transition hover:bg-[var(--color-error-soft)] focus:outline-none focus:ring-2 focus:ring-[var(--color-error-border)] focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-[var(--color-bg-subtle)] disabled:text-[var(--color-text-placeholder)]"
           aria-label={copy.deletePart}
           disabled={!isDatabaseAvailable || isDeletePending}
           type="button"

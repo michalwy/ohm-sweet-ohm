@@ -605,14 +605,14 @@ export function PartCategoriesClient({
     <>
       <section
         aria-labelledby="part-categories-heading"
-        className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm"
+        className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-elevated)] shadow-sm"
       >
         <h2 id="part-categories-heading" className="sr-only">
           {copy.title}
         </h2>
-        <div className="flex items-center justify-end gap-3 border-b border-slate-200 bg-white px-4 py-3">
+        <div className="flex items-center justify-end gap-3 border-b border-[var(--color-border)] bg-[var(--color-bg-elevated)] px-4 py-3">
           <button
-            className="min-h-9 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:border-slate-400 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400"
+            className="min-h-9 rounded-md border border-[var(--color-border-strong)] bg-[var(--color-bg-elevated)] px-3 py-1.5 text-sm font-medium text-[var(--color-text-secondary)] transition hover:border-[var(--color-border-hover)] hover:bg-[var(--color-bg-subtle)] focus:outline-none focus:ring-2 focus:ring-[var(--color-ring-strong)] focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-[var(--color-bg-subtle)] disabled:text-[var(--color-text-placeholder)]"
             disabled={!isDatabaseAvailable || !canWriteCategories}
             type="button"
             onClick={openQuickPathDialog}
@@ -620,7 +620,7 @@ export function PartCategoriesClient({
             {copy.quickCreatePath}
           </button>
           <button
-            className="min-h-9 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:border-slate-400 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400"
+            className="min-h-9 rounded-md border border-[var(--color-border-strong)] bg-[var(--color-bg-elevated)] px-3 py-1.5 text-sm font-medium text-[var(--color-text-secondary)] transition hover:border-[var(--color-border-hover)] hover:bg-[var(--color-bg-subtle)] focus:outline-none focus:ring-2 focus:ring-[var(--color-ring-strong)] focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-[var(--color-bg-subtle)] disabled:text-[var(--color-text-placeholder)]"
             disabled={!isDatabaseAvailable || !canWriteCategories}
             type="button"
             onClick={openGlobalAttributesDialog}
@@ -637,13 +637,13 @@ export function PartCategoriesClient({
           </button>
         </div>
         <div className="min-h-0 flex-1 overflow-auto px-4 py-4">
-          <div className="mb-4 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-slate-500">
+          <div className="mb-4 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-[var(--color-text-muted)]">
             <span className="inline-flex items-center gap-2">
-              <span className="h-3 w-3 rounded-sm border border-slate-400 bg-white" />
+              <span className="h-3 w-3 rounded-sm border border-[var(--color-border-hover)] bg-[var(--color-bg-elevated)]" />
               {copy.assignable}
             </span>
             <span className="inline-flex items-center gap-2">
-              <span className="h-3 w-3 rounded-sm border border-slate-300 bg-slate-100" />
+              <span className="h-3 w-3 rounded-sm border border-[var(--color-border-strong)] bg-[var(--color-bg-muted)]" />
               {copy.organizational}
             </span>
           </div>
@@ -686,10 +686,10 @@ export function PartCategoriesClient({
             </ol>
           ) : (
             <div className="py-10">
-              <p className="text-base font-medium text-slate-950">
+              <p className="text-base font-medium text-[var(--color-text-primary)]">
                 {copy.emptyTitle}
               </p>
-              <p className="mt-2 max-w-xl text-sm leading-6 text-slate-500">
+              <p className="mt-2 max-w-xl text-sm leading-6 text-[var(--color-text-muted)]">
                 {copy.emptyBody}
               </p>
             </div>
@@ -783,11 +783,11 @@ export function PartCategoriesClient({
       >
         <form className="grid gap-3 p-5" onSubmit={submitQuickPath}>
           <input name="workspaceSlug" type="hidden" value={workspaceSlug} />
-          <label className="grid gap-2 text-sm font-medium text-slate-700">
+          <label className="grid gap-2 text-sm font-medium text-[var(--color-text-secondary)]">
             <LabelWithError error={quickPathError}>{copy.path}</LabelWithError>
             <input
               className={getFieldInputClassName(
-                "min-h-11 rounded-md border border-slate-300 bg-white px-3 py-2 text-base text-slate-950 outline-none transition placeholder:text-slate-400 hover:border-slate-400 focus:border-slate-500 focus:ring-2 focus:ring-slate-200 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400",
+                "min-h-11 rounded-md border border-[var(--color-border-strong)] bg-[var(--color-bg-elevated)] px-3 py-2 text-base text-[var(--color-text-primary)] outline-none transition placeholder:text-[var(--color-text-placeholder)] hover:border-[var(--color-border-hover)] focus:border-[var(--color-border-hover)] focus:ring-2 focus:ring-[var(--color-ring)] disabled:cursor-not-allowed disabled:bg-[var(--color-bg-subtle)] disabled:text-[var(--color-text-placeholder)]",
                 Boolean(quickPathError)
               )}
               name="path"
@@ -1102,13 +1102,13 @@ function CategoryDialogContent({
 
   return (
     <>
-      <div className="shrink-0 border-b border-slate-200 px-5">
+      <div className="shrink-0 border-b border-[var(--color-border)] px-5">
         <div className="flex gap-2">
           <button
             className={`min-h-10 border-b-2 px-3 text-sm font-medium ${
               activeTab === "details"
-                ? "border-[var(--color-accent)] text-slate-950"
-                : "border-transparent text-slate-500 hover:text-slate-800"
+                ? "border-[var(--color-accent)] text-[var(--color-text-primary)]"
+                : "border-transparent text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]"
             }`}
             type="button"
             onClick={() => onTabChange("details")}
@@ -1118,8 +1118,8 @@ function CategoryDialogContent({
           <button
             className={`min-h-10 border-b-2 px-3 text-sm font-medium ${
               activeTab === "attributes"
-                ? "border-[var(--color-accent)] text-slate-950"
-                : "border-transparent text-slate-500 hover:text-slate-800"
+                ? "border-[var(--color-accent)] text-[var(--color-text-primary)]"
+                : "border-transparent text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]"
             }`}
             type="button"
             onClick={() => onTabChange("attributes")}
@@ -1189,13 +1189,13 @@ function CategoryDialogContent({
               onValueAttributeIdChange={setActiveValueAttributeId}
             />
           ) : (
-            <p className="text-sm text-slate-500">Loading attributes...</p>
+            <p className="text-sm text-[var(--color-text-muted)]">Loading attributes...</p>
           )}
         </div>
       </DialogBody>
       <DialogFooter className="items-center justify-between gap-3">
         <button
-          className="min-h-9 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:border-slate-400 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400"
+          className="min-h-9 rounded-md border border-[var(--color-border-strong)] bg-[var(--color-bg-elevated)] px-3 py-1.5 text-sm font-medium text-[var(--color-text-secondary)] transition hover:border-[var(--color-border-hover)] hover:bg-[var(--color-bg-subtle)] focus:outline-none focus:ring-2 focus:ring-[var(--color-ring-strong)] focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-[var(--color-bg-subtle)] disabled:text-[var(--color-text-placeholder)]"
           type="button"
           onClick={onCancel}
         >
@@ -1333,7 +1333,7 @@ function CategoryAttributesDraftEditor({
   return (
     <div className="grid gap-3">
       {!hideValueAttribute ? (
-        <label className="grid max-w-sm gap-2 text-sm font-medium text-slate-700">
+        <label className="grid max-w-sm gap-2 text-sm font-medium text-[var(--color-text-secondary)]">
           {copy.valueAttribute}
           <select
             className={categoryAttributeInputClassName}
@@ -1395,12 +1395,12 @@ function CategoryAttributeDraftList({
   ) => void;
 }) {
   if (drafts.length === 0) {
-    return <p className="text-sm text-slate-500">{copy.noAttributes}</p>;
+    return <p className="text-sm text-[var(--color-text-muted)]">{copy.noAttributes}</p>;
   }
 
   return (
     <div className="grid gap-1">
-      <div className="grid grid-cols-[minmax(0,1fr)_5.25rem_minmax(6.5rem,9rem)_5rem_6.5rem] gap-1.5 px-1 text-[11px] font-medium uppercase tracking-wide text-slate-500">
+      <div className="grid grid-cols-[minmax(0,1fr)_5.25rem_minmax(6.5rem,9rem)_5rem_6.5rem] gap-1.5 px-1 text-[11px] font-medium uppercase tracking-wide text-[var(--color-text-muted)]">
         <span>{copy.attribute}</span>
         <span>{copy.sortOrder}</span>
         <span>{copy.defaultValue}</span>
@@ -1410,14 +1410,14 @@ function CategoryAttributeDraftList({
       {drafts.map((draft) => (
         <div
           key={draft.attribute.id}
-          className="grid grid-cols-[minmax(0,1fr)_5.25rem_minmax(6.5rem,9rem)_5rem_6.5rem] items-center gap-1.5 rounded-md border border-slate-200 bg-white px-1.5 py-1"
+          className="grid grid-cols-[minmax(0,1fr)_5.25rem_minmax(6.5rem,9rem)_5rem_6.5rem] items-center gap-1.5 rounded-md border border-[var(--color-border)] bg-[var(--color-bg-elevated)] px-1.5 py-1"
           data-testid="category-attribute-draft-row"
         >
           <div className="min-w-0">
-            <p className="truncate text-[13px] font-semibold text-slate-950">
+            <p className="truncate text-[13px] font-semibold text-[var(--color-text-primary)]">
               {draft.attribute.name}
             </p>
-            <p className="text-[11px] text-slate-500">
+            <p className="text-[11px] text-[var(--color-text-muted)]">
               {draft.sourceCategoryId === categoryId || draft.isLocal
                 ? copy.local
                 : copy.inherited}
@@ -1446,7 +1446,7 @@ function CategoryAttributeDraftList({
             <span className="sr-only">{copy.primaryAttribute}</span>
             <input
               checked={draft.isPrimary}
-              className="h-3.5 w-3.5 rounded border-slate-300 text-slate-950 focus:ring-slate-400 disabled:cursor-not-allowed"
+              className="h-3.5 w-3.5 rounded border-[var(--color-border-strong)] text-[var(--color-text-primary)] focus:ring-[var(--color-ring-strong)] disabled:cursor-not-allowed"
               disabled={!isDatabaseAvailable || !canWriteCategories}
               type="checkbox"
               onChange={(event) =>
@@ -1457,7 +1457,7 @@ function CategoryAttributeDraftList({
             />
           </label>
           <button
-            className="min-h-8 min-w-24 whitespace-nowrap rounded-md border border-[var(--color-error-border)] bg-white px-2 py-1 text-xs font-medium text-[var(--color-error)] transition hover:bg-[var(--color-error-soft)] focus:outline-none focus:ring-2 focus:ring-[var(--color-error-border)] focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400"
+            className="min-h-8 min-w-24 whitespace-nowrap rounded-md border border-[var(--color-error-border)] bg-[var(--color-bg-elevated)] px-2 py-1 text-xs font-medium text-[var(--color-error)] transition hover:bg-[var(--color-error-soft)] focus:outline-none focus:ring-2 focus:ring-[var(--color-error-border)] focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-[var(--color-bg-subtle)] disabled:text-[var(--color-text-placeholder)]"
             disabled={
               !isDatabaseAvailable ||
               !canWriteCategories ||
@@ -1497,10 +1497,10 @@ function CategoryAttributeAttachForm({
 
   return (
     <form
-      className="grid grid-cols-[minmax(0,1fr)_5.5rem_minmax(7rem,10rem)_7rem] items-end gap-2 rounded-md border border-dashed border-slate-300 bg-slate-50 p-2"
+      className="grid grid-cols-[minmax(0,1fr)_5.5rem_minmax(7rem,10rem)_7rem] items-end gap-2 rounded-md border border-dashed border-[var(--color-border-strong)] bg-[var(--color-bg-subtle)] p-2"
       onSubmit={onSubmit}
     >
-      <label className="grid gap-1 text-xs font-medium text-slate-600">
+      <label className="grid gap-1 text-xs font-medium text-[var(--color-text-secondary)]">
         {copy.attribute}
         <select
           className={categoryAttributeInputClassName}
@@ -1516,7 +1516,7 @@ function CategoryAttributeAttachForm({
           ))}
         </select>
       </label>
-      <label className="grid gap-1 text-xs font-medium text-slate-600">
+      <label className="grid gap-1 text-xs font-medium text-[var(--color-text-secondary)]">
         {copy.sortOrder}
         <input
           className={categoryAttributeInputClassName}
@@ -1524,7 +1524,7 @@ function CategoryAttributeAttachForm({
           type="number"
         />
       </label>
-      <label className="grid gap-1 text-xs font-medium text-slate-600">
+      <label className="grid gap-1 text-xs font-medium text-[var(--color-text-secondary)]">
         {copy.defaultValue}
         <CategoryAttributeDefaultValueControl
           copy={copy}
@@ -1672,8 +1672,8 @@ function CategoryNode({
         data-testid="part-category-node"
         className={`grid min-h-12 grid-cols-[auto_1fr_auto] items-center gap-3 rounded-md border-l-4 px-3 py-2 ${
           category.isAssignable
-            ? "border-slate-400 bg-white text-slate-950"
-            : "border-slate-300 bg-slate-50 text-slate-600"
+            ? "border-[var(--color-border-hover)] bg-[var(--color-bg-elevated)] text-[var(--color-text-primary)]"
+            : "border-[var(--color-border-strong)] bg-[var(--color-bg-subtle)] text-[var(--color-text-secondary)]"
         }`}
         style={{ marginLeft: `${level * 1.25}rem` }}
       >
@@ -1681,7 +1681,7 @@ function CategoryNode({
           <button
             aria-expanded={isExpanded}
             aria-label={toggleLabel}
-            className="grid h-7 w-7 shrink-0 place-items-center rounded text-slate-500 transition hover:bg-white/70 hover:text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2"
+            className="grid h-7 w-7 shrink-0 place-items-center rounded text-[var(--color-text-muted)] transition hover:bg-[var(--color-bg-elevated)]/70 hover:text-[var(--color-text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-ring-strong)] focus:ring-offset-2"
             type="button"
             onClick={() => onToggleExpanded(category.id)}
           >
@@ -1699,11 +1699,11 @@ function CategoryNode({
         )}
         <div className="min-w-0">
           <p className="truncate text-sm font-medium">{category.name}</p>
-          <p className="truncate text-xs text-slate-500">{category.path}</p>
+          <p className="truncate text-xs text-[var(--color-text-muted)]">{category.path}</p>
         </div>
         <div className="flex shrink-0 items-center gap-2">
           <button
-            className="min-h-9 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:border-slate-400 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400"
+            className="min-h-9 rounded-md border border-[var(--color-border-strong)] bg-[var(--color-bg-elevated)] px-3 py-1.5 text-sm font-medium text-[var(--color-text-secondary)] transition hover:border-[var(--color-border-hover)] hover:bg-[var(--color-bg-subtle)] focus:outline-none focus:ring-2 focus:ring-[var(--color-ring-strong)] focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-[var(--color-bg-subtle)] disabled:text-[var(--color-text-placeholder)]"
             disabled={!isDatabaseAvailable || !canWriteCategories}
             type="button"
             onClick={() => onAddChild(category.id)}
@@ -1711,7 +1711,7 @@ function CategoryNode({
             {copy.addChild}
           </button>
           <button
-            className="min-h-9 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:border-slate-400 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400"
+            className="min-h-9 rounded-md border border-[var(--color-border-strong)] bg-[var(--color-bg-elevated)] px-3 py-1.5 text-sm font-medium text-[var(--color-text-secondary)] transition hover:border-[var(--color-border-hover)] hover:bg-[var(--color-bg-subtle)] focus:outline-none focus:ring-2 focus:ring-[var(--color-ring-strong)] focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-[var(--color-bg-subtle)] disabled:text-[var(--color-text-placeholder)]"
             aria-label={copy.edit}
             disabled={!isDatabaseAvailable || !canWriteCategories}
             type="button"
@@ -1734,7 +1734,7 @@ function CategoryNode({
             </svg>
           </button>
           <button
-            className="min-h-9 rounded-md border border-[var(--color-error-border)] bg-white px-3 py-1.5 text-sm font-medium text-[var(--color-error)] transition hover:bg-[var(--color-error-soft)] focus:outline-none focus:ring-2 focus:ring-[var(--color-error-border)] focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400"
+            className="min-h-9 rounded-md border border-[var(--color-error-border)] bg-[var(--color-bg-elevated)] px-3 py-1.5 text-sm font-medium text-[var(--color-error)] transition hover:bg-[var(--color-error-soft)] focus:outline-none focus:ring-2 focus:ring-[var(--color-error-border)] focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-[var(--color-bg-subtle)] disabled:text-[var(--color-text-placeholder)]"
             aria-label={copy.delete}
             disabled={!isDatabaseAvailable || !canWriteCategories}
             type="button"
@@ -1826,12 +1826,12 @@ function CategoryFormFields({
 
   return (
     <>
-      <label className="grid gap-2 text-sm font-medium text-slate-700">
+      <label className="grid gap-2 text-sm font-medium text-[var(--color-text-secondary)]">
         <LabelWithError error={errors.name}>{copy.name}</LabelWithError>
         <input
           aria-invalid={errors.name ? true : undefined}
           className={getFieldInputClassName(
-            "min-h-11 rounded-md border border-slate-300 bg-white px-3 py-2 text-base text-slate-950 outline-none transition placeholder:text-slate-400 hover:border-slate-400 focus:border-slate-500 focus:ring-2 focus:ring-slate-200 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400",
+            "min-h-11 rounded-md border border-[var(--color-border-strong)] bg-[var(--color-bg-elevated)] px-3 py-2 text-base text-[var(--color-text-primary)] outline-none transition placeholder:text-[var(--color-text-placeholder)] hover:border-[var(--color-border-hover)] focus:border-[var(--color-border-hover)] focus:ring-2 focus:ring-[var(--color-ring)] disabled:cursor-not-allowed disabled:bg-[var(--color-bg-subtle)] disabled:text-[var(--color-text-placeholder)]",
             Boolean(errors.name)
           )}
           defaultValue={nameDefaultValue}
@@ -1855,7 +1855,7 @@ function CategoryFormFields({
         onSelectedIdChange={handleParentChange}
       />
       <fieldset className="grid gap-2">
-        <legend className="text-sm font-medium text-slate-700">
+        <legend className="text-sm font-medium text-[var(--color-text-secondary)]">
           {copy.type}
         </legend>
         <div className="grid grid-cols-2 gap-2">
@@ -1868,7 +1868,7 @@ function CategoryFormFields({
               type="radio"
               value="organizational"
             />
-            <span className="grid min-h-11 cursor-pointer place-items-center rounded-md border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-600 transition peer-checked:border-slate-500 peer-checked:bg-slate-100 peer-focus:ring-2 peer-focus:ring-slate-200 peer-disabled:cursor-not-allowed peer-disabled:bg-slate-50 peer-disabled:text-slate-400">
+            <span className="grid min-h-11 cursor-pointer place-items-center rounded-md border border-[var(--color-border-strong)] bg-[var(--color-bg-elevated)] px-3 py-2 text-sm font-medium text-[var(--color-text-secondary)] transition peer-checked:border-[var(--color-border-hover)] peer-checked:bg-[var(--color-bg-muted)] peer-focus:ring-2 peer-focus:ring-[var(--color-ring)] peer-disabled:cursor-not-allowed peer-disabled:bg-[var(--color-bg-subtle)] peer-disabled:text-[var(--color-text-placeholder)]">
               {copy.organizational}
             </span>
           </label>
@@ -1881,7 +1881,7 @@ function CategoryFormFields({
               type="radio"
               value="assignable"
             />
-            <span className="grid min-h-10 cursor-pointer place-items-center rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 transition peer-checked:border-[var(--color-accent-border)] peer-checked:bg-[var(--color-accent-soft)] peer-focus:ring-2 peer-focus:ring-[var(--color-action-focus)] peer-disabled:cursor-not-allowed peer-disabled:bg-slate-50 peer-disabled:text-slate-400">
+            <span className="grid min-h-10 cursor-pointer place-items-center rounded-md border border-[var(--color-border-strong)] bg-[var(--color-bg-elevated)] px-3 py-1.5 text-sm font-medium text-[var(--color-text-secondary)] transition peer-checked:border-[var(--color-accent-border)] peer-checked:bg-[var(--color-accent-soft)] peer-focus:ring-2 peer-focus:ring-[var(--color-action-focus)] peer-disabled:cursor-not-allowed peer-disabled:bg-[var(--color-bg-subtle)] peer-disabled:text-[var(--color-text-placeholder)]">
               {copy.assignable}
             </span>
           </label>
@@ -2131,10 +2131,10 @@ function CategoryParentTreeSelect({
         onClick={() => (isOpen ? setIsOpen(false) : openSelect())}
         onKeyDown={handleComboboxKeyDown}
       >
-        <span className={currentSelectedCategory ? "truncate" : "text-slate-400"}>
+        <span className={currentSelectedCategory ? "truncate" : "text-[var(--color-text-placeholder)]"}>
           {currentSelectedCategory?.path ?? noSelectionLabel}
         </span>
-        <span aria-hidden="true" className="text-sm text-slate-500">
+        <span aria-hidden="true" className="text-sm text-[var(--color-text-muted)]">
           ▾
         </span>
       </button>
@@ -2142,19 +2142,19 @@ function CategoryParentTreeSelect({
         ? createPortal(
             <div
               ref={panelRef}
-              className="fixed z-50 flex overflow-hidden rounded-md border border-slate-200 bg-white shadow-lg"
+              className="fixed z-50 flex overflow-hidden rounded-md border border-[var(--color-border)] bg-[var(--color-bg-elevated)] shadow-lg"
               style={panelStyle}
               onKeyDown={handleComboboxKeyDown}
             >
               <div className="flex min-h-0 w-full flex-col">
-                <div className="border-b border-slate-200 p-2">
+                <div className="border-b border-[var(--color-border)] p-2">
                   <label className="sr-only" htmlFor={searchId}>
                     {copy.searchCategories}
                   </label>
                   <input
                     id={searchId}
                     autoFocus
-                    className="min-h-10 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-950 outline-none transition placeholder:text-slate-400 hover:border-slate-400 focus:border-slate-500 focus:ring-2 focus:ring-slate-200"
+                    className="min-h-10 w-full rounded-md border border-[var(--color-border-strong)] bg-[var(--color-bg-elevated)] px-3 py-2 text-sm text-[var(--color-text-primary)] outline-none transition placeholder:text-[var(--color-text-placeholder)] hover:border-[var(--color-border-hover)] focus:border-[var(--color-border-hover)] focus:ring-2 focus:ring-[var(--color-ring)]"
                     placeholder={copy.searchCategories}
                     type="search"
                     value={searchQuery}
@@ -2169,10 +2169,10 @@ function CategoryParentTreeSelect({
                 >
                   <button
                     aria-selected={selectedId === ""}
-                    className={`mb-1 grid min-h-9 w-full grid-cols-[1.75rem_1fr] items-center rounded-md px-2 py-1.5 text-left text-sm transition focus:outline-none focus:ring-2 focus:ring-slate-300 ${
+                    className={`mb-1 grid min-h-9 w-full grid-cols-[1.75rem_1fr] items-center rounded-md px-2 py-1.5 text-left text-sm transition focus:outline-none focus:ring-2 focus:ring-[var(--color-ring-strong)] ${
                       activeCategoryId === ""
-                        ? "bg-[var(--color-accent-soft)] font-semibold text-slate-950 hover:bg-[var(--color-accent-soft)]"
-                        : "text-slate-700 hover:bg-slate-50"
+                        ? "bg-[var(--color-accent-soft)] font-semibold text-[var(--color-text-primary)] hover:bg-[var(--color-accent-soft)]"
+                        : "text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-subtle)]"
                     }`}
                     role="option"
                     type="button"
@@ -2198,7 +2198,7 @@ function CategoryParentTreeSelect({
                       ))}
                     </ol>
                   ) : (
-                    <p className="px-2 py-6 text-center text-sm text-slate-500">
+                    <p className="px-2 py-6 text-center text-sm text-[var(--color-text-muted)]">
                       {copy.noMatchingCategories}
                     </p>
                   )}
@@ -2249,7 +2249,7 @@ function CategoryParentTreeSelectNode({
           <button
             aria-expanded={isExpanded}
             aria-label={toggleLabel}
-            className="grid h-7 w-7 place-items-center rounded text-slate-500 transition hover:bg-slate-100 hover:text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-300"
+            className="grid h-7 w-7 place-items-center rounded text-[var(--color-text-muted)] transition hover:bg-[var(--color-bg-muted)] hover:text-[var(--color-text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-ring-strong)]"
             type="button"
             onClick={() => onToggleExpanded(category.id)}
           >
@@ -2267,10 +2267,10 @@ function CategoryParentTreeSelectNode({
         )}
         <button
           aria-selected={isSelected}
-          className={`min-h-9 rounded-md px-2 py-1.5 text-left text-sm transition focus:outline-none focus:ring-2 focus:ring-slate-300 ${
+          className={`min-h-9 rounded-md px-2 py-1.5 text-left text-sm transition focus:outline-none focus:ring-2 focus:ring-[var(--color-ring-strong)] ${
             isActive
-              ? "bg-[var(--color-accent-soft)] font-semibold text-slate-950 hover:bg-[var(--color-accent-soft)]"
-              : "text-slate-700 hover:bg-slate-50"
+              ? "bg-[var(--color-accent-soft)] font-semibold text-[var(--color-text-primary)] hover:bg-[var(--color-accent-soft)]"
+              : "text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-subtle)]"
           }`}
           role="option"
           type="button"
@@ -2484,9 +2484,9 @@ function getCategoryErrorMessage(copy: Copy, error: string) {
 }
 
 const categoryAttributeInputClassName =
-  "min-h-9 min-w-0 rounded-md border border-slate-300 bg-white px-2.5 py-1.5 text-sm text-slate-950 outline-none transition placeholder:text-slate-400 hover:border-slate-400 focus:border-slate-500 focus:ring-2 focus:ring-slate-200 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400";
+  "min-h-9 min-w-0 rounded-md border border-[var(--color-border-strong)] bg-[var(--color-bg-elevated)] px-2.5 py-1.5 text-sm text-[var(--color-text-primary)] outline-none transition placeholder:text-[var(--color-text-placeholder)] hover:border-[var(--color-border-hover)] focus:border-[var(--color-border-hover)] focus:ring-2 focus:ring-[var(--color-ring)] disabled:cursor-not-allowed disabled:bg-[var(--color-bg-subtle)] disabled:text-[var(--color-text-placeholder)]";
 const categoryDialogBodyMinHeightPx = 520;
 const primaryButtonClassName =
-  "min-h-9 rounded-md border border-[var(--color-action-primary)] bg-[var(--color-action-primary)] px-3 py-1.5 text-sm font-semibold text-white transition hover:border-[var(--color-action-primary-hover)] hover:bg-[var(--color-action-primary-hover)] focus:outline-none focus:ring-2 focus:ring-[var(--color-action-focus)] focus:ring-offset-2 disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-100 disabled:text-slate-400";
+  "min-h-9 rounded-md border border-[var(--color-action-primary)] bg-[var(--color-action-primary)] px-3 py-1.5 text-sm font-semibold text-white transition hover:border-[var(--color-action-primary-hover)] hover:bg-[var(--color-action-primary-hover)] focus:outline-none focus:ring-2 focus:ring-[var(--color-action-focus)] focus:ring-offset-2 disabled:cursor-not-allowed disabled:border-[var(--color-border)] disabled:bg-[var(--color-bg-muted)] disabled:text-[var(--color-text-placeholder)]";
 const defaultCategorySelectButtonClassName =
-  "grid min-h-11 grid-cols-[1fr_auto] items-center gap-3 rounded-md border border-slate-300 bg-white px-3 py-2 text-left text-base text-slate-950 outline-none transition hover:border-slate-400 focus:border-slate-500 focus:ring-2 focus:ring-slate-200 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400";
+  "grid min-h-11 grid-cols-[1fr_auto] items-center gap-3 rounded-md border border-[var(--color-border-strong)] bg-[var(--color-bg-elevated)] px-3 py-2 text-left text-base text-[var(--color-text-primary)] outline-none transition hover:border-[var(--color-border-hover)] focus:border-[var(--color-border-hover)] focus:ring-2 focus:ring-[var(--color-ring)] disabled:cursor-not-allowed disabled:bg-[var(--color-bg-subtle)] disabled:text-[var(--color-text-placeholder)]";

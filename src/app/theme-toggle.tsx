@@ -3,14 +3,15 @@
 import { useTheme } from "@/app/theme-provider";
 
 const themeLabels: Record<string, string> = {
-  light: "Light"
+  light: "Light",
+  dark: "Dark",
 };
 
 export function ThemeToggle() {
   const { theme, setTheme, themes } = useTheme();
 
   return (
-    <div className="mb-2 flex items-center gap-2 px-3 py-1 text-sm text-slate-500">
+    <div className="mb-2 flex items-center gap-2 px-3 py-1 text-sm text-[var(--color-text-muted)]">
       <span className="shrink-0">Theme</span>
       <div className="flex gap-1">
         {themes.map((t) => (
@@ -22,7 +23,7 @@ export function ThemeToggle() {
             className={
               theme === t
                 ? "rounded px-2 py-0.5 font-medium text-[var(--color-accent)]"
-                : "rounded px-2 py-0.5 text-slate-400 hover:text-slate-600"
+                : "rounded px-2 py-0.5 text-[var(--color-text-placeholder)] hover:text-[var(--color-text-secondary)]"
             }
           >
             {themeLabels[t] ?? t}

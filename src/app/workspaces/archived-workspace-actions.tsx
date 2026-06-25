@@ -97,14 +97,14 @@ export function ArchivedWorkspaceActions({
 
   return (
     <div className="flex shrink-0 flex-col items-end gap-1.5">
-      <p className="text-xs text-slate-400">
+      <p className="text-xs text-[var(--color-text-placeholder)]">
         {copy.scheduledForDeletion(deletionDeadlineFormatted)}
       </p>
       <div className="flex items-center gap-2">
       <form action={restoreWorkspaceFromPicker}>
         <input type="hidden" name="workspaceSlug" value={workspaceSlug} />
         <button
-          className="inline-flex min-h-9 items-center justify-center rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:border-slate-400 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2"
+          className="inline-flex min-h-9 items-center justify-center rounded-md border border-[var(--color-border-strong)] bg-[var(--color-bg-elevated)] px-3 py-1.5 text-sm font-medium text-[var(--color-text-secondary)] transition hover:border-[var(--color-border-hover)] hover:bg-[var(--color-bg-subtle)] focus:outline-none focus:ring-2 focus:ring-[var(--color-ring-strong)] focus:ring-offset-2"
           type="submit"
         >
           {copy.restore}
@@ -140,17 +140,17 @@ export function ArchivedWorkspaceActions({
           }}
         >
           <DialogBody>
-            <p className="text-sm leading-6 text-slate-600">{copy.dialogBody(workspaceName)}</p>
+            <p className="text-sm leading-6 text-[var(--color-text-secondary)]">{copy.dialogBody(workspaceName)}</p>
             <div className="mt-4 grid gap-1.5">
               <label
-                className="text-sm font-medium text-slate-700"
+                className="text-sm font-medium text-[var(--color-text-secondary)]"
                 htmlFor="delete-workspace-confirm-input"
               >
                 {copy.confirmInstruction}
               </label>
               <input
                 autoComplete="off"
-                className="min-h-9 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-950 outline-none transition placeholder:text-slate-400 hover:border-slate-400 focus:border-slate-500 focus:ring-2 focus:ring-slate-200"
+                className="min-h-9 rounded-md border border-[var(--color-border-strong)] bg-[var(--color-bg-elevated)] px-3 py-1.5 text-sm text-[var(--color-text-primary)] outline-none transition placeholder:text-[var(--color-text-placeholder)] hover:border-[var(--color-border-hover)] focus:border-[var(--color-border-hover)] focus:ring-2 focus:ring-[var(--color-ring)]"
                 data-dialog-initial-focus
                 disabled={mutation.isPending}
                 id="delete-workspace-confirm-input"
@@ -168,7 +168,7 @@ export function ArchivedWorkspaceActions({
           </DialogBody>
           <DialogFooter className="items-center justify-end gap-2">
             <button
-              className="min-h-9 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:border-slate-400 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
+              className="min-h-9 rounded-md border border-[var(--color-border-strong)] bg-[var(--color-bg-elevated)] px-3 py-1.5 text-sm font-medium text-[var(--color-text-secondary)] transition hover:border-[var(--color-border-hover)] hover:bg-[var(--color-bg-subtle)] focus:outline-none focus:ring-2 focus:ring-[var(--color-ring-strong)] focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
               disabled={mutation.isPending}
               type="button"
               onClick={handleCloseDialog}

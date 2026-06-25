@@ -95,30 +95,30 @@ export function GeneralSettingsClient({
     <div className="max-w-lg space-y-8">
       <div className="space-y-4">
         <div className="grid gap-1">
-          <p className="text-sm font-medium text-slate-700">{copy.workspaceName}</p>
-          <p className="text-sm text-slate-950">{workspaceName}</p>
+          <p className="text-sm font-medium text-[var(--color-text-secondary)]">{copy.workspaceName}</p>
+          <p className="text-sm text-[var(--color-text-primary)]">{workspaceName}</p>
         </div>
         <div className="grid gap-1">
-          <p className="text-sm font-medium text-slate-700">{copy.workspaceSlug}</p>
-          <p className="font-mono text-sm text-slate-500">/w/{workspaceSlug}</p>
+          <p className="text-sm font-medium text-[var(--color-text-secondary)]">{copy.workspaceSlug}</p>
+          <p className="font-mono text-sm text-[var(--color-text-muted)]">/w/{workspaceSlug}</p>
         </div>
       </div>
 
       {(canArchive || canReset) && (
         <div className="rounded-lg border border-[var(--color-error-border)] p-4 space-y-6">
-          <p className="text-sm font-semibold text-slate-950">{copy.dangerZone}</p>
+          <p className="text-sm font-semibold text-[var(--color-text-primary)]">{copy.dangerZone}</p>
 
           {canReset && (
             <div>
-              <p className="text-sm font-medium text-slate-700">{copy.resetWorkspace}</p>
-              <p className="mt-1 text-sm leading-6 text-slate-600">{copy.resetIntro}</p>
+              <p className="text-sm font-medium text-[var(--color-text-secondary)]">{copy.resetWorkspace}</p>
+              <p className="mt-1 text-sm leading-6 text-[var(--color-text-secondary)]">{copy.resetIntro}</p>
               {resetErrorMsg && (
                 <p className="mt-3 rounded-md border border-[var(--color-error-border)] bg-[var(--color-error-soft)] px-3 py-2 text-sm text-[var(--color-error)]">
                   {resetErrorMsg}
                 </p>
               )}
               <button
-                className="mt-3 min-h-9 rounded-md border border-[var(--color-error-border)] bg-white px-3 py-1.5 text-sm font-medium text-[var(--color-error)] transition hover:bg-[var(--color-error-soft)] focus:outline-none focus:ring-2 focus:ring-[var(--color-error-border)] focus:ring-offset-2"
+                className="mt-3 min-h-9 rounded-md border border-[var(--color-error-border)] bg-[var(--color-bg-elevated)] px-3 py-1.5 text-sm font-medium text-[var(--color-error)] transition hover:bg-[var(--color-error-soft)] focus:outline-none focus:ring-2 focus:ring-[var(--color-error-border)] focus:ring-offset-2"
                 type="button"
                 onClick={() => openDialog(resetDialogRef.current)}
               >
@@ -129,15 +129,15 @@ export function GeneralSettingsClient({
 
           {canArchive && (
             <div>
-              <p className="text-sm font-medium text-slate-700">{copy.archiveWorkspace}</p>
-              <p className="mt-1 text-sm leading-6 text-slate-600">{copy.archiveIntro}</p>
+              <p className="text-sm font-medium text-[var(--color-text-secondary)]">{copy.archiveWorkspace}</p>
+              <p className="mt-1 text-sm leading-6 text-[var(--color-text-secondary)]">{copy.archiveIntro}</p>
               {archiveErrorMsg && (
                 <p className="mt-3 rounded-md border border-[var(--color-error-border)] bg-[var(--color-error-soft)] px-3 py-2 text-sm text-[var(--color-error)]">
                   {archiveErrorMsg}
                 </p>
               )}
               <button
-                className="mt-3 min-h-9 rounded-md border border-[var(--color-error-border)] bg-white px-3 py-1.5 text-sm font-medium text-[var(--color-error)] transition hover:bg-[var(--color-error-soft)] focus:outline-none focus:ring-2 focus:ring-[var(--color-error-border)] focus:ring-offset-2"
+                className="mt-3 min-h-9 rounded-md border border-[var(--color-error-border)] bg-[var(--color-bg-elevated)] px-3 py-1.5 text-sm font-medium text-[var(--color-error)] transition hover:bg-[var(--color-error-soft)] focus:outline-none focus:ring-2 focus:ring-[var(--color-error-border)] focus:ring-offset-2"
                 type="button"
                 onClick={() => openDialog(archiveDialogRef.current)}
               >
@@ -160,11 +160,11 @@ export function GeneralSettingsClient({
         onCloseClick={() => closeDialog(archiveDialogRef.current)}
       >
         <DialogBody>
-          <p className="text-sm leading-6 text-slate-600">{copy.confirmBody}</p>
+          <p className="text-sm leading-6 text-[var(--color-text-secondary)]">{copy.confirmBody}</p>
         </DialogBody>
         <DialogFooter className="items-center justify-end gap-2">
           <button
-            className="min-h-9 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:border-slate-400 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
+            className="min-h-9 rounded-md border border-[var(--color-border-strong)] bg-[var(--color-bg-elevated)] px-3 py-1.5 text-sm font-medium text-[var(--color-text-secondary)] transition hover:border-[var(--color-border-hover)] hover:bg-[var(--color-bg-subtle)] focus:outline-none focus:ring-2 focus:ring-[var(--color-ring-strong)] focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
             data-dialog-initial-focus
             disabled={archiveMutation.isPending}
             type="button"
@@ -173,7 +173,7 @@ export function GeneralSettingsClient({
             {copy.cancel}
           </button>
           <button
-            className="min-h-9 rounded-md border border-[var(--color-error-border)] bg-white px-3 py-1.5 text-sm font-medium text-[var(--color-error)] transition hover:bg-[var(--color-error-soft)] focus:outline-none focus:ring-2 focus:ring-[var(--color-error-border)] focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
+            className="min-h-9 rounded-md border border-[var(--color-error-border)] bg-[var(--color-bg-elevated)] px-3 py-1.5 text-sm font-medium text-[var(--color-error)] transition hover:bg-[var(--color-error-soft)] focus:outline-none focus:ring-2 focus:ring-[var(--color-error-border)] focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
             disabled={archiveMutation.isPending}
             type="button"
             onClick={() => archiveMutation.mutate()}
@@ -195,10 +195,10 @@ export function GeneralSettingsClient({
         onCloseClick={() => closeDialog(resetDialogRef.current)}
       >
         <DialogBody className="space-y-4">
-          <p className="text-sm leading-6 text-slate-600">{copy.resetConfirmBody}</p>
+          <p className="text-sm leading-6 text-[var(--color-text-secondary)]">{copy.resetConfirmBody}</p>
           <fieldset className="space-y-2">
-            <legend className="text-sm font-medium text-slate-700">Select preset</legend>
-            <label className="flex items-center gap-2 text-sm text-slate-700 cursor-pointer">
+            <legend className="text-sm font-medium text-[var(--color-text-secondary)]">Select preset</legend>
+            <label className="flex items-center gap-2 text-sm text-[var(--color-text-secondary)] cursor-pointer">
               <input
                 type="radio"
                 name="reset-preset"
@@ -209,7 +209,7 @@ export function GeneralSettingsClient({
               />
               {copy.presetPartsOnly}
             </label>
-            <label className="flex items-center gap-2 text-sm text-slate-700 cursor-pointer">
+            <label className="flex items-center gap-2 text-sm text-[var(--color-text-secondary)] cursor-pointer">
               <input
                 type="radio"
                 name="reset-preset"
@@ -229,7 +229,7 @@ export function GeneralSettingsClient({
         </DialogBody>
         <DialogFooter className="items-center justify-end gap-2">
           <button
-            className="min-h-9 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:border-slate-400 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
+            className="min-h-9 rounded-md border border-[var(--color-border-strong)] bg-[var(--color-bg-elevated)] px-3 py-1.5 text-sm font-medium text-[var(--color-text-secondary)] transition hover:border-[var(--color-border-hover)] hover:bg-[var(--color-bg-subtle)] focus:outline-none focus:ring-2 focus:ring-[var(--color-ring-strong)] focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
             data-dialog-initial-focus
             disabled={resetMutation.isPending}
             type="button"
@@ -238,7 +238,7 @@ export function GeneralSettingsClient({
             {copy.cancel}
           </button>
           <button
-            className="min-h-9 rounded-md border border-[var(--color-error-border)] bg-white px-3 py-1.5 text-sm font-medium text-[var(--color-error)] transition hover:bg-[var(--color-error-soft)] focus:outline-none focus:ring-2 focus:ring-[var(--color-error-border)] focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
+            className="min-h-9 rounded-md border border-[var(--color-error-border)] bg-[var(--color-bg-elevated)] px-3 py-1.5 text-sm font-medium text-[var(--color-error)] transition hover:bg-[var(--color-error-soft)] focus:outline-none focus:ring-2 focus:ring-[var(--color-error-border)] focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
             disabled={resetMutation.isPending}
             type="button"
             onClick={() => resetMutation.mutate()}

@@ -51,10 +51,10 @@ const copy = {
 
 function getNavLinkClass(isActive: boolean) {
   if (isActive) {
-    return "flex min-h-10 items-center rounded-md bg-[var(--color-accent-soft)] px-3 text-sm font-semibold text-slate-950";
+    return "flex min-h-10 items-center rounded-md bg-[var(--color-accent-soft)] px-3 text-sm font-semibold text-[var(--color-text-primary)]";
   }
 
-  return "flex min-h-10 items-center rounded-md px-3 text-sm font-medium text-slate-700 transition hover:bg-slate-50";
+  return "flex min-h-10 items-center rounded-md px-3 text-sm font-medium text-[var(--color-text-secondary)] transition hover:bg-[var(--color-bg-subtle)]";
 }
 
 export function WorkspaceShell({
@@ -67,18 +67,18 @@ export function WorkspaceShell({
   children
 }: WorkspaceShellProps) {
   return (
-    <main className="h-screen overflow-hidden bg-slate-100 text-slate-950">
+    <main className="h-screen overflow-hidden bg-[var(--color-bg-page)] text-[var(--color-text-primary)]">
       <div className="flex h-full min-h-0">
-        <aside className="flex h-full w-60 shrink-0 flex-col border-r border-slate-200 bg-white">
-          <div className="flex min-h-14 items-center gap-3 border-b border-slate-200 px-4">
+        <aside className="flex h-full w-60 shrink-0 flex-col border-r border-[var(--color-border)] bg-[var(--color-bg-elevated)]">
+          <div className="flex min-h-14 items-center gap-3 border-b border-[var(--color-border)] px-4">
             <div className="grid h-8 w-8 place-items-center rounded-md bg-[var(--color-accent)] text-sm font-semibold text-white">
               {copy.appShortName}
             </div>
             <div className="min-w-0">
-              <p className="text-sm font-semibold leading-5 text-slate-950">
+              <p className="text-sm font-semibold leading-5 text-[var(--color-text-primary)]">
                 {copy.appName}
               </p>
-              <p className="truncate text-xs leading-4 text-slate-500">
+              <p className="truncate text-xs leading-4 text-[var(--color-text-muted)]">
                 {workspaceName}
               </p>
             </div>
@@ -87,7 +87,7 @@ export function WorkspaceShell({
             className="flex min-h-0 flex-1 flex-col gap-1 overflow-auto p-3"
             aria-label="Main navigation"
           >
-            <p className="px-3 pb-1 pt-1 text-xs font-semibold uppercase tracking-wide text-slate-500">
+            <p className="px-3 pb-1 pt-1 text-xs font-semibold uppercase tracking-wide text-[var(--color-text-muted)]">
               {copy.inventorySection}
             </p>
             <Link
@@ -104,8 +104,8 @@ export function WorkspaceShell({
             >
               {copy.locations}
             </Link>
-            <div className="my-2 border-t border-slate-200" />
-            <p className="px-3 pb-1 pt-1 text-xs font-semibold uppercase tracking-wide text-slate-500">
+            <div className="my-2 border-t border-[var(--color-border)]" />
+            <p className="px-3 pb-1 pt-1 text-xs font-semibold uppercase tracking-wide text-[var(--color-text-muted)]">
               {copy.purchasesSection}
             </p>
             <Link
@@ -122,8 +122,8 @@ export function WorkspaceShell({
             >
               {copy.purchaseOrders}
             </Link>
-            <div className="my-2 border-t border-slate-200" />
-            <p className="px-3 pb-1 pt-1 text-xs font-semibold uppercase tracking-wide text-slate-500">
+            <div className="my-2 border-t border-[var(--color-border)]" />
+            <p className="px-3 pb-1 pt-1 text-xs font-semibold uppercase tracking-wide text-[var(--color-text-muted)]">
               {copy.configurationSection}
             </p>
             <Link
@@ -182,18 +182,18 @@ export function WorkspaceShell({
               {copy.ordering}
             </Link>
           </nav>
-          <div className="border-t border-slate-200 p-3">
-            <p className="mb-2 truncate text-xs leading-5 text-slate-500">{userEmail}</p>
+          <div className="border-t border-[var(--color-border)] p-3">
+            <p className="mb-2 truncate text-xs leading-5 text-[var(--color-text-muted)]">{userEmail}</p>
             <ThemeToggle />
             <Link
-              className="mb-2 flex min-h-10 items-center gap-2 rounded-md border border-slate-300 bg-white px-3 text-sm font-medium text-slate-700 transition hover:border-slate-400 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2"
+              className="mb-2 flex min-h-10 items-center gap-2 rounded-md border border-[var(--color-border-strong)] bg-[var(--color-bg-elevated)] px-3 text-sm font-medium text-[var(--color-text-secondary)] transition hover:border-[var(--color-border-hover)] hover:bg-[var(--color-bg-subtle)] focus:outline-none focus:ring-2 focus:ring-[var(--color-ring-strong)] focus:ring-offset-2"
               href="https://github.com/michalwy/ohm-sweet-ohm/blob/main/docs/user-guide.md"
               target="_blank"
               rel="noreferrer"
             >
               <svg
                 aria-hidden="true"
-                className="h-4 w-4 text-slate-500"
+                className="h-4 w-4 text-[var(--color-text-muted)]"
                 viewBox="0 0 20 20"
                 fill="currentColor"
               >
@@ -202,14 +202,14 @@ export function WorkspaceShell({
               {copy.userGuide}
             </Link>
             <Link
-              className="mb-2 flex min-h-10 items-center rounded-md border border-slate-300 bg-white px-3 text-sm font-medium text-slate-700 transition hover:border-slate-400 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2"
+              className="mb-2 flex min-h-10 items-center rounded-md border border-[var(--color-border-strong)] bg-[var(--color-bg-elevated)] px-3 text-sm font-medium text-[var(--color-text-secondary)] transition hover:border-[var(--color-border-hover)] hover:bg-[var(--color-bg-subtle)] focus:outline-none focus:ring-2 focus:ring-[var(--color-ring-strong)] focus:ring-offset-2"
               href="/workspaces"
             >
               {copy.switchWorkspace}
             </Link>
             <form action={signOut}>
               <button
-                className="min-h-10 w-full rounded-md border border-slate-300 bg-white px-3 text-left text-sm font-medium text-slate-700 transition hover:border-slate-400 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2"
+                className="min-h-10 w-full rounded-md border border-[var(--color-border-strong)] bg-[var(--color-bg-elevated)] px-3 text-left text-sm font-medium text-[var(--color-text-secondary)] transition hover:border-[var(--color-border-hover)] hover:bg-[var(--color-bg-subtle)] focus:outline-none focus:ring-2 focus:ring-[var(--color-ring-strong)] focus:ring-offset-2"
                 type="submit"
               >
                 {copy.signOut}
@@ -220,12 +220,12 @@ export function WorkspaceShell({
 
         <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
           <div className="flex min-h-0 flex-1 flex-col gap-4 p-6">
-            <header className="flex items-end justify-between gap-2 border-b border-slate-200 pb-4">
+            <header className="flex items-end justify-between gap-2 border-b border-[var(--color-border)] pb-4">
               <div>
-                <h1 className="text-2xl font-semibold tracking-normal text-slate-950">
+                <h1 className="text-2xl font-semibold tracking-normal text-[var(--color-text-primary)]">
                   {title}
                 </h1>
-                <p className="mt-1 max-w-3xl text-sm leading-6 text-slate-600">
+                <p className="mt-1 max-w-3xl text-sm leading-6 text-[var(--color-text-secondary)]">
                   {intro}
                 </p>
               </div>

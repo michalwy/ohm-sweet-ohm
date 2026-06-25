@@ -87,8 +87,8 @@ export function SupplierPickerCombobox({
           <div
             className={`min-h-9 w-full rounded-md px-3 py-1.5 text-left text-sm transition ${
               isActive
-                ? "bg-[var(--color-accent-soft)] font-semibold text-slate-950"
-                : "text-slate-700 hover:bg-slate-50"
+                ? "bg-[var(--color-accent-soft)] font-semibold text-[var(--color-text-primary)]"
+                : "text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-subtle)]"
             }`}
           >
             {item.name}

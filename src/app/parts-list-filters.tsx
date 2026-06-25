@@ -49,10 +49,10 @@ export function PartsListFilters({
 
   return (
     <>
-      <label className="grid min-w-72 gap-1.5 text-sm font-medium text-slate-700">
+      <label className="grid min-w-72 gap-1.5 text-sm font-medium text-[var(--color-text-secondary)]">
         {copy.searchParts}
         <input
-          className="min-h-9 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-950 outline-none transition placeholder:text-slate-400 hover:border-slate-400 focus:border-slate-500 focus:ring-2 focus:ring-slate-200"
+          className="min-h-9 rounded-md border border-[var(--color-border-strong)] bg-[var(--color-bg-elevated)] px-3 py-1.5 text-sm text-[var(--color-text-primary)] outline-none transition placeholder:text-[var(--color-text-placeholder)] hover:border-[var(--color-border-hover)] focus:border-[var(--color-border-hover)] focus:ring-2 focus:ring-[var(--color-ring)]"
           placeholder={copy.searchPartsPlaceholder}
           type="search"
           value={searchQuery}

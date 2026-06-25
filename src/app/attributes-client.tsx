@@ -319,12 +319,12 @@ export function AttributesClient({
     <>
       <section
         aria-labelledby="attributes-heading"
-        className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm"
+        className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-elevated)] shadow-sm"
       >
         <h2 id="attributes-heading" className="sr-only">
           {copy.title}
         </h2>
-        <div className="flex items-center justify-end border-b border-slate-200 bg-white px-4 py-3">
+        <div className="flex items-center justify-end border-b border-[var(--color-border)] bg-[var(--color-bg-elevated)] px-4 py-3">
           <button
             className={primaryButtonClassName}
             disabled={!isDatabaseAvailable || !canWriteAttributes}
@@ -335,9 +335,9 @@ export function AttributesClient({
           </button>
         </div>
         <InfiniteListViewport
-          emptyState={<p className="p-6 text-sm text-slate-500">{copy.noAttributes}</p>}
+          emptyState={<p className="p-6 text-sm text-[var(--color-text-muted)]">{copy.noAttributes}</p>}
           errorState={
-            <p className="p-6 text-sm text-slate-500">
+            <p className="p-6 text-sm text-[var(--color-text-muted)]">
               {copy.databaseUnavailable}
             </p>
           }
@@ -354,41 +354,41 @@ export function AttributesClient({
           testId="attributes-list-viewport"
         >
             <table className="w-full border-collapse text-left text-sm">
-              <thead className="sticky top-0 bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
+              <thead className="sticky top-0 bg-[var(--color-bg-subtle)] text-xs uppercase tracking-wide text-[var(--color-text-muted)]">
                 <tr>
-                  <th className="border-b border-slate-200 px-4 py-3 font-semibold">
+                  <th className="border-b border-[var(--color-border)] px-4 py-3 font-semibold">
                     {copy.name}
                   </th>
-                  <th className="border-b border-slate-200 px-4 py-3 font-semibold">
+                  <th className="border-b border-[var(--color-border)] px-4 py-3 font-semibold">
                     {copy.type}
                   </th>
-                  <th className="border-b border-slate-200 px-4 py-3 font-semibold">
+                  <th className="border-b border-[var(--color-border)] px-4 py-3 font-semibold">
                     {copy.baseUnit}
                   </th>
-                  <th className="border-b border-slate-200 px-4 py-3 font-semibold">
+                  <th className="border-b border-[var(--color-border)] px-4 py-3 font-semibold">
                     {copy.options}
                   </th>
-                  <th className="border-b border-slate-200 px-4 py-3 font-semibold">
+                  <th className="border-b border-[var(--color-border)] px-4 py-3 font-semibold">
                     {copy.description}
                   </th>
-                  <th className="w-36 border-b border-slate-200 px-4 py-3 font-semibold">
+                  <th className="w-36 border-b border-[var(--color-border)] px-4 py-3 font-semibold">
                     {copy.actions}
                   </th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+              <tbody className="divide-y divide-[var(--color-border)]">
                 {currentAttributes.map((attribute) => (
-                  <tr key={attribute.id} className="hover:bg-slate-50/70">
-                    <td className="px-4 py-3 font-medium text-slate-950">
+                  <tr key={attribute.id} className="hover:bg-[var(--color-bg-subtle)]/70">
+                    <td className="px-4 py-3 font-medium text-[var(--color-text-primary)]">
                       {attribute.name}
                     </td>
-                    <td className="px-4 py-3 text-slate-700">
+                    <td className="px-4 py-3 text-[var(--color-text-secondary)]">
                       {getTypeLabel(copy, attribute.type)}
                     </td>
-                    <td className="px-4 py-3 text-slate-700">
+                    <td className="px-4 py-3 text-[var(--color-text-secondary)]">
                       {attribute.baseUnitSymbol ?? ""}
                     </td>
-                    <td className="max-w-xs px-4 py-3 text-slate-700">
+                    <td className="max-w-xs px-4 py-3 text-[var(--color-text-secondary)]">
                       <span className="line-clamp-2">
                         {attribute.choiceOptions.length > 0
                           ? attribute.choiceOptions
@@ -397,7 +397,7 @@ export function AttributesClient({
                           : copy.noOptions}
                       </span>
                     </td>
-                    <td className="max-w-sm px-4 py-3 text-slate-500">
+                    <td className="max-w-sm px-4 py-3 text-[var(--color-text-muted)]">
                       <span className="line-clamp-2">
                         {attribute.description ?? ""}
                       </span>
@@ -405,7 +405,7 @@ export function AttributesClient({
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2">
                         <button
-                          className="min-h-9 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:border-slate-400 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400"
+                          className="min-h-9 rounded-md border border-[var(--color-border-strong)] bg-[var(--color-bg-elevated)] px-3 py-1.5 text-sm font-medium text-[var(--color-text-secondary)] transition hover:border-[var(--color-border-hover)] hover:bg-[var(--color-bg-subtle)] focus:outline-none focus:ring-2 focus:ring-[var(--color-ring-strong)] focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-[var(--color-bg-subtle)] disabled:text-[var(--color-text-placeholder)]"
                           aria-label={copy.edit}
                           disabled={!isDatabaseAvailable || !canWriteAttributes}
                           type="button"
@@ -428,7 +428,7 @@ export function AttributesClient({
                           </svg>
                         </button>
                         <button
-                          className="min-h-9 rounded-md border border-[var(--color-error-border)] bg-white px-3 py-1.5 text-sm font-medium text-[var(--color-error)] transition hover:bg-[var(--color-error-soft)] focus:outline-none focus:ring-2 focus:ring-[var(--color-error-border)] focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400"
+                          className="min-h-9 rounded-md border border-[var(--color-error-border)] bg-[var(--color-bg-elevated)] px-3 py-1.5 text-sm font-medium text-[var(--color-error)] transition hover:bg-[var(--color-error-soft)] focus:outline-none focus:ring-2 focus:ring-[var(--color-error-border)] focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-[var(--color-bg-subtle)] disabled:text-[var(--color-text-placeholder)]"
                           aria-label={copy.delete}
                           disabled={
                             !isDatabaseAvailable ||
@@ -676,7 +676,7 @@ function AttributeDialogContent({
           className="items-center justify-between gap-3"
         >
           <button
-            className="min-h-9 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:border-slate-400 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2"
+            className="min-h-9 rounded-md border border-[var(--color-border-strong)] bg-[var(--color-bg-elevated)] px-3 py-1.5 text-sm font-medium text-[var(--color-text-secondary)] transition hover:border-[var(--color-border-hover)] hover:bg-[var(--color-bg-subtle)] focus:outline-none focus:ring-2 focus:ring-[var(--color-ring-strong)] focus:ring-offset-2"
             type="button"
             onClick={onCancel}
           >
@@ -731,9 +731,9 @@ function ChoiceOptionsEditor({
   ) => void;
 }) {
   return (
-    <div className="mt-4 border-t border-slate-200 pt-4">
+    <div className="mt-4 border-t border-[var(--color-border)] pt-4">
       <div className="mb-2 flex items-center justify-between gap-3">
-        <h3 className="text-sm font-semibold text-slate-950">{copy.options}</h3>
+        <h3 className="text-sm font-semibold text-[var(--color-text-primary)]">{copy.options}</h3>
         <button
           className={compactSecondaryButtonClassName}
           type="button"
@@ -743,7 +743,7 @@ function ChoiceOptionsEditor({
         </button>
       </div>
       <div className="grid gap-1.5">
-        <div className="grid grid-cols-[minmax(0,1fr)_5.5rem_5.5rem] gap-2 px-1 text-xs font-medium text-slate-500">
+        <div className="grid grid-cols-[minmax(0,1fr)_5.5rem_5.5rem] gap-2 px-1 text-xs font-medium text-[var(--color-text-muted)]">
           <span>{copy.optionLabel}</span>
           <span>{copy.sortOrder}</span>
           <span className="sr-only">{copy.deleteOption}</span>
@@ -918,12 +918,12 @@ function hasFieldErrors(errors: Record<string, string | undefined>) {
   return Object.values(errors).some(Boolean);
 }
 
-const labelClassName = "grid gap-2 text-sm font-medium text-slate-700";
+const labelClassName = "grid gap-2 text-sm font-medium text-[var(--color-text-secondary)]";
 const inputClassName =
-  "min-h-10 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-950 outline-none transition placeholder:text-slate-400 hover:border-slate-400 focus:border-slate-500 focus:ring-2 focus:ring-slate-200 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400";
+  "min-h-10 rounded-md border border-[var(--color-border-strong)] bg-[var(--color-bg-elevated)] px-3 py-1.5 text-sm text-[var(--color-text-primary)] outline-none transition placeholder:text-[var(--color-text-placeholder)] hover:border-[var(--color-border-hover)] focus:border-[var(--color-border-hover)] focus:ring-2 focus:ring-[var(--color-ring)] disabled:cursor-not-allowed disabled:bg-[var(--color-bg-subtle)] disabled:text-[var(--color-text-placeholder)]";
 const primaryButtonClassName =
-  "min-h-9 rounded-md border border-[var(--color-action-primary)] bg-[var(--color-action-primary)] px-3 py-1.5 text-sm font-semibold text-white transition hover:border-[var(--color-action-primary-hover)] hover:bg-[var(--color-action-primary-hover)] focus:outline-none focus:ring-2 focus:ring-[var(--color-action-focus)] focus:ring-offset-2 disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-100 disabled:text-slate-400";
+  "min-h-9 rounded-md border border-[var(--color-action-primary)] bg-[var(--color-action-primary)] px-3 py-1.5 text-sm font-semibold text-white transition hover:border-[var(--color-action-primary-hover)] hover:bg-[var(--color-action-primary-hover)] focus:outline-none focus:ring-2 focus:ring-[var(--color-action-focus)] focus:ring-offset-2 disabled:cursor-not-allowed disabled:border-[var(--color-border)] disabled:bg-[var(--color-bg-muted)] disabled:text-[var(--color-text-placeholder)]";
 const compactInputClassName =
-  "min-h-9 min-w-0 rounded-md border border-slate-300 bg-white px-2.5 py-1.5 text-sm text-slate-950 outline-none transition placeholder:text-slate-400 hover:border-slate-400 focus:border-slate-500 focus:ring-2 focus:ring-slate-200 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400";
+  "min-h-9 min-w-0 rounded-md border border-[var(--color-border-strong)] bg-[var(--color-bg-elevated)] px-2.5 py-1.5 text-sm text-[var(--color-text-primary)] outline-none transition placeholder:text-[var(--color-text-placeholder)] hover:border-[var(--color-border-hover)] focus:border-[var(--color-border-hover)] focus:ring-2 focus:ring-[var(--color-ring)] disabled:cursor-not-allowed disabled:bg-[var(--color-bg-subtle)] disabled:text-[var(--color-text-placeholder)]";
 const compactSecondaryButtonClassName =
-  "min-h-9 whitespace-nowrap rounded-md border border-slate-300 bg-white px-2.5 py-1.5 text-sm font-medium text-slate-700 transition hover:border-slate-400 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400";
+  "min-h-9 whitespace-nowrap rounded-md border border-[var(--color-border-strong)] bg-[var(--color-bg-elevated)] px-2.5 py-1.5 text-sm font-medium text-[var(--color-text-secondary)] transition hover:border-[var(--color-border-hover)] hover:bg-[var(--color-bg-subtle)] focus:outline-none focus:ring-2 focus:ring-[var(--color-ring-strong)] focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-[var(--color-bg-subtle)] disabled:text-[var(--color-text-placeholder)]";

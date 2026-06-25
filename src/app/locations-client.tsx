@@ -220,18 +220,18 @@ export function LocationsClient({
           {copy.addLocation}
         </button>
       </div>
-      <div className="min-h-0 flex-1 overflow-auto rounded-md border border-slate-200 bg-white">
+      <div className="min-h-0 flex-1 overflow-auto rounded-md border border-[var(--color-border)] bg-[var(--color-bg-elevated)]">
         {locations.length === 0 ? (
-          <p className="px-4 py-6 text-sm text-slate-600">{copy.noLocations}</p>
+          <p className="px-4 py-6 text-sm text-[var(--color-text-secondary)]">{copy.noLocations}</p>
         ) : (
           <div className="p-4">
-            <div className="mb-4 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-slate-500">
+            <div className="mb-4 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-[var(--color-text-muted)]">
               <span className="inline-flex items-center gap-2">
-                <span className="h-3 w-3 rounded-sm border border-slate-400 bg-white" />
+                <span className="h-3 w-3 rounded-sm border border-[var(--color-border-hover)] bg-[var(--color-bg-elevated)]" />
                 {copy.assignable}
               </span>
               <span className="inline-flex items-center gap-2">
-                <span className="h-3 w-3 rounded-sm border border-slate-300 bg-slate-100" />
+                <span className="h-3 w-3 rounded-sm border border-[var(--color-border-strong)] bg-[var(--color-bg-muted)]" />
                 {copy.organizational}
               </span>
             </div>
@@ -286,7 +286,7 @@ export function LocationsClient({
             className="flex min-h-0 flex-1 flex-col overflow-hidden"
           >
             <DialogBody className="grid gap-4">
-              <label className="grid gap-2 text-sm font-medium text-slate-700">
+              <label className="grid gap-2 text-sm font-medium text-[var(--color-text-secondary)]">
                 <LabelWithError htmlFor="location-name" error={errors.name}>
                   {copy.name}
                 </LabelWithError>
@@ -295,12 +295,12 @@ export function LocationsClient({
                   name="name"
                   defaultValue={editingLocation?.name ?? ""}
                   className={getFieldInputClassName(
-                    "min-h-10 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-950 outline-none",
+                    "min-h-10 rounded-md border border-[var(--color-border-strong)] bg-[var(--color-bg-elevated)] px-3 py-1.5 text-sm text-[var(--color-text-primary)] outline-none",
                     Boolean(errors.name)
                   )}
                 />
               </label>
-              <div className="grid gap-2 text-sm font-medium text-slate-700">
+              <div className="grid gap-2 text-sm font-medium text-[var(--color-text-secondary)]">
                 <span>{copy.parentLocation}</span>
                 <input
                   name="parentId"
@@ -331,7 +331,7 @@ export function LocationsClient({
                 />
               </div>
               <fieldset className="grid gap-2">
-                <legend className="text-sm font-medium text-slate-700">
+                <legend className="text-sm font-medium text-[var(--color-text-secondary)]">
                   {copy.type}
                 </legend>
                 <div className="grid grid-cols-2 gap-2">
@@ -344,7 +344,7 @@ export function LocationsClient({
                       type="radio"
                       value="organizational"
                     />
-                    <span className="grid min-h-11 cursor-pointer place-items-center rounded-md border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-600 transition peer-checked:border-slate-500 peer-checked:bg-slate-100 peer-focus:ring-2 peer-focus:ring-slate-200 peer-disabled:cursor-not-allowed peer-disabled:bg-slate-50 peer-disabled:text-slate-400">
+                    <span className="grid min-h-11 cursor-pointer place-items-center rounded-md border border-[var(--color-border-strong)] bg-[var(--color-bg-elevated)] px-3 py-2 text-sm font-medium text-[var(--color-text-secondary)] transition peer-checked:border-[var(--color-border-hover)] peer-checked:bg-[var(--color-bg-muted)] peer-focus:ring-2 peer-focus:ring-[var(--color-ring)] peer-disabled:cursor-not-allowed peer-disabled:bg-[var(--color-bg-subtle)] peer-disabled:text-[var(--color-text-placeholder)]">
                       {copy.organizational}
                     </span>
                   </label>
@@ -357,14 +357,14 @@ export function LocationsClient({
                       type="radio"
                       value="assignable"
                     />
-                    <span className="grid min-h-10 cursor-pointer place-items-center rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 transition peer-checked:border-[var(--color-accent-border)] peer-checked:bg-[var(--color-accent-soft)] peer-focus:ring-2 peer-focus:ring-[var(--color-action-focus)] peer-disabled:cursor-not-allowed peer-disabled:bg-slate-50 peer-disabled:text-slate-400">
+                    <span className="grid min-h-10 cursor-pointer place-items-center rounded-md border border-[var(--color-border-strong)] bg-[var(--color-bg-elevated)] px-3 py-1.5 text-sm font-medium text-[var(--color-text-secondary)] transition peer-checked:border-[var(--color-accent-border)] peer-checked:bg-[var(--color-accent-soft)] peer-focus:ring-2 peer-focus:ring-[var(--color-action-focus)] peer-disabled:cursor-not-allowed peer-disabled:bg-[var(--color-bg-subtle)] peer-disabled:text-[var(--color-text-placeholder)]">
                       {copy.assignable}
                     </span>
                   </label>
                 </div>
               </fieldset>
               {!isCreateMode ? (
-                <label className="inline-flex items-center gap-2 text-sm text-slate-800">
+                <label className="inline-flex items-center gap-2 text-sm text-[var(--color-text-primary)]">
                   <input
                     type="checkbox"
                     name="isArchived"
@@ -377,7 +377,7 @@ export function LocationsClient({
             </DialogBody>
             <DialogFooter className="items-end justify-between">
               <button
-                className="min-h-10 rounded-md border border-slate-300 px-3 text-sm font-medium text-slate-700 transition hover:border-slate-400 hover:bg-slate-50"
+                className="min-h-10 rounded-md border border-[var(--color-border-strong)] px-3 text-sm font-medium text-[var(--color-text-secondary)] transition hover:border-[var(--color-border-hover)] hover:bg-[var(--color-bg-subtle)]"
                 type="button"
                 onClick={closeForm}
               >
@@ -385,7 +385,7 @@ export function LocationsClient({
               </button>
               <div className="flex items-center gap-3">
                 <button
-                  className="min-h-10 rounded-md border border-slate-300 px-3 text-sm font-medium text-slate-700 transition hover:border-slate-400 hover:bg-slate-50"
+                  className="min-h-10 rounded-md border border-[var(--color-border-strong)] px-3 text-sm font-medium text-[var(--color-text-secondary)] transition hover:border-[var(--color-border-hover)] hover:bg-[var(--color-bg-subtle)]"
                   type="button"
                   onClick={closeForm}
                 >
@@ -472,8 +472,8 @@ function LocationNode({
   const isExpanded = expandedLocationIds.has(location.id);
   const toggleLabel = isExpanded ? copy.collapseLocation : copy.expandLocation;
   const rowClassName = location.isAssignable
-    ? "border-slate-400 bg-white text-slate-950"
-    : "border-slate-300 bg-slate-50 text-slate-600";
+    ? "border-[var(--color-border-hover)] bg-[var(--color-bg-elevated)] text-[var(--color-text-primary)]"
+    : "border-[var(--color-border-strong)] bg-[var(--color-bg-subtle)] text-[var(--color-text-secondary)]";
 
   return (
     <li className="grid gap-1">
@@ -484,7 +484,7 @@ function LocationNode({
         {hasChildren ? (
           <button
             aria-expanded={isExpanded}
-            className="grid h-7 w-7 shrink-0 place-items-center rounded text-slate-500 transition hover:bg-white/70 hover:text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2"
+            className="grid h-7 w-7 shrink-0 place-items-center rounded text-[var(--color-text-muted)] transition hover:bg-[var(--color-bg-elevated)]/70 hover:text-[var(--color-text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-ring-strong)] focus:ring-offset-2"
             title={`${toggleLabel} ${location.name}`}
             type="button"
             onClick={() => onToggleExpanded(location.id)}
@@ -505,14 +505,14 @@ function LocationNode({
         <div className="min-w-0">
           <p className="truncate text-sm font-medium">{location.name}</p>
           {location.isArchived ? (
-            <p className="text-xs text-slate-500">
+            <p className="text-xs text-[var(--color-text-muted)]">
               {copy.archived}: {copy.yes}
             </p>
           ) : null}
         </div>
         <div className="flex shrink-0 items-center gap-2">
           <button
-            className="min-h-9 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:border-slate-400 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400"
+            className="min-h-9 rounded-md border border-[var(--color-border-strong)] bg-[var(--color-bg-elevated)] px-3 py-1.5 text-sm font-medium text-[var(--color-text-secondary)] transition hover:border-[var(--color-border-hover)] hover:bg-[var(--color-bg-subtle)] focus:outline-none focus:ring-2 focus:ring-[var(--color-ring-strong)] focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-[var(--color-bg-subtle)] disabled:text-[var(--color-text-placeholder)]"
             type="button"
             disabled={!isDatabaseAvailable || !canWriteLocations}
             onClick={() => onAddChild(location.id)}
@@ -520,7 +520,7 @@ function LocationNode({
             {copy.addChild}
           </button>
           <button
-            className="min-h-9 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:border-slate-400 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400"
+            className="min-h-9 rounded-md border border-[var(--color-border-strong)] bg-[var(--color-bg-elevated)] px-3 py-1.5 text-sm font-medium text-[var(--color-text-secondary)] transition hover:border-[var(--color-border-hover)] hover:bg-[var(--color-bg-subtle)] focus:outline-none focus:ring-2 focus:ring-[var(--color-ring-strong)] focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-[var(--color-bg-subtle)] disabled:text-[var(--color-text-placeholder)]"
             aria-label={copy.edit}
             type="button"
             disabled={!isDatabaseAvailable || !canWriteLocations}
@@ -543,7 +543,7 @@ function LocationNode({
             </svg>
           </button>
           <button
-            className="min-h-9 rounded-md border border-[var(--color-error-border)] bg-white px-3 py-1.5 text-sm font-medium text-[var(--color-error)] transition hover:bg-[var(--color-error-soft)] focus:outline-none focus:ring-2 focus:ring-[var(--color-error-border)] focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400"
+            className="min-h-9 rounded-md border border-[var(--color-error-border)] bg-[var(--color-bg-elevated)] px-3 py-1.5 text-sm font-medium text-[var(--color-error)] transition hover:bg-[var(--color-error-soft)] focus:outline-none focus:ring-2 focus:ring-[var(--color-error-border)] focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-[var(--color-bg-subtle)] disabled:text-[var(--color-text-placeholder)]"
             aria-label={copy.delete}
             type="button"
             disabled={!isDatabaseAvailable || !canWriteLocations}

@@ -168,9 +168,9 @@ export function DigiKeyIntegrationSettingsClient({
   const disabled = !isDatabaseAvailable || !canManageIntegrations;
 
   return (
-    <section className="max-w-3xl rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-      <h2 className="text-lg font-semibold text-slate-950">{copy.sectionTitle}</h2>
-      <p className="mt-1 text-sm leading-6 text-slate-600">{copy.sectionBody}</p>
+    <section className="max-w-3xl rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-elevated)] p-5 shadow-sm">
+      <h2 className="text-lg font-semibold text-[var(--color-text-primary)]">{copy.sectionTitle}</h2>
+      <p className="mt-1 text-sm leading-6 text-[var(--color-text-secondary)]">{copy.sectionBody}</p>
 
       {!canManageIntegrations ? (
         <p className="mt-4 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900">
@@ -178,11 +178,11 @@ export function DigiKeyIntegrationSettingsClient({
         </p>
       ) : null}
 
-      <form className="mt-4 grid gap-3 rounded-md border border-slate-200 p-4" onSubmit={handleSaveActiveProvider}>
-        <h3 className="text-sm font-semibold text-slate-900">{copy.providerSectionTitle}</h3>
-        <p className="text-sm text-slate-600">{copy.providerSectionBody}</p>
+      <form className="mt-4 grid gap-3 rounded-md border border-[var(--color-border)] p-4" onSubmit={handleSaveActiveProvider}>
+        <h3 className="text-sm font-semibold text-[var(--color-text-primary)]">{copy.providerSectionTitle}</h3>
+        <p className="text-sm text-[var(--color-text-secondary)]">{copy.providerSectionBody}</p>
         <fieldset className="grid gap-2" disabled={disabled || activeProviderMutation.isPending}>
-          <label className="flex items-center gap-2 text-sm text-slate-700">
+          <label className="flex items-center gap-2 text-sm text-[var(--color-text-secondary)]">
             <input
               type="radio"
               name="active-provider"
@@ -192,7 +192,7 @@ export function DigiKeyIntegrationSettingsClient({
             />
             {copy.digikey}
           </label>
-          <label className="flex items-center gap-2 text-sm text-slate-700">
+          <label className="flex items-center gap-2 text-sm text-[var(--color-text-secondary)]">
             <input
               type="radio"
               name="active-provider"
@@ -214,24 +214,24 @@ export function DigiKeyIntegrationSettingsClient({
         </div>
       </form>
 
-      <form className="mt-4 grid gap-3 rounded-md border border-slate-200 p-4" onSubmit={handleSaveDigiKey}>
-        <h3 className="text-sm font-semibold text-slate-900">{copy.digikey}</h3>
-        <label className="grid gap-1 text-sm font-medium text-slate-700" htmlFor="digikey-client-id">
+      <form className="mt-4 grid gap-3 rounded-md border border-[var(--color-border)] p-4" onSubmit={handleSaveDigiKey}>
+        <h3 className="text-sm font-semibold text-[var(--color-text-primary)]">{copy.digikey}</h3>
+        <label className="grid gap-1 text-sm font-medium text-[var(--color-text-secondary)]" htmlFor="digikey-client-id">
           {copy.clientId}
           <input
             id="digikey-client-id"
-            className="min-h-10 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-950 outline-none transition placeholder:text-slate-400 hover:border-slate-400 focus:border-slate-500 focus:ring-2 focus:ring-slate-200 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400"
+            className="min-h-10 rounded-md border border-[var(--color-border-strong)] bg-[var(--color-bg-elevated)] px-3 py-1.5 text-sm text-[var(--color-text-primary)] outline-none transition placeholder:text-[var(--color-text-placeholder)] hover:border-[var(--color-border-hover)] focus:border-[var(--color-border-hover)] focus:ring-2 focus:ring-[var(--color-ring)] disabled:cursor-not-allowed disabled:bg-[var(--color-bg-subtle)] disabled:text-[var(--color-text-placeholder)]"
             type="text"
             value={digiKeyClientId}
             disabled={disabled || digiKeyMutation.isPending}
             onChange={(event) => setDigiKeyClientId(event.currentTarget.value)}
           />
         </label>
-        <label className="grid gap-1 text-sm font-medium text-slate-700" htmlFor="digikey-client-secret">
+        <label className="grid gap-1 text-sm font-medium text-[var(--color-text-secondary)]" htmlFor="digikey-client-secret">
           {copy.clientSecret}
           <input
             id="digikey-client-secret"
-            className="min-h-10 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-950 outline-none transition placeholder:text-slate-400 hover:border-slate-400 focus:border-slate-500 focus:ring-2 focus:ring-slate-200 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400"
+            className="min-h-10 rounded-md border border-[var(--color-border-strong)] bg-[var(--color-bg-elevated)] px-3 py-1.5 text-sm text-[var(--color-text-primary)] outline-none transition placeholder:text-[var(--color-text-placeholder)] hover:border-[var(--color-border-hover)] focus:border-[var(--color-border-hover)] focus:ring-2 focus:ring-[var(--color-ring)] disabled:cursor-not-allowed disabled:bg-[var(--color-bg-subtle)] disabled:text-[var(--color-text-placeholder)]"
             type="password"
             value={digiKeyClientSecret}
             placeholder={
@@ -252,24 +252,24 @@ export function DigiKeyIntegrationSettingsClient({
         </button>
       </form>
 
-      <form className="mt-4 grid gap-3 rounded-md border border-slate-200 p-4" onSubmit={handleSaveTme}>
-        <h3 className="text-sm font-semibold text-slate-900">{copy.tme}</h3>
-        <label className="grid gap-1 text-sm font-medium text-slate-700" htmlFor="tme-client-id">
+      <form className="mt-4 grid gap-3 rounded-md border border-[var(--color-border)] p-4" onSubmit={handleSaveTme}>
+        <h3 className="text-sm font-semibold text-[var(--color-text-primary)]">{copy.tme}</h3>
+        <label className="grid gap-1 text-sm font-medium text-[var(--color-text-secondary)]" htmlFor="tme-client-id">
           {copy.tmeApiToken}
           <input
             id="tme-client-id"
-            className="min-h-10 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-950 outline-none transition placeholder:text-slate-400 hover:border-slate-400 focus:border-slate-500 focus:ring-2 focus:ring-slate-200 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400"
+            className="min-h-10 rounded-md border border-[var(--color-border-strong)] bg-[var(--color-bg-elevated)] px-3 py-1.5 text-sm text-[var(--color-text-primary)] outline-none transition placeholder:text-[var(--color-text-placeholder)] hover:border-[var(--color-border-hover)] focus:border-[var(--color-border-hover)] focus:ring-2 focus:ring-[var(--color-ring)] disabled:cursor-not-allowed disabled:bg-[var(--color-bg-subtle)] disabled:text-[var(--color-text-placeholder)]"
             type="text"
             value={tmeClientId}
             disabled={disabled || tmeMutation.isPending}
             onChange={(event) => setTmeClientId(event.currentTarget.value)}
           />
         </label>
-        <label className="grid gap-1 text-sm font-medium text-slate-700" htmlFor="tme-client-secret">
+        <label className="grid gap-1 text-sm font-medium text-[var(--color-text-secondary)]" htmlFor="tme-client-secret">
           {copy.tmeApplicationSecret}
           <input
             id="tme-client-secret"
-            className="min-h-10 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-950 outline-none transition placeholder:text-slate-400 hover:border-slate-400 focus:border-slate-500 focus:ring-2 focus:ring-slate-200 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400"
+            className="min-h-10 rounded-md border border-[var(--color-border-strong)] bg-[var(--color-bg-elevated)] px-3 py-1.5 text-sm text-[var(--color-text-primary)] outline-none transition placeholder:text-[var(--color-text-placeholder)] hover:border-[var(--color-border-hover)] focus:border-[var(--color-border-hover)] focus:ring-2 focus:ring-[var(--color-ring)] disabled:cursor-not-allowed disabled:bg-[var(--color-bg-subtle)] disabled:text-[var(--color-text-placeholder)]"
             type="password"
             value={tmeClientSecret}
             placeholder={
@@ -290,7 +290,7 @@ export function DigiKeyIntegrationSettingsClient({
         </button>
       </form>
 
-      {formMessage ? <p className="mt-4 text-sm text-slate-600">{formMessage}</p> : null}
+      {formMessage ? <p className="mt-4 text-sm text-[var(--color-text-secondary)]">{formMessage}</p> : null}
     </section>
   );
 }

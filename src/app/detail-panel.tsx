@@ -85,7 +85,7 @@ export function DetailPanel({
 }: DetailPanelProps) {
   return (
     <aside
-      className="relative flex min-h-0 flex-col overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm"
+      className="relative flex min-h-0 flex-col overflow-hidden rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-elevated)] shadow-sm"
       style={{ width }}
     >
       <div
@@ -94,18 +94,18 @@ export function DetailPanel({
         role="separator"
         onMouseDown={onStartResize}
       >
-        <div className="h-16 w-1 rounded-full bg-slate-300" />
+        <div className="h-16 w-1 rounded-full bg-[var(--color-border-strong)]" />
       </div>
-      <div className="flex items-start justify-between border-b border-slate-200 px-4 py-3">
+      <div className="flex items-start justify-between border-b border-[var(--color-border)] px-4 py-3">
         <div className="min-w-0">
-          <div className="text-sm font-semibold text-slate-950">{title}</div>
+          <div className="text-sm font-semibold text-[var(--color-text-primary)]">{title}</div>
           {subtitle ? (
-            <div className="mt-1 text-sm text-slate-600">{subtitle}</div>
+            <div className="mt-1 text-sm text-[var(--color-text-secondary)]">{subtitle}</div>
           ) : null}
         </div>
         <button
           aria-label={closeLabel}
-          className="ml-3 min-h-8 rounded-md border border-slate-300 bg-white px-2.5 py-1 text-sm font-medium text-slate-700 transition hover:border-slate-400 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2"
+          className="ml-3 min-h-8 rounded-md border border-[var(--color-border-strong)] bg-[var(--color-bg-elevated)] px-2.5 py-1 text-sm font-medium text-[var(--color-text-secondary)] transition hover:border-[var(--color-border-hover)] hover:bg-[var(--color-bg-subtle)] focus:outline-none focus:ring-2 focus:ring-[var(--color-ring-strong)] focus:ring-offset-2"
           type="button"
           onClick={onClose}
         >

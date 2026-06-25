@@ -246,7 +246,7 @@ export function PartPickerListModal({
       onCloseClick={() => onClose()}
     >
       <DialogBody className="flex min-h-0 flex-1 flex-col overflow-hidden p-0">
-        <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-slate-200 bg-white">
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-elevated)]">
           <ListPageToolbar
             columnGroups={[]}
             clearFiltersLabel={copy.clearFilters}
@@ -292,16 +292,16 @@ export function PartPickerListModal({
             loadingMoreLabel={copy.loadingMoreParts}
             emptyState={
               <div className="px-4 py-10">
-                <p className="text-base font-medium text-slate-950">
+                <p className="text-base font-medium text-[var(--color-text-primary)]">
                   {hasActiveFilters ? copy.noMatchingPartsTitle : copy.emptyTitle}
                 </p>
-                <p className="mt-2 max-w-xl text-sm leading-6 text-slate-500">
+                <p className="mt-2 max-w-xl text-sm leading-6 text-[var(--color-text-muted)]">
                   {hasActiveFilters ? copy.noMatchingPartsBody : copy.emptyBody}
                 </p>
               </div>
             }
             errorState={
-              <p className="p-6 text-sm text-slate-500">
+              <p className="p-6 text-sm text-[var(--color-text-muted)]">
                 {copy.databaseUnavailable}
               </p>
             }
@@ -311,18 +311,18 @@ export function PartPickerListModal({
         </div>
       </DialogBody>
       <DialogFooter>
-        <span className="mr-auto text-sm text-slate-600">
+        <span className="mr-auto text-sm text-[var(--color-text-secondary)]">
           {copy.partsSelected.replace("{count}", String(selectedCount))}
         </span>
         <button
-          className="min-h-9 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:border-slate-400 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2"
+          className="min-h-9 rounded-md border border-[var(--color-border-strong)] bg-[var(--color-bg-elevated)] px-3 py-1.5 text-sm font-medium text-[var(--color-text-secondary)] transition hover:border-[var(--color-border-hover)] hover:bg-[var(--color-bg-subtle)] focus:outline-none focus:ring-2 focus:ring-[var(--color-ring-strong)] focus:ring-offset-2"
           type="button"
           onClick={onClose}
         >
           {copy.cancel}
         </button>
         <button
-          className="min-h-9 rounded-md border border-[var(--color-action-primary)] bg-[var(--color-action-primary)] px-3 py-1.5 text-sm font-semibold text-white transition hover:border-[var(--color-action-primary-hover)] hover:bg-[var(--color-action-primary-hover)] focus:outline-none focus:ring-2 focus:ring-[var(--color-action-focus)] focus:ring-offset-2 disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-100 disabled:text-slate-400"
+          className="min-h-9 rounded-md border border-[var(--color-action-primary)] bg-[var(--color-action-primary)] px-3 py-1.5 text-sm font-semibold text-white transition hover:border-[var(--color-action-primary-hover)] hover:bg-[var(--color-action-primary-hover)] focus:outline-none focus:ring-2 focus:ring-[var(--color-action-focus)] focus:ring-offset-2 disabled:cursor-not-allowed disabled:border-[var(--color-border)] disabled:bg-[var(--color-bg-muted)] disabled:text-[var(--color-text-placeholder)]"
           disabled={selectedCount === 0}
           type="button"
           onClick={() => onConfirm(selectedParts)}

@@ -125,6 +125,10 @@ Once deletion is confirmed, the workspace enters a **"Deletion in progress"** st
 
 **There is no undo.** If you are unsure, restore the workspace first and leave it archived until you are certain.
 
+### Switching Between Light and Dark Theme
+
+OSO supports both a **Light** and a **Dark** color theme. The toggle is located at the bottom of the sidebar inside any workspace. Your preference is saved in the browser and restored automatically on your next visit.
+
 ## 2. Manage Organizations
 
 Use **Organizations** to manage the manufacturers, suppliers, and other external entities you work with. Each organization can hold one or more roles:

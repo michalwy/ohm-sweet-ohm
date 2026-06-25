@@ -1330,7 +1330,7 @@ export function PartsListClient({
       <div className="flex min-h-0 flex-1 gap-4">
         <section
           aria-labelledby="parts-heading"
-          className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm"
+          className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-elevated)] shadow-sm"
         >
         <h2 id="parts-heading" className="sr-only">
           {copy.title}
@@ -1390,23 +1390,23 @@ export function PartsListClient({
           loadingMoreLabel={copy.loadingMoreParts}
           emptyState={
             <div className="px-4 py-10">
-              <p className="text-base font-medium text-slate-950">
+              <p className="text-base font-medium text-[var(--color-text-primary)]">
                 {hasActiveFilters ? copy.noMatchingPartsTitle : copy.emptyTitle}
               </p>
-              <p className="mt-2 max-w-xl text-sm leading-6 text-slate-500">
+              <p className="mt-2 max-w-xl text-sm leading-6 text-[var(--color-text-muted)]">
                 {hasActiveFilters ? copy.noMatchingPartsBody : copy.emptyBody}
               </p>
             </div>
           }
           errorState={
-            <p className="p-6 text-sm text-slate-500">
+            <p className="p-6 text-sm text-[var(--color-text-muted)]">
               {copy.databaseUnavailable}
             </p>
           }
           testId="parts-list-viewport"
           onRowClick={openPartDetails}
           getRowHighlightClass={(part) =>
-            part.id === selectedPartId ? "bg-slate-100" : ""
+            part.id === selectedPartId ? "bg-[var(--color-bg-muted)]" : ""
           }
           setColumnOrder={setColumnOrder}
         />
@@ -1433,7 +1433,7 @@ export function PartsListClient({
                 <div className="flex flex-wrap gap-2">
                   {canWriteInventory ? (
                     <button
-                      className="min-h-8 rounded-md border border-slate-300 bg-white px-2.5 py-1 text-sm font-medium text-slate-700 transition hover:border-slate-400 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400"
+                      className="min-h-8 rounded-md border border-[var(--color-border-strong)] bg-[var(--color-bg-elevated)] px-2.5 py-1 text-sm font-medium text-[var(--color-text-secondary)] transition hover:border-[var(--color-border-hover)] hover:bg-[var(--color-bg-subtle)] focus:outline-none focus:ring-2 focus:ring-[var(--color-ring-strong)] focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-[var(--color-bg-subtle)] disabled:text-[var(--color-text-placeholder)]"
                       disabled={!isDatabaseAvailable}
                       type="button"
                       onClick={() => setPartForStockDialog(selectedPart)}
@@ -1443,7 +1443,7 @@ export function PartsListClient({
                   ) : null}
                   {canWritePurchaseOrders ? (
                     <button
-                      className="min-h-8 rounded-md border border-slate-300 bg-white px-2.5 py-1 text-sm font-medium text-slate-700 transition hover:border-slate-400 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400"
+                      className="min-h-8 rounded-md border border-[var(--color-border-strong)] bg-[var(--color-bg-elevated)] px-2.5 py-1 text-sm font-medium text-[var(--color-text-secondary)] transition hover:border-[var(--color-border-hover)] hover:bg-[var(--color-bg-subtle)] focus:outline-none focus:ring-2 focus:ring-[var(--color-ring-strong)] focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-[var(--color-bg-subtle)] disabled:text-[var(--color-text-placeholder)]"
                       disabled={!isDatabaseAvailable}
                       type="button"
                       onClick={() => setPartForPODialog(selectedPart)}
@@ -1453,7 +1453,7 @@ export function PartsListClient({
                   ) : null}
                   {canWriteShoppingLists ? (
                     <button
-                      className="min-h-8 rounded-md border border-slate-300 bg-white px-2.5 py-1 text-sm font-medium text-slate-700 transition hover:border-slate-400 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400"
+                      className="min-h-8 rounded-md border border-[var(--color-border-strong)] bg-[var(--color-bg-elevated)] px-2.5 py-1 text-sm font-medium text-[var(--color-text-secondary)] transition hover:border-[var(--color-border-hover)] hover:bg-[var(--color-bg-subtle)] focus:outline-none focus:ring-2 focus:ring-[var(--color-ring-strong)] focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-[var(--color-bg-subtle)] disabled:text-[var(--color-text-placeholder)]"
                       disabled={!isDatabaseAvailable}
                       type="button"
                       onClick={() => setPartForSLDialog(selectedPart)}
@@ -1464,17 +1464,17 @@ export function PartsListClient({
                 </div>
               ) : null}
               <section className="grid gap-2">
-                <h3 className="text-sm font-semibold text-slate-900">
+                <h3 className="text-sm font-semibold text-[var(--color-text-primary)]">
                   {copy.attributes}
                 </h3>
                 {selectedPart.attributeValues.length === 0 ? (
-                  <p className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-600">
+                  <p className="rounded-md border border-[var(--color-border)] bg-[var(--color-bg-subtle)] px-3 py-2 text-sm text-[var(--color-text-secondary)]">
                     {copy.noAttributes}
                   </p>
                 ) : (
-                  <div className="overflow-hidden rounded-md border border-slate-200">
+                  <div className="overflow-hidden rounded-md border border-[var(--color-border)]">
                     <table className="w-full table-fixed text-left text-sm">
-                      <thead className="bg-slate-50 text-slate-600">
+                      <thead className="bg-[var(--color-bg-subtle)] text-[var(--color-text-secondary)]">
                         <tr>
                           <th className="px-3 py-2 font-semibold">Attribute</th>
                           <th className="px-3 py-2 font-semibold">Value</th>
@@ -1491,12 +1491,12 @@ export function PartsListClient({
                           return (
                             <tr
                               key={attributeValue.attributeId}
-                              className="border-t border-slate-100"
+                              className="border-t border-[var(--color-border)]"
                             >
-                              <td className="px-3 py-2 text-slate-700">
+                              <td className="px-3 py-2 text-[var(--color-text-secondary)]">
                                 {attributeName}
                               </td>
-                              <td className="px-3 py-2 text-slate-900">
+                              <td className="px-3 py-2 text-[var(--color-text-primary)]">
                                 {attributeValue.displayValue}
                               </td>
                             </tr>
@@ -1509,27 +1509,27 @@ export function PartsListClient({
               </section>
               {canReadInventory ? (
                 <section className="grid gap-2">
-                  <h3 className="text-sm font-semibold text-slate-900">
+                  <h3 className="text-sm font-semibold text-[var(--color-text-primary)]">
                     {copy.locationsAndStock}
                   </h3>
                   {selectedPartBalancesQuery.isLoading ||
                   detailsPanelLocationsQuery.isLoading ? (
-                    <p className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-600">
+                    <p className="rounded-md border border-[var(--color-border)] bg-[var(--color-bg-subtle)] px-3 py-2 text-sm text-[var(--color-text-secondary)]">
                       {copy.loadingParts}
                     </p>
                   ) : selectedPartBalancesQuery.isError ||
                     detailsPanelLocationsQuery.isError ? (
-                    <p className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-600">
+                    <p className="rounded-md border border-[var(--color-border)] bg-[var(--color-bg-subtle)] px-3 py-2 text-sm text-[var(--color-text-secondary)]">
                       {copy.databaseUnavailable}
                     </p>
                   ) : selectedPartLocationRows.length === 0 ? (
-                    <p className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-600">
+                    <p className="rounded-md border border-[var(--color-border)] bg-[var(--color-bg-subtle)] px-3 py-2 text-sm text-[var(--color-text-secondary)]">
                       {copy.noLocations}
                     </p>
                   ) : (
-                    <div className="overflow-hidden rounded-md border border-slate-200">
+                    <div className="overflow-hidden rounded-md border border-[var(--color-border)]">
                       <table className="w-full table-fixed text-left text-sm">
-                        <thead className="bg-slate-50 text-slate-600">
+                        <thead className="bg-[var(--color-bg-subtle)] text-[var(--color-text-secondary)]">
                           <tr>
                             <th className="px-3 py-2 font-semibold">Location</th>
                             <th className="px-3 py-2 font-semibold">Stock</th>
@@ -1539,12 +1539,12 @@ export function PartsListClient({
                           {selectedPartLocationRows.map((row) => (
                             <tr
                               key={row.locationId}
-                              className="border-t border-slate-100"
+                              className="border-t border-[var(--color-border)]"
                             >
-                              <td className="px-3 py-2 text-slate-700">
+                              <td className="px-3 py-2 text-[var(--color-text-secondary)]">
                                 {row.locationName}
                               </td>
-                              <td className="px-3 py-2 font-semibold text-slate-950">
+                              <td className="px-3 py-2 font-semibold text-[var(--color-text-primary)]">
                                 {row.quantity}
                               </td>
                             </tr>
@@ -1557,11 +1557,11 @@ export function PartsListClient({
               ) : null}
               {canReadInventory ? (
                 <section className="grid gap-2">
-                  <h3 className="text-sm font-semibold text-slate-900">
+                  <h3 className="text-sm font-semibold text-[var(--color-text-primary)]">
                     {copy.movementHistory}
                   </h3>
                   <button
-                    className="min-h-8 rounded-md border border-slate-300 bg-white px-2.5 py-1 text-sm font-medium text-slate-700 transition hover:border-slate-400 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400"
+                    className="min-h-8 rounded-md border border-[var(--color-border-strong)] bg-[var(--color-bg-elevated)] px-2.5 py-1 text-sm font-medium text-[var(--color-text-secondary)] transition hover:border-[var(--color-border-hover)] hover:bg-[var(--color-bg-subtle)] focus:outline-none focus:ring-2 focus:ring-[var(--color-ring-strong)] focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-[var(--color-bg-subtle)] disabled:text-[var(--color-text-placeholder)]"
                     disabled={!isDatabaseAvailable}
                     type="button"
                     onClick={() => setShowHistoryDialog(true)}
@@ -1575,12 +1575,12 @@ export function PartsListClient({
                !partPurchaseOrderHistoryQuery.isError &&
                (partPurchaseOrderHistoryQuery.data ?? []).length > 0 ? (
                 <section className="grid gap-2">
-                  <h3 className="text-sm font-semibold text-slate-900">
+                  <h3 className="text-sm font-semibold text-[var(--color-text-primary)]">
                     {copy.poHistory}
                   </h3>
-                  <div className="max-h-64 overflow-y-auto rounded-md border border-slate-200">
+                  <div className="max-h-64 overflow-y-auto rounded-md border border-[var(--color-border)]">
                     <table className="w-full text-left text-sm">
-                      <thead className="sticky top-0 bg-slate-50 text-slate-600">
+                      <thead className="sticky top-0 bg-[var(--color-bg-subtle)] text-[var(--color-text-secondary)]">
                         <tr>
                           <th className="px-3 py-2 font-semibold">{copy.poHistoryColOrder}</th>
                           <th className="px-3 py-2 font-semibold">{copy.poHistoryColSupplier}</th>
@@ -1593,11 +1593,11 @@ export function PartsListClient({
                       </thead>
                       <tbody>
                         {(partPurchaseOrderHistoryQuery.data ?? []).map((entry: PartPurchaseOrderHistoryItem) => (
-                          <tr key={`${entry.orderId}`} className="border-t border-slate-100 first:border-t-0">
-                            <td className="px-3 py-2 align-middle font-mono text-xs text-slate-700">
+                          <tr key={`${entry.orderId}`} className="border-t border-[var(--color-border)] first:border-t-0">
+                            <td className="px-3 py-2 align-middle font-mono text-xs text-[var(--color-text-secondary)]">
                               {entry.orderNumber ?? entry.orderId.slice(0, 8)}
                             </td>
-                            <td className="px-3 py-2 align-middle text-slate-700">
+                            <td className="px-3 py-2 align-middle text-[var(--color-text-secondary)]">
                               {entry.supplierName}
                             </td>
                             <td className="px-3 py-2 align-middle">
@@ -1607,37 +1607,37 @@ export function PartsListClient({
                                   ? "bg-green-100 text-green-800"
                                   : entry.status === "ORDERED"
                                     ? "bg-amber-100 text-amber-800"
-                                    : "bg-slate-100 text-slate-700"
+                                    : "bg-[var(--color-bg-muted)] text-[var(--color-text-secondary)]"
                               ].join(" ")}>
                                 {entry.status}
                               </span>
                             </td>
-                            <td className="whitespace-nowrap px-3 py-2 align-middle text-xs text-slate-400">
+                            <td className="whitespace-nowrap px-3 py-2 align-middle text-xs text-[var(--color-text-placeholder)]">
                               {entry.orderedAt
                                 ? new Date(entry.orderedAt).toLocaleDateString()
                                 : "—"}
                             </td>
-                            <td className="px-3 py-2 align-middle text-right tabular-nums text-slate-950">
+                            <td className="px-3 py-2 align-middle text-right tabular-nums text-[var(--color-text-primary)]">
                               {entry.quantity}
                             </td>
-                            <td className="px-3 py-2 align-middle text-right tabular-nums text-slate-700">
+                            <td className="px-3 py-2 align-middle text-right tabular-nums text-[var(--color-text-secondary)]">
                               {entry.unitPriceNetPrimary != null ? (
                                 <>
                                   <span>{entry.unitPriceNetPrimary} {primaryCurrency}</span>
                                   {entry.currency && entry.currency !== primaryCurrency && entry.unitPriceNet != null ? (
-                                    <p className="text-xs text-slate-400">{entry.unitPriceNet} {entry.currency}</p>
+                                    <p className="text-xs text-[var(--color-text-placeholder)]">{entry.unitPriceNet} {entry.currency}</p>
                                   ) : null}
                                 </>
                               ) : entry.unitPriceNet != null ? (
                                 <span>{entry.unitPriceNet}{entry.currency ? ` ${entry.currency}` : ""}</span>
                               ) : "—"}
                             </td>
-                            <td className="px-3 py-2 align-middle text-right tabular-nums text-slate-700">
+                            <td className="px-3 py-2 align-middle text-right tabular-nums text-[var(--color-text-secondary)]">
                               {entry.unitPriceGrossPrimary != null ? (
                                 <>
                                   <span>{entry.unitPriceGrossPrimary} {primaryCurrency}</span>
                                   {entry.currency && entry.currency !== primaryCurrency && entry.unitPriceGross != null ? (
-                                    <p className="text-xs text-slate-400">{entry.unitPriceGross} {entry.currency}</p>
+                                    <p className="text-xs text-[var(--color-text-placeholder)]">{entry.unitPriceGross} {entry.currency}</p>
                                   ) : null}
                                 </>
                               ) : entry.unitPriceGross != null ? (
@@ -1656,12 +1656,12 @@ export function PartsListClient({
                !partShoppingListMembershipQuery.isError &&
                (partShoppingListMembershipQuery.data ?? []).length > 0 ? (
                 <section className="grid gap-2">
-                  <h3 className="text-sm font-semibold text-slate-900">
+                  <h3 className="text-sm font-semibold text-[var(--color-text-primary)]">
                     {copy.shoppingLists}
                   </h3>
-                  <div className="max-h-64 overflow-y-auto rounded-md border border-slate-200">
+                  <div className="max-h-64 overflow-y-auto rounded-md border border-[var(--color-border)]">
                     <table className="w-full text-left text-sm">
-                      <thead className="sticky top-0 bg-slate-50 text-slate-600">
+                      <thead className="sticky top-0 bg-[var(--color-bg-subtle)] text-[var(--color-text-secondary)]">
                         <tr>
                           <th className="px-3 py-2 font-semibold">{copy.slMembershipColList}</th>
                           <th className="px-3 py-2 text-right font-semibold">{copy.slMembershipColQty}</th>
@@ -1670,7 +1670,7 @@ export function PartsListClient({
                       </thead>
                       <tbody>
                         {(partShoppingListMembershipQuery.data ?? []).map((entry: PartShoppingListMembershipItem) => (
-                          <tr key={entry.shoppingListId} className="border-t border-slate-100 first:border-t-0">
+                          <tr key={entry.shoppingListId} className="border-t border-[var(--color-border)] first:border-t-0">
                             <td className="px-3 py-2 align-middle">
                               <a
                                 href={`/w/${encodeURIComponent(workspaceSlug)}/shopping-lists?selectedListId=${entry.shoppingListId}`}
@@ -1679,10 +1679,10 @@ export function PartsListClient({
                                 {entry.shoppingListName}
                               </a>
                             </td>
-                            <td className="px-3 py-2 align-middle text-right tabular-nums text-slate-950">
+                            <td className="px-3 py-2 align-middle text-right tabular-nums text-[var(--color-text-primary)]">
                               {entry.quantity}
                             </td>
-                            <td className="px-3 py-2 align-middle text-slate-500">
+                            <td className="px-3 py-2 align-middle text-[var(--color-text-muted)]">
                               {entry.notes ?? "—"}
                             </td>
                           </tr>
@@ -1727,7 +1727,7 @@ export function PartsListClient({
               selectedPrimaryCategoryId={createPrimaryCategoryId}
               selectedSecondaryCategoryId={createSecondaryCategoryId}
             />
-            <div className="shrink-0 border-b border-slate-200 px-5 pt-4">
+            <div className="shrink-0 border-b border-[var(--color-border)] px-5 pt-4">
               <PartDialogTabs
                 activeTab={createActiveTab}
                 copy={copy}
@@ -1892,9 +1892,9 @@ export function PartsListClient({
             <DialogBody>
               <div className="grid gap-4">
                 <div className="grid grid-cols-2 gap-3">
-                  <label className="grid gap-2 text-sm font-medium text-slate-700">
+                  <label className="grid gap-2 text-sm font-medium text-[var(--color-text-secondary)]">
                     {copy.sourceManufacturerLabel}
-                    <div className="min-h-10 rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700">
+                    <div className="min-h-10 rounded-md border border-[var(--color-border)] bg-[var(--color-bg-subtle)] px-3 py-2 text-sm text-[var(--color-text-secondary)]">
                       {matchingState.sourceManufacturerName}
                     </div>
                   </label>
@@ -1921,9 +1921,9 @@ export function PartsListClient({
                   />
                 </div>
                 <div className="grid grid-cols-2 gap-3">
-                  <label className="grid gap-2 text-sm font-medium text-slate-700">
+                  <label className="grid gap-2 text-sm font-medium text-[var(--color-text-secondary)]">
                     {copy.sourceCategoryLabel}
-                    <div className="min-h-10 rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700">
+                    <div className="min-h-10 rounded-md border border-[var(--color-border)] bg-[var(--color-bg-subtle)] px-3 py-2 text-sm text-[var(--color-text-secondary)]">
                       {matchingState.sourceCategory?.trim() || copy.noCategory}
                     </div>
                   </label>
@@ -1941,9 +1941,9 @@ export function PartsListClient({
                     }}
                   />
                 </div>
-                <div className="overflow-hidden rounded-md border border-slate-200">
+                <div className="overflow-hidden rounded-md border border-[var(--color-border)]">
                   <table className="w-full table-fixed text-left text-sm">
-                    <thead className="bg-slate-50 text-slate-600">
+                    <thead className="bg-[var(--color-bg-subtle)] text-[var(--color-text-secondary)]">
                       <tr>
                         <th className="px-3 py-2 font-semibold">{copy.sourceAttributeLabel}</th>
                         <th className="px-3 py-2 font-semibold">{copy.sourceValueLabel}</th>
@@ -1964,12 +1964,12 @@ export function PartsListClient({
                         const canEditTargetValue = Boolean(selectedAttribute);
 
                         return (
-                          <tr key={`${row.sourceAttributeKey}-${rowIndex}`} className="border-t border-slate-100">
-                            <td className="px-3 py-2 text-slate-700">{row.sourceAttribute}</td>
-                            <td className="px-3 py-2 font-mono text-slate-950">{row.sourceValue}</td>
+                          <tr key={`${row.sourceAttributeKey}-${rowIndex}`} className="border-t border-[var(--color-border)]">
+                            <td className="px-3 py-2 text-[var(--color-text-secondary)]">{row.sourceAttribute}</td>
+                            <td className="px-3 py-2 font-mono text-[var(--color-text-primary)]">{row.sourceValue}</td>
                             <td className="px-3 py-2">
                               <select
-                                className="min-h-9 w-full rounded-md border border-slate-300 bg-white px-2 py-1 text-sm text-slate-950"
+                                className="min-h-9 w-full rounded-md border border-[var(--color-border-strong)] bg-[var(--color-bg-elevated)] px-2 py-1 text-sm text-[var(--color-text-primary)]"
                                 value={row.targetAttributeId}
                                 onChange={(event) =>
                                   handleMatchingTargetAttributeChange(
@@ -1990,7 +1990,7 @@ export function PartsListClient({
                               {canEditTargetValue && selectedAttribute ? (
                                 selectedAttribute.type === "BOOLEAN" ? (
                                   <select
-                                    className="min-h-9 w-full rounded-md border border-slate-300 bg-white px-2 py-1 text-sm text-slate-950"
+                                    className="min-h-9 w-full rounded-md border border-[var(--color-border-strong)] bg-[var(--color-bg-elevated)] px-2 py-1 text-sm text-[var(--color-text-primary)]"
                                     value={row.targetValue}
                                     onChange={(event) =>
                                       handleMatchingTargetValueChange(
@@ -2005,7 +2005,7 @@ export function PartsListClient({
                                   </select>
                                 ) : selectedAttribute.type === "CHOICE" ? (
                                   <select
-                                    className="min-h-9 w-full rounded-md border border-slate-300 bg-white px-2 py-1 text-sm text-slate-950"
+                                    className="min-h-9 w-full rounded-md border border-[var(--color-border-strong)] bg-[var(--color-bg-elevated)] px-2 py-1 text-sm text-[var(--color-text-primary)]"
                                     value={row.targetValue}
                                     onChange={(event) =>
                                       handleMatchingTargetValueChange(
@@ -2023,7 +2023,7 @@ export function PartsListClient({
                                   </select>
                                 ) : (
                                   <input
-                                    className="min-h-9 w-full rounded-md border border-slate-300 bg-white px-2 py-1 text-sm text-slate-950"
+                                    className="min-h-9 w-full rounded-md border border-[var(--color-border-strong)] bg-[var(--color-bg-elevated)] px-2 py-1 text-sm text-[var(--color-text-primary)]"
                                     type={selectedAttribute.type === "NUMBER" ? "number" : "text"}
                                     value={row.targetValue}
                                     onChange={(event) =>
@@ -2046,7 +2046,7 @@ export function PartsListClient({
             </DialogBody>
             <DialogFooter className="justify-between gap-3">
               <button
-                className="min-h-9 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700"
+                className="min-h-9 rounded-md border border-[var(--color-border-strong)] bg-[var(--color-bg-elevated)] px-3 py-1.5 text-sm font-medium text-[var(--color-text-secondary)]"
                 type="button"
                 onClick={() => setSkipMatchingPendingConfirmation(true)}
               >
@@ -2084,7 +2084,7 @@ export function PartsListClient({
                 selectedPrimaryCategoryId={editPrimaryCategoryId}
                 selectedSecondaryCategoryId={editSecondaryCategoryId}
               />
-              <div className="shrink-0 border-b border-slate-200 px-5 pt-4">
+              <div className="shrink-0 border-b border-[var(--color-border)] px-5 pt-4">
                 <PartDialogTabs
                   activeTab={editActiveTab}
                   copy={copy}
@@ -2208,7 +2208,7 @@ export function PartsListClient({
               </DialogBody>
               <DialogFooter className="items-center justify-between gap-3">
                 <button
-                  className="min-h-9 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:border-slate-400 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400"
+                  className="min-h-9 rounded-md border border-[var(--color-border-strong)] bg-[var(--color-bg-elevated)] px-3 py-1.5 text-sm font-medium text-[var(--color-text-secondary)] transition hover:border-[var(--color-border-hover)] hover:bg-[var(--color-bg-subtle)] focus:outline-none focus:ring-2 focus:ring-[var(--color-ring-strong)] focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-[var(--color-bg-subtle)] disabled:text-[var(--color-text-placeholder)]"
                   disabled={!isDatabaseAvailable || deletePartMutation.isPending}
                   type="button"
                   onClick={closeEditPartDialog}
@@ -2591,12 +2591,12 @@ function PartDialogTabs({
   onTabChange: (tab: PartDialogTab) => void;
 }) {
   return (
-    <div className="flex gap-2 border-b border-slate-200">
+    <div className="flex gap-2 border-b border-[var(--color-border)]">
       <button
         className={`min-h-10 border-b-2 px-3 text-sm font-medium ${
           activeTab === "details"
-            ? "border-[var(--color-accent)] text-slate-950"
-            : "border-transparent text-slate-500 hover:text-slate-800"
+            ? "border-[var(--color-accent)] text-[var(--color-text-primary)]"
+            : "border-transparent text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)]"
         }`}
         type="button"
         onClick={() => onTabChange("details")}
@@ -2607,8 +2607,8 @@ function PartDialogTabs({
         <button
           className={`min-h-10 border-b-2 px-3 text-sm font-medium ${
             activeTab === "attributes"
-              ? "border-[var(--color-accent)] text-slate-950"
-              : "border-transparent text-slate-500 hover:text-slate-800"
+              ? "border-[var(--color-accent)] text-[var(--color-text-primary)]"
+              : "border-transparent text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)]"
           }`}
           type="button"
           onClick={() => onTabChange("attributes")}
@@ -2895,7 +2895,7 @@ function PartDetailsFields({
       <div className="grid grid-cols-2 gap-3">
         <div
           ref={digiKeyAnchorRef}
-          className="relative grid gap-2 text-sm font-medium text-slate-700"
+          className="relative grid gap-2 text-sm font-medium text-[var(--color-text-secondary)]"
         >
           <LabelWithError htmlFor={catalogNumberInputId} error={errors.catalogNumber}>
             {copy.catalogNumber}
@@ -2914,7 +2914,7 @@ function PartDetailsFields({
             aria-expanded={isDigiKeyOpen}
             autoComplete="off"
             className={getFieldInputClassName(
-              "min-h-10 rounded-md border border-slate-300 bg-white px-3 py-1.5 font-mono text-sm text-slate-950 outline-none transition placeholder:text-slate-400 hover:border-slate-400 focus:border-slate-500 focus:ring-2 focus:ring-slate-200 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400",
+              "min-h-10 rounded-md border border-[var(--color-border-strong)] bg-[var(--color-bg-elevated)] px-3 py-1.5 font-mono text-sm text-[var(--color-text-primary)] outline-none transition placeholder:text-[var(--color-text-placeholder)] hover:border-[var(--color-border-hover)] focus:border-[var(--color-border-hover)] focus:ring-2 focus:ring-[var(--color-ring)] disabled:cursor-not-allowed disabled:bg-[var(--color-bg-subtle)] disabled:text-[var(--color-text-placeholder)]",
               Boolean(errors.catalogNumber)
             )}
             placeholder={copy.catalogNumberPlaceholder}
@@ -2945,16 +2945,16 @@ function PartDetailsFields({
                   ref={digiKeyPanelRef}
                   id={digiKeyListboxId}
                   aria-label={copy.supplierSuggestionLabel}
-                  className="fixed z-50 overflow-hidden rounded-md border border-slate-200 bg-white shadow-lg"
+                  className="fixed z-50 overflow-hidden rounded-md border border-[var(--color-border)] bg-[var(--color-bg-elevated)] shadow-lg"
                   style={digiKeyPanelStyle}
                   role="listbox"
                 >
                   {digiKeyResultsQuery.isLoading ? (
-                    <p className="px-3 py-3 text-sm font-normal text-slate-500">
+                    <p className="px-3 py-3 text-sm font-normal text-[var(--color-text-muted)]">
                       {copy.loadingParts}
                     </p>
                   ) : digiKeyResultsQuery.isError || hasDigiKeyError ? (
-                    <p className="px-3 py-3 text-sm font-normal text-slate-500">
+                    <p className="px-3 py-3 text-sm font-normal text-[var(--color-text-muted)]">
                       {copy.supplierSearchError}
                     </p>
                   ) : digiKeyResults.length > 0 ? (
@@ -2967,10 +2967,10 @@ function PartDetailsFields({
                           <button
                             id={`${catalogNumberInputId}-digikey-option-${index}`}
                             aria-selected={index === activeDigiKeyIndex}
-                            className={`w-full rounded-md px-3 py-2 text-left text-sm transition focus:outline-none focus:ring-2 focus:ring-slate-300 ${
+                            className={`w-full rounded-md px-3 py-2 text-left text-sm transition focus:outline-none focus:ring-2 focus:ring-[var(--color-ring-strong)] ${
                               index === activeDigiKeyIndex
-                                ? "bg-[var(--color-accent-soft)] font-semibold text-slate-950"
-                                : "text-slate-700 hover:bg-slate-50"
+                                ? "bg-[var(--color-accent-soft)] font-semibold text-[var(--color-text-primary)]"
+                                : "text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-subtle)]"
                             }`}
                             role="option"
                             type="button"
@@ -2978,27 +2978,27 @@ function PartDetailsFields({
                             onClick={() => selectDigiKeyResult(result)}
                           >
                             <span className="flex items-center justify-between gap-3">
-                              <span className="font-mono text-slate-950">
+                              <span className="font-mono text-[var(--color-text-primary)]">
                                 {result.catalogNumber}
                               </span>
-                              <span className="truncate text-xs font-medium uppercase tracking-wide text-slate-500">
+                              <span className="truncate text-xs font-medium uppercase tracking-wide text-[var(--color-text-muted)]">
                                 {result.manufacturerName}
                               </span>
                             </span>
-                            <span className="mt-1 block overflow-hidden text-ellipsis whitespace-nowrap text-xs font-normal leading-5 text-slate-600">
+                            <span className="mt-1 block overflow-hidden text-ellipsis whitespace-nowrap text-xs font-normal leading-5 text-[var(--color-text-secondary)]">
                               {result.description}
                             </span>
                           </button>
                         </li>
                       ))}
                       {digiKeyResultsQuery.isFetchingNextPage ? (
-                        <li className="px-3 py-2 text-xs text-slate-500">
+                        <li className="px-3 py-2 text-xs text-[var(--color-text-muted)]">
                           {copy.loadingMoreParts}
                         </li>
                       ) : null}
                     </ol>
                   ) : (
-                    <p className="px-3 py-3 text-sm font-normal text-slate-500">
+                    <p className="px-3 py-3 text-sm font-normal text-[var(--color-text-muted)]">
                       {copy.supplierNoMatchingParts}
                     </p>
                   )}
@@ -3022,12 +3022,12 @@ function PartDetailsFields({
         />
       </div>
       <label
-        className="grid gap-2 text-sm font-medium text-slate-700"
+        className="grid gap-2 text-sm font-medium text-[var(--color-text-secondary)]"
         htmlFor={descriptionInputId}
       >
         {copy.description}
         <textarea
-          className="min-h-20 resize-y rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-950 outline-none transition placeholder:text-slate-400 hover:border-slate-400 focus:border-slate-500 focus:ring-2 focus:ring-slate-200 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400"
+          className="min-h-20 resize-y rounded-md border border-[var(--color-border-strong)] bg-[var(--color-bg-elevated)] px-3 py-2 text-sm text-[var(--color-text-primary)] outline-none transition placeholder:text-[var(--color-text-placeholder)] hover:border-[var(--color-border-hover)] focus:border-[var(--color-border-hover)] focus:ring-2 focus:ring-[var(--color-ring)] disabled:cursor-not-allowed disabled:bg-[var(--color-bg-subtle)] disabled:text-[var(--color-text-placeholder)]"
           id={descriptionInputId}
           name="description"
           placeholder={copy.descriptionPlaceholder}
@@ -3037,7 +3037,7 @@ function PartDetailsFields({
         />
       </label>
       <div className="grid grid-cols-2 gap-3">
-        <label className="grid gap-2 text-sm font-medium text-slate-700">
+        <label className="grid gap-2 text-sm font-medium text-[var(--color-text-secondary)]">
           <LabelWithError
             error={errors.unitId}
             htmlFor={`${catalogNumberInputId}-unit`}
@@ -3050,7 +3050,7 @@ function PartDetailsFields({
             value={unitId}
             disabled={disabled}
             className={getFieldInputClassName(
-              "min-h-10 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-950 outline-none transition hover:border-slate-400 focus:border-slate-500 focus:ring-2 focus:ring-slate-200 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400",
+              "min-h-10 rounded-md border border-[var(--color-border-strong)] bg-[var(--color-bg-elevated)] px-3 py-1.5 text-sm text-[var(--color-text-primary)] outline-none transition hover:border-[var(--color-border-hover)] focus:border-[var(--color-border-hover)] focus:ring-2 focus:ring-[var(--color-ring)] disabled:cursor-not-allowed disabled:bg-[var(--color-bg-subtle)] disabled:text-[var(--color-text-placeholder)]",
               Boolean(errors.unitId)
             )}
             onChange={(event) => onUnitIdChange(event.target.value)}
@@ -3063,7 +3063,7 @@ function PartDetailsFields({
             ))}
           </select>
         </label>
-        <div className="grid gap-2 text-sm font-medium text-slate-700">
+        <div className="grid gap-2 text-sm font-medium text-[var(--color-text-secondary)]">
           <LabelWithError>{copy.defaultLocation}</LabelWithError>
           <LocationTreeSelect
             locations={dialogLocations}
@@ -3162,10 +3162,10 @@ function PartAttributeSections({
     <div className="grid gap-3">
       {sections.map((section) => (
         <section key={section.id}>
-          <h3 className="mb-2 text-sm font-semibold text-slate-700">
+          <h3 className="mb-2 text-sm font-semibold text-[var(--color-text-secondary)]">
             {section.title}
           </h3>
-          <div className="divide-y divide-slate-100 rounded-md border border-slate-200">
+          <div className="divide-y divide-[var(--color-border)] rounded-md border border-[var(--color-border)]">
             {section.attributes.map((effectiveAttribute) => (
               <PartAttributeField
                 key={effectiveAttribute.attribute.id}
@@ -3379,15 +3379,15 @@ function PartAttributeField({
   const attribute = effectiveAttribute.attribute;
   const descriptionId = `${attribute.id}-description`;
   const commonClassName = compact
-    ? "min-h-8 rounded-md border border-slate-300 bg-white px-2.5 py-1 text-sm text-slate-950 outline-none transition placeholder:text-slate-400 hover:border-slate-400 focus:border-slate-500 focus:ring-2 focus:ring-slate-200 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400"
-    : "min-h-10 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-950 outline-none transition placeholder:text-slate-400 hover:border-slate-400 focus:border-slate-500 focus:ring-2 focus:ring-slate-200 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400";
+    ? "min-h-8 rounded-md border border-[var(--color-border-strong)] bg-[var(--color-bg-elevated)] px-2.5 py-1 text-sm text-[var(--color-text-primary)] outline-none transition placeholder:text-[var(--color-text-placeholder)] hover:border-[var(--color-border-hover)] focus:border-[var(--color-border-hover)] focus:ring-2 focus:ring-[var(--color-ring)] disabled:cursor-not-allowed disabled:bg-[var(--color-bg-subtle)] disabled:text-[var(--color-text-placeholder)]"
+    : "min-h-10 rounded-md border border-[var(--color-border-strong)] bg-[var(--color-bg-elevated)] px-3 py-1.5 text-sm text-[var(--color-text-primary)] outline-none transition placeholder:text-[var(--color-text-placeholder)] hover:border-[var(--color-border-hover)] focus:border-[var(--color-border-hover)] focus:ring-2 focus:ring-[var(--color-ring)] disabled:cursor-not-allowed disabled:bg-[var(--color-bg-subtle)] disabled:text-[var(--color-text-placeholder)]";
 
   return (
     <label
       className={
         compact
-          ? "grid grid-cols-[minmax(10rem,16rem)_minmax(12rem,1fr)] items-center gap-3 px-3 py-2 text-sm font-medium text-slate-700"
-          : "grid gap-1.5 p-3 text-sm font-medium text-slate-700"
+          ? "grid grid-cols-[minmax(10rem,16rem)_minmax(12rem,1fr)] items-center gap-3 px-3 py-2 text-sm font-medium text-[var(--color-text-secondary)]"
+          : "grid gap-1.5 p-3 text-sm font-medium text-[var(--color-text-secondary)]"
       }
     >
       <span className="min-w-0">
@@ -3395,7 +3395,7 @@ function PartAttributeField({
         {compact && attribute.description ? (
           <span
             id={descriptionId}
-            className="mt-0.5 block truncate text-xs font-normal text-slate-500"
+            className="mt-0.5 block truncate text-xs font-normal text-[var(--color-text-muted)]"
           >
             {attribute.description}
           </span>
@@ -3447,7 +3447,7 @@ function PartAttributeField({
       {!compact && attribute.description ? (
         <span
           id={descriptionId}
-          className="text-xs font-normal text-slate-500"
+          className="text-xs font-normal text-[var(--color-text-muted)]"
         >
           {attribute.description}
         </span>
@@ -3457,4 +3457,4 @@ function PartAttributeField({
 }
 
 const primaryButtonClassName =
-  "min-h-9 rounded-md border border-[var(--color-action-primary)] bg-[var(--color-action-primary)] px-3 py-1.5 text-sm font-semibold text-white transition hover:border-[var(--color-action-primary-hover)] hover:bg-[var(--color-action-primary-hover)] focus:outline-none focus:ring-2 focus:ring-[var(--color-action-focus)] focus:ring-offset-2 disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-100 disabled:text-slate-400";
+  "min-h-9 rounded-md border border-[var(--color-action-primary)] bg-[var(--color-action-primary)] px-3 py-1.5 text-sm font-semibold text-white transition hover:border-[var(--color-action-primary-hover)] hover:bg-[var(--color-action-primary-hover)] focus:outline-none focus:ring-2 focus:ring-[var(--color-action-focus)] focus:ring-offset-2 disabled:cursor-not-allowed disabled:border-[var(--color-border)] disabled:bg-[var(--color-bg-muted)] disabled:text-[var(--color-text-placeholder)]";

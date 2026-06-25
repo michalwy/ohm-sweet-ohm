@@ -110,7 +110,7 @@ export function PartMovementHistoryDialog({
           enableSorting: true,
           sortingFn: "alphanumeric",
           cell: (info) => (
-            <span className="inline-block rounded bg-slate-100 px-1.5 py-0.5 font-mono text-xs font-medium text-slate-700">
+            <span className="inline-block rounded bg-[var(--color-bg-muted)] px-1.5 py-0.5 font-mono text-xs font-medium text-[var(--color-text-secondary)]">
               {info.getValue()}
             </span>
           )
@@ -122,7 +122,7 @@ export function PartMovementHistoryDialog({
           sortingFn: (rowA, rowB) =>
             Number(rowA.original.quantity) - Number(rowB.original.quantity),
           cell: (info) => (
-            <span className="font-semibold tabular-nums text-slate-950">
+            <span className="font-semibold tabular-nums text-[var(--color-text-primary)]">
               {info.getValue()}
             </span>
           )
@@ -136,10 +136,10 @@ export function PartMovementHistoryDialog({
             enableSorting: true,
             sortingFn: "alphanumeric",
             cell: (info) => (
-              <div className="text-slate-600">
+              <div className="text-[var(--color-text-secondary)]">
                 <span>{info.getValue() || null}</span>
                 {info.row.original.note ? (
-                  <p className="text-xs text-slate-400">{info.row.original.note}</p>
+                  <p className="text-xs text-[var(--color-text-placeholder)]">{info.row.original.note}</p>
                 ) : null}
               </div>
             )
@@ -153,7 +153,7 @@ export function PartMovementHistoryDialog({
             new Date(rowA.original.createdAt).getTime() -
             new Date(rowB.original.createdAt).getTime(),
           cell: (info) => (
-            <div className="whitespace-nowrap text-xs text-slate-400">
+            <div className="whitespace-nowrap text-xs text-[var(--color-text-placeholder)]">
               {new Date(info.getValue()).toLocaleDateString()}
               {info.row.original.authorName ? (
                 <p>{info.row.original.authorName}</p>
@@ -218,11 +218,11 @@ export function PartMovementHistoryDialog({
           />
           <div className={`flex-1 overflow-auto ${containerClassName}`}>
             {historyQuery.isLoading ? (
-              <p className="px-4 py-6 text-sm text-slate-500">{copy.loadingParts}</p>
+              <p className="px-4 py-6 text-sm text-[var(--color-text-muted)]">{copy.loadingParts}</p>
             ) : historyQuery.isError ? (
-              <p className="px-4 py-6 text-sm text-slate-500">{copy.databaseUnavailable}</p>
+              <p className="px-4 py-6 text-sm text-[var(--color-text-muted)]">{copy.databaseUnavailable}</p>
             ) : historyData.length === 0 ? (
-              <p className="px-4 py-6 text-sm text-slate-500">{copy.noHistory}</p>
+              <p className="px-4 py-6 text-sm text-[var(--color-text-muted)]">{copy.noHistory}</p>
             ) : (
               <table
                 className="table-fixed border-separate border-spacing-0 text-left text-sm"
@@ -233,7 +233,7 @@ export function PartMovementHistoryDialog({
                     <col key={column.id} style={{ width: column.getSize() }} />
                   ))}
                 </colgroup>
-                <thead className="sticky top-0 z-10 bg-slate-50">
+                <thead className="sticky top-0 z-10 bg-[var(--color-bg-subtle)]">
                   {table.getHeaderGroups().map((headerGroup) => (
                     <tr key={headerGroup.id}>
                       {headerGroup.headers.map((header) => (
@@ -254,9 +254,9 @@ export function PartMovementHistoryDialog({
                     </tr>
                   ))}
                 </thead>
-                <tbody className="bg-white">
+                <tbody className="bg-[var(--color-bg-elevated)]">
                   {table.getRowModel().rows.map((row) => (
-                    <tr key={row.id} className="border-b border-slate-100">
+                    <tr key={row.id} className="border-b border-[var(--color-border)]">
                       {row.getVisibleCells().map((cell) => {
                         const colDef = columnDefs.find((d) => d.id === cell.column.id);
                         const alignClass =
@@ -285,7 +285,7 @@ export function PartMovementHistoryDialog({
       </DialogBody>
       <DialogFooter className="justify-end">
         <button
-          className="min-h-9 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:border-slate-400 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2"
+          className="min-h-9 rounded-md border border-[var(--color-border-strong)] bg-[var(--color-bg-elevated)] px-3 py-1.5 text-sm font-medium text-[var(--color-text-secondary)] transition hover:border-[var(--color-border-hover)] hover:bg-[var(--color-bg-subtle)] focus:outline-none focus:ring-2 focus:ring-[var(--color-ring-strong)] focus:ring-offset-2"
           type="button"
           onClick={onClose}
         >

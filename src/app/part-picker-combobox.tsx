@@ -80,18 +80,18 @@ export function PartPickerCombobox({
       renderItem={(part, isActive) => (
         <div
           className={`flex flex-col rounded-md px-3 py-2 text-sm transition ${
-            isActive ? "bg-slate-100" : "hover:bg-slate-50"
+            isActive ? "bg-[var(--color-bg-muted)]" : "hover:bg-[var(--color-bg-subtle)]"
           }`}
         >
           <div className="flex items-center gap-2">
-            <span className="font-medium text-slate-900">{part.catalogNumber}</span>
-            <span className="text-slate-500">{part.manufacturerName}</span>
+            <span className="font-medium text-[var(--color-text-primary)]">{part.catalogNumber}</span>
+            <span className="text-[var(--color-text-muted)]">{part.manufacturerName}</span>
           </div>
           {part.description ? (
-            <p className="truncate text-xs text-slate-500">{part.description}</p>
+            <p className="truncate text-xs text-[var(--color-text-muted)]">{part.description}</p>
           ) : null}
           {part.primaryCategoryPath ? (
-            <p className="truncate text-xs text-slate-400">{part.primaryCategoryPath}</p>
+            <p className="truncate text-xs text-[var(--color-text-placeholder)]">{part.primaryCategoryPath}</p>
           ) : null}
         </div>
       )}

@@ -51,13 +51,13 @@ export function ArchivedWorkspacesSection({
     <div className="mt-8">
       <button
         aria-expanded={isExpanded}
-        className="flex w-full items-center gap-2 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-2 rounded"
+        className="flex w-full items-center gap-2 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-ring-strong)] focus-visible:ring-offset-2 rounded"
         type="button"
         onClick={toggle}
       >
         <svg
           aria-hidden="true"
-          className={`h-4 w-4 shrink-0 text-slate-500 transition-transform duration-150 ${isExpanded ? "rotate-90" : ""}`}
+          className={`h-4 w-4 shrink-0 text-[var(--color-text-muted)] transition-transform duration-150 ${isExpanded ? "rotate-90" : ""}`}
           fill="none"
           stroke="currentColor"
           strokeWidth={2}
@@ -65,33 +65,33 @@ export function ArchivedWorkspacesSection({
         >
           <path d="M9 5l7 7-7 7" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
-        <span className="text-base font-semibold text-slate-700">
+        <span className="text-base font-semibold text-[var(--color-text-secondary)]">
           {sectionLabel}
         </span>
         {mounted && (
-          <span className="inline-flex items-center justify-center rounded-full bg-slate-200 px-2 py-0.5 text-xs font-medium text-slate-600">
+          <span className="inline-flex items-center justify-center rounded-full bg-[var(--color-bg-strong)] px-2 py-0.5 text-xs font-medium text-[var(--color-text-secondary)]">
             {workspaces.length}
           </span>
         )}
       </button>
 
       {isExpanded && (
-        <div className="mt-3 overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
-          <ul className="divide-y divide-slate-200">
+        <div className="mt-3 overflow-hidden rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-elevated)] shadow-sm">
+          <ul className="divide-y divide-[var(--color-border)]">
             {workspaces.map((workspace) => (
               <li
                 className="flex items-center justify-between gap-3 px-4 py-4"
                 key={workspace.id}
               >
                 <div className="min-w-0">
-                  <p className="truncate text-base font-semibold text-slate-950">
+                  <p className="truncate text-base font-semibold text-[var(--color-text-primary)]">
                     {workspace.name}
                   </p>
-                  <p className="mt-1 truncate font-mono text-xs text-slate-500">
+                  <p className="mt-1 truncate font-mono text-xs text-[var(--color-text-muted)]">
                     /w/{workspace.slug}
                   </p>
                   {workspace.archivedAt && (
-                    <p className="mt-0.5 text-xs text-slate-400">
+                    <p className="mt-0.5 text-xs text-[var(--color-text-placeholder)]">
                       Archived{" "}
                       {new Intl.DateTimeFormat("en-US", {
                         dateStyle: "medium"

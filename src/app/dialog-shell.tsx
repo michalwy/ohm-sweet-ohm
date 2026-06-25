@@ -74,18 +74,18 @@ export const DialogShell = forwardRef<HTMLDialogElement, DialogShellProps>(
       <dialog
         ref={ref}
         aria-labelledby={titleId}
-        className={`fixed inset-0 m-auto max-h-[calc(100vh-2rem)] ${widthClassName} overflow-hidden rounded-lg border border-slate-200 bg-white p-0 text-slate-950 shadow-2xl backdrop:bg-slate-950/40`}
+        className={`fixed inset-0 m-auto max-h-[calc(100vh-2rem)] ${widthClassName} overflow-hidden rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-elevated)] p-0 text-[var(--color-text-primary)] shadow-2xl backdrop:bg-slate-950/40`}
         onClose={onClose}
         onCancel={onCancel}
       >
         <div className={`flex max-h-[calc(100vh-2rem)] min-h-0 flex-col${heightClassName ? ` ${heightClassName}` : ""}`}>
-          <div className="flex items-start justify-between gap-4 border-b border-slate-200 px-5 py-4">
+          <div className="flex items-start justify-between gap-4 border-b border-[var(--color-border)] px-5 py-4">
             <div>
-              <h2 id={titleId} className="text-lg font-semibold text-slate-950">
+              <h2 id={titleId} className="text-lg font-semibold text-[var(--color-text-primary)]">
                 {title}
               </h2>
               {description ? (
-                <p className="mt-1 text-sm leading-6 text-slate-500">
+                <p className="mt-1 text-sm leading-6 text-[var(--color-text-muted)]">
                   {description}
                 </p>
               ) : null}
@@ -129,7 +129,7 @@ export function DialogFooter({
 }: DialogSectionProps) {
   return (
     <div
-      className={`flex shrink-0 border-t border-slate-200 px-5 py-4 ${className}`}
+      className={`flex shrink-0 border-t border-[var(--color-border)] px-5 py-4 ${className}`}
     >
       {children}
     </div>
@@ -153,7 +153,7 @@ export function FieldError({ children, id }: FieldErrorProps) {
 
 export function LabelWithError({ error, htmlFor, children }: LabelWithErrorProps) {
   return (
-    <div className="flex min-h-5 items-start justify-between gap-2 text-sm font-medium text-slate-700">
+    <div className="flex min-h-5 items-start justify-between gap-2 text-sm font-medium text-[var(--color-text-secondary)]">
       {htmlFor ? <label htmlFor={htmlFor}>{children}</label> : <span>{children}</span>}
       {error ? (
         <span className="text-xs font-medium leading-5 text-[var(--color-error)]">
@@ -184,7 +184,7 @@ export function ErrorBubble({
 
   return (
     <div
-      className={`pointer-events-none absolute bottom-full z-20 mb-2 w-max max-w-64 rounded-md border border-[var(--color-error-border)] bg-white px-2 py-1 text-xs font-medium text-[var(--color-error)] shadow-md ${alignmentClassName}`}
+      className={`pointer-events-none absolute bottom-full z-20 mb-2 w-max max-w-64 rounded-md border border-[var(--color-error-border)] bg-[var(--color-bg-elevated)] px-2 py-1 text-xs font-medium text-[var(--color-error)] shadow-md ${alignmentClassName}`}
     >
       {children}
     </div>
@@ -249,11 +249,11 @@ export function DeleteConfirmationDialog({
       onCloseClick={closeConfirmationDialog}
     >
       <DialogBody>
-        <p className="text-sm leading-6 text-slate-600">{body}</p>
+        <p className="text-sm leading-6 text-[var(--color-text-secondary)]">{body}</p>
       </DialogBody>
       <DialogFooter className="items-center justify-end gap-2">
         <button
-          className="min-h-9 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:border-slate-400 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400"
+          className="min-h-9 rounded-md border border-[var(--color-border-strong)] bg-[var(--color-bg-elevated)] px-3 py-1.5 text-sm font-medium text-[var(--color-text-secondary)] transition hover:border-[var(--color-border-hover)] hover:bg-[var(--color-bg-subtle)] focus:outline-none focus:ring-2 focus:ring-[var(--color-ring-strong)] focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-[var(--color-bg-subtle)] disabled:text-[var(--color-text-placeholder)]"
           data-dialog-initial-focus
           disabled={isPending}
           type="button"
@@ -262,7 +262,7 @@ export function DeleteConfirmationDialog({
           {cancelLabel}
         </button>
         <button
-          className="min-h-9 rounded-md border border-[var(--color-error-border)] bg-white px-3 py-1.5 text-sm font-medium text-[var(--color-error)] transition hover:bg-[var(--color-error-soft)] focus:outline-none focus:ring-2 focus:ring-[var(--color-error-border)] focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400"
+          className="min-h-9 rounded-md border border-[var(--color-error-border)] bg-[var(--color-bg-elevated)] px-3 py-1.5 text-sm font-medium text-[var(--color-error)] transition hover:bg-[var(--color-error-soft)] focus:outline-none focus:ring-2 focus:ring-[var(--color-error-border)] focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-[var(--color-bg-subtle)] disabled:text-[var(--color-text-placeholder)]"
           disabled={isPending}
           type="button"
           onClick={() => {
@@ -368,5 +368,5 @@ function CloseIcon() {
 }
 
 const dialogIconButtonClassName =
-  "grid h-8 w-8 place-items-center rounded-md border border-transparent text-slate-500 transition hover:border-slate-200 hover:bg-slate-50 hover:text-slate-950 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2";
+  "grid h-8 w-8 place-items-center rounded-md border border-transparent text-[var(--color-text-muted)] transition hover:border-[var(--color-border)] hover:bg-[var(--color-bg-subtle)] hover:text-[var(--color-text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-ring-strong)] focus:ring-offset-2";
 const dialogBodyVerticalPadding = 32;

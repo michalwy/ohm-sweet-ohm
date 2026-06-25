@@ -35,7 +35,7 @@ export function filterLocationTree(
 export const defaultLocationSelectButtonClassName = `flex-1 ${defaultTreeSelectButtonClassName}`;
 
 export const formLocationSelectButtonClassName =
-  "flex-1 grid min-h-10 w-full grid-cols-[1fr_auto] items-center gap-2 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-left text-sm text-slate-950 outline-none transition hover:border-slate-400 focus:border-slate-500 focus:ring-2 focus:ring-slate-200 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400";
+  "flex-1 grid min-h-10 w-full grid-cols-[1fr_auto] items-center gap-2 rounded-md border border-[var(--color-border-strong)] bg-[var(--color-bg-elevated)] px-3 py-1.5 text-left text-sm text-[var(--color-text-primary)] outline-none transition hover:border-[var(--color-border-hover)] focus:border-[var(--color-border-hover)] focus:ring-2 focus:ring-[var(--color-ring)] disabled:cursor-not-allowed disabled:bg-[var(--color-bg-subtle)] disabled:text-[var(--color-text-placeholder)]";
 
 export function LocationTreeSelect({
   locations,
@@ -117,7 +117,7 @@ export function LocationTreeSelect({
       {showClear ? (
         <button
           type="button"
-          className="grid h-8 w-8 flex-none place-items-center rounded-md border border-slate-200 bg-white text-slate-400 transition hover:border-slate-300 hover:text-slate-700 focus:outline-none focus:ring-2 focus:ring-slate-200"
+          className="grid h-8 w-8 flex-none place-items-center rounded-md border border-[var(--color-border)] bg-[var(--color-bg-elevated)] text-[var(--color-text-placeholder)] transition hover:border-[var(--color-border-strong)] hover:text-[var(--color-text-secondary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-ring)]"
           onClick={() => {
             onClear?.();
             onSelectedIdChange("");
@@ -158,7 +158,7 @@ export function LocationTreeSelect({
               ))}
             </ol>
           ) : (
-            <p className="px-2 py-6 text-center text-sm text-slate-500">
+            <p className="px-2 py-6 text-center text-sm text-[var(--color-text-muted)]">
               {copy.noMatchingLocations}
             </p>
           )}
@@ -206,7 +206,7 @@ function LocationTreeSelectNode({
           <button
             aria-expanded={isExpanded}
             aria-label={toggleLabel}
-            className="grid h-7 w-7 place-items-center rounded text-slate-500 transition hover:bg-slate-100 hover:text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-300"
+            className="grid h-7 w-7 place-items-center rounded text-[var(--color-text-muted)] transition hover:bg-[var(--color-bg-muted)] hover:text-[var(--color-text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-ring-strong)]"
             type="button"
             onClick={() => onToggleExpanded(location.id)}
           >
@@ -223,10 +223,10 @@ function LocationTreeSelectNode({
         {canSelect ? (
           <button
             aria-selected={isSelected}
-            className={`min-h-9 rounded-md px-2 py-1.5 text-left text-sm transition focus:outline-none focus:ring-2 focus:ring-slate-300 ${
+            className={`min-h-9 rounded-md px-2 py-1.5 text-left text-sm transition focus:outline-none focus:ring-2 focus:ring-[var(--color-ring-strong)] ${
               isActive
-                ? "bg-[var(--color-accent-soft)] font-semibold text-slate-950 hover:bg-[var(--color-accent-soft)]"
-                : "text-slate-700 hover:bg-slate-50"
+                ? "bg-[var(--color-accent-soft)] font-semibold text-[var(--color-text-primary)] hover:bg-[var(--color-accent-soft)]"
+                : "text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-subtle)]"
             }`}
             role="option"
             type="button"
@@ -235,7 +235,7 @@ function LocationTreeSelectNode({
             <span className="block truncate">{location.name}</span>
           </button>
         ) : (
-          <span className="truncate px-2 py-1.5 text-sm text-slate-400">{location.name}</span>
+          <span className="truncate px-2 py-1.5 text-sm text-[var(--color-text-placeholder)]">{location.name}</span>
         )}
       </div>
       {hasChildren && isExpanded ? (

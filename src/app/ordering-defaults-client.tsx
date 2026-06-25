@@ -74,7 +74,7 @@ export function OrderingDefaultsClient({
   }
 
   const inputClass =
-    "min-h-10 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-950 outline-none transition hover:border-slate-400 focus:border-slate-500 focus:ring-2 focus:ring-slate-200 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400";
+    "min-h-10 rounded-md border border-[var(--color-border-strong)] bg-[var(--color-bg-elevated)] px-3 py-1.5 text-sm text-[var(--color-text-primary)] outline-none transition hover:border-[var(--color-border-hover)] focus:border-[var(--color-border-hover)] focus:ring-2 focus:ring-[var(--color-ring)] disabled:cursor-not-allowed disabled:bg-[var(--color-bg-subtle)] disabled:text-[var(--color-text-placeholder)]";
 
   return (
     <form onSubmit={handleSubmit} className="max-w-lg space-y-6">
@@ -85,11 +85,11 @@ export function OrderingDefaultsClient({
       ) : null}
 
       <div className="grid gap-2">
-        <label className="text-sm font-medium text-slate-700">
+        <label className="text-sm font-medium text-[var(--color-text-secondary)]">
           {copy.priceEntryMode}
         </label>
         <div className="flex gap-4">
-          <label className="flex cursor-pointer items-center gap-2 text-sm text-slate-700">
+          <label className="flex cursor-pointer items-center gap-2 text-sm text-[var(--color-text-secondary)]">
             <input
               type="radio"
               name="priceEntryMode"
@@ -101,7 +101,7 @@ export function OrderingDefaultsClient({
             />
             {copy.net}
           </label>
-          <label className="flex cursor-pointer items-center gap-2 text-sm text-slate-700">
+          <label className="flex cursor-pointer items-center gap-2 text-sm text-[var(--color-text-secondary)]">
             <input
               type="radio"
               name="priceEntryMode"
@@ -118,7 +118,7 @@ export function OrderingDefaultsClient({
 
       <div className="grid gap-2">
         <label
-          className="text-sm font-medium text-slate-700"
+          className="text-sm font-medium text-[var(--color-text-secondary)]"
           htmlFor="ordering-default-tax-rate"
         >
           {copy.defaultTaxRate}
@@ -133,7 +133,7 @@ export function OrderingDefaultsClient({
           disabled={!canManage}
           className={inputClass}
         />
-        <p className="text-xs text-slate-500">{copy.defaultTaxRateHelp}</p>
+        <p className="text-xs text-[var(--color-text-muted)]">{copy.defaultTaxRateHelp}</p>
       </div>
 
       {errorMsg ? (

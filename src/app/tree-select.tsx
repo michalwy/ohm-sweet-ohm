@@ -22,7 +22,7 @@ import {
 } from "@/app/tree-picker-utils";
 
 export const defaultTreeSelectButtonClassName =
-  "grid min-h-8 w-full grid-cols-[1fr_auto] items-center gap-2 rounded-md border border-slate-300 bg-white px-2 py-1 text-left text-sm text-slate-950 outline-none transition hover:border-slate-400 focus:border-slate-500 focus:ring-2 focus:ring-slate-200 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400";
+  "grid min-h-8 w-full grid-cols-[1fr_auto] items-center gap-2 rounded-md border border-[var(--color-border-strong)] bg-[var(--color-bg-elevated)] px-2 py-1 text-left text-sm text-[var(--color-text-primary)] outline-none transition hover:border-[var(--color-border-hover)] focus:border-[var(--color-border-hover)] focus:ring-2 focus:ring-[var(--color-ring)] disabled:cursor-not-allowed disabled:bg-[var(--color-bg-subtle)] disabled:text-[var(--color-text-placeholder)]";
 
 export function TreeSelectButton({
   ariaExpanded,
@@ -63,8 +63,8 @@ export function TreeSelectButton({
       onClick={onToggle}
       onKeyDown={onKeyDown}
     >
-      <span className={hasSelection ? "truncate" : "text-slate-400"}>{selectedLabel}</span>
-      <span aria-hidden="true" className="text-sm text-slate-500">
+      <span className={hasSelection ? "truncate" : "text-[var(--color-text-placeholder)]"}>{selectedLabel}</span>
+      <span aria-hidden="true" className="text-sm text-[var(--color-text-muted)]">
         ▾
       </span>
     </button>
@@ -99,19 +99,19 @@ export function TreeSelectPanel({
   return createPortal(
     <div
       ref={panelRef}
-      className="fixed z-50 flex overflow-hidden rounded-md border border-slate-200 bg-white shadow-lg"
+      className="fixed z-50 flex overflow-hidden rounded-md border border-[var(--color-border)] bg-[var(--color-bg-elevated)] shadow-lg"
       style={panelMinWidth ? { ...panelStyle, minWidth: panelMinWidth } : panelStyle}
       onKeyDown={onKeyDown}
     >
       <div className="flex min-h-0 w-full flex-col">
-        <div className="border-b border-slate-200 p-2">
+        <div className="border-b border-[var(--color-border)] p-2">
           <label className="sr-only" htmlFor={searchId}>
             {searchLabel}
           </label>
           <input
             id={searchId}
             autoFocus
-            className="min-h-10 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-950 outline-none transition placeholder:text-slate-400 hover:border-slate-400 focus:border-slate-500 focus:ring-2 focus:ring-slate-200"
+            className="min-h-10 w-full rounded-md border border-[var(--color-border-strong)] bg-[var(--color-bg-elevated)] px-3 py-2 text-sm text-[var(--color-text-primary)] outline-none transition placeholder:text-[var(--color-text-placeholder)] hover:border-[var(--color-border-hover)] focus:border-[var(--color-border-hover)] focus:ring-2 focus:ring-[var(--color-ring)]"
             placeholder={searchLabel}
             type="search"
             value={searchQuery}

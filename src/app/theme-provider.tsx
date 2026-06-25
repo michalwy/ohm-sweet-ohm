@@ -2,9 +2,9 @@
 
 import { createContext, useContext, useState } from "react";
 
-export type Theme = "light";
+export type Theme = "light" | "dark";
 
-const THEMES: Theme[] = ["light"];
+const THEMES: Theme[] = ["light", "dark"];
 const STORAGE_KEY = "oso:theme";
 
 function readSavedTheme(): Theme {

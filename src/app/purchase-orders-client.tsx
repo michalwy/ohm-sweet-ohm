@@ -184,7 +184,7 @@ function InlinePriceCell({
 
   return (
     <td
-      className={`relative px-3 py-2 text-right font-mono text-slate-700 whitespace-nowrap${editable && !editing ? " cursor-pointer" : ""}${isPending ? " opacity-60" : ""}`}
+      className={`relative px-3 py-2 text-right font-mono text-[var(--color-text-secondary)] whitespace-nowrap${editable && !editing ? " cursor-pointer" : ""}${isPending ? " opacity-60" : ""}`}
       onClick={!editing && editable ? startEditing : undefined}
     >
       {/* Invisible anchor — always reserves the column width */}
@@ -205,7 +205,7 @@ function InlinePriceCell({
           onChange={(e) => setInputValue(e.target.value)}
           onKeyDown={handleKeyDown}
           onBlur={commit}
-          className="absolute left-3 right-3 top-1/2 -translate-y-1/2 rounded border border-slate-400 bg-white px-1.5 py-0.5 text-sm text-right font-mono text-slate-950 outline-none focus:border-slate-500 focus:ring-1 focus:ring-slate-200"
+          className="absolute left-3 right-3 top-1/2 -translate-y-1/2 rounded border border-[var(--color-border-hover)] bg-[var(--color-bg-elevated)] px-1.5 py-0.5 text-sm text-right font-mono text-[var(--color-text-primary)] outline-none focus:border-[var(--color-border-hover)] focus:ring-1 focus:ring-[var(--color-ring)]"
         />
       )}
     </td>
@@ -962,7 +962,7 @@ export function PurchaseOrdersClient({
   }
 
   function statusBadgeClass(status: "DRAFT" | "ORDERED" | "RECEIVED") {
-    if (status === "DRAFT") return "bg-slate-100 text-slate-700";
+    if (status === "DRAFT") return "bg-[var(--color-bg-muted)] text-[var(--color-text-secondary)]";
     if (status === "ORDERED") return "bg-amber-100 text-amber-800";
     return "bg-[var(--color-success-soft)] text-[var(--color-success)]";
   }
@@ -976,7 +976,7 @@ export function PurchaseOrdersClient({
         size: 200,
         minSize: 100,
         cell: ({ getValue }) => (
-          <span className="font-medium text-slate-950">{getValue()}</span>
+          <span className="font-medium text-[var(--color-text-primary)]">{getValue()}</span>
         )
       }),
       columnHelper.accessor("orderNumber", {
@@ -986,7 +986,7 @@ export function PurchaseOrdersClient({
         cell: ({ getValue }) => {
           const v = getValue();
           return v
-            ? <span className="text-slate-700">{v}</span>
+            ? <span className="text-[var(--color-text-secondary)]">{v}</span>
             : <EmptyCell />;
         }
       }),
@@ -1008,7 +1008,7 @@ export function PurchaseOrdersClient({
         size: 100,
         minSize: 64,
         cell: ({ getValue }) => (
-          <span className="block text-right text-slate-700">{getValue()}</span>
+          <span className="block text-right text-[var(--color-text-secondary)]">{getValue()}</span>
         )
       }),
       columnHelper.accessor("supplierOrderNumber", {
@@ -1019,7 +1019,7 @@ export function PurchaseOrdersClient({
         cell: ({ getValue }) => {
           const v = getValue();
           return v
-            ? <span className="text-slate-700">{v}</span>
+            ? <span className="text-[var(--color-text-secondary)]">{v}</span>
             : <EmptyCell />;
         }
       }),
@@ -1029,7 +1029,7 @@ export function PurchaseOrdersClient({
         size: 160,
         minSize: 100,
         cell: ({ getValue }) => (
-          <span className="text-slate-700">{new Date(getValue()).toLocaleDateString()}</span>
+          <span className="text-[var(--color-text-secondary)]">{new Date(getValue()).toLocaleDateString()}</span>
         )
       }),
       columnHelper.accessor("createdByName", {
@@ -1040,7 +1040,7 @@ export function PurchaseOrdersClient({
         cell: ({ getValue }) => {
           const v = getValue();
           return v
-            ? <span className="text-slate-700">{v}</span>
+            ? <span className="text-[var(--color-text-secondary)]">{v}</span>
             : <EmptyCell />;
         }
       }),
@@ -1052,7 +1052,7 @@ export function PurchaseOrdersClient({
         cell: ({ getValue }) => {
           const v = getValue();
           return v
-            ? <span className="text-slate-700">{new Date(v).toLocaleDateString()}</span>
+            ? <span className="text-[var(--color-text-secondary)]">{new Date(v).toLocaleDateString()}</span>
             : <EmptyCell />;
         }
       }),
@@ -1064,7 +1064,7 @@ export function PurchaseOrdersClient({
         cell: ({ getValue }) => {
           const v = getValue();
           return v
-            ? <span className="text-slate-700">{v}</span>
+            ? <span className="text-[var(--color-text-secondary)]">{v}</span>
             : <EmptyCell />;
         }
       }),
@@ -1077,7 +1077,7 @@ export function PurchaseOrdersClient({
           const v = getValue();
           const cur = row.original.currency;
           return v
-            ? <span className="block text-right font-mono text-slate-700">{v}{cur ? ` ${cur}` : ""}</span>
+            ? <span className="block text-right font-mono text-[var(--color-text-secondary)]">{v}{cur ? ` ${cur}` : ""}</span>
             : <span className="block text-right"><EmptyCell /></span>;
         }
       }),
@@ -1090,7 +1090,7 @@ export function PurchaseOrdersClient({
           const v = getValue();
           const cur = row.original.currency;
           return v
-            ? <span className="block text-right font-mono text-slate-700">{v}{cur ? ` ${cur}` : ""}</span>
+            ? <span className="block text-right font-mono text-[var(--color-text-secondary)]">{v}{cur ? ` ${cur}` : ""}</span>
             : <span className="block text-right"><EmptyCell /></span>;
         }
       }),
@@ -1102,7 +1102,7 @@ export function PurchaseOrdersClient({
         cell: ({ getValue }) => {
           const v = getValue();
           return v
-            ? <span className="block text-right font-mono text-slate-700">{v} {primaryCurrency}</span>
+            ? <span className="block text-right font-mono text-[var(--color-text-secondary)]">{v} {primaryCurrency}</span>
             : <span className="block text-right"><EmptyCell /></span>;
         }
       }),
@@ -1114,7 +1114,7 @@ export function PurchaseOrdersClient({
         cell: ({ getValue }) => {
           const v = getValue();
           return v
-            ? <span className="block text-right font-mono text-slate-700">{v} {primaryCurrency}</span>
+            ? <span className="block text-right font-mono text-[var(--color-text-secondary)]">{v} {primaryCurrency}</span>
             : <span className="block text-right"><EmptyCell /></span>;
         }
       }),
@@ -1129,7 +1129,7 @@ export function PurchaseOrdersClient({
           <div className="flex justify-end gap-2">
             <button
               aria-label={copy.edit}
-              className="min-h-8 rounded-md border border-slate-300 bg-white px-2.5 py-1 text-sm font-medium text-slate-700 transition hover:border-slate-400 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400"
+              className="min-h-8 rounded-md border border-[var(--color-border-strong)] bg-[var(--color-bg-elevated)] px-2.5 py-1 text-sm font-medium text-[var(--color-text-secondary)] transition hover:border-[var(--color-border-hover)] hover:bg-[var(--color-bg-subtle)] focus:outline-none focus:ring-2 focus:ring-[var(--color-ring-strong)] focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-[var(--color-bg-subtle)] disabled:text-[var(--color-text-placeholder)]"
               disabled={!canWrite || row.original.status === "RECEIVED"}
               type="button"
               onClick={(e) => {
@@ -1143,7 +1143,7 @@ export function PurchaseOrdersClient({
             </button>
             <button
               aria-label={copy.delete}
-              className="min-h-8 rounded-md border border-[var(--color-error-border)] bg-white px-2.5 py-1 text-sm font-medium text-[var(--color-error)] transition hover:bg-[var(--color-error-soft)] focus:outline-none focus:ring-2 focus:ring-[var(--color-error-border)] focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400"
+              className="min-h-8 rounded-md border border-[var(--color-error-border)] bg-[var(--color-bg-elevated)] px-2.5 py-1 text-sm font-medium text-[var(--color-error)] transition hover:bg-[var(--color-error-soft)] focus:outline-none focus:ring-2 focus:ring-[var(--color-error-border)] focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-[var(--color-bg-subtle)] disabled:text-[var(--color-text-placeholder)]"
               disabled={!canWrite || row.original.status === "RECEIVED" || deleteOrderMutation.isPending}
               type="button"
               onClick={(e) => {
@@ -1193,7 +1193,7 @@ export function PurchaseOrdersClient({
         className={`flex min-h-0 flex-1 gap-4 ${containerClassName}`}
       >
         {/* Main list */}
-        <section className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
+        <section className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-elevated)] shadow-sm">
           {/* Toolbar */}
           <ListPageToolbar
             columnVisibility={columnVisibility}
@@ -1222,7 +1222,7 @@ export function PurchaseOrdersClient({
 
           <InfiniteListViewport
             emptyState={
-              <p className="px-4 py-10 text-sm text-slate-500">{copy.noOrders}</p>
+              <p className="px-4 py-10 text-sm text-[var(--color-text-muted)]">{copy.noOrders}</p>
             }
             errorState={
               <p className="px-4 py-10 text-sm text-[var(--color-error)]">{copy.loadError}</p>
@@ -1245,7 +1245,7 @@ export function PurchaseOrdersClient({
                   <col key={col.id} style={{ width: col.getSize() }} />
                 ))}
               </colgroup>
-              <thead className="sticky top-0 z-10 bg-slate-50">
+              <thead className="sticky top-0 z-10 bg-[var(--color-bg-subtle)]">
                 {ordersTable.getHeaderGroups().map((headerGroup) => (
                   <tr key={headerGroup.id}>
                     {headerGroup.headers.map((header) => (
@@ -1266,15 +1266,15 @@ export function PurchaseOrdersClient({
                   </tr>
                 ))}
               </thead>
-              <tbody className="bg-white">
+              <tbody className="bg-[var(--color-bg-elevated)]">
                 {ordersTable.getRowModel().rows.map((row) => (
                   <tr
                     key={row.id}
-                    className={`border-b border-slate-100 ${
+                    className={`border-b border-[var(--color-border)] ${
                       row.original.id === selectedOrderId
-                        ? "bg-slate-100"
+                        ? "bg-[var(--color-bg-muted)]"
                         : row.original.id === hoveredOrderId
-                          ? "bg-slate-50"
+                          ? "bg-[var(--color-bg-subtle)]"
                           : ""
                     }`}
                     role="button"
@@ -1296,13 +1296,13 @@ export function PurchaseOrdersClient({
                     {row.getVisibleCells().map((cell) => (
                       <td
                         key={cell.id}
-                        className={`overflow-hidden border-b border-slate-100 px-2 py-2 text-slate-700 ${
+                        className={`overflow-hidden border-b border-[var(--color-border)] px-2 py-2 text-[var(--color-text-secondary)] ${
                           cell.column.id === "actions"
                             ? row.original.id === selectedOrderId
-                              ? "sticky right-0 z-10 bg-slate-100 px-1 py-1.5"
+                              ? "sticky right-0 z-10 bg-[var(--color-bg-muted)] px-1 py-1.5"
                               : row.original.id === hoveredOrderId
-                                ? "sticky right-0 z-10 bg-slate-50 px-1 py-1.5"
-                                : "sticky right-0 z-10 bg-white px-1 py-1.5"
+                                ? "sticky right-0 z-10 bg-[var(--color-bg-subtle)] px-1 py-1.5"
+                                : "sticky right-0 z-10 bg-[var(--color-bg-elevated)] px-1 py-1.5"
                             : ""
                         }`}
                         style={{ width: cell.column.getSize() }}
@@ -1339,7 +1339,7 @@ export function PurchaseOrdersClient({
               </span>
               {detail?.status === "DRAFT" ? (
                 <button
-                  className="min-h-8 rounded-md border border-slate-300 bg-white px-3 text-sm font-medium text-slate-700 transition hover:border-slate-400 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+                  className="min-h-8 rounded-md border border-[var(--color-border-strong)] bg-[var(--color-bg-elevated)] px-3 text-sm font-medium text-[var(--color-text-secondary)] transition hover:border-[var(--color-border-hover)] hover:bg-[var(--color-bg-subtle)] disabled:cursor-not-allowed disabled:opacity-60"
                   type="button"
                   disabled={!canWrite || detailItems.length === 0}
                   onClick={() => {
@@ -1352,7 +1352,7 @@ export function PurchaseOrdersClient({
               ) : null}
               {detail?.status === "ORDERED" && unreceived.length > 0 ? (
                 <button
-                  className="min-h-8 rounded-md border border-slate-300 bg-white px-3 text-sm font-medium text-slate-700 transition hover:border-slate-400 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+                  className="min-h-8 rounded-md border border-[var(--color-border-strong)] bg-[var(--color-bg-elevated)] px-3 text-sm font-medium text-[var(--color-text-secondary)] transition hover:border-[var(--color-border-hover)] hover:bg-[var(--color-bg-subtle)] disabled:cursor-not-allowed disabled:opacity-60"
                   type="button"
                   disabled={!canWrite || assignableLocations.length === 0}
                   onClick={openReceiveDialog}
@@ -1362,7 +1362,7 @@ export function PurchaseOrdersClient({
               ) : null}
               {detail?.status === "ORDERED" ? (
                 <button
-                  className="min-h-8 rounded-md border border-slate-300 bg-white px-3 text-sm font-medium text-slate-700 transition hover:border-slate-400 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+                  className="min-h-8 rounded-md border border-[var(--color-border-strong)] bg-[var(--color-bg-elevated)] px-3 text-sm font-medium text-[var(--color-text-secondary)] transition hover:border-[var(--color-border-hover)] hover:bg-[var(--color-bg-subtle)] disabled:cursor-not-allowed disabled:opacity-60"
                   type="button"
                   disabled={!canWrite}
                   onClick={() => {
@@ -1378,11 +1378,11 @@ export function PurchaseOrdersClient({
             {/* Items section */}
             <section className="grid gap-2">
               <div className="flex items-center justify-between">
-                <h3 className="text-sm font-semibold text-slate-900">{copy.items}</h3>
+                <h3 className="text-sm font-semibold text-[var(--color-text-primary)]">{copy.items}</h3>
                 {detail?.status !== "RECEIVED" ? (
                   <div className="flex items-center gap-2">
                     <button
-                      className="inline-flex min-h-8 items-center rounded-md border border-slate-300 bg-white px-3 text-sm font-medium text-slate-700 transition hover:border-slate-400 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+                      className="inline-flex min-h-8 items-center rounded-md border border-[var(--color-border-strong)] bg-[var(--color-bg-elevated)] px-3 text-sm font-medium text-[var(--color-text-secondary)] transition hover:border-[var(--color-border-hover)] hover:bg-[var(--color-bg-subtle)] disabled:cursor-not-allowed disabled:opacity-60"
                       type="button"
                       disabled={!canWrite}
                       onClick={() => setMultiAddPOOpen(true)}
@@ -1402,24 +1402,24 @@ export function PurchaseOrdersClient({
               </div>
 
               {detailItems.length === 0 ? (
-                <p className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-600">
+                <p className="rounded-md border border-[var(--color-border)] bg-[var(--color-bg-subtle)] px-3 py-2 text-sm text-[var(--color-text-secondary)]">
                   {copy.noItems}
                 </p>
               ) : (
-                <div className="overflow-x-auto rounded-md border border-slate-200">
+                <div className="overflow-x-auto rounded-md border border-[var(--color-border)]">
                   <table className="w-full min-w-max border-collapse text-left text-sm">
                     <thead>
-                      <tr className="border-b border-slate-200 bg-slate-50">
-                        <th className="px-3 py-2 font-semibold text-slate-700">{copy.part}</th>
-                        <th className="px-3 py-2 text-right font-semibold text-slate-700 whitespace-nowrap">
+                      <tr className="border-b border-[var(--color-border)] bg-[var(--color-bg-subtle)]">
+                        <th className="px-3 py-2 font-semibold text-[var(--color-text-secondary)]">{copy.part}</th>
+                        <th className="px-3 py-2 text-right font-semibold text-[var(--color-text-secondary)] whitespace-nowrap">
                           {isGrossMode ? copy.grossUnitPrice : copy.unitPrice}
                         </th>
-                        <th className="px-3 py-2 text-right font-semibold text-slate-700 whitespace-nowrap">{copy.taxRateShort}</th>
-                        <th className="px-3 py-2 text-right font-semibold text-slate-700 whitespace-nowrap">
+                        <th className="px-3 py-2 text-right font-semibold text-[var(--color-text-secondary)] whitespace-nowrap">{copy.taxRateShort}</th>
+                        <th className="px-3 py-2 text-right font-semibold text-[var(--color-text-secondary)] whitespace-nowrap">
                           {isGrossMode ? copy.grossLineTotal : copy.lineTotal}
                         </th>
-                        <th className="px-3 py-2 text-right font-semibold text-slate-700 whitespace-nowrap">{copy.quantity}</th>
-                        <th className="px-3 py-2 text-right font-semibold text-slate-700 whitespace-nowrap">{copy.received}</th>
+                        <th className="px-3 py-2 text-right font-semibold text-[var(--color-text-secondary)] whitespace-nowrap">{copy.quantity}</th>
+                        <th className="px-3 py-2 text-right font-semibold text-[var(--color-text-secondary)] whitespace-nowrap">{copy.received}</th>
                         {detail?.status !== "RECEIVED" ? (
                           <th className="px-3 py-2" />
                         ) : null}
@@ -1429,10 +1429,10 @@ export function PurchaseOrdersClient({
                       {detailItems.map((item) => {
                         const isFullyReceived = parseFloat(item.receivedQuantity) >= parseFloat(item.quantity);
                         return (
-                          <tr key={item.id} className={`border-b border-slate-100 last:border-b-0 ${isFullyReceived ? "opacity-60" : ""}`}>
+                          <tr key={item.id} className={`border-b border-[var(--color-border)] last:border-b-0 ${isFullyReceived ? "opacity-60" : ""}`}>
                             <td className="px-3 py-2">
-                              <div className="font-medium text-slate-900">{item.partCatalogNumber}</div>
-                              <div className="text-xs text-slate-500">{item.manufacturerName}</div>
+                              <div className="font-medium text-[var(--color-text-primary)]">{item.partCatalogNumber}</div>
+                              <div className="text-xs text-[var(--color-text-muted)]">{item.manufacturerName}</div>
                             </td>
                             <InlinePriceCell
                               item={item}
@@ -1448,20 +1448,20 @@ export function PurchaseOrdersClient({
                               onSave={updateItemPriceMutation.mutate}
                               noAttributeLabel={copy.noAttribute}
                             />
-                            <td className="px-3 py-2 text-right text-slate-500 whitespace-nowrap">
+                            <td className="px-3 py-2 text-right text-[var(--color-text-muted)] whitespace-nowrap">
                               {item.taxRate != null && item.taxRate !== ""
                                 ? `${item.taxRate}%`
                                 : copy.noAttribute}
                             </td>
-                            <td className="px-3 py-2 text-right font-mono text-slate-700 whitespace-nowrap">
+                            <td className="px-3 py-2 text-right font-mono text-[var(--color-text-secondary)] whitespace-nowrap">
                               {(() => {
                                 const val = isGrossMode ? item.lineGrossValue : item.lineNetValue;
                                 if (val == null) return copy.noAttribute;
                                 return `${val}${item.currency ? ` ${item.currency}` : ""}`;
                               })()}
                             </td>
-                            <td className="px-3 py-2 text-right text-slate-700 whitespace-nowrap">{item.quantity}</td>
-                            <td className="px-3 py-2 text-right text-slate-700 whitespace-nowrap">
+                            <td className="px-3 py-2 text-right text-[var(--color-text-secondary)] whitespace-nowrap">{item.quantity}</td>
+                            <td className="px-3 py-2 text-right text-[var(--color-text-secondary)] whitespace-nowrap">
                               {item.receivedQuantity}
                               {isFullyReceived ? (
                                 <span className="ml-1 text-xs text-[var(--color-success)]">✓</span>
@@ -1472,7 +1472,7 @@ export function PurchaseOrdersClient({
                                 <div className="flex justify-end gap-1">
                                   <button
                                     aria-label={copy.editItem}
-                                    className="min-h-7 rounded border border-slate-300 bg-white px-2 py-0.5 text-xs font-medium text-slate-700 transition hover:border-slate-400 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+                                    className="min-h-7 rounded border border-[var(--color-border-strong)] bg-[var(--color-bg-elevated)] px-2 py-0.5 text-xs font-medium text-[var(--color-text-secondary)] transition hover:border-[var(--color-border-hover)] hover:bg-[var(--color-bg-subtle)] disabled:cursor-not-allowed disabled:opacity-60"
                                     disabled={!canWrite}
                                     type="button"
                                     onClick={() => openEditItemDialog(item)}
@@ -1483,7 +1483,7 @@ export function PurchaseOrdersClient({
                                   </button>
                                   <button
                                     aria-label={copy.removeItem}
-                                    className="min-h-7 rounded border border-[var(--color-error-border)] bg-white px-2 py-0.5 text-xs font-medium text-[var(--color-error)] transition hover:bg-[var(--color-error-soft)] disabled:cursor-not-allowed disabled:opacity-60"
+                                    className="min-h-7 rounded border border-[var(--color-error-border)] bg-[var(--color-bg-elevated)] px-2 py-0.5 text-xs font-medium text-[var(--color-error)] transition hover:bg-[var(--color-error-soft)] disabled:cursor-not-allowed disabled:opacity-60"
                                     disabled={!canWrite || removeItemMutation.isPending}
                                     type="button"
                                     onClick={() => setItemPendingRemove(item)}
@@ -1512,20 +1512,20 @@ export function PurchaseOrdersClient({
                   detail.currency != null &&
                   detail.currency !== primaryCurrency;
                 return (
-                  <div className="mt-3 rounded-md border border-slate-200 bg-slate-50 px-3 py-2.5 grid gap-1.5 text-sm">
-                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{copy.orderTotals}</p>
+                  <div className="mt-3 rounded-md border border-[var(--color-border)] bg-[var(--color-bg-subtle)] px-3 py-2.5 grid gap-1.5 text-sm">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-[var(--color-text-muted)]">{copy.orderTotals}</p>
                     <div className="flex justify-between gap-4">
-                      <span className="text-slate-600">{copy.totalNetValue}</span>
+                      <span className="text-[var(--color-text-secondary)]">{copy.totalNetValue}</span>
                       <div className="text-right">
-                        <span className="font-mono text-slate-900">{totalNetValue}{detail.currency ? ` ${detail.currency}` : ""}</span>
-                        {showPrimary ? <div className="font-mono text-xs text-slate-400">≈{totalNetValuePrimary} {primaryCurrency}</div> : null}
+                        <span className="font-mono text-[var(--color-text-primary)]">{totalNetValue}{detail.currency ? ` ${detail.currency}` : ""}</span>
+                        {showPrimary ? <div className="font-mono text-xs text-[var(--color-text-placeholder)]">≈{totalNetValuePrimary} {primaryCurrency}</div> : null}
                       </div>
                     </div>
                     <div className="flex justify-between gap-4">
-                      <span className="text-slate-600">{copy.totalGrossValue}</span>
+                      <span className="text-[var(--color-text-secondary)]">{copy.totalGrossValue}</span>
                       <div className="text-right">
-                        <span className="font-mono text-slate-900">{totalGrossValue}{detail.currency ? ` ${detail.currency}` : ""}</span>
-                        {showPrimary ? <div className="font-mono text-xs text-slate-400">≈{totalGrossValuePrimary} {primaryCurrency}</div> : null}
+                        <span className="font-mono text-[var(--color-text-primary)]">{totalGrossValue}{detail.currency ? ` ${detail.currency}` : ""}</span>
+                        {showPrimary ? <div className="font-mono text-xs text-[var(--color-text-placeholder)]">≈{totalGrossValuePrimary} {primaryCurrency}</div> : null}
                       </div>
                     </div>
                   </div>
@@ -1563,7 +1563,7 @@ export function PurchaseOrdersClient({
                 />
               </div>
               <div className="grid gap-2">
-                <label className="text-sm font-medium text-slate-700" htmlFor="order-number">
+                <label className="text-sm font-medium text-[var(--color-text-secondary)]" htmlFor="order-number">
                   {copy.orderNumber}
                 </label>
                 <input
@@ -1571,11 +1571,11 @@ export function PurchaseOrdersClient({
                   name="orderNumber"
                   placeholder={copy.orderNumberPlaceholder}
                   defaultValue={editingOrder?.orderNumber ?? ""}
-                  className="min-h-10 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-950 outline-none transition hover:border-slate-400 focus:border-slate-500 focus:ring-2 focus:ring-slate-200"
+                  className="min-h-10 rounded-md border border-[var(--color-border-strong)] bg-[var(--color-bg-elevated)] px-3 py-1.5 text-sm text-[var(--color-text-primary)] outline-none transition hover:border-[var(--color-border-hover)] focus:border-[var(--color-border-hover)] focus:ring-2 focus:ring-[var(--color-ring)]"
                 />
               </div>
               <div className="grid gap-2">
-                <label className="text-sm font-medium text-slate-700" htmlFor="order-supplier-order-number">
+                <label className="text-sm font-medium text-[var(--color-text-secondary)]" htmlFor="order-supplier-order-number">
                   {copy.supplierOrderNumber}
                 </label>
                 <input
@@ -1583,21 +1583,21 @@ export function PurchaseOrdersClient({
                   name="supplierOrderNumber"
                   placeholder={copy.supplierOrderNumberPlaceholder}
                   defaultValue={editingOrder?.supplierOrderNumber ?? ""}
-                  className="min-h-10 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-950 outline-none transition hover:border-slate-400 focus:border-slate-500 focus:ring-2 focus:ring-slate-200"
+                  className="min-h-10 rounded-md border border-[var(--color-border-strong)] bg-[var(--color-bg-elevated)] px-3 py-1.5 text-sm text-[var(--color-text-primary)] outline-none transition hover:border-[var(--color-border-hover)] focus:border-[var(--color-border-hover)] focus:ring-2 focus:ring-[var(--color-ring)]"
                 />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div className="grid gap-2">
-                  <label className="text-sm font-medium text-slate-700">
+                  <label className="text-sm font-medium text-[var(--color-text-secondary)]">
                     {copy.currency}
                   </label>
                   <input type="hidden" name="currency" value={editingOrder?.currency ?? ""} />
-                  <div className="min-h-10 rounded-md border border-slate-200 bg-slate-50 px-3 py-1.5 text-sm text-slate-500 flex items-center">
+                  <div className="min-h-10 rounded-md border border-[var(--color-border)] bg-[var(--color-bg-subtle)] px-3 py-1.5 text-sm text-[var(--color-text-muted)] flex items-center">
                     {editingOrder?.currency || "—"}
                   </div>
                 </div>
                 <div className="grid gap-2">
-                  <label className="text-sm font-medium text-slate-700" htmlFor="order-tax-rate">
+                  <label className="text-sm font-medium text-[var(--color-text-secondary)]" htmlFor="order-tax-rate">
                     {copy.taxRate}
                   </label>
                   <input
@@ -1607,21 +1607,21 @@ export function PurchaseOrdersClient({
                     inputMode="decimal"
                     placeholder={copy.taxRatePlaceholder}
                     defaultValue={editingOrder?.taxRate ?? ""}
-                    className="min-h-10 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-950 outline-none transition hover:border-slate-400 focus:border-slate-500 focus:ring-2 focus:ring-slate-200"
+                    className="min-h-10 rounded-md border border-[var(--color-border-strong)] bg-[var(--color-bg-elevated)] px-3 py-1.5 text-sm text-[var(--color-text-primary)] outline-none transition hover:border-[var(--color-border-hover)] focus:border-[var(--color-border-hover)] focus:ring-2 focus:ring-[var(--color-ring)]"
                   />
                 </div>
               </div>
               <div className="grid gap-2">
-                <label className="text-sm font-medium text-slate-700">
+                <label className="text-sm font-medium text-[var(--color-text-secondary)]">
                   {copy.priceEntryMode}
                 </label>
-                <div className="min-h-10 rounded-md border border-slate-200 bg-slate-50 px-3 py-1.5 text-sm text-slate-500 flex items-center capitalize">
+                <div className="min-h-10 rounded-md border border-[var(--color-border)] bg-[var(--color-bg-subtle)] px-3 py-1.5 text-sm text-[var(--color-text-muted)] flex items-center capitalize">
                   {editingOrder?.priceEntryMode === "gross" ? copy.priceEntryModeGross : copy.priceEntryModeNet}
                 </div>
               </div>
               {editingOrder?.status === "ORDERED" ? (
                 <div className="grid gap-2">
-                  <label className="text-sm font-medium text-slate-700" htmlFor="order-ordered-at">
+                  <label className="text-sm font-medium text-[var(--color-text-secondary)]" htmlFor="order-ordered-at">
                     {copy.orderedAt}
                   </label>
                   <input
@@ -1629,12 +1629,12 @@ export function PurchaseOrdersClient({
                     id="order-ordered-at"
                     name="orderedAt"
                     defaultValue={editingOrder.orderedAt ? new Date(editingOrder.orderedAt).toISOString().slice(0, 16) : ""}
-                    className="min-h-10 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-950 outline-none transition hover:border-slate-400 focus:border-slate-500 focus:ring-2 focus:ring-slate-200"
+                    className="min-h-10 rounded-md border border-[var(--color-border-strong)] bg-[var(--color-bg-elevated)] px-3 py-1.5 text-sm text-[var(--color-text-primary)] outline-none transition hover:border-[var(--color-border-hover)] focus:border-[var(--color-border-hover)] focus:ring-2 focus:ring-[var(--color-ring)]"
                   />
                 </div>
               ) : null}
               <div className="grid gap-2">
-                <label className="text-sm font-medium text-slate-700" htmlFor="order-notes">
+                <label className="text-sm font-medium text-[var(--color-text-secondary)]" htmlFor="order-notes">
                   {copy.notes}
                 </label>
                 <textarea
@@ -1643,12 +1643,12 @@ export function PurchaseOrdersClient({
                   rows={3}
                   placeholder={copy.notesPlaceholder}
                   defaultValue={editingOrder?.notes ?? ""}
-                  className="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-950 outline-none transition hover:border-slate-400 focus:border-slate-500 focus:ring-2 focus:ring-slate-200 resize-none"
+                  className="rounded-md border border-[var(--color-border-strong)] bg-[var(--color-bg-elevated)] px-3 py-1.5 text-sm text-[var(--color-text-primary)] outline-none transition hover:border-[var(--color-border-hover)] focus:border-[var(--color-border-hover)] focus:ring-2 focus:ring-[var(--color-ring)] resize-none"
                 />
               </div>
             </DialogBody>
             <DialogFooter className="justify-end gap-2">
-              <button className="min-h-10 rounded-md border border-slate-300 px-3 text-sm font-medium text-slate-700 transition hover:border-slate-400 hover:bg-slate-50" type="button" onClick={closeOrderDialog}>
+              <button className="min-h-10 rounded-md border border-[var(--color-border-strong)] px-3 text-sm font-medium text-[var(--color-text-secondary)] transition hover:border-[var(--color-border-hover)] hover:bg-[var(--color-bg-subtle)]" type="button" onClick={closeOrderDialog}>
                 {copy.cancel}
               </button>
               <button
@@ -1735,8 +1735,8 @@ export function PurchaseOrdersClient({
                 </div>
               ) : (
                 <div className="grid gap-1">
-                  <p className="text-sm font-medium text-slate-700">{copy.part}</p>
-                  <p className="text-sm text-slate-900">{editingItem?.partCatalogNumber} — {editingItem?.manufacturerName}</p>
+                  <p className="text-sm font-medium text-[var(--color-text-secondary)]">{copy.part}</p>
+                  <p className="text-sm text-[var(--color-text-primary)]">{editingItem?.partCatalogNumber} — {editingItem?.manufacturerName}</p>
                 </div>
               )}
 
@@ -1761,7 +1761,7 @@ export function PurchaseOrdersClient({
                   }}
                   placeholder="1"
                   className={getFieldInputClassName(
-                    "min-h-10 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-950 outline-none transition hover:border-slate-400 focus:border-slate-500 focus:ring-2 focus:ring-slate-200",
+                    "min-h-10 rounded-md border border-[var(--color-border-strong)] bg-[var(--color-bg-elevated)] px-3 py-1.5 text-sm text-[var(--color-text-primary)] outline-none transition hover:border-[var(--color-border-hover)] focus:border-[var(--color-border-hover)] focus:ring-2 focus:ring-[var(--color-ring)]",
                     Boolean(itemFormErrors.quantity)
                   )}
                 />
@@ -1793,11 +1793,11 @@ export function PurchaseOrdersClient({
               {/* Net price row */}
               <div className="grid grid-cols-2 gap-3">
                 <div className="grid gap-2">
-                  <label className="text-sm font-medium text-slate-700" htmlFor="po-item-net-price">
+                  <label className="text-sm font-medium text-[var(--color-text-secondary)]" htmlFor="po-item-net-price">
                     {copy.unitPrice}
                   </label>
                   {isGrossMode ? (
-                    <div className="min-h-10 rounded-md border border-slate-200 bg-slate-50 px-3 py-1.5 text-sm text-slate-500 flex items-center">
+                    <div className="min-h-10 rounded-md border border-[var(--color-border)] bg-[var(--color-bg-subtle)] px-3 py-1.5 text-sm text-[var(--color-text-muted)] flex items-center">
                       {itemComputedOppositeUnit}
                     </div>
                   ) : (
@@ -1817,16 +1817,16 @@ export function PurchaseOrdersClient({
                           setItemLineTotal("");
                         }
                       }}
-                      className="min-h-10 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-950 outline-none transition hover:border-slate-400 focus:border-slate-500 focus:ring-2 focus:ring-slate-200"
+                      className="min-h-10 rounded-md border border-[var(--color-border-strong)] bg-[var(--color-bg-elevated)] px-3 py-1.5 text-sm text-[var(--color-text-primary)] outline-none transition hover:border-[var(--color-border-hover)] focus:border-[var(--color-border-hover)] focus:ring-2 focus:ring-[var(--color-ring)]"
                     />
                   )}
                 </div>
                 <div className="grid gap-2">
-                  <label className="text-sm font-medium text-slate-700" htmlFor="po-item-net-line-total">
+                  <label className="text-sm font-medium text-[var(--color-text-secondary)]" htmlFor="po-item-net-line-total">
                     {copy.lineTotal}
                   </label>
                   {isGrossMode ? (
-                    <div className="min-h-10 rounded-md border border-slate-200 bg-slate-50 px-3 py-1.5 text-sm text-slate-500 flex items-center">
+                    <div className="min-h-10 rounded-md border border-[var(--color-border)] bg-[var(--color-bg-subtle)] px-3 py-1.5 text-sm text-[var(--color-text-muted)] flex items-center">
                       {itemComputedOppositeLine}
                     </div>
                   ) : (
@@ -1846,7 +1846,7 @@ export function PurchaseOrdersClient({
                           setItemUnitPrice("");
                         }
                       }}
-                      className="min-h-10 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-950 outline-none transition hover:border-slate-400 focus:border-slate-500 focus:ring-2 focus:ring-slate-200"
+                      className="min-h-10 rounded-md border border-[var(--color-border-strong)] bg-[var(--color-bg-elevated)] px-3 py-1.5 text-sm text-[var(--color-text-primary)] outline-none transition hover:border-[var(--color-border-hover)] focus:border-[var(--color-border-hover)] focus:ring-2 focus:ring-[var(--color-ring)]"
                     />
                   )}
                 </div>
@@ -1855,7 +1855,7 @@ export function PurchaseOrdersClient({
               {/* Gross price row */}
               <div className="grid grid-cols-2 gap-3">
                 <div className="grid gap-2">
-                  <label className="text-sm font-medium text-slate-700" htmlFor="po-item-gross-price">
+                  <label className="text-sm font-medium text-[var(--color-text-secondary)]" htmlFor="po-item-gross-price">
                     {copy.grossUnitPrice}
                   </label>
                   {isGrossMode ? (
@@ -1875,16 +1875,16 @@ export function PurchaseOrdersClient({
                           setItemLineTotal("");
                         }
                       }}
-                      className="min-h-10 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-950 outline-none transition hover:border-slate-400 focus:border-slate-500 focus:ring-2 focus:ring-slate-200"
+                      className="min-h-10 rounded-md border border-[var(--color-border-strong)] bg-[var(--color-bg-elevated)] px-3 py-1.5 text-sm text-[var(--color-text-primary)] outline-none transition hover:border-[var(--color-border-hover)] focus:border-[var(--color-border-hover)] focus:ring-2 focus:ring-[var(--color-ring)]"
                     />
                   ) : (
-                    <div className="min-h-10 rounded-md border border-slate-200 bg-slate-50 px-3 py-1.5 text-sm text-slate-500 flex items-center">
+                    <div className="min-h-10 rounded-md border border-[var(--color-border)] bg-[var(--color-bg-subtle)] px-3 py-1.5 text-sm text-[var(--color-text-muted)] flex items-center">
                       {itemComputedOppositeUnit}
                     </div>
                   )}
                 </div>
                 <div className="grid gap-2">
-                  <label className="text-sm font-medium text-slate-700" htmlFor="po-item-gross-line-total">
+                  <label className="text-sm font-medium text-[var(--color-text-secondary)]" htmlFor="po-item-gross-line-total">
                     {copy.grossLineTotal}
                   </label>
                   {isGrossMode ? (
@@ -1904,10 +1904,10 @@ export function PurchaseOrdersClient({
                           setItemUnitPrice("");
                         }
                       }}
-                      className="min-h-10 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-950 outline-none transition hover:border-slate-400 focus:border-slate-500 focus:ring-2 focus:ring-slate-200"
+                      className="min-h-10 rounded-md border border-[var(--color-border-strong)] bg-[var(--color-bg-elevated)] px-3 py-1.5 text-sm text-[var(--color-text-primary)] outline-none transition hover:border-[var(--color-border-hover)] focus:border-[var(--color-border-hover)] focus:ring-2 focus:ring-[var(--color-ring)]"
                     />
                   ) : (
-                    <div className="min-h-10 rounded-md border border-slate-200 bg-slate-50 px-3 py-1.5 text-sm text-slate-500 flex items-center">
+                    <div className="min-h-10 rounded-md border border-[var(--color-border)] bg-[var(--color-bg-subtle)] px-3 py-1.5 text-sm text-[var(--color-text-muted)] flex items-center">
                       {itemComputedOppositeLine}
                     </div>
                   )}
@@ -1916,7 +1916,7 @@ export function PurchaseOrdersClient({
 
               <div className="grid grid-cols-2 gap-3">
                 <div className="grid gap-2">
-                  <label className="text-sm font-medium text-slate-700" htmlFor="po-item-tax-rate">{copy.taxRate}</label>
+                  <label className="text-sm font-medium text-[var(--color-text-secondary)]" htmlFor="po-item-tax-rate">{copy.taxRate}</label>
                   <input
                     id="po-item-tax-rate"
                     name="taxRate"
@@ -1925,13 +1925,13 @@ export function PurchaseOrdersClient({
                     value={itemTaxRate}
                     onChange={(e) => setItemTaxRate(e.target.value)}
                     placeholder={detail?.taxRate ?? copy.taxRatePlaceholder}
-                    className="min-h-10 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-950 outline-none transition hover:border-slate-400 focus:border-slate-500 focus:ring-2 focus:ring-slate-200"
+                    className="min-h-10 rounded-md border border-[var(--color-border-strong)] bg-[var(--color-bg-elevated)] px-3 py-1.5 text-sm text-[var(--color-text-primary)] outline-none transition hover:border-[var(--color-border-hover)] focus:border-[var(--color-border-hover)] focus:ring-2 focus:ring-[var(--color-ring)]"
                   />
                 </div>
                 <div className="grid gap-2">
-                  <label className="text-sm font-medium text-slate-700">{copy.currency}</label>
+                  <label className="text-sm font-medium text-[var(--color-text-secondary)]">{copy.currency}</label>
                   <input type="hidden" name="currency" value={itemCurrency} />
-                  <div className="min-h-10 rounded-md border border-slate-200 bg-slate-50 px-3 py-1.5 text-sm text-slate-500 flex items-center">
+                  <div className="min-h-10 rounded-md border border-[var(--color-border)] bg-[var(--color-bg-subtle)] px-3 py-1.5 text-sm text-[var(--color-text-muted)] flex items-center">
                     {itemCurrency || detail?.currency || "—"}
                   </div>
                 </div>
@@ -1939,17 +1939,17 @@ export function PurchaseOrdersClient({
 
 
               <div className="grid gap-2">
-                <label className="text-sm font-medium text-slate-700" htmlFor="po-item-notes">{copy.notes}</label>
+                <label className="text-sm font-medium text-[var(--color-text-secondary)]" htmlFor="po-item-notes">{copy.notes}</label>
                 <input
                   id="po-item-notes"
                   name="notes"
                   defaultValue={editingItem?.notes ?? ""}
-                  className="min-h-10 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-950 outline-none transition hover:border-slate-400 focus:border-slate-500 focus:ring-2 focus:ring-slate-200"
+                  className="min-h-10 rounded-md border border-[var(--color-border-strong)] bg-[var(--color-bg-elevated)] px-3 py-1.5 text-sm text-[var(--color-text-primary)] outline-none transition hover:border-[var(--color-border-hover)] focus:border-[var(--color-border-hover)] focus:ring-2 focus:ring-[var(--color-ring)]"
                 />
               </div>
             </DialogBody>
             <DialogFooter className="justify-end gap-2">
-              <button className="min-h-10 rounded-md border border-slate-300 px-3 text-sm font-medium text-slate-700 transition hover:border-slate-400 hover:bg-slate-50" type="button" onClick={closeItemDialog}>
+              <button className="min-h-10 rounded-md border border-[var(--color-border-strong)] px-3 text-sm font-medium text-[var(--color-text-secondary)] transition hover:border-[var(--color-border-hover)] hover:bg-[var(--color-bg-subtle)]" type="button" onClick={closeItemDialog}>
                 {copy.cancel}
               </button>
               <button
@@ -1981,14 +1981,14 @@ export function PurchaseOrdersClient({
               {assignableLocations.length === 0 ? (
                 <p className="text-sm text-amber-700">{copy.noLocations}</p>
               ) : (
-                <div className="overflow-auto rounded-md border border-slate-200">
+                <div className="overflow-auto rounded-md border border-[var(--color-border)]">
                   <table className="w-full border-collapse text-sm">
                     <thead>
-                      <tr className="border-b border-slate-200 bg-slate-50">
-                        <th className="px-3 py-2 text-left font-semibold text-slate-700">{copy.part}</th>
-                        <th className="px-3 py-2 text-left font-semibold text-slate-700">{copy.remaining}</th>
-                        <th className="px-3 py-2 text-left font-semibold text-slate-700">{copy.receivedQty}</th>
-                        <th className="px-3 py-2 text-left font-semibold text-slate-700">{copy.location}</th>
+                      <tr className="border-b border-[var(--color-border)] bg-[var(--color-bg-subtle)]">
+                        <th className="px-3 py-2 text-left font-semibold text-[var(--color-text-secondary)]">{copy.part}</th>
+                        <th className="px-3 py-2 text-left font-semibold text-[var(--color-text-secondary)]">{copy.remaining}</th>
+                        <th className="px-3 py-2 text-left font-semibold text-[var(--color-text-secondary)]">{copy.receivedQty}</th>
+                        <th className="px-3 py-2 text-left font-semibold text-[var(--color-text-secondary)]">{copy.location}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -1996,12 +1996,12 @@ export function PurchaseOrdersClient({
                         const row = receiveRows.get(item.id) ?? { quantity: "", locationId: "" };
                         const remaining = parseFloat(item.quantity) - parseFloat(item.receivedQuantity);
                         return (
-                          <tr key={item.id} className="border-b border-slate-100 last:border-b-0">
+                          <tr key={item.id} className="border-b border-[var(--color-border)] last:border-b-0">
                             <td className="px-3 py-2">
-                              <div className="font-medium text-slate-900">{item.partCatalogNumber}</div>
-                              <div className="text-xs text-slate-500">{item.manufacturerName}</div>
+                              <div className="font-medium text-[var(--color-text-primary)]">{item.partCatalogNumber}</div>
+                              <div className="text-xs text-[var(--color-text-muted)]">{item.manufacturerName}</div>
                             </td>
-                            <td className="px-3 py-2 text-slate-600">{remaining}</td>
+                            <td className="px-3 py-2 text-[var(--color-text-secondary)]">{remaining}</td>
                             <td className="px-3 py-2">
                               <input
                                 type="text"
@@ -2012,7 +2012,7 @@ export function PurchaseOrdersClient({
                                   next.set(item.id, { ...row, quantity: e.target.value });
                                   return next;
                                 })}
-                                className="w-24 rounded-md border border-slate-300 bg-white px-2 py-1 text-sm text-slate-950 outline-none focus:border-slate-500 focus:ring-2 focus:ring-slate-200"
+                                className="w-24 rounded-md border border-[var(--color-border-strong)] bg-[var(--color-bg-elevated)] px-2 py-1 text-sm text-[var(--color-text-primary)] outline-none focus:border-[var(--color-border-hover)] focus:ring-2 focus:ring-[var(--color-ring)]"
                               />
                             </td>
                             <td className="px-3 py-2">
@@ -2023,7 +2023,7 @@ export function PurchaseOrdersClient({
                                 name={`location-${item.id}`}
                                 selectedId={row.locationId}
                                 buttonClassName={receiveMissingLocationIds.has(item.id)
-                                  ? `flex-1 grid min-h-8 w-full grid-cols-[1fr_auto] items-center gap-2 rounded-md border bg-white px-2 py-1 text-left text-sm text-slate-950 outline-none transition border-[var(--color-error-border)] ring-1 ring-[var(--color-error-border)]`
+                                  ? `flex-1 grid min-h-8 w-full grid-cols-[1fr_auto] items-center gap-2 rounded-md border bg-[var(--color-bg-elevated)] px-2 py-1 text-left text-sm text-[var(--color-text-primary)] outline-none transition border-[var(--color-error-border)] ring-1 ring-[var(--color-error-border)]`
                                   : undefined}
                                 onSelectedIdChange={(locationId) => {
                                   setReceiveMissingLocationIds((prev) => {
@@ -2048,7 +2048,7 @@ export function PurchaseOrdersClient({
               )}
             </DialogBody>
             <DialogFooter className="justify-end gap-2">
-              <button className="min-h-10 rounded-md border border-slate-300 px-3 text-sm font-medium text-slate-700 transition hover:border-slate-400 hover:bg-slate-50" type="button" onClick={closeReceiveDialog}>
+              <button className="min-h-10 rounded-md border border-[var(--color-border-strong)] px-3 text-sm font-medium text-[var(--color-text-secondary)] transition hover:border-[var(--color-border-hover)] hover:bg-[var(--color-bg-subtle)]" type="button" onClick={closeReceiveDialog}>
                 {copy.cancel}
               </button>
               <button
@@ -2076,11 +2076,11 @@ export function PurchaseOrdersClient({
         {markOrderedPending ? (
           <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
             <DialogBody>
-              <p className="text-sm leading-6 text-slate-600">{copy.markOrderedConfirmBody}</p>
+              <p className="text-sm leading-6 text-[var(--color-text-secondary)]">{copy.markOrderedConfirmBody}</p>
             </DialogBody>
             <DialogFooter className="justify-end gap-2">
               <button
-                className="min-h-10 rounded-md border border-slate-300 px-3 text-sm font-medium text-slate-700 transition hover:border-slate-400 hover:bg-slate-50"
+                className="min-h-10 rounded-md border border-[var(--color-border-strong)] px-3 text-sm font-medium text-[var(--color-text-secondary)] transition hover:border-[var(--color-border-hover)] hover:bg-[var(--color-bg-subtle)]"
                 type="button"
                 onClick={() => { closeDialog(markOrderedDialogRef.current); setMarkOrderedPending(false); }}
               >
@@ -2113,11 +2113,11 @@ export function PurchaseOrdersClient({
         {revertToDraftPending ? (
           <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
             <DialogBody>
-              <p className="text-sm leading-6 text-slate-600">{copy.revertToDraftConfirmBody}</p>
+              <p className="text-sm leading-6 text-[var(--color-text-secondary)]">{copy.revertToDraftConfirmBody}</p>
             </DialogBody>
             <DialogFooter className="justify-end gap-2">
               <button
-                className="min-h-10 rounded-md border border-slate-300 px-3 text-sm font-medium text-slate-700 transition hover:border-slate-400 hover:bg-slate-50"
+                className="min-h-10 rounded-md border border-[var(--color-border-strong)] px-3 text-sm font-medium text-[var(--color-text-secondary)] transition hover:border-[var(--color-border-hover)] hover:bg-[var(--color-bg-subtle)]"
                 type="button"
                 onClick={() => { closeDialog(revertToDraftDialogRef.current); setRevertToDraftPending(false); }}
               >
@@ -2184,14 +2184,14 @@ export function PurchaseOrdersClient({
         {rateRequiredState ? (
           <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
             <DialogBody className="grid gap-4">
-              <p className="text-sm leading-6 text-slate-600">
+              <p className="text-sm leading-6 text-[var(--color-text-secondary)]">
                 {copy.exchangeRateUnavailableBody
                   .replace("{from}", rateRequiredState.from)
                   .replace("{to}", rateRequiredState.to)
                   .replace("{date}", rateRequiredState.date)}
               </p>
               <div className="grid gap-2">
-                <label className="text-sm font-medium text-slate-700">
+                <label className="text-sm font-medium text-[var(--color-text-secondary)]">
                   {copy.manualRateLabel.replace("{from}", rateRequiredState.from)} {rateRequiredState.to}
                 </label>
                 <input
@@ -2199,13 +2199,13 @@ export function PurchaseOrdersClient({
                   inputMode="decimal"
                   value={rateRequiredValue}
                   onChange={(e) => setRateRequiredValue(e.target.value)}
-                  className="min-h-10 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-950 outline-none transition hover:border-slate-400 focus:border-slate-500 focus:ring-2 focus:ring-slate-200"
+                  className="min-h-10 rounded-md border border-[var(--color-border-strong)] bg-[var(--color-bg-elevated)] px-3 py-1.5 text-sm text-[var(--color-text-primary)] outline-none transition hover:border-[var(--color-border-hover)] focus:border-[var(--color-border-hover)] focus:ring-2 focus:ring-[var(--color-ring)]"
                 />
               </div>
             </DialogBody>
             <DialogFooter className="justify-end gap-2">
               <button
-                className="min-h-10 rounded-md border border-slate-300 px-3 text-sm font-medium text-slate-700 transition hover:border-slate-400 hover:bg-slate-50"
+                className="min-h-10 rounded-md border border-[var(--color-border-strong)] px-3 text-sm font-medium text-[var(--color-text-secondary)] transition hover:border-[var(--color-border-hover)] hover:bg-[var(--color-bg-subtle)]"
                 type="button"
                 onClick={() => { closeDialog(rateRequiredDialogRef.current); setRateRequiredState(null); }}
               >

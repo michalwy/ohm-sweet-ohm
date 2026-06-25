@@ -154,9 +154,9 @@ export function PartStockDialog({
         <DialogBody className="grid gap-4">
           <section className="grid gap-3">
             <label className="grid gap-1 text-sm">
-              <span className="font-medium text-slate-700">{copy.stockEntryType}</span>
+              <span className="font-medium text-[var(--color-text-secondary)]">{copy.stockEntryType}</span>
               <select
-                className="min-h-10 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-950 outline-none"
+                className="min-h-10 rounded-md border border-[var(--color-border-strong)] bg-[var(--color-bg-elevated)] px-3 py-1.5 text-sm text-[var(--color-text-primary)] outline-none"
                 disabled={!canWriteInventory}
                 onChange={(event) => setEntryType(event.currentTarget.value as EntryType)}
                 value={entryType}
@@ -169,9 +169,9 @@ export function PartStockDialog({
             </label>
 
             <label className="grid gap-1 text-sm">
-              <span className="font-medium text-slate-700">{copy.quantity}</span>
+              <span className="font-medium text-[var(--color-text-secondary)]">{copy.quantity}</span>
               <input
-                className="min-h-10 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-950 outline-none"
+                className="min-h-10 rounded-md border border-[var(--color-border-strong)] bg-[var(--color-bg-elevated)] px-3 py-1.5 text-sm text-[var(--color-text-primary)] outline-none"
                 disabled={!canWriteInventory}
                 onChange={(event) => setQuantity(event.currentTarget.value)}
                 value={quantity}
@@ -180,9 +180,9 @@ export function PartStockDialog({
 
             {showFromLocation ? (
               <label className="grid gap-1 text-sm">
-                <span className="font-medium text-slate-700">{copy.fromLocation}</span>
+                <span className="font-medium text-[var(--color-text-secondary)]">{copy.fromLocation}</span>
                 <select
-                  className="min-h-10 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-950 outline-none"
+                  className="min-h-10 rounded-md border border-[var(--color-border-strong)] bg-[var(--color-bg-elevated)] px-3 py-1.5 text-sm text-[var(--color-text-primary)] outline-none"
                   disabled={!canWriteInventory}
                   onChange={(event) => setFromLocationId(event.currentTarget.value)}
                   value={fromLocationId}
@@ -199,9 +199,9 @@ export function PartStockDialog({
 
             {showToLocation ? (
               <label className="grid gap-1 text-sm">
-                <span className="font-medium text-slate-700">{copy.toLocation}</span>
+                <span className="font-medium text-[var(--color-text-secondary)]">{copy.toLocation}</span>
                 <select
-                  className="min-h-10 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-950 outline-none"
+                  className="min-h-10 rounded-md border border-[var(--color-border-strong)] bg-[var(--color-bg-elevated)] px-3 py-1.5 text-sm text-[var(--color-text-primary)] outline-none"
                   disabled={!canWriteInventory}
                   onChange={(event) => setToLocationId(event.currentTarget.value)}
                   value={toLocationId}
@@ -217,9 +217,9 @@ export function PartStockDialog({
             ) : null}
 
             <label className="grid gap-1 text-sm">
-              <span className="font-medium text-slate-700">{copy.note}</span>
+              <span className="font-medium text-[var(--color-text-secondary)]">{copy.note}</span>
               <input
-                className="min-h-10 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-950 outline-none"
+                className="min-h-10 rounded-md border border-[var(--color-border-strong)] bg-[var(--color-bg-elevated)] px-3 py-1.5 text-sm text-[var(--color-text-primary)] outline-none"
                 disabled={!canWriteInventory}
                 onChange={(event) => setNote(event.currentTarget.value)}
                 value={note}
@@ -230,7 +230,7 @@ export function PartStockDialog({
         </DialogBody>
         <DialogFooter className="justify-end gap-3">
           <button
-            className="min-h-10 rounded-md border border-slate-300 px-3 text-sm font-medium text-slate-700 transition hover:border-slate-400 hover:bg-slate-50"
+            className="min-h-10 rounded-md border border-[var(--color-border-strong)] px-3 text-sm font-medium text-[var(--color-text-secondary)] transition hover:border-[var(--color-border-hover)] hover:bg-[var(--color-bg-subtle)]"
             type="button"
             onClick={resetAndClose}
           >

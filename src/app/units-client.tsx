@@ -266,35 +266,35 @@ export function UnitsClient({
         </button>
       </div>
 
-      <div className="min-h-0 flex-1 overflow-auto rounded-md border border-slate-200 bg-white">
+      <div className="min-h-0 flex-1 overflow-auto rounded-md border border-[var(--color-border)] bg-[var(--color-bg-elevated)]">
         {units.length === 0 ? (
-          <p className="px-4 py-6 text-sm text-slate-600">{copy.noUnits}</p>
+          <p className="px-4 py-6 text-sm text-[var(--color-text-secondary)]">{copy.noUnits}</p>
         ) : (
           <table className="w-full border-collapse text-left text-sm">
             <thead>
-              <tr className="border-b border-slate-200 bg-slate-50">
-                <th className="px-4 py-3 font-semibold text-slate-700">{copy.name}</th>
-                <th className="px-4 py-3 font-semibold text-slate-700">{copy.symbol}</th>
-                <th className="px-4 py-3 font-semibold text-slate-700">
+              <tr className="border-b border-[var(--color-border)] bg-[var(--color-bg-subtle)]">
+                <th className="px-4 py-3 font-semibold text-[var(--color-text-secondary)]">{copy.name}</th>
+                <th className="px-4 py-3 font-semibold text-[var(--color-text-secondary)]">{copy.symbol}</th>
+                <th className="px-4 py-3 font-semibold text-[var(--color-text-secondary)]">
                   {copy.allowsFraction}
                 </th>
-                <th className="px-4 py-3 font-semibold text-slate-700">
+                <th className="px-4 py-3 font-semibold text-[var(--color-text-secondary)]">
                   {copy.actions}
                 </th>
               </tr>
             </thead>
             <tbody>
               {units.map((unit) => (
-                <tr key={unit.id} className="border-b border-slate-100 last:border-b-0">
-                  <td className="px-4 py-3 text-slate-900">{unit.name}</td>
-                  <td className="px-4 py-3 font-mono text-slate-700">{unit.symbol}</td>
-                  <td className="px-4 py-3 text-slate-700">
+                <tr key={unit.id} className="border-b border-[var(--color-border)] last:border-b-0">
+                  <td className="px-4 py-3 text-[var(--color-text-primary)]">{unit.name}</td>
+                  <td className="px-4 py-3 font-mono text-[var(--color-text-secondary)]">{unit.symbol}</td>
+                  <td className="px-4 py-3 text-[var(--color-text-secondary)]">
                     {unit.allowsFraction ? copy.yes : copy.no}
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2">
                       <button
-                        className="min-h-9 rounded-md border border-slate-300 px-3 text-sm font-medium text-slate-700 transition hover:border-slate-400 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+                        className="min-h-9 rounded-md border border-[var(--color-border-strong)] px-3 text-sm font-medium text-[var(--color-text-secondary)] transition hover:border-[var(--color-border-hover)] hover:bg-[var(--color-bg-subtle)] disabled:cursor-not-allowed disabled:opacity-60"
                         aria-label={copy.edit}
                         type="button"
                         disabled={!canWriteUnits}
@@ -371,7 +371,7 @@ export function UnitsClient({
             className="flex min-h-0 flex-1 flex-col overflow-hidden"
           >
             <DialogBody className="grid gap-4">
-              <label className="grid gap-2 text-sm font-medium text-slate-700">
+              <label className="grid gap-2 text-sm font-medium text-[var(--color-text-secondary)]">
                 <LabelWithError error={unitFieldErrors.name} htmlFor="unit-name">
                   {copy.name}
                 </LabelWithError>
@@ -380,12 +380,12 @@ export function UnitsClient({
                   name="name"
                   defaultValue={editingUnit?.name ?? ""}
                   className={getFieldInputClassName(
-                    "min-h-10 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-950 outline-none transition hover:border-slate-400 focus:border-slate-500 focus:ring-2 focus:ring-slate-200",
+                    "min-h-10 rounded-md border border-[var(--color-border-strong)] bg-[var(--color-bg-elevated)] px-3 py-1.5 text-sm text-[var(--color-text-primary)] outline-none transition hover:border-[var(--color-border-hover)] focus:border-[var(--color-border-hover)] focus:ring-2 focus:ring-[var(--color-ring)]",
                     Boolean(unitFieldErrors.name)
                   )}
                 />
               </label>
-              <label className="grid gap-2 text-sm font-medium text-slate-700">
+              <label className="grid gap-2 text-sm font-medium text-[var(--color-text-secondary)]">
                 <LabelWithError error={unitFieldErrors.symbol} htmlFor="unit-symbol">
                   {copy.symbol}
                 </LabelWithError>
@@ -394,12 +394,12 @@ export function UnitsClient({
                   name="symbol"
                   defaultValue={editingUnit?.symbol ?? ""}
                   className={getFieldInputClassName(
-                    "min-h-10 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-950 outline-none transition hover:border-slate-400 focus:border-slate-500 focus:ring-2 focus:ring-slate-200",
+                    "min-h-10 rounded-md border border-[var(--color-border-strong)] bg-[var(--color-bg-elevated)] px-3 py-1.5 text-sm text-[var(--color-text-primary)] outline-none transition hover:border-[var(--color-border-hover)] focus:border-[var(--color-border-hover)] focus:ring-2 focus:ring-[var(--color-ring)]",
                     Boolean(unitFieldErrors.symbol)
                   )}
                 />
               </label>
-              <label className="inline-flex items-center gap-2 text-sm text-slate-800">
+              <label className="inline-flex items-center gap-2 text-sm text-[var(--color-text-primary)]">
                 <input
                   type="checkbox"
                   name="allowsFraction"
@@ -411,7 +411,7 @@ export function UnitsClient({
             </DialogBody>
             <DialogFooter className="items-end justify-between">
               <button
-                className="min-h-10 rounded-md border border-slate-300 px-3 text-sm font-medium text-slate-700 transition hover:border-slate-400 hover:bg-slate-50"
+                className="min-h-10 rounded-md border border-[var(--color-border-strong)] px-3 text-sm font-medium text-[var(--color-text-secondary)] transition hover:border-[var(--color-border-hover)] hover:bg-[var(--color-bg-subtle)]"
                 type="button"
                 onClick={closeUnitDialog}
               >
@@ -419,7 +419,7 @@ export function UnitsClient({
               </button>
               <div className="flex items-center gap-3">
                 <button
-                  className="min-h-10 rounded-md border border-slate-300 px-3 text-sm font-medium text-slate-700 transition hover:border-slate-400 hover:bg-slate-50"
+                  className="min-h-10 rounded-md border border-[var(--color-border-strong)] px-3 text-sm font-medium text-[var(--color-text-secondary)] transition hover:border-[var(--color-border-hover)] hover:bg-[var(--color-bg-subtle)]"
                   type="button"
                   onClick={closeUnitDialog}
                 >

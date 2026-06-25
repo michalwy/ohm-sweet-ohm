@@ -148,16 +148,16 @@ export function ListPageToolbar({
 
   return (
     <div
-      className={`flex items-${hasFilters ? "end" : "center"} gap-3 border-b border-slate-200 bg-white px-4 py-3`}
+      className={`flex items-${hasFilters ? "end" : "center"} gap-3 border-b border-[var(--color-border)] bg-[var(--color-bg-elevated)] px-4 py-3`}
     >
       {filterContent}
       <div className="ml-auto flex min-h-9 items-center gap-3">
         {countText != null ? (
-          <p className="min-w-28 text-sm text-slate-500">{countText}</p>
+          <p className="min-w-28 text-sm text-[var(--color-text-muted)]">{countText}</p>
         ) : null}
         {hasActiveFilters && onClearFilters ? (
           <button
-            className="min-h-9 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:border-slate-400 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2"
+            className="min-h-9 rounded-md border border-[var(--color-border-strong)] bg-[var(--color-bg-elevated)] px-3 py-1.5 text-sm font-medium text-[var(--color-text-secondary)] transition hover:border-[var(--color-border-hover)] hover:bg-[var(--color-bg-subtle)] focus:outline-none focus:ring-2 focus:ring-[var(--color-ring-strong)] focus:ring-offset-2"
             type="button"
             onClick={onClearFilters}
           >
@@ -166,7 +166,7 @@ export function ListPageToolbar({
         ) : null}
         <div ref={columnsMenuRef} className="relative">
           <button
-            className="min-h-9 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:border-slate-400 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2"
+            className="min-h-9 rounded-md border border-[var(--color-border-strong)] bg-[var(--color-bg-elevated)] px-3 py-1.5 text-sm font-medium text-[var(--color-text-secondary)] transition hover:border-[var(--color-border-hover)] hover:bg-[var(--color-bg-subtle)] focus:outline-none focus:ring-2 focus:ring-[var(--color-ring-strong)] focus:ring-offset-2"
             type="button"
             onClick={() => setIsColumnsMenuOpen((current) => !current)}
           >
@@ -175,10 +175,10 @@ export function ListPageToolbar({
           {isColumnsMenuOpen ? (
             <div
               aria-label={visibleColumnsLabel}
-              className="absolute right-0 z-20 mt-2 min-w-64 rounded-md border border-slate-200 bg-white p-2 shadow-lg"
+              className="absolute right-0 z-20 mt-2 min-w-64 rounded-md border border-[var(--color-border)] bg-[var(--color-bg-elevated)] p-2 shadow-lg"
               role="menu"
             >
-              <p className="px-2 py-1 text-xs font-semibold uppercase tracking-wide text-slate-500">
+              <p className="px-2 py-1 text-xs font-semibold uppercase tracking-wide text-[var(--color-text-muted)]">
                 {visibleColumnsLabel}
               </p>
               <div className="grid gap-1">
@@ -194,8 +194,8 @@ export function ListPageToolbar({
               {groupedColumns.map(({ group, columns }) =>
                 columns.length > 0 ? (
                   <div key={group.groupId}>
-                    <div className="my-2 border-t border-slate-200" />
-                    <p className="px-2 py-1 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    <div className="my-2 border-t border-[var(--color-border)]" />
+                    <p className="px-2 py-1 text-xs font-semibold uppercase tracking-wide text-[var(--color-text-muted)]">
                       {group.label}
                     </p>
                     <div className="grid max-h-56 gap-1 overflow-auto">
@@ -271,7 +271,7 @@ export function ListTableHeaderCell({
     <th
       key={header.id}
       draggable={dragEnabled && !isResizingColumn}
-      className={`relative border-b border-slate-200 px-2 py-2.5 text-xs font-semibold text-slate-700 ${alignClass}${className ? ` ${className}` : ""}`}
+      className={`relative border-b border-[var(--color-border)] px-2 py-2.5 text-xs font-semibold text-[var(--color-text-secondary)] ${alignClass}${className ? ` ${className}` : ""}`}
       style={{ width: header.getSize() }}
       onDragStart={(e) => {
         if (!dragEnabled) return;
@@ -291,7 +291,7 @@ export function ListTableHeaderCell({
         <div className={`flex items-center gap-1 overflow-hidden ${flexJustify}`}>
           {header.column.getCanSort() ? (
             <button
-              className="flex items-center gap-1 overflow-hidden text-left hover:text-slate-900"
+              className="flex items-center gap-1 overflow-hidden text-left hover:text-[var(--color-text-primary)]"
               type="button"
               onClick={() => {
                 const current = header.column.getIsSorted();
@@ -307,7 +307,7 @@ export function ListTableHeaderCell({
             >
               <span>{flexRender(header.column.columnDef.header, header.getContext())}</span>
               {header.column.getIsSorted() ? (
-                <span className="text-xs text-slate-400">
+                <span className="text-xs text-[var(--color-text-placeholder)]">
                   {header.column.getIsSorted() === "asc" ? "▲" : "▼"}
                 </span>
               ) : null}
@@ -320,7 +320,7 @@ export function ListTableHeaderCell({
       {header.column.getCanResize() ? (
         <div
           className={`absolute right-0 top-0 h-full w-3 cursor-col-resize select-none ${
-            header.column.getIsResizing() ? "bg-slate-200" : "bg-transparent"
+            header.column.getIsResizing() ? "bg-[var(--color-bg-strong)]" : "bg-transparent"
           }`}
           onDoubleClick={() =>
             setColumnWidth(columnId, Number(colDef?.defaultWidth ?? 160))
@@ -336,7 +336,7 @@ export function ListTableHeaderCell({
             header.getResizeHandler()(e);
           }}
         >
-          <div className="ml-auto h-full w-px bg-slate-300" />
+          <div className="ml-auto h-full w-px bg-[var(--color-border-strong)]" />
         </div>
       ) : null}
     </th>
@@ -353,7 +353,7 @@ function ColumnCheckbox({
   setColumnVisible: (id: string, visible: boolean) => void;
 }) {
   return (
-    <label className="inline-flex min-h-8 items-center gap-2 rounded px-2 text-sm text-slate-700 hover:bg-slate-50">
+    <label className="inline-flex min-h-8 items-center gap-2 rounded px-2 text-sm text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-subtle)]">
       <input
         checked={columnVisibility[column.id] !== false}
         type="checkbox"

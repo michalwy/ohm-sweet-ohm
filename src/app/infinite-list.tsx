@@ -70,7 +70,7 @@ export function InfiniteListViewport({
   return (
     <div ref={rootRef} className={className} data-testid={testId}>
       {isInitialLoading ? (
-        <p className="p-6 text-sm text-slate-500">{loadingLabel}</p>
+        <p className="p-6 text-sm text-[var(--color-text-muted)]">{loadingLabel}</p>
       ) : isError && errorState ? (
         errorState
       ) : isEmpty ? (
@@ -80,7 +80,7 @@ export function InfiniteListViewport({
       )}
       <div ref={sentinelRef} aria-hidden="true" className="h-px" />
       {isFetchingNextPage ? (
-        <p className="border-t border-slate-100 px-4 py-3 text-sm text-slate-500">
+        <p className="border-t border-[var(--color-border)] px-4 py-3 text-sm text-[var(--color-text-muted)]">
           {loadingMoreLabel}
         </p>
       ) : null}

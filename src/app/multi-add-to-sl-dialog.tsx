@@ -165,20 +165,20 @@ export function MultiAddToSLDialog({
           <DialogBody>
             <table className="w-full border-collapse text-left text-sm">
               <thead>
-                <tr className="border-b border-slate-200 bg-slate-50">
-                  <th className="px-3 py-2 font-semibold text-slate-700">{copy.part}</th>
-                  <th className="w-28 px-3 py-2 text-right font-semibold text-slate-700">{copy.quantity}</th>
+                <tr className="border-b border-[var(--color-border)] bg-[var(--color-bg-subtle)]">
+                  <th className="px-3 py-2 font-semibold text-[var(--color-text-secondary)]">{copy.part}</th>
+                  <th className="w-28 px-3 py-2 text-right font-semibold text-[var(--color-text-secondary)]">{copy.quantity}</th>
                 </tr>
               </thead>
               <tbody>
                 {selectedParts.map((part) => {
                   const onListQty = existingParts.get(part.id);
                   return (
-                    <tr key={part.id} className="border-b border-slate-100">
-                      <td className="px-3 py-2 text-slate-700">
+                    <tr key={part.id} className="border-b border-[var(--color-border)]">
+                      <td className="px-3 py-2 text-[var(--color-text-secondary)]">
                         <span className="font-medium">{part.catalogNumber}</span>
                         {part.description ? (
-                          <span className="ml-2 text-slate-500">{part.description}</span>
+                          <span className="ml-2 text-[var(--color-text-muted)]">{part.description}</span>
                         ) : null}
                         {onListQty !== undefined ? (
                           <span className="ml-2 inline-flex items-center rounded bg-amber-100 px-1.5 py-0.5 text-xs font-medium text-amber-800">
@@ -188,7 +188,7 @@ export function MultiAddToSLDialog({
                       </td>
                       <td className="px-3 py-2">
                         <input
-                          className="w-full rounded border border-slate-300 px-2 py-1 text-right text-sm focus:border-[var(--color-action-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--color-action-primary)]"
+                          className="w-full rounded border border-[var(--color-border-strong)] bg-[var(--color-bg-elevated)] px-2 py-1 text-right text-sm text-[var(--color-text-primary)] focus:border-[var(--color-action-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--color-action-primary)]"
                           type="number"
                           min="0.001"
                           step="any"
@@ -206,14 +206,14 @@ export function MultiAddToSLDialog({
           </DialogBody>
           <DialogFooter>
             <button
-              className="min-h-9 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:border-slate-400 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2"
+              className="min-h-9 rounded-md border border-[var(--color-border-strong)] bg-[var(--color-bg-elevated)] px-3 py-1.5 text-sm font-medium text-[var(--color-text-secondary)] transition hover:border-[var(--color-border-hover)] hover:bg-[var(--color-bg-subtle)] focus:outline-none focus:ring-2 focus:ring-[var(--color-ring-strong)] focus:ring-offset-2"
               type="button"
               onClick={handleClose}
             >
               {copy.cancel}
             </button>
             <button
-              className="min-h-9 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:border-slate-400 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2"
+              className="min-h-9 rounded-md border border-[var(--color-border-strong)] bg-[var(--color-bg-elevated)] px-3 py-1.5 text-sm font-medium text-[var(--color-text-secondary)] transition hover:border-[var(--color-border-hover)] hover:bg-[var(--color-bg-subtle)] focus:outline-none focus:ring-2 focus:ring-[var(--color-ring-strong)] focus:ring-offset-2"
               type="button"
               onClick={handleBack}
               disabled={addMutation.isPending}
@@ -221,7 +221,7 @@ export function MultiAddToSLDialog({
               {copy.back}
             </button>
             <button
-              className="min-h-9 rounded-md border border-[var(--color-action-primary)] bg-[var(--color-action-primary)] px-3 py-1.5 text-sm font-semibold text-white transition hover:border-[var(--color-action-primary-hover)] hover:bg-[var(--color-action-primary-hover)] focus:outline-none focus:ring-2 focus:ring-[var(--color-action-focus)] focus:ring-offset-2 disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-100 disabled:text-slate-400"
+              className="min-h-9 rounded-md border border-[var(--color-action-primary)] bg-[var(--color-action-primary)] px-3 py-1.5 text-sm font-semibold text-white transition hover:border-[var(--color-action-primary-hover)] hover:bg-[var(--color-action-primary-hover)] focus:outline-none focus:ring-2 focus:ring-[var(--color-action-focus)] focus:ring-offset-2 disabled:cursor-not-allowed disabled:border-[var(--color-border)] disabled:bg-[var(--color-bg-muted)] disabled:text-[var(--color-text-placeholder)]"
               type="submit"
               disabled={addMutation.isPending || selectedParts.length === 0}
             >

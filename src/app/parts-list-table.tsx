@@ -86,7 +86,7 @@ export function PartsListTable({
               <col key={column.id} style={{ width: column.getSize() }} />
             ))}
           </colgroup>
-          <thead className="sticky top-0 z-10 bg-slate-50">
+          <thead className="sticky top-0 z-10 bg-[var(--color-bg-subtle)]">
             {table.getHeaderGroups().map((headerGroup) => (
               <tr key={headerGroup.id}>
                 {headerGroup.headers.map((header) => (
@@ -95,7 +95,7 @@ export function PartsListTable({
                     columnDefs={columnDefs}
                     className={
                       header.column.id === "actions"
-                        ? "sticky right-0 z-20 bg-slate-50"
+                        ? "sticky right-0 z-20 bg-[var(--color-bg-subtle)]"
                         : undefined
                     }
                     draggedColumnId={draggedColumnId}
@@ -112,17 +112,17 @@ export function PartsListTable({
               </tr>
             ))}
           </thead>
-          <tbody className="bg-white">
+          <tbody className="bg-[var(--color-bg-elevated)]">
             {table.getRowModel().rows.map((row) => {
               const part = row.original;
               const highlightClass = getRowHighlightClass?.(part) ?? "";
               const isHovered = hoveredRowId === part.id;
-              const rowClass = highlightClass || (isHovered ? "bg-slate-50" : "");
+              const rowClass = highlightClass || (isHovered ? "bg-[var(--color-bg-subtle)]" : "");
 
               return (
                 <tr
                   key={row.id}
-                  className={`border-b border-slate-100 ${rowClass}`}
+                  className={`border-b border-[var(--color-border)] ${rowClass}`}
                   role={onRowClick ? "button" : undefined}
                   tabIndex={onRowClick ? 0 : undefined}
                   onClick={onRowClick ? () => onRowClick(part) : undefined}
@@ -146,13 +146,13 @@ export function PartsListTable({
                   {row.getVisibleCells().map((cell) => {
                     const isActionsCell = cell.column.id === "actions";
                     const actionsBackground = isActionsCell
-                      ? highlightClass || (isHovered ? "bg-slate-50" : "bg-white")
+                      ? highlightClass || (isHovered ? "bg-[var(--color-bg-subtle)]" : "bg-[var(--color-bg-elevated)]")
                       : "";
 
                     return (
                       <td
                         key={cell.id}
-                        className={`overflow-hidden border-b border-slate-100 px-2 py-2 text-slate-700 ${
+                        className={`overflow-hidden border-b border-[var(--color-border)] px-2 py-2 text-[var(--color-text-secondary)] ${
                           isActionsCell
                             ? `sticky right-0 z-10 px-1 py-1.5 ${actionsBackground}`
                             : cell.column.id.startsWith("attribute:") ||

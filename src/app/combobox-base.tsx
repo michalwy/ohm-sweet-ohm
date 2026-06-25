@@ -149,15 +149,15 @@ export function ComboboxBase<T extends ComboboxBaseItem>({
       role="listbox"
       className={
         positionMode === "portal"
-          ? "fixed z-50 overflow-hidden rounded-md border border-slate-200 bg-white shadow-lg"
-          : "absolute left-0 right-0 top-full z-40 mt-1 overflow-hidden rounded-md border border-slate-200 bg-white shadow-lg"
+          ? "fixed z-50 overflow-hidden rounded-md border border-[var(--color-border)] bg-[var(--color-bg-elevated)] shadow-lg"
+          : "absolute left-0 right-0 top-full z-40 mt-1 overflow-hidden rounded-md border border-[var(--color-border)] bg-[var(--color-bg-elevated)] shadow-lg"
       }
       style={positionMode === "portal" ? panelStyle : undefined}
     >
       {isLoading && items.length === 0 ? (
-        <p className="px-3 py-3 text-sm text-slate-500">{loadingLabel}</p>
+        <p className="px-3 py-3 text-sm text-[var(--color-text-muted)]">{loadingLabel}</p>
       ) : items.length === 0 ? (
-        <p className="px-3 py-3 text-sm text-slate-500">{noItemsLabel}</p>
+        <p className="px-3 py-3 text-sm text-[var(--color-text-muted)]">{noItemsLabel}</p>
       ) : (
         <ol className="max-h-56 overflow-auto p-1" onScroll={handleListScroll}>
           {items.map((item, i) => (
@@ -179,7 +179,7 @@ export function ComboboxBase<T extends ComboboxBaseItem>({
             </li>
           ))}
           {isLoading && items.length > 0 ? (
-            <li className="px-3 py-2 text-xs text-slate-400">{loadingLabel}</li>
+            <li className="px-3 py-2 text-xs text-[var(--color-text-placeholder)]">{loadingLabel}</li>
           ) : null}
         </ol>
       )}
@@ -202,7 +202,7 @@ export function ComboboxBase<T extends ComboboxBaseItem>({
         aria-activedescendant={isOpen && items[activeIndex] ? `${inputId}-option-${items[activeIndex].id}` : undefined}
         type="text"
         value={inputValue}
-        className={inputClassName ?? "min-h-10 w-full rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-950 outline-none transition hover:border-slate-400 focus:border-slate-500 focus:ring-2 focus:ring-slate-200 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400"}
+        className={inputClassName ?? "min-h-10 w-full rounded-md border border-[var(--color-border-strong)] bg-[var(--color-bg-elevated)] px-3 py-1.5 text-sm text-[var(--color-text-primary)] outline-none transition hover:border-[var(--color-border-hover)] focus:border-[var(--color-border-hover)] focus:ring-2 focus:ring-[var(--color-ring)] disabled:cursor-not-allowed disabled:bg-[var(--color-bg-subtle)] disabled:text-[var(--color-text-placeholder)]"}
         onChange={(e) => {
           onInputChange(e.target.value);
           openDropdown();
