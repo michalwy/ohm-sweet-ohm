@@ -99,6 +99,7 @@ export type PurchaseOrdersPageInput = {
   pageSize?: number | null;
   sortBy?: PurchaseOrderSortBy | null;
   sortDirection?: PurchaseOrderSortDirection | null;
+  pinnedId?: string | null;
 };
 
 type SupplierNameCursor = { supplierName: string; id: string };
@@ -182,6 +183,19 @@ export async function getPurchaseOrders(
   const dir = input.sortDirection ?? (sortBy === "createdAt" ? "desc" : "asc");
 
   const totalCount = await prisma.purchaseOrder.count({ where: { workspaceId } });
+
+  if (input.pinnedId) {
+    const order = await prisma.purchaseOrder.findFirst({
+      where: { id: input.pinnedId, workspaceId },
+      select: orderSelectShape
+    });
+    return {
+      items: order ? [toOrderSummary(order)] : [],
+      nextCursor: null,
+      totalCount,
+      filteredCount: order ? 1 : 0
+    };
+  }
 
   if (sortBy === "status" || sortBy === "itemCount") {
     const cursor = decodeListCursor<OffsetCursor>(input.cursor);

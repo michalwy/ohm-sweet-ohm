@@ -86,6 +86,8 @@ import { getPartPurchaseOrderHistoryForWorkspace } from "@/server/purchase-order
 import type { PartPurchaseOrderHistoryItem } from "@/server/purchase-orders/purchaseOrderMutations";
 import { getPartShoppingListMembershipForWorkspace } from "@/server/shopping-lists/shoppingListActions";
 import type { PartShoppingListMembershipItem } from "@/server/shopping-lists/shoppingListMutations";
+import { PoLink, SlLink } from "@/app/entity-links";
+import { PinnedFilterBanner } from "@/app/pinned-filter-banner";
 
 type Copy = {
   title: string;
@@ -140,6 +142,8 @@ type Copy = {
   filterByManufacturer: string;
   allManufacturers: string;
   clearFilters: string;
+  pinnedFilterLabel: string;
+  clearPinnedFilter: string;
   configureList: string;
   configureListTitle: string;
   configureListBody: string;
@@ -478,12 +482,15 @@ export function PartsListClient({
     setCategoryFilterId,
     manufacturerFilter,
     setManufacturerFilter,
-    clearFilters
+    clearFilters,
+    pinnedId,
+    clearPinnedId
   } = usePartsListQuery({
     workspaceSlug,
     sorting,
     initialPage,
-    enabled: isDatabaseAvailable
+    enabled: isDatabaseAvailable,
+    initialPinnedId: initialSelectedPartId
   });
 
   const createHasAttributesTab =
@@ -747,13 +754,13 @@ export function PartsListClient({
   }, [editActiveTab, editingPart]);
 
   useEffect(() => {
-    if (!selectedPartId || currentPartsById.has(selectedPartId)) {
+    if (!selectedPartId || currentPartsById.has(selectedPartId) || partsQueryIsLoading) {
       return;
     }
 
     setSelectedPartId(null);
     syncSelectedPartInUrl(null);
-  }, [currentPartsById, selectedPartId]);
+  }, [currentPartsById, selectedPartId, partsQueryIsLoading]);
 
   useEffect(() => {
     if (partDialogOpen) {
@@ -1375,6 +1382,17 @@ export function PartsListClient({
             </button>
           }
         />
+        {pinnedId ? (
+          <PinnedFilterBanner
+            label={copy.pinnedFilterLabel}
+            clearLabel={copy.clearPinnedFilter}
+            onClear={() => {
+              clearPinnedId();
+              setSelectedPartId(null);
+              syncSelectedPartInUrl(null);
+            }}
+          />
+        ) : null}
         <PartsListTable
           table={partsTable}
           columnDefs={listColumns}
@@ -1593,9 +1611,9 @@ export function PartsListClient({
                       </thead>
                       <tbody>
                         {(partPurchaseOrderHistoryQuery.data ?? []).map((entry: PartPurchaseOrderHistoryItem) => (
-                          <tr key={`${entry.orderId}`} className="border-t border-[var(--color-border)] first:border-t-0">
+                          <tr key={`${entry.orderId}`} className="group border-t border-[var(--color-border)] first:border-t-0">
                             <td className="px-3 py-2 align-middle font-mono text-xs text-[var(--color-text-secondary)]">
-                              {entry.orderNumber ?? entry.orderId.slice(0, 8)}
+                              <PoLink poId={entry.orderId} reference={entry.orderNumber ?? entry.orderId.slice(0, 8)} />
                             </td>
                             <td className="px-3 py-2 align-middle text-[var(--color-text-secondary)]">
                               {entry.supplierName}
@@ -1670,14 +1688,9 @@ export function PartsListClient({
                       </thead>
                       <tbody>
                         {(partShoppingListMembershipQuery.data ?? []).map((entry: PartShoppingListMembershipItem) => (
-                          <tr key={entry.shoppingListId} className="border-t border-[var(--color-border)] first:border-t-0">
+                          <tr key={entry.shoppingListId} className="group border-t border-[var(--color-border)] first:border-t-0">
                             <td className="px-3 py-2 align-middle">
-                              <a
-                                href={`/w/${encodeURIComponent(workspaceSlug)}/shopping-lists?selectedListId=${entry.shoppingListId}`}
-                                className="text-accent hover:underline"
-                              >
-                                {entry.shoppingListName}
-                              </a>
+                              <SlLink slId={entry.shoppingListId} name={entry.shoppingListName} />
                             </td>
                             <td className="px-3 py-2 align-middle text-right tabular-nums text-[var(--color-text-primary)]">
                               {entry.quantity}

@@ -60,6 +60,8 @@ const copy = {
   filterByManufacturer: "Filter by manufacturer",
   allManufacturers: "All manufacturers",
   clearFilters: "Clear filters",
+  pinnedFilterLabel: "Filtered to 1 part",
+  clearPinnedFilter: "Show all parts",
   configureList: "Configure list",
   configureListTitle: "Configure list",
   configureListBody: "Choose visible columns, order, sorting, and widths.",

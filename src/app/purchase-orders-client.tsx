@@ -67,6 +67,8 @@ import { ListPageToolbar, ListTableHeaderCell, useColumnDragReorder, useColumnRe
 import { DetailPanel, useDetailsPanelWidth } from "@/app/detail-panel";
 import { EmptyCell } from "@/app/list-table-cell";
 import { MultiAddToPODialog, type MultiAddToPOCopy } from "@/app/multi-add-to-po-dialog";
+import { PartLink } from "@/app/entity-links";
+import { PinnedFilterBanner } from "@/app/pinned-filter-banner";
 
 function roundDisplay(n: number): string {
   return n.toFixed(2);
@@ -237,6 +239,8 @@ type Copy = {
   deleteConfirmationBody: string;
   deleteOrder: string;
   noOrders: string;
+  pinnedFilterLabel: string;
+  clearPinnedFilter: string;
   loadError: string;
   loadingOrders: string;
   loadingMoreOrders: string;
@@ -374,6 +378,9 @@ export function PurchaseOrdersClient({
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(
     initialSelectedOrderId ?? null
   );
+  const [pinnedOrderId, setPinnedOrderId] = useState<string | null>(
+    initialSelectedOrderId ?? null
+  );
   const [hoveredOrderId, setHoveredOrderId] = useState<string | null>(null);
   const [orderDialogMode, setOrderDialogMode] = useState<"edit" | null>(null);
   const [createOrderDialogOpen, setCreateOrderDialogOpen] = useState(false);
@@ -458,14 +465,15 @@ export function PurchaseOrdersClient({
   const activeSorting = sorting[0] ?? null;
 
   const ordersQuery = useInfiniteQuery({
-    queryKey: ["purchase-orders", workspaceSlug, { sorting }] as const,
+    queryKey: ["purchase-orders", workspaceSlug, { sorting, pinnedOrderId }] as const,
     initialPageParam: null as string | null,
     queryFn: async ({ pageParam }) => {
       const result = await getPurchaseOrdersForWorkspace({
         workspaceSlug,
         cursor: pageParam,
         sortBy: (activeSorting?.id ?? null) as PurchaseOrderSortBy | null,
-        sortDirection: activeSorting ? (activeSorting.desc ? "desc" : "asc") : null
+        sortDirection: activeSorting ? (activeSorting.desc ? "desc" : "asc") : null,
+        pinnedId: pinnedOrderId
       });
       if (!result.ok) throw new Error(result.error);
       return result.data;
@@ -473,7 +481,7 @@ export function PurchaseOrdersClient({
     getNextPageParam: (lastPage) => lastPage.nextCursor,
     placeholderData: keepPreviousData,
     initialData:
-      sorting.length === 0
+      sorting.length === 0 && !pinnedOrderId
         ? { pages: [initialPage], pageParams: [null] }
         : undefined
   });
@@ -1219,6 +1227,19 @@ export function PurchaseOrdersClient({
               </button>
             }
           />
+          {pinnedOrderId ? (
+            <PinnedFilterBanner
+              label={copy.pinnedFilterLabel}
+              clearLabel={copy.clearPinnedFilter}
+              onClear={() => {
+                setPinnedOrderId(null);
+                setSelectedOrderId(null);
+                const url = new URL(window.location.href);
+                url.searchParams.delete("selectedOrderId");
+                window.history.replaceState(null, "", url.toString());
+              }}
+            />
+          ) : null}
 
           <InfiniteListViewport
             emptyState={
@@ -1429,9 +1450,11 @@ export function PurchaseOrdersClient({
                       {detailItems.map((item) => {
                         const isFullyReceived = parseFloat(item.receivedQuantity) >= parseFloat(item.quantity);
                         return (
-                          <tr key={item.id} className={`border-b border-[var(--color-border)] last:border-b-0 ${isFullyReceived ? "opacity-60" : ""}`}>
+                          <tr key={item.id} className={`group border-b border-[var(--color-border)] last:border-b-0 ${isFullyReceived ? "opacity-60" : ""}`}>
                             <td className="px-3 py-2">
-                              <div className="font-medium text-[var(--color-text-primary)]">{item.partCatalogNumber}</div>
+                              <div className="font-medium text-[var(--color-text-primary)]">
+                                <PartLink partId={item.partId} name={item.partCatalogNumber} />
+                              </div>
                               <div className="text-xs text-[var(--color-text-muted)]">{item.manufacturerName}</div>
                             </td>
                             <InlinePriceCell

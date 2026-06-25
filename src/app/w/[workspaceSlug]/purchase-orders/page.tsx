@@ -41,6 +41,8 @@ const copy = {
   revertToDraftConfirmBody: "The order will return to draft status. On-order quantities will return to planned.",
   revertedToast: "Order reverted to draft",
   noOrders: "No purchase orders yet. Create one to start ordering parts.",
+  pinnedFilterLabel: "Filtered to 1 purchase order",
+  clearPinnedFilter: "Show all orders",
   loadError: "Failed to load orders.",
   loadingOrders: "Loading orders...",
   loadingMoreOrders: "Loading more...",

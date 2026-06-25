@@ -32,6 +32,8 @@ const copy = {
   deleteConfirmationBody: "This cannot be undone.",
   deleteList: "Delete list",
   noLists: "No shopping lists yet. Create one to start collecting parts to buy.",
+  pinnedFilterLabel: "Filtered to 1 shopping list",
+  clearPinnedFilter: "Show all lists",
   loadError: "Failed to load lists.",
   loadingLists: "Loading lists...",
   loadingMoreLists: "Loading more...",

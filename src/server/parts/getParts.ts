@@ -50,6 +50,7 @@ export type PartsListFilters = {
   searchQuery?: string | null;
   categoryFilterId?: string | null;
   manufacturerFilter?: string | null;
+  pinnedId?: string | null;
 };
 
 export type PartsListSortDirection = "asc" | "desc";
@@ -146,6 +147,27 @@ export async function getPartsListPage(
   const categoryPathsById = new Map(
     categories.map((category) => [category.id, category.path])
   );
+
+  if (input.pinnedId) {
+    const part = await prisma.part.findFirst({
+      where: { id: input.pinnedId, workspaceId: context.workspace.id },
+      select: partListSelect
+    });
+    if (!part) {
+      return { items: [], nextCursor: null, totalCount, filteredCount: 0 };
+    }
+    const valueAttributeIdsByCategoryId = await getValueAttributeIdsByCategoryId({
+      workspaceId: context.workspace.id,
+      categoryIds: part.primaryCategoryId ? [part.primaryCategoryId] : []
+    });
+    return {
+      items: [mapPartListItem({ part, categoryPathsById, valueAttributeIdsByCategoryId, canReadInventory, canReadShoppingLists, canReadPurchaseOrders })],
+      nextCursor: null,
+      totalCount,
+      filteredCount: 1
+    };
+  }
+
   const filterCategoryIds = getCategoryFilterIds({
     categories,
     categoryId: input.categoryFilterId

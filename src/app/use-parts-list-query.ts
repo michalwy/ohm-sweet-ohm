@@ -16,17 +16,21 @@ export type PartsListQueryOpts = {
   initialPage?: ListPage<PartsListItem>;
   /** When false the query is disabled (e.g. database unavailable). Defaults to true. */
   enabled?: boolean;
+  /** Pre-filter the list to a single part (set when navigating here via an entity link). */
+  initialPinnedId?: string | null;
 };
 
 export function usePartsListQuery({
   workspaceSlug,
   sorting,
   initialPage,
-  enabled = true
+  enabled = true,
+  initialPinnedId
 }: PartsListQueryOpts) {
   const [searchQuery, setSearchQuery] = useState("");
   const [categoryFilterId, setCategoryFilterId] = useState("");
   const [manufacturerFilter, setManufacturerFilter] = useState("");
+  const [pinnedId, setPinnedId] = useState<string | null>(initialPinnedId ?? null);
 
   const debouncedSearchQuery = useDebouncedValue(searchQuery, 300);
   const debouncedManufacturerFilter = useDebouncedValue(manufacturerFilter, 300);
@@ -40,7 +44,8 @@ export function usePartsListQuery({
       searchQuery: debouncedSearchQuery,
       categoryFilterId,
       manufacturerFilter: debouncedManufacturerFilter,
-      sorting
+      sorting,
+      pinnedId
     }
   ] as const;
 
@@ -56,7 +61,8 @@ export function usePartsListQuery({
         categoryFilterId,
         manufacturerFilter: debouncedManufacturerFilter,
         sortBy: activeSorting?.id ?? null,
-        sortDirection: activeSorting?.desc ? "desc" : "asc"
+        sortDirection: activeSorting?.desc ? "desc" : "asc",
+        pinnedId
       });
 
       if (!result.ok) {
@@ -72,6 +78,7 @@ export function usePartsListQuery({
       !debouncedSearchQuery &&
       !categoryFilterId &&
       !debouncedManufacturerFilter &&
+      !pinnedId &&
       sorting.length === 0
         ? {
             pages: [initialPage],
@@ -99,6 +106,10 @@ export function usePartsListQuery({
     setManufacturerFilter("");
   }
 
+  function clearPinnedId() {
+    setPinnedId(null);
+  }
+
   return {
     // Data
     currentParts,
@@ -116,6 +127,9 @@ export function usePartsListQuery({
     setCategoryFilterId,
     manufacturerFilter,
     setManufacturerFilter,
-    clearFilters
+    clearFilters,
+    // Pinned (navigate-to) state
+    pinnedId,
+    clearPinnedId
   };
 }

@@ -58,6 +58,8 @@ import { EmptyCell } from "@/app/list-table-cell";
 import { DetailPanel, useDetailsPanelWidth } from "@/app/detail-panel";
 import { CreatePurchaseOrderDialog } from "@/app/create-purchase-order-dialog";
 import { MultiAddToSLDialog, type MultiAddToSLCopy } from "@/app/multi-add-to-sl-dialog";
+import { PartLink } from "@/app/entity-links";
+import { PinnedFilterBanner } from "@/app/pinned-filter-banner";
 
 
 type Copy = {
@@ -81,6 +83,8 @@ type Copy = {
   deleteConfirmationBody: string;
   deleteList: string;
   noLists: string;
+  pinnedFilterLabel: string;
+  clearPinnedFilter: string;
   loadError: string;
   loadingLists: string;
   loadingMoreLists: string;
@@ -176,6 +180,9 @@ export function ShoppingListsClient({
   const [selectedListId, setSelectedListId] = useState<string | null>(
     initialSelectedListId ?? null
   );
+  const [pinnedListId, setPinnedListId] = useState<string | null>(
+    initialSelectedListId ?? null
+  );
   const [hoveredListId, setHoveredListId] = useState<string | null>(null);
   const [listDialogMode, setListDialogMode] = useState<"create" | "edit" | null>(null);
   const [editingList, setEditingList] = useState<ShoppingListSummary | null>(null);
@@ -241,14 +248,15 @@ export function ShoppingListsClient({
   const activeSorting = sorting[0] ?? null;
 
   const listsQuery = useInfiniteQuery({
-    queryKey: ["shopping-lists", workspaceSlug, { sorting }] as const,
+    queryKey: ["shopping-lists", workspaceSlug, { sorting, pinnedListId }] as const,
     initialPageParam: null as string | null,
     queryFn: async ({ pageParam }) => {
       const result = await getShoppingListsForWorkspace({
         workspaceSlug,
         cursor: pageParam,
         sortBy: (activeSorting?.id ?? null) as ShoppingListSortBy | null,
-        sortDirection: activeSorting ? (activeSorting.desc ? "desc" : "asc") : null
+        sortDirection: activeSorting ? (activeSorting.desc ? "desc" : "asc") : null,
+        pinnedId: pinnedListId
       });
       if (!result.ok) throw new Error(result.error);
       return result.data;
@@ -256,7 +264,7 @@ export function ShoppingListsClient({
     getNextPageParam: (lastPage) => lastPage.nextCursor,
     placeholderData: keepPreviousData,
     initialData:
-      sorting.length === 0
+      sorting.length === 0 && !pinnedListId
         ? { pages: [initialPage], pageParams: [null] }
         : undefined
   });
@@ -726,6 +734,19 @@ export function ShoppingListsClient({
               </button>
             }
           />
+          {pinnedListId ? (
+            <PinnedFilterBanner
+              label={copy.pinnedFilterLabel}
+              clearLabel={copy.clearPinnedFilter}
+              onClear={() => {
+                setPinnedListId(null);
+                setSelectedListId(null);
+                const url = new URL(window.location.href);
+                url.searchParams.delete("selectedListId");
+                window.history.replaceState(null, "", url.toString());
+              }}
+            />
+          ) : null}
 
           <InfiniteListViewport
             emptyState={
@@ -887,7 +908,7 @@ export function ShoppingListsClient({
                     </thead>
                     <tbody>
                       {items.map((item) => (
-                        <tr key={item.id} className="border-b border-[var(--color-border)] last:border-b-0">
+                        <tr key={item.id} className="group border-b border-[var(--color-border)] last:border-b-0">
                           <td className="px-3 py-2">
                             <input
                               aria-label={`Select ${item.partCatalogNumber}`}
@@ -900,7 +921,9 @@ export function ShoppingListsClient({
                           </td>
                           <td className="px-3 py-2">
                             <div className="flex flex-wrap items-center gap-1.5">
-                              <span className="font-medium text-[var(--color-text-primary)]">{item.partCatalogNumber}</span>
+                              <span className="font-medium text-[var(--color-text-primary)]">
+                                <PartLink partId={item.partId} name={item.partCatalogNumber} />
+                              </span>
                               <span className="text-[var(--color-text-muted)]">{item.manufacturerName}</span>
                               {item.orderedInPurchaseOrderId ? (
                                 <span className="rounded-full bg-[var(--color-success-soft)] px-2 py-0.5 text-xs font-medium text-[var(--color-success)]">

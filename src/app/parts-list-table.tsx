@@ -122,7 +122,7 @@ export function PartsListTable({
               return (
                 <tr
                   key={row.id}
-                  className={`border-b border-[var(--color-border)] ${rowClass}`}
+                  className={`group border-b border-[var(--color-border)] ${rowClass}`}
                   role={onRowClick ? "button" : undefined}
                   tabIndex={onRowClick ? 0 : undefined}
                   onClick={onRowClick ? () => onRowClick(part) : undefined}

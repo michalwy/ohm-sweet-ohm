@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 
 import { signOut } from "@/server/auth/actions";
 import { ThemeToggle } from "@/app/theme-toggle";
+import { WorkspaceProvider } from "@/app/workspace-context";
 
 type WorkspaceNavItem =
   | "parts"
@@ -231,7 +232,9 @@ export function WorkspaceShell({
               </div>
             </header>
 
-            {children}
+            <WorkspaceProvider workspaceSlug={workspaceSlug}>
+              {children}
+            </WorkspaceProvider>
           </div>
         </div>
       </div>

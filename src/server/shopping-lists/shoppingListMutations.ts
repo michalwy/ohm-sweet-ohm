@@ -49,6 +49,7 @@ export type ShoppingListsPageInput = {
   pageSize?: number | null;
   sortBy?: ShoppingListSortBy | null;
   sortDirection?: ShoppingListSortDirection | null;
+  pinnedId?: string | null;
 };
 
 type NameCursor = { name: string; id: string };
@@ -74,6 +75,19 @@ export async function getShoppingLists(
   } as const;
 
   const totalCount = await prisma.shoppingList.count({ where: { workspaceId } });
+
+  if (input.pinnedId) {
+    const list = await prisma.shoppingList.findFirst({
+      where: { id: input.pinnedId, workspaceId },
+      select: selectShape
+    });
+    return {
+      items: list ? [toSummary(list)] : [],
+      nextCursor: null,
+      totalCount,
+      filteredCount: list ? 1 : 0
+    };
+  }
 
   function toSummary(list: {
     id: string;
