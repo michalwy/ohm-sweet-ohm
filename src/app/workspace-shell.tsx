@@ -187,7 +187,7 @@ export function WorkspaceShell({
             <ThemeToggle />
             <Link
               className="mb-2 flex min-h-10 items-center gap-2 rounded-md border border-[var(--color-border-strong)] bg-[var(--color-bg-elevated)] px-3 text-sm font-medium text-[var(--color-text-secondary)] transition hover:border-[var(--color-border-hover)] hover:bg-[var(--color-bg-subtle)] focus:outline-none focus:ring-2 focus:ring-[var(--color-ring-strong)] focus:ring-offset-2"
-              href="https://github.com/michalwy/ohm-sweet-ohm/blob/main/docs/user-guide.md"
+              href="https://github.com/michalwy/ohm-sweet-ohm/blob/main/docs/user-guide/index.md"
               target="_blank"
               rel="noreferrer"
             >
