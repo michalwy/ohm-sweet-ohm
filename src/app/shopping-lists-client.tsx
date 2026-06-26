@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   createColumnHelper,
   flexRender,
@@ -208,6 +208,7 @@ export function ShoppingListsClient({
   const itemDialogRef = useRef<HTMLDialogElement>(null);
   const convertDialogRef = useRef<HTMLDialogElement>(null);
   const createPODialogRef = useRef<HTMLDialogElement>(null);
+  const selectAllRef = useRef<HTMLInputElement>(null);
 
   // --- Column configuration ---
 
@@ -701,6 +702,36 @@ export function ShoppingListsClient({
     () => new Map(items.map((item) => [item.partId, item.quantity])),
     [items]
   );
+  const selectableItemIds = useMemo(
+    () => items.filter((item) => !item.orderedInPurchaseOrderId).map((item) => item.id),
+    [items]
+  );
+  const allSelectableSelected =
+    selectableItemIds.length > 0 && selectableItemIds.every((id) => selectedItemIds.has(id));
+  const someSelectableSelected =
+    !allSelectableSelected && selectableItemIds.some((id) => selectedItemIds.has(id));
+
+  useEffect(() => {
+    if (selectAllRef.current) {
+      selectAllRef.current.indeterminate = someSelectableSelected;
+    }
+  }, [someSelectableSelected]);
+
+  function toggleSelectAll() {
+    if (allSelectableSelected) {
+      setSelectedItemIds((prev) => {
+        const next = new Set(prev);
+        selectableItemIds.forEach((id) => next.delete(id));
+        return next;
+      });
+    } else {
+      setSelectedItemIds((prev) => {
+        const next = new Set(prev);
+        selectableItemIds.forEach((id) => next.add(id));
+        return next;
+      });
+    }
+  }
 
   return (
     <>
@@ -899,7 +930,16 @@ export function ShoppingListsClient({
                   <table className="w-full border-collapse text-left text-sm">
                     <thead>
                       <tr className="border-b border-[var(--color-border)] bg-[var(--color-bg-subtle)]">
-                        <th className="w-8 px-3 py-2" />
+                        <th className="w-8 px-3 py-2">
+                          <input
+                            ref={selectAllRef}
+                            aria-label="Select all items"
+                            checked={allSelectableSelected}
+                            disabled={selectableItemIds.length === 0}
+                            type="checkbox"
+                            onChange={toggleSelectAll}
+                          />
+                        </th>
                         <th className="px-3 py-2 font-semibold text-[var(--color-text-secondary)]">{copy.part}</th>
                         <th className="w-20 px-3 py-2 text-right font-semibold text-[var(--color-text-secondary)]">{copy.quantity}</th>
                         <th className="px-3 py-2 font-semibold text-[var(--color-text-secondary)]">{copy.description}</th>
