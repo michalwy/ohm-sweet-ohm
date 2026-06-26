@@ -198,7 +198,7 @@ export function PartMovementHistoryDialog({
       title={`${copy.movementHistory}: ${partTitle}`}
       titleId="movement-history-dialog-title"
       widthClassName="w-[min(60rem,calc(100vw-3rem))]"
-      heightClassName="h-[calc(100vh-2rem)]"
+      heightClassName="h-[min(calc(100vh-2rem),520px)]"
       onClose={onClose}
       onCancel={(event) => {
         event.preventDefault();
