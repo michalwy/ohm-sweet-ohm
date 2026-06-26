@@ -1447,7 +1447,7 @@ export function PartsListClient({
             onClose={closePartDetails}
             onStartResize={startResizingDetailsPanel}
           >
-              {(canWriteInventory || canWritePurchaseOrders || canWriteShoppingLists) ? (
+              {(canWriteInventory || canWritePurchaseOrders || canWriteShoppingLists || canReadInventory) ? (
                 <div className="flex flex-wrap gap-2">
                   {canWriteInventory ? (
                     <button
@@ -1477,6 +1477,16 @@ export function PartsListClient({
                       onClick={() => setPartForSLDialog(selectedPart)}
                     >
                       {copy.addToShoppingList}
+                    </button>
+                  ) : null}
+                  {canReadInventory ? (
+                    <button
+                      className="min-h-8 rounded-md border border-[var(--color-border-strong)] bg-[var(--color-bg-elevated)] px-2.5 py-1 text-sm font-medium text-[var(--color-text-secondary)] transition hover:border-[var(--color-border-hover)] hover:bg-[var(--color-bg-subtle)] focus:outline-none focus:ring-2 focus:ring-[var(--color-ring-strong)] focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-[var(--color-bg-subtle)] disabled:text-[var(--color-text-placeholder)]"
+                      disabled={!isDatabaseAvailable}
+                      type="button"
+                      onClick={() => setShowHistoryDialog(true)}
+                    >
+                      {copy.viewMovementHistory}
                     </button>
                   ) : null}
                 </div>
@@ -1571,21 +1581,6 @@ export function PartsListClient({
                       </table>
                     </div>
                   )}
-                </section>
-              ) : null}
-              {canReadInventory ? (
-                <section className="grid gap-2">
-                  <h3 className="text-sm font-semibold text-[var(--color-text-primary)]">
-                    {copy.movementHistory}
-                  </h3>
-                  <button
-                    className="min-h-8 rounded-md border border-[var(--color-border-strong)] bg-[var(--color-bg-elevated)] px-2.5 py-1 text-sm font-medium text-[var(--color-text-secondary)] transition hover:border-[var(--color-border-hover)] hover:bg-[var(--color-bg-subtle)] focus:outline-none focus:ring-2 focus:ring-[var(--color-ring-strong)] focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-[var(--color-bg-subtle)] disabled:text-[var(--color-text-placeholder)]"
-                    disabled={!isDatabaseAvailable}
-                    type="button"
-                    onClick={() => setShowHistoryDialog(true)}
-                  >
-                    {copy.viewMovementHistory}
-                  </button>
                 </section>
               ) : null}
               {canReadPurchaseOrders &&
