@@ -7,7 +7,7 @@ import {
   getCoreRowModel,
   useReactTable
 } from "@tanstack/react-table";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import {
   addRevisionToDesignAction,
@@ -18,7 +18,7 @@ import {
   updateDesignAction,
   updateDesignRevisionAction
 } from "@/server/designs/designActions";
-import type { DesignDetail, DesignSummary } from "@/server/designs/designActions";
+import type { DesignSummary } from "@/server/designs/designActions";
 import type { ListPage } from "@/server/pagination";
 import {
   closeDialog,
@@ -44,6 +44,7 @@ import {
   useColumnResizeCursor
 } from "@/app/list-page-toolbar";
 import { useDesignsQuery } from "@/app/use-designs-query";
+import { DetailPanel, useDetailsPanelWidth } from "@/app/detail-panel";
 
 type Copy = {
   title: string;
@@ -111,8 +112,6 @@ type DesignsClientProps = {
   workspaceSlug: string;
 };
 
-type EditTab = "details" | "revisions";
-
 const columnHelper = createColumnHelper<DesignSummary>();
 
 function getErrorMsg(copy: Copy, error: string): string {
@@ -133,12 +132,14 @@ export function DesignsClient({ canWrite, copy, initialPage, workspaceSlug }: De
   const queryClient = useQueryClient();
   const createDialogRef = useRef<HTMLDialogElement>(null);
   const editDialogRef = useRef<HTMLDialogElement>(null);
+  const addRevisionDialogRef = useRef<HTMLDialogElement>(null);
+  const editRevisionDialogRef = useRef<HTMLDialogElement>(null);
   const nextToastIdRef = useRef(0);
 
   const [dialogFormKey, setDialogFormKey] = useState(0);
   const [editingDesign, setEditingDesign] = useState<DesignSummary | null>(null);
-  const [editDesignDetail, setEditDesignDetail] = useState<DesignDetail | null>(null);
-  const [editTab, setEditTab] = useState<EditTab>("details");
+  const [selectedDesignId, setSelectedDesignId] = useState<string | null>(null);
+  const [hoveredDesignId, setHoveredDesignId] = useState<string | null>(null);
   const [designPendingDelete, setDesignPendingDelete] = useState<DesignSummary | null>(null);
   const [toastMessages, setToastMessages] = useState<ToastMessage[]>([]);
   const [globalError, setGlobalError] = useState<string | null>(null);
@@ -155,7 +156,6 @@ export function DesignsClient({ canWrite, copy, initialPage, workspaceSlug }: De
   const [editErrors, setEditErrors] = useState<Record<string, string>>({});
 
   // Revision state
-  const [showAddRevision, setShowAddRevision] = useState(false);
   const [newRevisionNotes, setNewRevisionNotes] = useState("");
   const [editingRevisionId, setEditingRevisionId] = useState<string | null>(null);
   const [editingRevisionNotes, setEditingRevisionNotes] = useState("");
@@ -199,6 +199,57 @@ export function DesignsClient({ canWrite, copy, initialPage, workspaceSlug }: De
 
   const { currentDesigns, totalCount, isLoading, isError, isFetchingNextPage, hasNextPage, fetchNextPage } =
     useDesignsQuery({ workspaceSlug, initialPage, sorting });
+
+  // --- Detail panel ---
+
+  const { data: selectedDesignDetail } = useQuery({
+    queryKey: ["design-detail", workspaceSlug, selectedDesignId],
+    queryFn: async () => {
+      if (!selectedDesignId) return null;
+      const result = await getDesignDetailAction({ workspaceSlug, designId: selectedDesignId });
+      return result.ok ? result.data : null;
+    },
+    enabled: Boolean(selectedDesignId)
+  });
+
+  const {
+    width: detailsPanelWidth,
+    hasLoaded: hasLoadedDetailsPanelWidth,
+    startResizing: startResizingDetailsPanel
+  } = useDetailsPanelWidth(`oso:designs-details-panel-width:${workspaceSlug}`, 360);
+
+  const selectedDesign = selectedDesignId
+    ? (currentDesigns.find((d) => d.id === selectedDesignId) ?? null)
+    : null;
+
+  function openDesignDetails(design: DesignSummary) {
+    setSelectedDesignId(design.id);
+    setEditingRevisionId(null);
+    const url = new URL(window.location.href);
+    url.searchParams.set("selectedDesignId", design.id);
+    window.history.replaceState(null, "", url.toString());
+  }
+
+  function closeDesignDetails() {
+    setSelectedDesignId(null);
+    setEditingRevisionId(null);
+    const url = new URL(window.location.href);
+    url.searchParams.delete("selectedDesignId");
+    window.history.replaceState(null, "", url.toString());
+  }
+
+  function openAddRevisionDialog() {
+    setNewRevisionNotes("");
+    setDialogFormKey((k) => k + 1);
+    window.requestAnimationFrame(() => openDialog(addRevisionDialogRef.current));
+  }
+
+  function openEditRevisionDialog(revisionId: string, currentNotes: string | null) {
+    setEditingRevisionId(revisionId);
+    setEditingRevisionNotes(currentNotes ?? "");
+    setDialogFormKey((k) => k + 1);
+    window.requestAnimationFrame(() => openDialog(editRevisionDialogRef.current));
+  }
 
   // --- TanStack Table ---
 
@@ -297,7 +348,6 @@ export function DesignsClient({ canWrite, copy, initialPage, workspaceSlug }: De
           ) : null
       })
     ],
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     [copy, canWrite]
   );
 
@@ -406,11 +456,10 @@ export function DesignsClient({ canWrite, copy, initialPage, workspaceSlug }: De
       if (!result.ok) throw new Error(result.error);
       return result.data;
     },
-    onSuccess: async () => {
+    onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["designs", workspaceSlug] });
-      setShowAddRevision(false);
-      setNewRevisionNotes("");
-      if (editingDesign) await refreshEditDetail(editingDesign.id);
+      void queryClient.invalidateQueries({ queryKey: ["design-detail", workspaceSlug, selectedDesignId] });
+      closeDialog(addRevisionDialogRef.current);
     }
   });
 
@@ -423,10 +472,9 @@ export function DesignsClient({ canWrite, copy, initialPage, workspaceSlug }: De
       });
       if (!result.ok) throw new Error(result.error);
     },
-    onSuccess: async () => {
-      setEditingRevisionId(null);
-      setEditingRevisionNotes("");
-      if (editingDesign) await refreshEditDetail(editingDesign.id);
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["design-detail", workspaceSlug, selectedDesignId] });
+      closeDialog(editRevisionDialogRef.current);
     }
   });
 
@@ -447,26 +495,15 @@ export function DesignsClient({ canWrite, copy, initialPage, workspaceSlug }: De
     });
   }
 
-  async function refreshEditDetail(designId: string) {
-    const result = await getDesignDetailAction({ workspaceSlug, designId });
-    if (result.ok && result.data) setEditDesignDetail(result.data);
-  }
-
   function openEditDialog(design: DesignSummary) {
     setEditingDesign(design);
     setEditName(design.name);
     setEditDescription(design.description ?? "");
     setEditErrors({});
     setGlobalError(null);
-    setEditTab("details");
-    setShowAddRevision(false);
-    setNewRevisionNotes("");
-    setEditingRevisionId(null);
-    setEditDesignDetail(null);
     setDialogFormKey((k) => k + 1);
     window.requestAnimationFrame(() => {
       openDialog(editDialogRef.current);
-      void refreshEditDetail(design.id);
     });
   }
 
@@ -499,8 +536,8 @@ export function DesignsClient({ canWrite, copy, initialPage, workspaceSlug }: De
   }
 
   function handleAddRevision() {
-    if (!editingDesign) return;
-    addRevisionMutation.mutate({ designId: editingDesign.id, notes: newRevisionNotes });
+    if (!selectedDesignId) return;
+    addRevisionMutation.mutate({ designId: selectedDesignId, notes: newRevisionNotes });
   }
 
   function handleSaveRevisionNotes(revisionId: string) {
@@ -512,7 +549,7 @@ export function DesignsClient({ canWrite, copy, initialPage, workspaceSlug }: De
   // --- Render ---
 
   return (
-    <div className={`flex min-h-0 flex-1 flex-col overflow-hidden ${containerClassName}`}>
+    <div className={`flex min-h-0 flex-1 gap-4 overflow-hidden ${containerClassName}`}>
       <section className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-elevated)] shadow-sm">
         <ListPageToolbar
           totalCount={totalCount}
@@ -584,13 +621,39 @@ export function DesignsClient({ canWrite, copy, initialPage, workspaceSlug }: De
             </thead>
             <tbody className="bg-[var(--color-bg-elevated)]">
               {table.getRowModel().rows.map((row) => (
-                <tr key={row.id} className="hover:bg-[var(--color-bg-subtle)]">
+                <tr
+                  key={row.id}
+                  className={`cursor-pointer border-b border-[var(--color-border)] ${
+                    row.original.id === selectedDesignId
+                      ? "bg-[var(--color-bg-muted)]"
+                      : row.original.id === hoveredDesignId
+                        ? "bg-[var(--color-bg-subtle)]"
+                        : ""
+                  }`}
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => openDesignDetails(row.original)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      openDesignDetails(row.original);
+                    }
+                  }}
+                  onMouseEnter={() => setHoveredDesignId(row.original.id)}
+                  onMouseLeave={() =>
+                    setHoveredDesignId((cur) => (cur === row.original.id ? null : cur))
+                  }
+                >
                   {row.getVisibleCells().map((cell) => (
                     <td
                       key={cell.id}
                       className={`overflow-hidden border-b border-[var(--color-border)] px-2 py-2 text-[var(--color-text-secondary)] ${
                         cell.column.id === "actions"
-                          ? "sticky right-0 z-10 bg-[var(--color-bg-elevated)] px-1 py-1.5"
+                          ? row.original.id === selectedDesignId
+                            ? "sticky right-0 z-10 bg-[var(--color-bg-muted)] px-1 py-1.5"
+                            : row.original.id === hoveredDesignId
+                              ? "sticky right-0 z-10 bg-[var(--color-bg-subtle)] px-1 py-1.5"
+                              : "sticky right-0 z-10 bg-[var(--color-bg-elevated)] px-1 py-1.5"
                           : ""
                       }`}
                       style={{ width: cell.column.getSize() }}
@@ -606,6 +669,99 @@ export function DesignsClient({ canWrite, copy, initialPage, workspaceSlug }: De
           </table>
         </InfiniteListViewport>
       </section>
+
+      {/* Detail panel */}
+      {selectedDesign && hasLoadedDetailsPanelWidth ? (
+        <DetailPanel
+          closeLabel={copy.close}
+          subtitle={selectedDesign.description ?? undefined}
+          title={selectedDesign.name}
+          width={detailsPanelWidth}
+          onClose={closeDesignDetails}
+          onStartResize={startResizingDetailsPanel}
+        >
+          <section className="grid gap-2">
+            <p className="text-xs font-semibold uppercase tracking-wide text-[var(--color-text-muted)]">
+              {copy.outputPart}
+            </p>
+            <p className="font-mono text-sm text-[var(--color-text-primary)]">
+              {selectedDesign.outputPart.catalogNumber}
+            </p>
+          </section>
+
+          <section className="grid gap-3">
+            <div className="flex items-center justify-between">
+              <p className="text-xs font-semibold uppercase tracking-wide text-[var(--color-text-muted)]">
+                {copy.revisionsTab}
+              </p>
+              {canWrite && (
+                <button
+                  className="rounded-md border border-[var(--color-border-strong)] px-2.5 py-1 text-xs font-medium text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-subtle)]"
+                  type="button"
+                  onClick={openAddRevisionDialog}
+                >
+                  {copy.addRevision}
+                </button>
+              )}
+            </div>
+
+            {!selectedDesignDetail ? (
+              <p className="text-sm text-[var(--color-text-muted)]">{copy.loadingDesigns}</p>
+            ) : selectedDesignDetail.revisions.length === 0 ? (
+              <p className="text-sm text-[var(--color-text-muted)]">{copy.noRevisions}</p>
+            ) : (
+              <table className="w-full border-collapse text-sm">
+                <thead>
+                  <tr className="border-b border-[var(--color-border)]">
+                    <th className="px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-[var(--color-text-muted)]">
+                      {copy.revisionNumber}
+                    </th>
+                    <th className="px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-[var(--color-text-muted)]">
+                      {copy.revisionNotes}
+                    </th>
+                    {canWrite && (
+                      <th className="px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-[var(--color-text-muted)]">
+                        {copy.actions}
+                      </th>
+                    )}
+                  </tr>
+                </thead>
+                <tbody>
+                  {selectedDesignDetail.revisions.map((rev) => (
+                    <tr key={rev.id} className="border-b border-[var(--color-border)]">
+                      <td className="px-3 py-2 font-medium text-[var(--color-text-primary)]">
+                        v{rev.revisionNumber}
+                      </td>
+                      <td className="px-3 py-2">
+                        {rev.notes ? (
+                          <span className="text-[var(--color-text-secondary)]">{rev.notes}</span>
+                        ) : (
+                          <EmptyCell />
+                        )}
+                      </td>
+                      {canWrite && (
+                        <td className="px-3 py-2">
+                          <button
+                            aria-label={copy.editNotes}
+                            title={copy.editNotes}
+                            className="rounded p-1 text-[var(--color-text-muted)] hover:bg-[var(--color-bg-subtle)] hover:text-[var(--color-text-secondary)]"
+                            type="button"
+                            onClick={() => openEditRevisionDialog(rev.id, rev.notes)}
+                          >
+                            <svg aria-hidden="true" className="h-3.5 w-3.5" fill="none" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+                              <path d="M13.9 3.3a1.5 1.5 0 0 1 2.1 0l.7.7a1.5 1.5 0 0 1 0 2.1l-8.4 8.4-3.3.8.8-3.3 8.4-8.4Z" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" />
+                            </svg>
+                          </button>
+                        </td>
+                      )}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </section>
+        </DetailPanel>
+      ) : null}
 
       {/* Create dialog */}
       <DialogShell
@@ -686,230 +842,165 @@ export function DesignsClient({ canWrite, copy, initialPage, workspaceSlug }: De
           title={copy.editDesignTitle}
           titleId="edit-design-title"
           closeLabel={copy.close}
-          heightClassName="h-[min(calc(100vh-2rem),560px)]"
           onClose={() => closeDialog(editDialogRef.current)}
         >
-          <div className="flex min-h-0 flex-1 flex-col">
-            {/* Tabs */}
-            <div className="shrink-0 border-b border-[var(--color-border)] px-5">
-              <div className="flex gap-2">
-                {(["details", "revisions"] as EditTab[]).map((tab) => (
-                  <button
-                    key={tab}
-                    className={`min-h-10 border-b-2 px-3 text-sm font-medium ${
-                      editTab === tab
-                        ? "border-[var(--color-accent)] text-[var(--color-text-primary)]"
-                        : "border-transparent text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)]"
-                    }`}
-                    type="button"
-                    onClick={() => setEditTab(tab)}
-                  >
-                    {tab === "details" ? copy.detailsTab : copy.revisionsTab}
-                  </button>
-                ))}
+          <form
+            key={`edit-${dialogFormKey}`}
+            className="flex min-h-0 flex-1 flex-col"
+            onSubmit={handleEditSubmit}
+          >
+            <DialogBody>
+              <div className="grid gap-4">
+                {globalError && <ErrorBubble>{globalError}</ErrorBubble>}
+                <div>
+                  <LabelWithError htmlFor="edit-design-name" error={editErrors.name}>
+                    {copy.name}
+                  </LabelWithError>
+                  <input
+                    id="edit-design-name"
+                    className="mt-1 w-full rounded-md border border-[var(--color-border-strong)] bg-[var(--color-bg-input)] px-3 py-2 text-sm text-[var(--color-text-primary)] focus:border-[var(--color-accent)] focus:outline-none focus:ring-1 focus:ring-[var(--color-accent)]"
+                    type="text"
+                    value={editName}
+                    onChange={(e) => { setEditName(e.target.value); setEditErrors((prev) => ({ ...prev, name: "" })); }}
+                  />
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-[var(--color-text-primary)]" htmlFor="edit-design-description">
+                    {copy.description}
+                  </label>
+                  <input
+                    id="edit-design-description"
+                    className="mt-1 w-full rounded-md border border-[var(--color-border-strong)] bg-[var(--color-bg-input)] px-3 py-2 text-sm text-[var(--color-text-primary)] focus:border-[var(--color-accent)] focus:outline-none focus:ring-1 focus:ring-[var(--color-accent)]"
+                    type="text"
+                    value={editDescription}
+                    onChange={(e) => setEditDescription(e.target.value)}
+                  />
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-[var(--color-text-primary)]">{copy.outputPart}</p>
+                  <p className="mt-1 font-mono text-sm text-[var(--color-text-secondary)]">
+                    {editingDesign.outputPart.catalogNumber}
+                  </p>
+                </div>
               </div>
-            </div>
-
-            {editTab === "details" ? (
-              <form
-                key={`edit-${dialogFormKey}`}
-                className="flex min-h-0 flex-1 flex-col"
-                onSubmit={handleEditSubmit}
+            </DialogBody>
+            <DialogFooter className="justify-end gap-3">
+              <button
+                className="rounded-md border border-[var(--color-border-strong)] px-4 py-2 text-sm font-medium text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-subtle)]"
+                type="button"
+                onClick={() => closeDialog(editDialogRef.current)}
               >
-                <DialogBody>
-                  <div className="grid gap-4">
-                    {globalError && <ErrorBubble>{globalError}</ErrorBubble>}
-                    <div>
-                      <LabelWithError htmlFor="edit-design-name" error={editErrors.name}>
-                        {copy.name}
-                      </LabelWithError>
-                      <input
-                        id="edit-design-name"
-                        className="mt-1 w-full rounded-md border border-[var(--color-border-strong)] bg-[var(--color-bg-input)] px-3 py-2 text-sm text-[var(--color-text-primary)] focus:border-[var(--color-accent)] focus:outline-none focus:ring-1 focus:ring-[var(--color-accent)]"
-                        type="text"
-                        value={editName}
-                        onChange={(e) => { setEditName(e.target.value); setEditErrors((prev) => ({ ...prev, name: "" })); }}
-                      />
-                    </div>
-                    <div>
-                      <label className="text-sm font-medium text-[var(--color-text-primary)]" htmlFor="edit-design-description">
-                        {copy.description}
-                      </label>
-                      <input
-                        id="edit-design-description"
-                        className="mt-1 w-full rounded-md border border-[var(--color-border-strong)] bg-[var(--color-bg-input)] px-3 py-2 text-sm text-[var(--color-text-primary)] focus:border-[var(--color-accent)] focus:outline-none focus:ring-1 focus:ring-[var(--color-accent)]"
-                        type="text"
-                        value={editDescription}
-                        onChange={(e) => setEditDescription(e.target.value)}
-                      />
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium text-[var(--color-text-primary)]">{copy.outputPart}</p>
-                      <p className="mt-1 font-mono text-sm text-[var(--color-text-secondary)]">
-                        {editingDesign.outputPart.catalogNumber}
-                      </p>
-                    </div>
-                  </div>
-                </DialogBody>
-                <DialogFooter className="justify-end gap-3">
-                  <button
-                    className="rounded-md border border-[var(--color-border-strong)] px-4 py-2 text-sm font-medium text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-subtle)]"
-                    type="button"
-                    onClick={() => closeDialog(editDialogRef.current)}
-                  >
-                    {copy.cancel}
-                  </button>
-                  <button
-                    className="rounded-md bg-[var(--color-action-primary)] px-4 py-2 text-sm font-medium text-white hover:bg-[var(--color-action-primary-hover)] disabled:opacity-50"
-                    type="submit"
-                    disabled={isMutating}
-                  >
-                    {copy.saveChanges}
-                  </button>
-                </DialogFooter>
-              </form>
-            ) : (
-              /* Revisions tab */
-              <div className="flex min-h-0 flex-1 flex-col">
-                <DialogBody>
-                  {!editDesignDetail ? (
-                    <p className="text-sm text-[var(--color-text-muted)]">{copy.loadingDesigns}</p>
-                  ) : editDesignDetail.revisions.length === 0 ? (
-                    <p className="text-sm text-[var(--color-text-muted)]">{copy.noRevisions}</p>
-                  ) : (
-                    <table className="w-full border-collapse text-sm">
-                      <thead>
-                        <tr className="border-b border-[var(--color-border)]">
-                          <th className="px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-[var(--color-text-muted)]">
-                            {copy.revisionNumber}
-                          </th>
-                          <th className="px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-[var(--color-text-muted)]">
-                            {copy.revisionNotes}
-                          </th>
-                          {canWrite && (
-                            <th className="px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-[var(--color-text-muted)]">
-                              {copy.actions}
-                            </th>
-                          )}
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {editDesignDetail.revisions.map((rev) => (
-                          <tr key={rev.id} className="border-b border-[var(--color-border)]">
-                            <td className="px-3 py-2 font-medium text-[var(--color-text-primary)]">
-                              v{rev.revisionNumber}
-                            </td>
-                            <td className="px-3 py-2">
-                              {editingRevisionId === rev.id ? (
-                                <input
-                                  className="w-full rounded border border-[var(--color-accent)] bg-[var(--color-bg-input)] px-2 py-1 text-sm text-[var(--color-text-primary)] focus:outline-none"
-                                  type="text"
-                                  value={editingRevisionNotes}
-                                  onChange={(e) => setEditingRevisionNotes(e.target.value)}
-                                />
-                              ) : rev.notes ? (
-                                <span className="text-[var(--color-text-secondary)]">{rev.notes}</span>
-                              ) : (
-                                <EmptyCell />
-                              )}
-                            </td>
-                            {canWrite && (
-                              <td className="px-3 py-2">
-                                {editingRevisionId === rev.id ? (
-                                  <div className="flex gap-2">
-                                    <button
-                                      className="rounded px-2 py-1 text-xs font-medium text-[var(--color-accent)] hover:bg-[var(--color-accent-soft)]"
-                                      type="button"
-                                      onClick={() => handleSaveRevisionNotes(rev.id)}
-                                      disabled={updateRevisionNotesMutation.isPending}
-                                    >
-                                      {copy.saveNotes}
-                                    </button>
-                                    <button
-                                      className="rounded px-2 py-1 text-xs font-medium text-[var(--color-text-muted)] hover:bg-[var(--color-bg-subtle)]"
-                                      type="button"
-                                      onClick={() => { setEditingRevisionId(null); setEditingRevisionNotes(""); }}
-                                    >
-                                      {copy.cancelEdit}
-                                    </button>
-                                  </div>
-                                ) : (
-                                  <button
-                                    className="rounded px-2 py-1 text-xs font-medium text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-subtle)]"
-                                    type="button"
-                                    onClick={() => {
-                                      setEditingRevisionId(rev.id);
-                                      setEditingRevisionNotes(rev.notes ?? "");
-                                    }}
-                                  >
-                                    {copy.editNotes}
-                                  </button>
-                                )}
-                              </td>
-                            )}
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  )}
-
-                  {/* Add revision */}
-                  {canWrite && (
-                    <div className="mt-4">
-                      {showAddRevision ? (
-                        <div className="rounded-md border border-[var(--color-border)] p-3">
-                          <p className="mb-2 text-sm font-medium text-[var(--color-text-primary)]">{copy.addRevisionTitle}</p>
-                          <input
-                            className="w-full rounded-md border border-[var(--color-border-strong)] bg-[var(--color-bg-input)] px-3 py-2 text-sm text-[var(--color-text-primary)] placeholder-[var(--color-text-placeholder)] focus:border-[var(--color-accent)] focus:outline-none focus:ring-1 focus:ring-[var(--color-accent)]"
-                            placeholder={copy.notesPlaceholder}
-                            type="text"
-                            value={newRevisionNotes}
-                            onChange={(e) => setNewRevisionNotes(e.target.value)}
-                          />
-                          <div className="mt-2 flex gap-2">
-                            <button
-                              className="rounded-md bg-[var(--color-action-primary)] px-3 py-1.5 text-sm font-medium text-white hover:bg-[var(--color-action-primary-hover)] disabled:opacity-50"
-                              type="button"
-                              onClick={handleAddRevision}
-                              disabled={addRevisionMutation.isPending}
-                            >
-                              {copy.addRevisionConfirm}
-                            </button>
-                            <button
-                              className="rounded-md border border-[var(--color-border-strong)] px-3 py-1.5 text-sm font-medium text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-subtle)]"
-                              type="button"
-                              onClick={() => { setShowAddRevision(false); setNewRevisionNotes(""); }}
-                            >
-                              {copy.cancel}
-                            </button>
-                          </div>
-                        </div>
-                      ) : (
-                        <button
-                          className="rounded-md border border-[var(--color-border-strong)] px-3 py-2 text-sm font-medium text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-subtle)]"
-                          type="button"
-                          onClick={() => setShowAddRevision(true)}
-                        >
-                          {copy.addRevision}
-                        </button>
-                      )}
-                    </div>
-                  )}
-                </DialogBody>
-                <DialogFooter className="justify-end gap-3">
-                  <button
-                    className="rounded-md border border-[var(--color-border-strong)] px-4 py-2 text-sm font-medium text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-subtle)]"
-                    type="button"
-                    onClick={() => closeDialog(editDialogRef.current)}
-                  >
-                    {copy.close}
-                  </button>
-                </DialogFooter>
-              </div>
-            )}
-          </div>
+                {copy.cancel}
+              </button>
+              <button
+                className="rounded-md bg-[var(--color-action-primary)] px-4 py-2 text-sm font-medium text-white hover:bg-[var(--color-action-primary-hover)] disabled:opacity-50"
+                type="submit"
+                disabled={isMutating}
+              >
+                {copy.saveChanges}
+              </button>
+            </DialogFooter>
+          </form>
         </DialogShell>
       )}
+
+      {/* Add revision dialog */}
+      <DialogShell
+        ref={addRevisionDialogRef}
+        title={copy.addRevisionTitle}
+        titleId="add-revision-title"
+        closeLabel={copy.close}
+        onClose={() => closeDialog(addRevisionDialogRef.current)}
+      >
+        <form
+          key={`add-revision-${dialogFormKey}`}
+          className="flex min-h-0 flex-1 flex-col"
+          onSubmit={(e) => { e.preventDefault(); handleAddRevision(); }}
+        >
+          <DialogBody>
+            <div className="grid gap-4">
+              <div>
+                <label className="text-sm font-medium text-[var(--color-text-primary)]" htmlFor="new-revision-notes">
+                  {copy.revisionNotes}
+                </label>
+                <input
+                  id="new-revision-notes"
+                  className="mt-1 w-full rounded-md border border-[var(--color-border-strong)] bg-[var(--color-bg-input)] px-3 py-2 text-sm text-[var(--color-text-primary)] placeholder-[var(--color-text-placeholder)] focus:border-[var(--color-accent)] focus:outline-none focus:ring-1 focus:ring-[var(--color-accent)]"
+                  placeholder={copy.notesPlaceholder}
+                  type="text"
+                  value={newRevisionNotes}
+                  onChange={(e) => setNewRevisionNotes(e.target.value)}
+                />
+              </div>
+            </div>
+          </DialogBody>
+          <DialogFooter className="justify-end gap-3">
+            <button
+              className="rounded-md border border-[var(--color-border-strong)] px-4 py-2 text-sm font-medium text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-subtle)]"
+              type="button"
+              onClick={() => closeDialog(addRevisionDialogRef.current)}
+            >
+              {copy.cancel}
+            </button>
+            <button
+              className="rounded-md bg-[var(--color-action-primary)] px-4 py-2 text-sm font-medium text-white hover:bg-[var(--color-action-primary-hover)] disabled:opacity-50"
+              type="submit"
+              disabled={addRevisionMutation.isPending}
+            >
+              {copy.addRevisionConfirm}
+            </button>
+          </DialogFooter>
+        </form>
+      </DialogShell>
+
+      {/* Edit revision notes dialog */}
+      <DialogShell
+        ref={editRevisionDialogRef}
+        title={copy.editNotes}
+        titleId="edit-revision-title"
+        closeLabel={copy.close}
+        onClose={() => closeDialog(editRevisionDialogRef.current)}
+      >
+        <form
+          key={`edit-revision-${dialogFormKey}`}
+          className="flex min-h-0 flex-1 flex-col"
+          onSubmit={(e) => { e.preventDefault(); if (editingRevisionId) handleSaveRevisionNotes(editingRevisionId); }}
+        >
+          <DialogBody>
+            <div className="grid gap-4">
+              <div>
+                <label className="text-sm font-medium text-[var(--color-text-primary)]" htmlFor="edit-revision-notes">
+                  {copy.revisionNotes}
+                </label>
+                <input
+                  id="edit-revision-notes"
+                  className="mt-1 w-full rounded-md border border-[var(--color-border-strong)] bg-[var(--color-bg-input)] px-3 py-2 text-sm text-[var(--color-text-primary)] placeholder-[var(--color-text-placeholder)] focus:border-[var(--color-accent)] focus:outline-none focus:ring-1 focus:ring-[var(--color-accent)]"
+                  placeholder={copy.notesPlaceholder}
+                  type="text"
+                  value={editingRevisionNotes}
+                  onChange={(e) => setEditingRevisionNotes(e.target.value)}
+                />
+              </div>
+            </div>
+          </DialogBody>
+          <DialogFooter className="justify-end gap-3">
+            <button
+              className="rounded-md border border-[var(--color-border-strong)] px-4 py-2 text-sm font-medium text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-subtle)]"
+              type="button"
+              onClick={() => closeDialog(editRevisionDialogRef.current)}
+            >
+              {copy.cancel}
+            </button>
+            <button
+              className="rounded-md bg-[var(--color-action-primary)] px-4 py-2 text-sm font-medium text-white hover:bg-[var(--color-action-primary-hover)] disabled:opacity-50"
+              type="submit"
+              disabled={updateRevisionNotesMutation.isPending}
+            >
+              {copy.saveNotes}
+            </button>
+          </DialogFooter>
+        </form>
+      </DialogShell>
 
       {/* Delete confirmation */}
       {designPendingDelete && (
