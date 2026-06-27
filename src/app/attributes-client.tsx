@@ -23,8 +23,8 @@ import {
 } from "@/app/toast-notice";
 import {
   DeleteConfirmationDialog,
+  DialogActions,
   DialogBody,
-  DialogFooter,
   DialogShell,
   ErrorBubble,
   LabelWithError,
@@ -672,27 +672,13 @@ function AttributeDialogContent({
             ) : null}
           </div>
         </DialogBody>
-        <DialogFooter
-          className="items-center justify-between gap-3"
-        >
-          <button
-            className="min-h-9 rounded-md border border-[var(--color-border-strong)] bg-[var(--color-bg-elevated)] px-3 py-1.5 text-sm font-medium text-[var(--color-text-secondary)] transition hover:border-[var(--color-border-hover)] hover:bg-[var(--color-bg-subtle)] focus:outline-none focus:ring-2 focus:ring-[var(--color-ring-strong)] focus:ring-offset-2"
-            type="button"
-            onClick={onCancel}
-          >
-            {copy.cancelDelete}
-          </button>
-          <div className="relative">
-            <ErrorBubble>{errors.submit}</ErrorBubble>
-            <button
-              className={primaryButtonClassName}
-              disabled={!isDatabaseAvailable || isPending}
-              type="submit"
-            >
-              {submitLabel}
-            </button>
-          </div>
-        </DialogFooter>
+        <DialogActions
+          cancelLabel={copy.cancelDelete}
+          onCancel={onCancel}
+          actionLabel={submitLabel}
+          disabled={!isDatabaseAvailable || isPending}
+          error={errors.submit}
+        />
       </form>
     </>
   );

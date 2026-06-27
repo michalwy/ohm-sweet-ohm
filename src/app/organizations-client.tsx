@@ -28,8 +28,8 @@ import type { ListPage } from "@/server/pagination";
 import {
   closeDialog,
   DeleteConfirmationDialog,
+  DialogActions,
   DialogBody,
-  DialogFooter,
   DialogShell,
   ErrorBubble,
   LabelWithError,
@@ -644,22 +644,10 @@ export function OrganizationsClient({
             ) : null}
           </DialogBody>
 
-          <DialogFooter>
-            <button
-              className="rounded-md border border-[var(--color-border-strong)] bg-[var(--color-bg-elevated)] px-4 py-2 text-sm font-medium text-[var(--color-text-secondary)] transition hover:bg-[var(--color-bg-subtle)] focus:outline-none focus:ring-2 focus:ring-[var(--color-ring-strong)] focus:ring-offset-2"
-              type="button"
-              onClick={closeOrgDialog}
-            >
-              {copy.cancel}
-            </button>
-            <button
-              className="rounded-md bg-[var(--color-accent)] px-4 py-2 text-sm font-semibold text-white transition hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-60"
-              disabled={isMutating}
-              type="submit"
-            >
-              {dialogMode === "edit" ? copy.saveChanges : copy.createOrganization}
-            </button>
-          </DialogFooter>
+          <DialogActions
+            actionLabel={dialogMode === "edit" ? copy.saveChanges : copy.createOrganization}
+            disabled={isMutating}
+          />
         </form>
       </DialogShell>
 

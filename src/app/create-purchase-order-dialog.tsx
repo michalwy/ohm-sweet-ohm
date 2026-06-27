@@ -9,10 +9,9 @@ import {
 } from "@/server/purchase-orders/purchaseOrderActions";
 import {
   closeDialog,
+  DialogActions,
   DialogBody,
-  DialogFooter,
   DialogShell,
-  ErrorBubble,
   LabelWithError,
 } from "@/app/dialog-shell";
 import { SupplierPickerCombobox } from "@/app/supplier-picker-combobox";
@@ -270,25 +269,11 @@ export function CreatePurchaseOrderDialog({
               />
             </div>
           </DialogBody>
-          <DialogFooter className="justify-end gap-2">
-            <button
-              className="min-h-10 rounded-md border border-[var(--color-border-strong)] px-3 text-sm font-medium text-[var(--color-text-secondary)] transition hover:border-[var(--color-border-hover)] hover:bg-[var(--color-bg-subtle)]"
-              type="button"
-              onClick={handleClose}
-            >
-              {copy.cancel}
-            </button>
-            <button
-              className="min-h-10 rounded-md bg-[var(--color-accent)] px-4 text-sm font-semibold text-white transition hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-60"
-              type="submit"
-              disabled={createMutation.isPending}
-            >
-              {copy.createOrder}
-            </button>
-          </DialogFooter>
-          {formErrors.submit ? (
-            <ErrorBubble>{formErrors.submit}</ErrorBubble>
-          ) : null}
+          <DialogActions
+            actionLabel={copy.createOrder}
+            disabled={createMutation.isPending}
+            error={formErrors.submit}
+          />
         </form>
       ) : null}
     </DialogShell>

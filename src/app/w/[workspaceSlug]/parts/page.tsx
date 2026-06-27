@@ -128,6 +128,7 @@ const copy = {
   editPart: "Edit",
   deletePart: "Delete",
   saveChanges: "Save changes",
+  cancel: "Cancel",
   close: "Close",
   quantity: "Quantity",
   location: "Choose location",

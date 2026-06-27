@@ -11,8 +11,8 @@ import {
 import type { StorageLocationListItem } from "@/server/inventory/locationMutations";
 import {
   DeleteConfirmationDialog,
+  DialogActions,
   DialogBody,
-  DialogFooter,
   DialogShell,
   ErrorBubble,
   LabelWithError,
@@ -278,6 +278,7 @@ export function LocationsClient({
         title={isCreateMode ? copy.newLocationTitle : copy.editLocationTitle}
         titleId="location-dialog-title"
         widthClassName="w-[min(34rem,calc(100vw-3rem))]"
+        onClose={closeForm}
       >
         {isCreateMode || editingLocation ? (
           <form
@@ -375,31 +376,10 @@ export function LocationsClient({
                 </label>
               ) : null}
             </DialogBody>
-            <DialogFooter className="items-end justify-between">
-              <button
-                className="min-h-10 rounded-md border border-[var(--color-border-strong)] px-3 text-sm font-medium text-[var(--color-text-secondary)] transition hover:border-[var(--color-border-hover)] hover:bg-[var(--color-bg-subtle)]"
-                type="button"
-                onClick={closeForm}
-              >
-                {copy.cancelDelete}
-              </button>
-              <div className="flex items-center gap-3">
-                <button
-                  className="min-h-10 rounded-md border border-[var(--color-border-strong)] px-3 text-sm font-medium text-[var(--color-text-secondary)] transition hover:border-[var(--color-border-hover)] hover:bg-[var(--color-bg-subtle)]"
-                  type="button"
-                  onClick={closeForm}
-                >
-                  {copy.close}
-                </button>
-                <button
-                  className="min-h-10 rounded-md bg-[var(--color-accent)] px-4 text-sm font-semibold text-white transition hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-60"
-                  type="submit"
-                  disabled={createMutation.isPending || updateMutation.isPending}
-                >
-                  {isCreateMode ? copy.createLocation : copy.saveChanges}
-                </button>
-              </div>
-            </DialogFooter>
+            <DialogActions
+              actionLabel={isCreateMode ? copy.createLocation : copy.saveChanges}
+              disabled={createMutation.isPending || updateMutation.isPending}
+            />
             {errors.submit ? <ErrorBubble>{errors.submit}</ErrorBubble> : null}
           </form>
         ) : null}

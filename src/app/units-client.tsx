@@ -16,8 +16,8 @@ import {
 } from "@/app/toast-notice";
 import {
   DeleteConfirmationDialog,
+  DialogActions,
   DialogBody,
-  DialogFooter,
   DialogShell,
   ErrorBubble,
   LabelWithError,
@@ -359,6 +359,7 @@ export function UnitsClient({
         title={unitDialogMode === "create" ? copy.newUnitTitle : copy.editUnitTitle}
         titleId="unit-dialog-title"
         widthClassName="w-[min(32rem,calc(100vw-3rem))]"
+        onClose={closeUnitDialog}
       >
         {unitDialogMode ? (
           <form
@@ -409,35 +410,10 @@ export function UnitsClient({
                 {copy.allowsFraction}
               </label>
             </DialogBody>
-            <DialogFooter className="items-end justify-between">
-              <button
-                className="min-h-10 rounded-md border border-[var(--color-border-strong)] px-3 text-sm font-medium text-[var(--color-text-secondary)] transition hover:border-[var(--color-border-hover)] hover:bg-[var(--color-bg-subtle)]"
-                type="button"
-                onClick={closeUnitDialog}
-              >
-                {copy.cancelDelete}
-              </button>
-              <div className="flex items-center gap-3">
-                <button
-                  className="min-h-10 rounded-md border border-[var(--color-border-strong)] px-3 text-sm font-medium text-[var(--color-text-secondary)] transition hover:border-[var(--color-border-hover)] hover:bg-[var(--color-bg-subtle)]"
-                  type="button"
-                  onClick={closeUnitDialog}
-                >
-                  {copy.close}
-                </button>
-                <button
-                  className="min-h-10 rounded-md bg-[var(--color-accent)] px-4 text-sm font-semibold text-white transition hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-60"
-                  type="submit"
-                  disabled={
-                    createUnitMutation.isPending ||
-                    updateUnitMutation.isPending ||
-                    !canWriteUnits
-                  }
-                >
-                  {unitDialogMode === "create" ? copy.createUnit : copy.saveChanges}
-                </button>
-              </div>
-            </DialogFooter>
+            <DialogActions
+              actionLabel={unitDialogMode === "create" ? copy.createUnit : copy.saveChanges}
+              disabled={createUnitMutation.isPending || updateUnitMutation.isPending || !canWriteUnits}
+            />
             {unitFieldErrors.submit ? (
               <ErrorBubble>{unitFieldErrors.submit}</ErrorBubble>
             ) : null}

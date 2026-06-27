@@ -8,7 +8,7 @@ import type { PartsListItem } from "@/server/parts/getParts";
 import { getPartsListFilterDataForWorkspace } from "@/server/parts/listActions";
 import { useListTableConfiguration } from "@/app/list-table-config";
 import { ListPageToolbar } from "@/app/list-page-toolbar";
-import { DialogBody, DialogFooter, DialogShell, closeDialog, openDialog } from "@/app/dialog-shell";
+import { DialogBody, DialogFooter, DialogPrimaryButton, DialogSecondaryButton, DialogShell, closeDialog, openDialog } from "@/app/dialog-shell";
 import { usePartsListQuery } from "@/app/use-parts-list-query";
 import { PartsListFilters, type PartsListFiltersCopy } from "@/app/parts-list-filters";
 import { buildPartsListColumnDefs, buildPartsListColumns, type PartsListColumnsCopy } from "@/app/parts-list-columns";
@@ -311,25 +311,22 @@ export function PartPickerListModal({
           />
         </div>
       </DialogBody>
-      <DialogFooter>
-        <span className="mr-auto text-sm text-[var(--color-text-secondary)]">
+      <DialogFooter className="items-center justify-between gap-3">
+        <span className="text-sm text-[var(--color-text-secondary)]">
           {copy.partsSelected.replace("{count}", String(selectedCount))}
         </span>
-        <button
-          className="min-h-9 rounded-md border border-[var(--color-border-strong)] bg-[var(--color-bg-elevated)] px-3 py-1.5 text-sm font-medium text-[var(--color-text-secondary)] transition hover:border-[var(--color-border-hover)] hover:bg-[var(--color-bg-subtle)] focus:outline-none focus:ring-2 focus:ring-[var(--color-ring-strong)] focus:ring-offset-2"
-          type="button"
-          onClick={onClose}
-        >
-          {copy.cancel}
-        </button>
-        <button
-          className="min-h-9 rounded-md border border-[var(--color-action-primary)] bg-[var(--color-action-primary)] px-3 py-1.5 text-sm font-semibold text-white transition hover:border-[var(--color-action-primary-hover)] hover:bg-[var(--color-action-primary-hover)] focus:outline-none focus:ring-2 focus:ring-[var(--color-action-focus)] focus:ring-offset-2 disabled:cursor-not-allowed disabled:border-[var(--color-border)] disabled:bg-[var(--color-bg-muted)] disabled:text-[var(--color-text-placeholder)]"
-          disabled={selectedCount === 0}
-          type="button"
-          onClick={() => onConfirm(selectedParts)}
-        >
-          {copy.confirmSelection.replace("{count}", String(selectedCount))}
-        </button>
+        <div className="flex gap-3">
+          <DialogSecondaryButton onClick={onClose}>
+            {copy.cancel}
+          </DialogSecondaryButton>
+          <DialogPrimaryButton
+            disabled={selectedCount === 0}
+            type="button"
+            onClick={() => onConfirm(selectedParts)}
+          >
+            {copy.confirmSelection.replace("{count}", String(selectedCount))}
+          </DialogPrimaryButton>
+        </div>
       </DialogFooter>
     </DialogShell>
   );

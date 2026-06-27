@@ -47,6 +47,8 @@ import {
   DeleteConfirmationDialog,
   DialogBody,
   DialogFooter,
+  DialogPrimaryButton,
+  DialogSecondaryButton,
   DialogShell,
   ErrorBubble,
   LabelWithError,
@@ -796,18 +798,16 @@ export function PartCategoriesClient({
               type="text"
             />
           </label>
-          <DialogFooter className="items-center justify-end gap-3 px-0">
-            <button
-              className={primaryButtonClassName}
+          <DialogFooter className="px-0">
+            <DialogPrimaryButton
               disabled={
                 !isDatabaseAvailable ||
                 !canWriteCategories ||
                 createCategoryPathMutation.isPending
               }
-              type="submit"
             >
               {copy.createCategory}
-            </button>
+            </DialogPrimaryButton>
           </DialogFooter>
         </form>
       </DialogShell>
@@ -838,11 +838,10 @@ export function PartCategoriesClient({
                 />
               </div>
             </DialogBody>
-            <DialogFooter className="items-center justify-end gap-3">
+            <DialogFooter>
               <div className="relative">
                 <ErrorBubble>{globalFieldError}</ErrorBubble>
-                <button
-                  className={primaryButtonClassName}
+                <DialogPrimaryButton
                   disabled={
                     !isDatabaseAvailable ||
                     !canWriteCategories ||
@@ -853,7 +852,7 @@ export function PartCategoriesClient({
                   onClick={saveGlobalAttributes}
                 >
                   {copy.saveGlobalAttributes}
-                </button>
+                </DialogPrimaryButton>
               </div>
             </DialogFooter>
           </>
@@ -1193,24 +1192,15 @@ function CategoryDialogContent({
           )}
         </div>
       </DialogBody>
-      <DialogFooter className="items-center justify-between gap-3">
-        <button
-          className="min-h-9 rounded-md border border-[var(--color-border-strong)] bg-[var(--color-bg-elevated)] px-3 py-1.5 text-sm font-medium text-[var(--color-text-secondary)] transition hover:border-[var(--color-border-hover)] hover:bg-[var(--color-bg-subtle)] focus:outline-none focus:ring-2 focus:ring-[var(--color-ring-strong)] focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-[var(--color-bg-subtle)] disabled:text-[var(--color-text-placeholder)]"
-          type="button"
-          onClick={onCancel}
-        >
+      <DialogFooter>
+        <DialogSecondaryButton onClick={onCancel}>
           {copy.cancelDelete}
-        </button>
+        </DialogSecondaryButton>
         <div className="relative">
           <ErrorBubble>{errors.submit}</ErrorBubble>
-          <button
-            className={primaryButtonClassName}
-            disabled={isSaveDisabled}
-            form={formId}
-            type="submit"
-          >
+          <DialogPrimaryButton disabled={isSaveDisabled} form={formId}>
             {mode === "create" ? copy.createCategory : copy.saveChanges}
-          </button>
+          </DialogPrimaryButton>
         </div>
       </DialogFooter>
     </>

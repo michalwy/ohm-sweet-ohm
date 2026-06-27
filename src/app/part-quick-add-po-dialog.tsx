@@ -12,8 +12,8 @@ import {
 } from "@/server/purchase-orders/purchaseOrderActions";
 import type { PartsListItem } from "@/server/parts/getParts";
 import {
+  DialogActions,
   DialogBody,
-  DialogFooter,
   DialogShell,
   ErrorBubble,
   closeDialog,
@@ -22,6 +22,7 @@ import {
 import { SupplierPickerCombobox } from "@/app/supplier-picker-combobox";
 
 type Copy = {
+  cancel: string;
   close: string;
   quickAddPOTitle: string;
   choosePO: string;
@@ -284,22 +285,10 @@ export function QuickAddToPODialog({
             </>
           )}
         </DialogBody>
-        <DialogFooter className="justify-end gap-3">
-          <button
-            className="min-h-10 rounded-md border border-[var(--color-border-strong)] px-3 text-sm font-medium text-[var(--color-text-secondary)] transition hover:border-[var(--color-border-hover)] hover:bg-[var(--color-bg-subtle)]"
-            type="button"
-            onClick={resetAndClose}
-          >
-            {copy.close}
-          </button>
-          <button
-            className="min-h-10 rounded-md bg-[var(--color-accent)] px-4 text-sm font-semibold text-white transition hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-60"
-            disabled={isPending || !part || draftPOsQuery.isLoading}
-            type="submit"
-          >
-            {copy.addToPurchaseOrder}
-          </button>
-        </DialogFooter>
+        <DialogActions
+          actionLabel={copy.addToPurchaseOrder}
+          disabled={isPending || !part || draftPOsQuery.isLoading}
+        />
       </form>
     </DialogShell>
   );

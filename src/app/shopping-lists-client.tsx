@@ -39,8 +39,11 @@ import { PartPickerCombobox } from "@/app/part-picker-combobox";
 import {
   closeDialog,
   DeleteConfirmationDialog,
+  DialogActions,
   DialogBody,
   DialogFooter,
+  DialogPrimaryButton,
+  DialogSecondaryButton,
   DialogShell,
   ErrorBubble,
   getFieldInputClassName,
@@ -1059,19 +1062,11 @@ export function ShoppingListsClient({
                 />
               </div>
             </DialogBody>
-            <DialogFooter className="justify-end gap-2">
-              <button className="min-h-10 rounded-md border border-[var(--color-border-strong)] px-3 text-sm font-medium text-[var(--color-text-secondary)] transition hover:border-[var(--color-border-hover)] hover:bg-[var(--color-bg-subtle)]" type="button" onClick={closeListDialog}>
-                {copy.cancel}
-              </button>
-              <button
-                className="min-h-10 rounded-md bg-[var(--color-accent)] px-4 text-sm font-semibold text-white transition hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-60"
-                disabled={isMutating}
-                type="submit"
-              >
-                {listDialogMode === "create" ? copy.createList : copy.saveChanges}
-              </button>
-            </DialogFooter>
-            {listFormErrors.submit ? <ErrorBubble>{listFormErrors.submit}</ErrorBubble> : null}
+            <DialogActions
+              actionLabel={listDialogMode === "create" ? copy.createList : copy.saveChanges}
+              disabled={isMutating}
+              error={listFormErrors.submit}
+            />
           </form>
         ) : null}
       </DialogShell>
@@ -1148,19 +1143,11 @@ export function ShoppingListsClient({
                 />
               </div>
             </DialogBody>
-            <DialogFooter className="justify-end gap-2">
-              <button className="min-h-10 rounded-md border border-[var(--color-border-strong)] px-3 text-sm font-medium text-[var(--color-text-secondary)] transition hover:border-[var(--color-border-hover)] hover:bg-[var(--color-bg-subtle)]" type="button" onClick={closeItemDialog}>
-                {copy.cancel}
-              </button>
-              <button
-                className="min-h-10 rounded-md bg-[var(--color-accent)] px-4 text-sm font-semibold text-white transition hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-60"
-                disabled={isMutating}
-                type="submit"
-              >
-                {itemDialogMode === "create" ? copy.addItem : copy.saveChanges}
-              </button>
-            </DialogFooter>
-            {itemFormErrors.submit ? <ErrorBubble>{itemFormErrors.submit}</ErrorBubble> : null}
+            <DialogActions
+              actionLabel={itemDialogMode === "create" ? copy.addItem : copy.saveChanges}
+              disabled={isMutating}
+              error={itemFormErrors.submit}
+            />
           </form>
         ) : null}
       </DialogShell>
@@ -1227,30 +1214,21 @@ export function ShoppingListsClient({
                 ) : null}
               </div>
             </DialogBody>
-            <DialogFooter className="justify-between gap-2">
-              <button
-                className="min-h-10 rounded-md border border-[var(--color-border-strong)] px-3 text-sm font-medium text-[var(--color-text-secondary)] transition hover:border-[var(--color-border-hover)] hover:bg-[var(--color-bg-subtle)]"
-                type="button"
-                onClick={openCreatePOFromConvert}
-              >
+            <DialogFooter className="items-center justify-between gap-3">
+              <DialogSecondaryButton onClick={openCreatePOFromConvert}>
                 {copy.newOrder}
-              </button>
-              <div className="flex gap-2">
-                <button
-                  className="min-h-10 rounded-md border border-[var(--color-border-strong)] px-3 text-sm font-medium text-[var(--color-text-secondary)] transition hover:border-[var(--color-border-hover)] hover:bg-[var(--color-bg-subtle)]"
-                  type="button"
-                  onClick={closeConvertDialog}
-                >
+              </DialogSecondaryButton>
+              <div className="flex gap-3">
+                <DialogSecondaryButton onClick={closeConvertDialog}>
                   {copy.cancel}
-                </button>
-                <button
-                  className="min-h-10 rounded-md bg-[var(--color-accent)] px-4 text-sm font-semibold text-white transition hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-60"
+                </DialogSecondaryButton>
+                <DialogPrimaryButton
                   disabled={isMutating || !selectedOrderForConvert}
                   type="button"
                   onClick={handleConvertSubmit}
                 >
                   {copy.addToOrder}
-                </button>
+                </DialogPrimaryButton>
               </div>
             </DialogFooter>
             {convertFormErrors.submit ? <ErrorBubble>{convertFormErrors.submit}</ErrorBubble> : null}

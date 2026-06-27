@@ -5,7 +5,9 @@ import { useMutation } from "@tanstack/react-query";
 
 import {
   DialogBody,
+  DialogDestructiveButton,
   DialogFooter,
+  DialogSecondaryButton,
   DialogShell,
   openDialog,
   closeDialog
@@ -162,24 +164,20 @@ export function GeneralSettingsClient({
         <DialogBody>
           <p className="text-sm leading-6 text-[var(--color-text-secondary)]">{copy.confirmBody}</p>
         </DialogBody>
-        <DialogFooter className="items-center justify-end gap-2">
-          <button
-            className="min-h-9 rounded-md border border-[var(--color-border-strong)] bg-[var(--color-bg-elevated)] px-3 py-1.5 text-sm font-medium text-[var(--color-text-secondary)] transition hover:border-[var(--color-border-hover)] hover:bg-[var(--color-bg-subtle)] focus:outline-none focus:ring-2 focus:ring-[var(--color-ring-strong)] focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
+        <DialogFooter>
+          <DialogSecondaryButton
             data-dialog-initial-focus
             disabled={archiveMutation.isPending}
-            type="button"
             onClick={() => closeDialog(archiveDialogRef.current)}
           >
             {copy.cancel}
-          </button>
-          <button
-            className="min-h-9 rounded-md border border-[var(--color-error-border)] bg-[var(--color-bg-elevated)] px-3 py-1.5 text-sm font-medium text-[var(--color-error)] transition hover:bg-[var(--color-error-soft)] focus:outline-none focus:ring-2 focus:ring-[var(--color-error-border)] focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
+          </DialogSecondaryButton>
+          <DialogDestructiveButton
             disabled={archiveMutation.isPending}
-            type="button"
             onClick={() => archiveMutation.mutate()}
           >
             {copy.confirmArchive}
-          </button>
+          </DialogDestructiveButton>
         </DialogFooter>
       </DialogShell>
 
@@ -227,24 +225,20 @@ export function GeneralSettingsClient({
             </p>
           )}
         </DialogBody>
-        <DialogFooter className="items-center justify-end gap-2">
-          <button
-            className="min-h-9 rounded-md border border-[var(--color-border-strong)] bg-[var(--color-bg-elevated)] px-3 py-1.5 text-sm font-medium text-[var(--color-text-secondary)] transition hover:border-[var(--color-border-hover)] hover:bg-[var(--color-bg-subtle)] focus:outline-none focus:ring-2 focus:ring-[var(--color-ring-strong)] focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
+        <DialogFooter>
+          <DialogSecondaryButton
             data-dialog-initial-focus
             disabled={resetMutation.isPending}
-            type="button"
             onClick={() => closeDialog(resetDialogRef.current)}
           >
             {copy.cancel}
-          </button>
-          <button
-            className="min-h-9 rounded-md border border-[var(--color-error-border)] bg-[var(--color-bg-elevated)] px-3 py-1.5 text-sm font-medium text-[var(--color-error)] transition hover:bg-[var(--color-error-soft)] focus:outline-none focus:ring-2 focus:ring-[var(--color-error-border)] focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
+          </DialogSecondaryButton>
+          <DialogDestructiveButton
             disabled={resetMutation.isPending}
-            type="button"
             onClick={() => resetMutation.mutate()}
           >
             {copy.resetButton}
-          </button>
+          </DialogDestructiveButton>
         </DialogFooter>
       </DialogShell>
     </div>

@@ -5,7 +5,7 @@ import { useMutation } from "@tanstack/react-query";
 
 import type { PartsListItem } from "@/server/parts/getParts";
 import { addMultipleOrderItemsForWorkspace } from "@/server/purchase-orders/purchaseOrderActions";
-import { closeDialog, DialogBody, DialogFooter, DialogShell, openDialog } from "@/app/dialog-shell";
+import { closeDialog, DialogBody, DialogFooter, DialogPrimaryButton, DialogSecondaryButton, DialogShell, openDialog } from "@/app/dialog-shell";
 import { PartPickerListModal, type PartPickerCopy } from "@/app/part-picker-list-modal";
 
 export type MultiAddToPOCopy = PartPickerCopy & {
@@ -216,33 +216,22 @@ export function MultiAddToPODialog({
               </tbody>
             </table>
           </DialogBody>
-          <DialogFooter>
-            <button
-              className="min-h-9 rounded-md border border-[var(--color-border-strong)] bg-[var(--color-bg-elevated)] px-3 py-1.5 text-sm font-medium text-[var(--color-text-secondary)] transition hover:border-[var(--color-border-hover)] hover:bg-[var(--color-bg-subtle)] focus:outline-none focus:ring-2 focus:ring-[var(--color-ring-strong)] focus:ring-offset-2"
-              type="button"
-              onClick={handleClose}
-            >
+          <DialogFooter className="items-center justify-between gap-3">
+            <DialogSecondaryButton onClick={handleClose}>
               {copy.cancel}
-            </button>
-            <button
-              className="min-h-9 rounded-md border border-[var(--color-border-strong)] bg-[var(--color-bg-elevated)] px-3 py-1.5 text-sm font-medium text-[var(--color-text-secondary)] transition hover:border-[var(--color-border-hover)] hover:bg-[var(--color-bg-subtle)] focus:outline-none focus:ring-2 focus:ring-[var(--color-ring-strong)] focus:ring-offset-2"
-              type="button"
-              onClick={handleBack}
-              disabled={addMutation.isPending}
-            >
-              {copy.back}
-            </button>
-            <button
-              className="min-h-9 rounded-md border border-[var(--color-action-primary)] bg-[var(--color-action-primary)] px-3 py-1.5 text-sm font-semibold text-white transition hover:border-[var(--color-action-primary-hover)] hover:bg-[var(--color-action-primary-hover)] focus:outline-none focus:ring-2 focus:ring-[var(--color-action-focus)] focus:ring-offset-2 disabled:cursor-not-allowed disabled:border-[var(--color-border)] disabled:bg-[var(--color-bg-muted)] disabled:text-[var(--color-text-placeholder)]"
-              type="submit"
-              disabled={addMutation.isPending || selectedParts.length === 0}
-            >
-              {addMutation.isPending
-                ? copy.submitting
-                : selectedParts.length === 1
-                  ? copy.addItem
-                  : copy.addItems.replace("{count}", String(selectedParts.length))}
-            </button>
+            </DialogSecondaryButton>
+            <div className="flex gap-3">
+              <DialogSecondaryButton onClick={handleBack} disabled={addMutation.isPending}>
+                {copy.back}
+              </DialogSecondaryButton>
+              <DialogPrimaryButton disabled={addMutation.isPending || selectedParts.length === 0}>
+                {addMutation.isPending
+                  ? copy.submitting
+                  : selectedParts.length === 1
+                    ? copy.addItem
+                    : copy.addItems.replace("{count}", String(selectedParts.length))}
+              </DialogPrimaryButton>
+            </div>
           </DialogFooter>
         </form>
       </DialogShell>

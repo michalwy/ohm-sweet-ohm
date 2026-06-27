@@ -23,8 +23,8 @@ import type { ListPage } from "@/server/pagination";
 import {
   closeDialog,
   DeleteConfirmationDialog,
+  DialogActions,
   DialogBody,
-  DialogFooter,
   DialogShell,
   ErrorBubble,
   LabelWithError,
@@ -796,22 +796,10 @@ export function DesignsClient({ canWrite, copy, initialPage, workspaceSlug }: De
               )}
             </div>
           </DialogBody>
-          <DialogFooter className="justify-end gap-3">
-            <button
-              className="rounded-md border border-[var(--color-border-strong)] px-4 py-2 text-sm font-medium text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-subtle)]"
-              type="button"
-              onClick={() => closeDialog(designDialogRef.current)}
-            >
-              {copy.cancel}
-            </button>
-            <button
-              className="rounded-md bg-[var(--color-action-primary)] px-4 py-2 text-sm font-medium text-white hover:bg-[var(--color-action-primary-hover)] disabled:opacity-50"
-              type="submit"
-              disabled={isMutating}
-            >
-              {editingDesign ? copy.saveChanges : copy.createDesign}
-            </button>
-          </DialogFooter>
+          <DialogActions
+            actionLabel={editingDesign ? copy.saveChanges : copy.createDesign}
+            disabled={isMutating}
+          />
         </form>
       </DialogShell>
 
@@ -849,22 +837,10 @@ export function DesignsClient({ canWrite, copy, initialPage, workspaceSlug }: De
               </div>
             </div>
           </DialogBody>
-          <DialogFooter className="justify-end gap-3">
-            <button
-              className="rounded-md border border-[var(--color-border-strong)] px-4 py-2 text-sm font-medium text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-subtle)]"
-              type="button"
-              onClick={() => closeDialog(revisionDialogRef.current)}
-            >
-              {copy.cancel}
-            </button>
-            <button
-              className="rounded-md bg-[var(--color-action-primary)] px-4 py-2 text-sm font-medium text-white hover:bg-[var(--color-action-primary-hover)] disabled:opacity-50"
-              type="submit"
-              disabled={editingRevisionId ? updateRevisionNotesMutation.isPending : addRevisionMutation.isPending}
-            >
-              {editingRevisionId ? copy.saveNotes : copy.addRevisionConfirm}
-            </button>
-          </DialogFooter>
+          <DialogActions
+            actionLabel={editingRevisionId ? copy.saveNotes : copy.addRevisionConfirm}
+            disabled={editingRevisionId ? updateRevisionNotesMutation.isPending : addRevisionMutation.isPending}
+          />
         </form>
       </DialogShell>
 

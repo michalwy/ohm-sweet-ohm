@@ -1,7 +1,10 @@
 "use client";
 
 import {
+  createContext,
   forwardRef,
+  useContext,
+  type ButtonHTMLAttributes,
   type CSSProperties,
   type MouseEvent,
   type ReactNode,
@@ -9,6 +12,12 @@ import {
   useEffect,
   useRef
 } from "react";
+
+type DialogContextValue = {
+  onCancel?: () => void;
+};
+
+const DialogContext = createContext<DialogContextValue>({});
 
 type DialogShellProps = {
   children: ReactNode;
@@ -28,6 +37,16 @@ type DialogSectionProps = {
   children: ReactNode;
   className?: string;
   style?: CSSProperties;
+};
+
+type DialogActionsProps = {
+  cancelLabel?: string;
+  onCancel?: () => void;
+  actionLabel: string;
+  onAction?: () => void;
+  variant?: "primary" | "destructive";
+  disabled?: boolean;
+  error?: ReactNode;
 };
 
 type FieldErrorProps = {
@@ -71,39 +90,41 @@ export const DialogShell = forwardRef<HTMLDialogElement, DialogShellProps>(
     ref
   ) {
     return (
-      <dialog
-        ref={ref}
-        aria-labelledby={titleId}
-        className={`fixed inset-0 m-auto max-h-[calc(100vh-2rem)] ${widthClassName} overflow-hidden rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-elevated)] p-0 text-[var(--color-text-primary)] shadow-2xl backdrop:bg-slate-950/40`}
-        onClose={onClose}
-        onCancel={onCancel}
-      >
-        <div className={`flex max-h-[calc(100vh-2rem)] min-h-0 flex-col${heightClassName ? ` ${heightClassName}` : ""}`}>
-          <div className="flex items-start justify-between gap-4 border-b border-[var(--color-border)] px-5 py-4">
-            <div>
-              <h2 id={titleId} className="text-lg font-semibold text-[var(--color-text-primary)]">
-                {title}
-              </h2>
-              {description ? (
-                <p className="mt-1 text-sm leading-6 text-[var(--color-text-muted)]">
-                  {description}
-                </p>
-              ) : null}
+      <DialogContext.Provider value={{ onCancel: onClose }}>
+        <dialog
+          ref={ref}
+          aria-labelledby={titleId}
+          className={`fixed inset-0 m-auto max-h-[calc(100vh-2rem)] ${widthClassName} overflow-hidden rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-elevated)] p-0 text-[var(--color-text-primary)] shadow-2xl backdrop:bg-slate-950/40`}
+          onClose={onClose}
+          onCancel={onCancel}
+        >
+          <div className={`flex max-h-[calc(100vh-2rem)] min-h-0 flex-col${heightClassName ? ` ${heightClassName}` : ""}`}>
+            <div className="flex items-start justify-between gap-4 border-b border-[var(--color-border)] px-5 py-4">
+              <div>
+                <h2 id={titleId} className="text-lg font-semibold text-[var(--color-text-primary)]">
+                  {title}
+                </h2>
+                {description ? (
+                  <p className="mt-1 text-sm leading-6 text-[var(--color-text-muted)]">
+                    {description}
+                  </p>
+                ) : null}
+              </div>
+              <form method="dialog">
+                <button
+                  aria-label={closeLabel}
+                  className={dialogIconButtonClassName}
+                  type="submit"
+                  onClick={onCloseClick}
+                >
+                  <CloseIcon />
+                </button>
+              </form>
             </div>
-            <form method="dialog">
-              <button
-                aria-label={closeLabel}
-                className={dialogIconButtonClassName}
-                type="submit"
-                onClick={onCloseClick}
-              >
-                <CloseIcon />
-              </button>
-            </form>
+            {children}
           </div>
-          {children}
-        </div>
-      </dialog>
+        </dialog>
+      </DialogContext.Provider>
     );
   }
 );
@@ -125,7 +146,7 @@ export function DialogBody({
 
 export function DialogFooter({
   children,
-  className = "justify-end"
+  className = "items-center justify-end gap-3"
 }: DialogSectionProps) {
   return (
     <div
@@ -133,6 +154,85 @@ export function DialogFooter({
     >
       {children}
     </div>
+  );
+}
+
+export function DialogSecondaryButton({
+  children,
+  type = "button",
+  ...props
+}: ButtonHTMLAttributes<HTMLButtonElement>) {
+  return (
+    <button
+      type={type}
+      className="min-h-9 rounded-md border border-[var(--color-border-strong)] bg-[var(--color-bg-elevated)] px-3 py-1.5 text-sm font-medium text-[var(--color-text-secondary)] transition hover:border-[var(--color-border-hover)] hover:bg-[var(--color-bg-subtle)] focus:outline-none focus:ring-2 focus:ring-[var(--color-ring-strong)] focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
+      {...props}
+    >
+      {children}
+    </button>
+  );
+}
+
+export function DialogPrimaryButton({
+  children,
+  type = "submit",
+  ...props
+}: ButtonHTMLAttributes<HTMLButtonElement>) {
+  return (
+    <button
+      type={type}
+      className="min-h-9 rounded-md bg-[var(--color-accent)] px-4 py-1.5 text-sm font-semibold text-white transition hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-60"
+      {...props}
+    >
+      {children}
+    </button>
+  );
+}
+
+export function DialogDestructiveButton({
+  children,
+  type = "button",
+  ...props
+}: ButtonHTMLAttributes<HTMLButtonElement>) {
+  return (
+    <button
+      type={type}
+      className="min-h-9 rounded-md border border-[var(--color-error-border)] bg-[var(--color-bg-elevated)] px-3 py-1.5 text-sm font-medium text-[var(--color-error)] transition hover:bg-[var(--color-error-soft)] focus:outline-none focus:ring-2 focus:ring-[var(--color-error-border)] focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
+      {...props}
+    >
+      {children}
+    </button>
+  );
+}
+
+export function DialogActions({
+  cancelLabel = "Cancel",
+  onCancel: onCancelProp,
+  actionLabel,
+  onAction,
+  variant = "primary",
+  disabled,
+  error
+}: DialogActionsProps) {
+  const ctx = useContext(DialogContext);
+  const onCancel = onCancelProp ?? ctx.onCancel;
+  const ActionButton = variant === "destructive" ? DialogDestructiveButton : DialogPrimaryButton;
+  return (
+    <DialogFooter>
+      <DialogSecondaryButton onClick={onCancel}>
+        {cancelLabel}
+      </DialogSecondaryButton>
+      <div className="relative">
+        <ErrorBubble>{error}</ErrorBubble>
+        <ActionButton
+          disabled={disabled}
+          type={onAction ? "button" : "submit"}
+          onClick={onAction}
+        >
+          {actionLabel}
+        </ActionButton>
+      </div>
+    </DialogFooter>
   );
 }
 
@@ -251,20 +351,16 @@ export function DeleteConfirmationDialog({
       <DialogBody>
         <p className="text-sm leading-6 text-[var(--color-text-secondary)]">{body}</p>
       </DialogBody>
-      <DialogFooter className="items-center justify-end gap-2">
-        <button
-          className="min-h-9 rounded-md border border-[var(--color-border-strong)] bg-[var(--color-bg-elevated)] px-3 py-1.5 text-sm font-medium text-[var(--color-text-secondary)] transition hover:border-[var(--color-border-hover)] hover:bg-[var(--color-bg-subtle)] focus:outline-none focus:ring-2 focus:ring-[var(--color-ring-strong)] focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-[var(--color-bg-subtle)] disabled:text-[var(--color-text-placeholder)]"
+      <DialogFooter>
+        <DialogSecondaryButton
           data-dialog-initial-focus
           disabled={isPending}
-          type="button"
           onClick={closeConfirmationDialog}
         >
           {cancelLabel}
-        </button>
-        <button
-          className="min-h-9 rounded-md border border-[var(--color-error-border)] bg-[var(--color-bg-elevated)] px-3 py-1.5 text-sm font-medium text-[var(--color-error)] transition hover:bg-[var(--color-error-soft)] focus:outline-none focus:ring-2 focus:ring-[var(--color-error-border)] focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-[var(--color-bg-subtle)] disabled:text-[var(--color-text-placeholder)]"
+        </DialogSecondaryButton>
+        <DialogDestructiveButton
           disabled={isPending}
-          type="button"
           onClick={() => {
             const dialog = dialogRef.current;
 
@@ -276,7 +372,7 @@ export function DeleteConfirmationDialog({
           }}
         >
           {confirmLabel}
-        </button>
+        </DialogDestructiveButton>
       </DialogFooter>
     </DialogShell>
   );

@@ -4,8 +4,8 @@ import { useRef, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 
 import {
+  DialogActions,
   DialogBody,
-  DialogFooter,
   DialogShell,
   openDialog,
   closeDialog
@@ -166,23 +166,12 @@ export function ArchivedWorkspaceActions({
               </p>
             )}
           </DialogBody>
-          <DialogFooter className="items-center justify-end gap-2">
-            <button
-              className="min-h-9 rounded-md border border-[var(--color-border-strong)] bg-[var(--color-bg-elevated)] px-3 py-1.5 text-sm font-medium text-[var(--color-text-secondary)] transition hover:border-[var(--color-border-hover)] hover:bg-[var(--color-bg-subtle)] focus:outline-none focus:ring-2 focus:ring-[var(--color-ring-strong)] focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
-              disabled={mutation.isPending}
-              type="button"
-              onClick={handleCloseDialog}
-            >
-              {copy.cancel}
-            </button>
-            <button
-              className="min-h-9 rounded-md border border-[var(--color-error-border)] bg-white px-3 py-1.5 text-sm font-medium text-[var(--color-error)] transition hover:bg-[var(--color-error-soft)] focus:outline-none focus:ring-2 focus:ring-[var(--color-error-border)] focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
-              disabled={!canConfirm || mutation.isPending}
-              type="submit"
-            >
-              {copy.delete}
-            </button>
-          </DialogFooter>
+          <DialogActions
+            actionLabel={copy.delete}
+            variant="destructive"
+            disabled={!canConfirm || mutation.isPending}
+            onCancel={handleCloseDialog}
+          />
         </form>
       </DialogShell>
       </div>

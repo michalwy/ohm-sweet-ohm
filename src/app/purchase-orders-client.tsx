@@ -46,10 +46,9 @@ import type { ListPage } from "@/server/pagination";
 import {
   closeDialog,
   DeleteConfirmationDialog,
+  DialogActions,
   DialogBody,
-  DialogFooter,
   DialogShell,
-  ErrorBubble,
   getFieldInputClassName,
   LabelWithError,
   openDialog
@@ -1670,19 +1669,11 @@ export function PurchaseOrdersClient({
                 />
               </div>
             </DialogBody>
-            <DialogFooter className="justify-end gap-2">
-              <button className="min-h-10 rounded-md border border-[var(--color-border-strong)] px-3 text-sm font-medium text-[var(--color-text-secondary)] transition hover:border-[var(--color-border-hover)] hover:bg-[var(--color-bg-subtle)]" type="button" onClick={closeOrderDialog}>
-                {copy.cancel}
-              </button>
-              <button
-                className="min-h-10 rounded-md bg-[var(--color-accent)] px-4 text-sm font-semibold text-white transition hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-60"
-                type="submit"
-                disabled={isMutating}
-              >
-                {copy.saveChanges}
-              </button>
-            </DialogFooter>
-            {orderFormErrors.submit ? <ErrorBubble>{orderFormErrors.submit}</ErrorBubble> : null}
+            <DialogActions
+              actionLabel={copy.saveChanges}
+              disabled={isMutating}
+              error={orderFormErrors.submit}
+            />
           </form>
         ) : null}
       </DialogShell>
@@ -1971,19 +1962,11 @@ export function PurchaseOrdersClient({
                 />
               </div>
             </DialogBody>
-            <DialogFooter className="justify-end gap-2">
-              <button className="min-h-10 rounded-md border border-[var(--color-border-strong)] px-3 text-sm font-medium text-[var(--color-text-secondary)] transition hover:border-[var(--color-border-hover)] hover:bg-[var(--color-bg-subtle)]" type="button" onClick={closeItemDialog}>
-                {copy.cancel}
-              </button>
-              <button
-                className="min-h-10 rounded-md bg-[var(--color-accent)] px-4 text-sm font-semibold text-white transition hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-60"
-                type="submit"
-                disabled={isMutating}
-              >
-                {itemDialogMode === "create" ? copy.addItem : copy.saveChanges}
-              </button>
-            </DialogFooter>
-            {itemFormErrors.submit ? <ErrorBubble>{itemFormErrors.submit}</ErrorBubble> : null}
+            <DialogActions
+              actionLabel={itemDialogMode === "create" ? copy.addItem : copy.saveChanges}
+              disabled={isMutating}
+              error={itemFormErrors.submit}
+            />
           </form>
         ) : null}
       </DialogShell>
@@ -2070,19 +2053,11 @@ export function PurchaseOrdersClient({
                 </div>
               )}
             </DialogBody>
-            <DialogFooter className="justify-end gap-2">
-              <button className="min-h-10 rounded-md border border-[var(--color-border-strong)] px-3 text-sm font-medium text-[var(--color-text-secondary)] transition hover:border-[var(--color-border-hover)] hover:bg-[var(--color-bg-subtle)]" type="button" onClick={closeReceiveDialog}>
-                {copy.cancel}
-              </button>
-              <button
-                className="min-h-10 rounded-md bg-[var(--color-accent)] px-4 text-sm font-semibold text-white transition hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-60"
-                type="button"
-                disabled={isMutating || assignableLocations.length === 0}
-                onClick={handleReceiveSubmit}
-              >
-                {copy.receiveItems}
-              </button>
-            </DialogFooter>
+            <DialogActions
+              actionLabel={copy.receiveItems}
+              disabled={isMutating || assignableLocations.length === 0}
+              onAction={handleReceiveSubmit}
+            />
           </div>
         ) : null}
       </DialogShell>
@@ -2101,25 +2076,14 @@ export function PurchaseOrdersClient({
             <DialogBody>
               <p className="text-sm leading-6 text-[var(--color-text-secondary)]">{copy.markOrderedConfirmBody}</p>
             </DialogBody>
-            <DialogFooter className="justify-end gap-2">
-              <button
-                className="min-h-10 rounded-md border border-[var(--color-border-strong)] px-3 text-sm font-medium text-[var(--color-text-secondary)] transition hover:border-[var(--color-border-hover)] hover:bg-[var(--color-bg-subtle)]"
-                type="button"
-                onClick={() => { closeDialog(markOrderedDialogRef.current); setMarkOrderedPending(false); }}
-              >
-                {copy.cancel}
-              </button>
-              <button
-                className="min-h-10 rounded-md bg-[var(--color-accent)] px-4 text-sm font-semibold text-white transition hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-60"
-                type="button"
-                disabled={isMutating}
-                onClick={() => {
-                  if (selectedOrderId) markOrderedMutation.mutate({ workspaceSlug, orderId: selectedOrderId });
-                }}
-              >
-                {copy.confirm}
-              </button>
-            </DialogFooter>
+            <DialogActions
+              actionLabel={copy.confirm}
+              disabled={isMutating}
+              onCancel={() => { closeDialog(markOrderedDialogRef.current); setMarkOrderedPending(false); }}
+              onAction={() => {
+                if (selectedOrderId) markOrderedMutation.mutate({ workspaceSlug, orderId: selectedOrderId });
+              }}
+            />
           </div>
         ) : null}
       </DialogShell>
@@ -2138,25 +2102,14 @@ export function PurchaseOrdersClient({
             <DialogBody>
               <p className="text-sm leading-6 text-[var(--color-text-secondary)]">{copy.revertToDraftConfirmBody}</p>
             </DialogBody>
-            <DialogFooter className="justify-end gap-2">
-              <button
-                className="min-h-10 rounded-md border border-[var(--color-border-strong)] px-3 text-sm font-medium text-[var(--color-text-secondary)] transition hover:border-[var(--color-border-hover)] hover:bg-[var(--color-bg-subtle)]"
-                type="button"
-                onClick={() => { closeDialog(revertToDraftDialogRef.current); setRevertToDraftPending(false); }}
-              >
-                {copy.cancel}
-              </button>
-              <button
-                className="min-h-10 rounded-md bg-[var(--color-accent)] px-4 text-sm font-semibold text-white transition hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-60"
-                type="button"
-                disabled={isMutating}
-                onClick={() => {
-                  if (selectedOrderId) revertToDraftMutation.mutate({ workspaceSlug, orderId: selectedOrderId });
-                }}
-              >
-                {copy.confirm}
-              </button>
-            </DialogFooter>
+            <DialogActions
+              actionLabel={copy.confirm}
+              disabled={isMutating}
+              onCancel={() => { closeDialog(revertToDraftDialogRef.current); setRevertToDraftPending(false); }}
+              onAction={() => {
+                if (selectedOrderId) revertToDraftMutation.mutate({ workspaceSlug, orderId: selectedOrderId });
+              }}
+            />
           </div>
         ) : null}
       </DialogShell>
@@ -2226,32 +2179,21 @@ export function PurchaseOrdersClient({
                 />
               </div>
             </DialogBody>
-            <DialogFooter className="justify-end gap-2">
-              <button
-                className="min-h-10 rounded-md border border-[var(--color-border-strong)] px-3 text-sm font-medium text-[var(--color-text-secondary)] transition hover:border-[var(--color-border-hover)] hover:bg-[var(--color-bg-subtle)]"
-                type="button"
-                onClick={() => { closeDialog(rateRequiredDialogRef.current); setRateRequiredState(null); }}
-              >
-                {copy.cancel}
-              </button>
-              <button
-                className="min-h-10 rounded-md bg-[var(--color-accent)] px-4 text-sm font-semibold text-white transition hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-60"
-                type="button"
-                disabled={saveManualRateMutation.isPending || !rateRequiredValue.trim()}
-                onClick={() => {
-                  saveManualRateMutation.mutate({
-                    workspaceSlug,
-                    from: rateRequiredState.from,
-                    to: rateRequiredState.to,
-                    date: rateRequiredState.date,
-                    rate: rateRequiredValue
-                  });
-                }}
-              >
-                {copy.manualRateSubmit}
-              </button>
-            </DialogFooter>
-            {rateRequiredError ? <ErrorBubble>{rateRequiredError}</ErrorBubble> : null}
+            <DialogActions
+              actionLabel={copy.manualRateSubmit}
+              disabled={saveManualRateMutation.isPending || !rateRequiredValue.trim()}
+              error={rateRequiredError}
+              onCancel={() => { closeDialog(rateRequiredDialogRef.current); setRateRequiredState(null); }}
+              onAction={() => {
+                saveManualRateMutation.mutate({
+                  workspaceSlug,
+                  from: rateRequiredState.from,
+                  to: rateRequiredState.to,
+                  date: rateRequiredState.date,
+                  rate: rateRequiredValue
+                });
+              }}
+            />
           </div>
         ) : null}
       </DialogShell>

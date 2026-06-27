@@ -44,10 +44,12 @@ import {
 } from "@/app/toast-notice";
 import {
   DeleteConfirmationDialog,
+  DialogActions,
   DialogBody,
   DialogFooter,
+  DialogPrimaryButton,
+  DialogSecondaryButton,
   DialogShell,
-  ErrorBubble,
   LabelWithError,
   closeDialog,
   getFieldInputClassName,
@@ -202,6 +204,7 @@ type Copy = {
   currentStock: string;
   stockSaved: string;
   stockActionInvalid: string;
+  cancel: string;
   cancelDelete: string;
   confirmDelete: string;
   deleteConfirmationBody: string;
@@ -1805,43 +1808,19 @@ export function PartsListClient({
               ) : null}
             </DialogBody>
             {editingPart ? (
-              <DialogFooter className="items-center justify-between gap-3">
-                <button
-                  className="min-h-9 rounded-md border border-[var(--color-border-strong)] bg-[var(--color-bg-elevated)] px-3 py-1.5 text-sm font-medium text-[var(--color-text-secondary)] transition hover:border-[var(--color-border-hover)] hover:bg-[var(--color-bg-subtle)] focus:outline-none focus:ring-2 focus:ring-[var(--color-ring-strong)] focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-[var(--color-bg-subtle)] disabled:text-[var(--color-text-placeholder)]"
-                  disabled={!isDatabaseAvailable || deletePartMutation.isPending}
-                  type="button"
-                  onClick={closePartDialog}
-                >
-                  {copy.cancelDelete}
-                </button>
-                <div className="relative">
-                  <ErrorBubble>{dialogFieldErrors.submit}</ErrorBubble>
-                  <button
-                    className={primaryButtonClassName}
-                    type="submit"
-                    disabled={
-                      !isDatabaseAvailable ||
-                      updatePartMutation.isPending ||
-                      deletePartMutation.isPending
-                    }
-                  >
-                    {copy.saveChanges}
-                  </button>
-                </div>
-              </DialogFooter>
+              <DialogActions
+                cancelLabel={copy.cancelDelete}
+                actionLabel={copy.saveChanges}
+                disabled={!isDatabaseAvailable || updatePartMutation.isPending || deletePartMutation.isPending}
+                error={dialogFieldErrors.submit}
+              />
             ) : (
-              <DialogFooter className="items-center justify-end gap-3">
-                <div className="relative">
-                  <ErrorBubble>{dialogFieldErrors.submit}</ErrorBubble>
-                  <button
-                    className={primaryButtonClassName}
-                    type="submit"
-                    disabled={!isDatabaseAvailable || createPartMutation.isPending}
-                  >
-                    {copy.createPart}
-                  </button>
-                </div>
-              </DialogFooter>
+              <DialogActions
+                cancelLabel={copy.cancelDelete}
+                actionLabel={copy.createPart}
+                disabled={!isDatabaseAvailable || createPartMutation.isPending}
+                error={dialogFieldErrors.submit}
+              />
             )}
           </form>
       </DialogShell>
@@ -2019,17 +1998,13 @@ export function PartsListClient({
                 </div>
               </div>
             </DialogBody>
-            <DialogFooter className="justify-between gap-3">
-              <button
-                className="min-h-9 rounded-md border border-[var(--color-border-strong)] bg-[var(--color-bg-elevated)] px-3 py-1.5 text-sm font-medium text-[var(--color-text-secondary)]"
-                type="button"
-                onClick={() => setSkipMatchingPendingConfirmation(true)}
-              >
+            <DialogFooter className="items-center justify-between gap-3">
+              <DialogSecondaryButton onClick={() => setSkipMatchingPendingConfirmation(true)}>
                 {copy.skipMatching}
-              </button>
-              <button className={primaryButtonClassName} type="button" onClick={applyMatchingToPartForm}>
+              </DialogSecondaryButton>
+              <DialogPrimaryButton type="button" onClick={applyMatchingToPartForm}>
                 {copy.saveChanges}
-              </button>
+              </DialogPrimaryButton>
             </DialogFooter>
           </div>
         ) : null}

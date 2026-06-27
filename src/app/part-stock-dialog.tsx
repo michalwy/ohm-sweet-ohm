@@ -9,8 +9,8 @@ import {
 import { getLocationsForWorkspace } from "@/server/inventory/locationActions";
 import type { PartsListItem } from "@/server/parts/getParts";
 import {
+  DialogActions,
   DialogBody,
-  DialogFooter,
   DialogShell,
   ErrorBubble,
   closeDialog,
@@ -18,6 +18,7 @@ import {
 } from "@/app/dialog-shell";
 
 type Copy = {
+  cancel: string;
   close: string;
   stock: string;
   quantity: string;
@@ -228,23 +229,11 @@ export function PartStockDialog({
             {submitError ? <ErrorBubble>{copy.stockActionInvalid}</ErrorBubble> : null}
           </section>
         </DialogBody>
-        <DialogFooter className="justify-end gap-3">
-          <button
-            className="min-h-10 rounded-md border border-[var(--color-border-strong)] px-3 text-sm font-medium text-[var(--color-text-secondary)] transition hover:border-[var(--color-border-hover)] hover:bg-[var(--color-bg-subtle)]"
-            type="button"
-            onClick={resetAndClose}
-          >
-            {copy.close}
-          </button>
-          <button
-            className="min-h-10 rounded-md bg-[var(--color-accent)] px-4 text-sm font-semibold text-white transition hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-60"
-            disabled={!canWriteInventory || movementMutation.isPending || !part}
-            type="button"
-            onClick={submit}
-          >
-            {copy.addMovement}
-          </button>
-        </DialogFooter>
+        <DialogActions
+          actionLabel={copy.addMovement}
+          disabled={!canWriteInventory || movementMutation.isPending || !part}
+          onAction={submit}
+        />
       </div>
     </DialogShell>
   );
