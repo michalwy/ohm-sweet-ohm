@@ -99,6 +99,38 @@ async function addMinimalDomainData(workspaceId: string, unitId: string) {
   });
 }
 
+async function addDesignData(workspaceId: string, unitId: string) {
+  const internalOrg = await prisma.organization.create({
+    data: {
+      workspaceId,
+      name: "Internal",
+      normalizedName: "__internal__internal",
+      isInternal: true,
+      roles: { create: [{ role: "manufacturer" }] }
+    },
+    select: { id: true }
+  });
+
+  const outputPart = await prisma.part.create({
+    data: { workspaceId, catalogNumber: "DESIGN-0001", unitId, manufacturerId: internalOrg.id },
+    select: { id: true }
+  });
+
+  await prisma.design.create({
+    data: {
+      workspaceId,
+      name: "Test Assembly",
+      outputPartId: outputPart.id,
+      revisions: {
+        create: [
+          { workspaceId, revisionNumber: 1 },
+          { workspaceId, revisionNumber: 2, notes: "rev 2" }
+        ]
+      }
+    }
+  });
+}
+
 describe("wipeDomainData", () => {
   test("leaves workspace, members, and roles intact while removing all domain data", async () => {
     const suffix = uniqueSuffix();
@@ -132,6 +164,34 @@ describe("wipeDomainData", () => {
     assert.equal(await prisma.unit.count({ where: { workspaceId } }), 0, "units should be gone");
   });
 
+  test("removes designs and their output parts (Design RESTRICTs Part deletion)", async () => {
+    const suffix = uniqueSuffix();
+    const { workspaceId, unitId } = await createTestWorkspaceWithMember(suffix);
+    await addDesignData(workspaceId, unitId);
+
+    assert.ok((await prisma.design.count({ where: { workspaceId } })) > 0, "design should exist before wipe");
+    assert.ok(
+      (await prisma.designRevision.count({ where: { workspaceId } })) > 0,
+      "revisions should exist before wipe"
+    );
+
+    // Reproduces the bug: Design.outputPart RESTRICTs Part deletion, so wiping
+    // parts before designs threw and aborted the whole reset.
+    await assert.doesNotReject(
+      () => wipeDomainData(workspaceId),
+      "wipe must not throw when a design exists"
+    );
+
+    assert.equal(await prisma.design.count({ where: { workspaceId } }), 0, "designs should be gone");
+    assert.equal(
+      await prisma.designRevision.count({ where: { workspaceId } }),
+      0,
+      "design revisions should be gone"
+    );
+    assert.equal(await prisma.part.count({ where: { workspaceId } }), 0, "output part should be gone");
+    assert.equal(await prisma.organization.count({ where: { workspaceId } }), 0, "internal org should be gone");
+  });
+
   test("wipe on empty workspace is a no-op (no throw, workspace intact)", async () => {
     const suffix = uniqueSuffix();
     const { workspaceId } = await createTestWorkspaceWithMember(suffix);
@@ -161,6 +221,9 @@ describe("wipeDomainData", () => {
 
     const slCount = await prisma.shoppingList.count({ where: { workspaceId } });
     assert.equal(slCount, 0, "Expected no shopping lists for parts-only reset");
+
+    const designCount = await prisma.design.count({ where: { workspaceId } });
+    assert.ok(designCount >= 3, `Expected ≥3 designs after reset, got ${designCount}`);
   });
 
   test("wipe followed by applyDemoPreset produces expected entity counts (parts-and-orders)", async () => {

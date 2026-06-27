@@ -109,7 +109,7 @@ export async function getOrganizationsForWorkspace({
   });
 
   const limit = getListPageSize(pageSize);
-  const totalCount = await prisma.organization.count({ where: { workspaceId } });
+  const totalCount = await prisma.organization.count({ where: { workspaceId, isInternal: false } });
 
   const decoded = decodeListCursor<NameCursor>(cursor);
   const dir = sortDir === "asc" ? "asc" : "desc";
@@ -117,6 +117,7 @@ export async function getOrganizationsForWorkspace({
   const rows = await prisma.organization.findMany({
     where: {
       workspaceId,
+      isInternal: false,
       ...(decoded
         ? {
             OR: [
@@ -393,6 +394,7 @@ export async function getManufacturerSuggestionsForPartForm({
   return prisma.organization.findMany({
     where: {
       workspaceId,
+      isInternal: false,
       roles: {
         some: {
           role: ORGANIZATION_ROLE_MANUFACTURER
@@ -407,4 +409,34 @@ export async function getManufacturerSuggestionsForPartForm({
       name: true
     }
   });
+}
+
+export async function ensureInternalOrganizationForWorkspace({
+  workspaceId,
+  workspaceName
+}: {
+  workspaceId: string;
+  workspaceName: string;
+}): Promise<{ id: string }> {
+  const existing = await prisma.organization.findFirst({
+    where: { workspaceId, isInternal: true },
+    select: { id: true }
+  });
+  if (existing) return existing;
+
+  const displayName = workspaceName.trim().replace(/\s+/g, " ") || "Internal";
+  const normalizedName = normalizeOrganizationName(displayName);
+
+  const org = await prisma.organization.create({
+    data: {
+      workspaceId,
+      name: displayName,
+      normalizedName: `__internal__${normalizedName}`,
+      isInternal: true,
+      roles: { create: [{ role: ORGANIZATION_ROLE_MANUFACTURER }] }
+    },
+    select: { id: true }
+  });
+
+  return org;
 }

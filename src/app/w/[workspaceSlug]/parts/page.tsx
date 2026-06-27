@@ -75,6 +75,7 @@ const copy = {
   resetListConfiguration: "Reset defaults",
   filteredPartsSummary: "{visible} of {total} parts",
   actions: "Actions",
+  source: "Source",
   stock: "Stock",
   planned: "Planned",
   onOrder: "On order",

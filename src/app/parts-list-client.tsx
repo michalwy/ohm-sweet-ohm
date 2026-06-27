@@ -157,6 +157,7 @@ type Copy = {
   resetListConfiguration: string;
   filteredPartsSummary: string;
   actions: string;
+  source: string;
   stock: string;
   planned: string;
   onOrder: string;
@@ -433,6 +434,7 @@ export function PartsListClient({
           catalogNumber: copy.catalogNumber,
           description: copy.description,
           value: copy.value,
+          source: copy.source,
           stock: copy.stock,
           planned: copy.planned,
           onOrder: copy.onOrder,
@@ -659,6 +661,7 @@ export function PartsListClient({
       catalogNumber: copy.catalogNumber,
       description: copy.description,
       value: copy.value,
+      source: copy.source,
       stock: copy.stock,
       planned: copy.planned,
       onOrder: copy.onOrder,

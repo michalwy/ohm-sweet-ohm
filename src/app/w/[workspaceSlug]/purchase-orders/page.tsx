@@ -183,6 +183,7 @@ const copy = {
     onOrder: "On order",
     avgNetCost: "Avg net cost",
     avgGrossCost: "Avg gross cost",
+    source: "Source",
     defaultLocation: "Default location",
     // quantities step
     quantitiesTitle: "Set quantities",

@@ -28,6 +28,7 @@ Current implemented extension scope beyond the base parts list includes:
 - supplier integration settings (DigiKey and TME) and active provider selection
 - shopping lists (informal lists of parts to buy)
 - purchase orders (formal per-supplier orders with item-level receive flow)
+- designs (recipes for building parts in-house, each with an auto-created output part and a revision history)
 
 Location lifecycle rule: a location can be archived only when its stock balance is zero. Archived locations are read-only for inventory movement purposes and remain visible in stock views when they still hold non-zero balances from earlier history.
 

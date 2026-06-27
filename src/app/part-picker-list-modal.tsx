@@ -25,6 +25,7 @@ export type PartPickerCopy = PartsListFiltersCopy &
     | "catalogNumber"
     | "description"
     | "value"
+    | "source"
     | "stock"
     | "planned"
     | "onOrder"

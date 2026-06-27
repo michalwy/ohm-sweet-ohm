@@ -2,6 +2,8 @@ import "server-only";
 
 import { Prisma, type PrismaClient } from "@/generated/prisma/client";
 
+import { ensureInternalOrganizationForWorkspace } from "@/server/organizations/organizations";
+
 import type {
   CategoryFixture,
   DemoPresetFixture,
@@ -19,6 +21,7 @@ export type ApplyDemoPresetResult = {
   inventoryEntriesCreated: number;
   shoppingListsCreated: number;
   purchaseOrdersCreated: number;
+  designsCreated: number;
 };
 
 function normalize(name: string): string {
@@ -42,7 +45,8 @@ export async function applyDemoPreset(
       partsCreated: 0,
       inventoryEntriesCreated: 0,
       shoppingListsCreated: 0,
-      purchaseOrdersCreated: 0
+      purchaseOrdersCreated: 0,
+      designsCreated: 0
     };
   }
 
@@ -54,7 +58,8 @@ export async function applyDemoPreset(
     partsCreated: 0,
     inventoryEntriesCreated: 0,
     shoppingListsCreated: 0,
-    purchaseOrdersCreated: 0
+    purchaseOrdersCreated: 0,
+    designsCreated: 0
   };
 
   // ── Step 1: Attributes ─────────────────────────────────────────────────────
@@ -528,6 +533,68 @@ export async function applyDemoPreset(
           }
         });
       }
+    }
+  }
+
+  // ── Step 10: Designs (in-house assemblies) ────────────────────────────────
+  if (fixture.designs.length > 0) {
+    const workspace = await prisma.workspace.findUnique({
+      where: { id: workspaceId },
+      select: { name: true }
+    });
+    const internalOrg = await ensureInternalOrganizationForWorkspace({
+      workspaceId,
+      workspaceName: workspace?.name ?? "Internal"
+    });
+
+    for (const design of fixture.designs) {
+      // Idempotency: skip if the output part already backs a design
+      const existingPart = await prisma.part.findUnique({
+        where: {
+          workspaceId_manufacturerId_catalogNumber: {
+            workspaceId,
+            manufacturerId: internalOrg.id,
+            catalogNumber: design.outputCatalogNumber
+          }
+        },
+        select: { id: true, assembledByDesign: { select: { id: true } } }
+      });
+      if (existingPart?.assembledByDesign) continue;
+
+      const outputPartId =
+        existingPart?.id ??
+        (
+          await prisma.part.create({
+            data: {
+              workspaceId,
+              unitId,
+              manufacturerId: internalOrg.id,
+              catalogNumber: design.outputCatalogNumber,
+              description: design.description ?? design.name
+            },
+            select: { id: true }
+          })
+        ).id;
+
+      const revisions = [
+        { workspaceId, revisionNumber: 1, notes: null as string | null },
+        ...(design.extraRevisions ?? []).map((rev, i) => ({
+          workspaceId,
+          revisionNumber: i + 2,
+          notes: rev.notes ?? null
+        }))
+      ];
+
+      await prisma.design.create({
+        data: {
+          workspaceId,
+          name: design.name,
+          description: design.description ?? null,
+          outputPartId,
+          revisions: { create: revisions }
+        }
+      });
+      result.designsCreated++;
     }
   }
 

@@ -35,6 +35,7 @@ model Part {
   inventoryEntries   InventoryEntry[]
   shoppingListItems  ShoppingListItem[]
   purchaseOrderItems PurchaseOrderItem[]
+  assembledByDesign  Design?             @relation("DesignOutputPart")
 
   @@unique([workspaceId, manufacturerId, catalogNumber])
   @@index([workspaceId, catalogNumber])
@@ -48,6 +49,40 @@ model Part {
   @@index([workspaceId, manufacturerId])
   @@index([workspaceId, primaryCategoryId])
   @@index([workspaceId, secondaryCategoryId])
+}
+
+model Design {
+  id           String   @id @default(cuid())
+  workspaceId  String
+  name         String
+  description  String?
+  outputPartId String   @unique
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  workspace  Workspace      @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  outputPart Part           @relation("DesignOutputPart", fields: [outputPartId], references: [id], onDelete: Restrict)
+  revisions  DesignRevision[]
+
+  @@index([workspaceId, name])
+  @@index([workspaceId, createdAt])
+}
+
+model DesignRevision {
+  id             String   @id @default(cuid())
+  designId       String
+  workspaceId    String
+  revisionNumber Int
+  notes          String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  design    Design    @relation(fields: [designId], references: [id], onDelete: Cascade)
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@unique([designId, revisionNumber])
+  @@index([designId])
+  @@index([workspaceId])
 }
 
 model Unit {
@@ -183,6 +218,7 @@ model Organization {
   workspaceId    String
   name           String
   normalizedName String
+  isInternal            Boolean  @default(false)
   currency              String?
   defaultPriceEntryMode String?
   defaultTaxRate        Decimal?
@@ -425,6 +461,8 @@ model Workspace {
   supplierManufacturerMappingStats SupplierManufacturerMappingStat[]
   shoppingLists    ShoppingList[]
   purchaseOrders   PurchaseOrder[]
+  designs          Design[]
+  designRevisions  DesignRevision[]
 
   @@index([archivedAt])
 }

@@ -28,6 +28,7 @@ export type PartsListColumnsCopy = PartsListCategoriesCopy & {
   catalogNumber: string;
   description: string;
   value: string;
+  source: string;
   stock: string;
   planned: string;
   onOrder: string;
@@ -81,6 +82,7 @@ type BuildColumnDefsOpts = {
     | "catalogNumber"
     | "description"
     | "value"
+    | "source"
     | "stock"
     | "planned"
     | "onOrder"
@@ -153,6 +155,15 @@ export function buildPartsListColumnDefs({
       defaultWidth: 110,
       minWidth: 64,
       sortable: true,
+      align: "center" as const
+    },
+    {
+      id: "source",
+      label: copy.source,
+      group: "base" as const,
+      defaultVisible: false,
+      defaultWidth: 120,
+      minWidth: 80,
       align: "center" as const
     },
     ...(canReadInventory
@@ -375,6 +386,21 @@ export function buildPartsListColumns(
           <EmptyCell />
         );
       }
+    }),
+    columnHelper.accessor("isAssembled", {
+      id: "source",
+      header: copy.source,
+      size: 120,
+      minSize: 80,
+      enableSorting: false,
+      cell: ({ getValue }) =>
+        getValue() ? (
+          <span className="inline-flex items-center rounded-full bg-[var(--color-accent-soft)] px-2 py-0.5 text-xs font-medium text-[var(--color-accent)]">
+            Assembled
+          </span>
+        ) : (
+          <EmptyCell />
+        )
     }),
     ...(canReadInventory
       ? [

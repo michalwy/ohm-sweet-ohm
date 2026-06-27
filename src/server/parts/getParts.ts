@@ -21,6 +21,7 @@ export type PartsListItem = {
   catalogNumber: string;
   description: string | null;
   manufacturerName: string;
+  isAssembled: boolean;
   valueDisplayValue: string | null;
   primaryCategoryId: string | null;
   primaryCategoryPath: string | null;
@@ -345,8 +346,12 @@ const partListSelect = {
   avgGrossCostPrimary: true,
   manufacturer: {
     select: {
-      name: true
+      name: true,
+      isInternal: true
     }
+  },
+  assembledByDesign: {
+    select: { id: true }
   },
   primaryCategoryId: true,
   secondaryCategoryId: true,
@@ -711,6 +716,7 @@ function mapPartListItem({
     catalogNumber: part.catalogNumber,
     description: part.description,
     manufacturerName: part.manufacturer.name,
+    isAssembled: part.assembledByDesign !== null,
     valueDisplayValue: valueAttributeId
       ? attributeValues.find(
           (attributeValue) => attributeValue.attributeId === valueAttributeId

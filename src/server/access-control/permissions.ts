@@ -26,7 +26,9 @@ export const PERMISSIONS = [
   "shopping-lists:read",
   "shopping-lists:write",
   "purchase-orders:read",
-  "purchase-orders:write"
+  "purchase-orders:write",
+  "designs:read",
+  "designs:write"
 ] as const;
 
 export type PermissionKey = (typeof PERMISSIONS)[number];
@@ -56,7 +58,9 @@ export const permissionDescriptions: Record<PermissionKey, string> = {
   "shopping-lists:read": "Read shopping lists and their items in a workspace.",
   "shopping-lists:write": "Create, update, and delete shopping lists and items in a workspace.",
   "purchase-orders:read": "Read purchase orders and their items in a workspace.",
-  "purchase-orders:write": "Create, update, and delete purchase orders, mark as ordered, and receive items in a workspace."
+  "purchase-orders:write": "Create, update, and delete purchase orders, mark as ordered, and receive items in a workspace.",
+  "designs:read": "Read designs and their revisions in a workspace.",
+  "designs:write": "Create, update, and delete designs and revisions in a workspace."
 };
 
 export const defaultWorkspaceRoles = [
@@ -78,7 +82,8 @@ export const defaultWorkspaceRoles = [
       "members:read",
       "workspace:read",
       "shopping-lists:read",
-      "purchase-orders:read"
+      "purchase-orders:read",
+      "designs:read"
     ]
   },
   {
@@ -107,7 +112,9 @@ export const defaultWorkspaceRoles = [
       "shopping-lists:read",
       "shopping-lists:write",
       "purchase-orders:read",
-      "purchase-orders:write"
+      "purchase-orders:write",
+      "designs:read",
+      "designs:write"
     ]
   }
 ] as const satisfies ReadonlyArray<{

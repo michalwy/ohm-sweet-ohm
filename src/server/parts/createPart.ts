@@ -782,8 +782,12 @@ async function getPartListItem({
         description: true,
         manufacturer: {
           select: {
-            name: true
+            name: true,
+            isInternal: true
           }
+        },
+        assembledByDesign: {
+          select: { id: true }
         },
         primaryCategoryId: true,
         secondaryCategoryId: true,
@@ -834,6 +838,7 @@ async function getPartListItem({
     catalogNumber: part.catalogNumber,
     description: part.description,
     manufacturerName: part.manufacturer.name,
+    isAssembled: part.assembledByDesign !== null,
     valueDisplayValue: valueAttributeId
       ? attributeValues.find(
           (attributeValue) => attributeValue.attributeId === valueAttributeId

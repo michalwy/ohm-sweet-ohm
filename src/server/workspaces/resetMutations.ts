@@ -14,6 +14,10 @@ export async function wipeDomainData(workspaceId: string): Promise<void> {
     // InventoryEntry RESTRICT-references StorageLocation
     await tx.inventoryEntry.deleteMany({ where: { workspaceId } });
 
+    // Design.outputPart RESTRICT-references Part, so designs must go before parts.
+    // Deleting a Design cascades its DesignRevision rows.
+    await tx.design.deleteMany({ where: { workspaceId } });
+
     // Attribute/AttributeChoiceOption are RESTRICT-referenced by these tables
     await tx.partAttributeValue.deleteMany({ where: { workspaceId } });
     await tx.workspaceAttribute.deleteMany({ where: { workspaceId } });

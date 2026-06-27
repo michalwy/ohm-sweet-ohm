@@ -68,6 +68,16 @@ export type PurchaseOrderFixture = {
   }>;
 };
 
+export type DesignFixture = {
+  key: string;
+  name: string;
+  description?: string;
+  /** Catalog number for the auto-created output part (under the internal manufacturer). */
+  outputCatalogNumber: string;
+  /** Extra revisions beyond the implicit v1. Each entry adds the next revision number. */
+  extraRevisions?: Array<{ notes?: string }>;
+};
+
 export type DemoPresetFixture = {
   attributes: AttributeFixture[];
   categories: CategoryFixture[];
@@ -77,6 +87,7 @@ export type DemoPresetFixture = {
   parts: PartFixture[];
   shoppingLists: ShoppingListFixture[];
   purchaseOrders: PurchaseOrderFixture[];
+  designs: DesignFixture[];
 };
 
 export const DEMO_PRESET_FIXTURE: DemoPresetFixture = {
@@ -666,6 +677,31 @@ export const DEMO_PRESET_FIXTURE: DemoPresetFixture = {
         { catalogNumber: "0022232041", manufacturerKey: "molex", quantity: 30, unitPrice: 0.28 },
         { catalogNumber: "CC0402KRX7R9BB103", manufacturerKey: "yageo", quantity: 500, unitPrice: 0.01 }
       ]
+    }
+  ],
+  designs: [
+    {
+      key: "usb_power_module",
+      name: "USB-C Power Module",
+      description: "5 V / 3 A regulated power module built around the AMS1117 LDO.",
+      outputCatalogNumber: "DESIGN-0001",
+      extraRevisions: [
+        { notes: "Added bulk input capacitor and reverse-polarity protection." },
+        { notes: "Switched output connector to JST-PH." }
+      ]
+    },
+    {
+      key: "stm32_breakout",
+      name: "STM32G0 Breakout",
+      description: "Minimal STM32G071 breakout board with SWD header and 3.3 V regulator.",
+      outputCatalogNumber: "DESIGN-0002",
+      extraRevisions: [{ notes: "Routed UART to pin header for debugging." }]
+    },
+    {
+      key: "shift_register_driver",
+      name: "8-Channel Shift Register Driver",
+      description: "74HC595-based output expander with transistor-buffered channels.",
+      outputCatalogNumber: "DESIGN-0003"
     }
   ]
 };
