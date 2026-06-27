@@ -6,7 +6,7 @@ import type {
   KeyboardEvent as ReactKeyboardEvent,
   SetStateAction
 } from "react";
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import {
   useInfiniteQuery,
   useMutation,
@@ -354,33 +354,32 @@ export function PartsListClient({
   initialSelectedPartId
 }: PartsListClientProps) {
   const queryClient = useQueryClient();
-  const createDialogRef = useRef<HTMLDialogElement>(null);
-  const editDialogRef = useRef<HTMLDialogElement>(null);
+  const partDialogRef = useRef<HTMLDialogElement>(null);
   const matchingDialogRef = useRef<HTMLDialogElement>(null);
-  const createDetailsContentRef = useRef<HTMLDivElement>(null);
-  const editDetailsContentRef = useRef<HTMLDivElement>(null);
+  const dialogDetailsContentRef = useRef<HTMLDivElement>(null);
   const nextToastIdRef = useRef(0);
   const categoryTree = buildCategoryTree(partCategories);
   const [currentManufacturerSuggestions, setCurrentManufacturerSuggestions] =
     useState(manufacturerSuggestions);
   const [toastMessages, setToastMessages] = useState<ToastMessage[]>([]);
-  const [createCatalogNumber, setCreateCatalogNumber] = useState("");
-  const [createDescription, setCreateDescription] = useState("");
-  const [createManufacturerName, setCreateManufacturerName] = useState("");
-  const [createUnitId, setCreateUnitId] = useState("");
-  const [createPrimaryCategoryId, setCreatePrimaryCategoryId] = useState("");
-  const [createSecondaryCategoryId, setCreateSecondaryCategoryId] =
-    useState("");
-  const [createDefaultLocationId, setCreateDefaultLocationId] = useState("");
-  const [createActiveTab, setCreateActiveTab] = useState<PartDialogTab>("details");
-  const [createDetailsContentHeight, setCreateDetailsContentHeight] =
+
+  // Unified dialog form state
+  const [dialogCatalogNumber, setDialogCatalogNumber] = useState("");
+  const [dialogDescription, setDialogDescription] = useState("");
+  const [dialogManufacturerName, setDialogManufacturerName] = useState("");
+  const [dialogUnitId, setDialogUnitId] = useState("");
+  const [dialogPrimaryCategoryId, setDialogPrimaryCategoryId] = useState("");
+  const [dialogSecondaryCategoryId, setDialogSecondaryCategoryId] = useState("");
+  const [dialogDefaultLocationId, setDialogDefaultLocationId] = useState("");
+  const [dialogActiveTab, setDialogActiveTab] = useState<PartDialogTab>("details");
+  const [dialogDetailsContentHeight, setDialogDetailsContentHeight] =
     useState<number | null>(null);
-  const [createAttributeValues, setCreateAttributeValues] = useState<
+  const [dialogAttributeValues, setDialogAttributeValues] = useState<
     Record<string, string>
   >({});
-  const [createFieldErrors, setCreateFieldErrors] = useState<PartFormErrors>(
-    {}
-  );
+  const [dialogFieldErrors, setDialogFieldErrors] = useState<PartFormErrors>({});
+  const [dialogFormResetKey, setDialogFormResetKey] = useState(0);
+
   const [createSupplierMatchingPayload, setCreateSupplierMatchingPayload] =
     useState("");
   const [matchingState, setMatchingState] = useState<MatchingDialogState | null>(
@@ -393,21 +392,6 @@ export function PartsListClient({
   } | null>(null);
   const [skipMatchingPendingConfirmation, setSkipMatchingPendingConfirmation] =
     useState(false);
-  const [createFormResetKey, setCreateFormResetKey] = useState(0);
-  const [editCatalogNumber, setEditCatalogNumber] = useState("");
-  const [editDescription, setEditDescription] = useState("");
-  const [editManufacturerName, setEditManufacturerName] = useState("");
-  const [editUnitId, setEditUnitId] = useState("");
-  const [editPrimaryCategoryId, setEditPrimaryCategoryId] = useState("");
-  const [editSecondaryCategoryId, setEditSecondaryCategoryId] = useState("");
-  const [editDefaultLocationId, setEditDefaultLocationId] = useState("");
-  const [editActiveTab, setEditActiveTab] = useState<PartDialogTab>("details");
-  const [editDetailsContentHeight, setEditDetailsContentHeight] =
-    useState<number | null>(null);
-  const [editAttributeValues, setEditAttributeValues] = useState<
-    Record<string, string>
-  >({});
-  const [editFieldErrors, setEditFieldErrors] = useState<PartFormErrors>({});
   const [editingPart, setEditingPart] = useState<PartsListItem | null>(null);
   const [partPendingDelete, setPartPendingDelete] =
     useState<PartsListItem | null>(null);
@@ -495,21 +479,13 @@ export function PartsListClient({
     initialPinnedId: initialSelectedPartId
   });
 
-  const createHasAttributesTab =
+  const dialogHasAttributesTab =
     getPartAttributeGroups({
       categoryAttributesByCategoryId,
       copy,
       partCategories,
-      selectedPrimaryCategoryId: createPrimaryCategoryId,
-      selectedSecondaryCategoryId: createSecondaryCategoryId
-    }).attributes.length > 0;
-  const editHasAttributesTab =
-    getPartAttributeGroups({
-      categoryAttributesByCategoryId,
-      copy,
-      partCategories,
-      selectedPrimaryCategoryId: editPrimaryCategoryId,
-      selectedSecondaryCategoryId: editSecondaryCategoryId
+      selectedPrimaryCategoryId: dialogPrimaryCategoryId,
+      selectedSecondaryCategoryId: dialogSecondaryCategoryId
     }).attributes.length > 0;
   const currentPartsById = useMemo(
     () => new Map(currentParts.map((part) => [part.id, part])),
@@ -542,18 +518,18 @@ export function PartsListClient({
   const createPartMutation = useMutation({
     mutationFn: createPart,
     onError: () => {
-      setCreateFieldErrors({
+      setDialogFieldErrors({
         submit: getPartFormErrorMessage(copy, "database-unavailable")
       });
     },
     onSuccess: async (result) => {
       if (!result.ok) {
         const nextErrors = getPartFormErrors(copy, result.error);
-        setCreateFieldErrors(nextErrors);
+        setDialogFieldErrors(nextErrors);
         const firstErrorTab = getFirstTabWithErrors(nextErrors);
 
         if (firstErrorTab) {
-          setCreateActiveTab(firstErrorTab);
+          setDialogActiveTab(firstErrorTab);
         }
 
         return;
@@ -561,38 +537,38 @@ export function PartsListClient({
 
       await refreshPartsLists();
       addManufacturerSuggestion(result.part.manufacturerName);
-      setCreateCatalogNumber("");
-      setCreateDescription("");
-      setCreateManufacturerName("");
-      setCreatePrimaryCategoryId("");
-      setCreateSecondaryCategoryId("");
-      setCreateActiveTab("details");
-      setCreateAttributeValues({});
+      setDialogCatalogNumber("");
+      setDialogDescription("");
+      setDialogManufacturerName("");
+      setDialogPrimaryCategoryId("");
+      setDialogSecondaryCategoryId("");
+      setDialogActiveTab("details");
+      setDialogAttributeValues({});
       setCreateSupplierMatchingPayload("");
-      setCreateFieldErrors({});
-      setCreateFormResetKey((currentKey) => currentKey + 1);
+      setDialogFieldErrors({});
+      setDialogFormResetKey((currentKey) => currentKey + 1);
       addToastMessage({
         id: getNextToastId(nextToastIdRef),
         message: getPartSuccessMessage(copy.createdToast, result.part)
       });
-      closeDialog(createDialogRef.current);
+      closeDialog(partDialogRef.current);
     }
   });
   const updatePartMutation = useMutation({
     mutationFn: updatePart,
     onError: () => {
-      setEditFieldErrors({
+      setDialogFieldErrors({
         submit: getPartFormErrorMessage(copy, "database-unavailable")
       });
     },
     onSuccess: async (result) => {
       if (!result.ok) {
         const nextErrors = getPartFormErrors(copy, result.error);
-        setEditFieldErrors(nextErrors);
+        setDialogFieldErrors(nextErrors);
         const firstErrorTab = getFirstTabWithErrors(nextErrors);
 
         if (firstErrorTab) {
-          setEditActiveTab(firstErrorTab);
+          setDialogActiveTab(firstErrorTab);
         }
 
         setPartPendingDelete(null);
@@ -602,16 +578,16 @@ export function PartsListClient({
       await refreshPartsLists();
       addManufacturerSuggestion(result.part.manufacturerName);
       setEditingPart(result.part);
-      setEditDescription(result.part.description ?? "");
-      setEditManufacturerName(result.part.manufacturerName);
-      setEditActiveTab("details");
-      setEditAttributeValues(getPartAttributeValueState(result.part));
-      setEditFieldErrors({});
+      setDialogDescription(result.part.description ?? "");
+      setDialogManufacturerName(result.part.manufacturerName);
+      setDialogActiveTab("details");
+      setDialogAttributeValues(getPartAttributeValueState(result.part));
+      setDialogFieldErrors({});
       addToastMessage({
         id: getNextToastId(nextToastIdRef),
         message: getPartSuccessMessage(copy.updatedToast, result.part)
       });
-      closeDialog(editDialogRef.current);
+      closeDialog(partDialogRef.current);
     }
   });
   const deletePartMutation = useMutation({
@@ -640,7 +616,7 @@ export function PartsListClient({
       await refreshPartsLists();
       setEditingPart(null);
       setPartPendingDelete(null);
-      setEditFieldErrors({});
+      setDialogFieldErrors({});
 
       if (deletedPart) {
         addToastMessage({
@@ -649,9 +625,46 @@ export function PartsListClient({
         });
       }
 
-      closeDialog(editDialogRef.current);
+      closeDialog(partDialogRef.current);
     }
   });
+  const openPartDialog = useCallback(function openPartDialog(part?: PartsListItem) {
+    if (part) {
+      setEditingPart(part);
+      setDialogCatalogNumber(part.catalogNumber);
+      setDialogDescription(part.description ?? "");
+      setDialogManufacturerName(part.manufacturerName);
+      setDialogUnitId(part.unitId);
+      setDialogPrimaryCategoryId(part.primaryCategoryId ?? "");
+      setDialogSecondaryCategoryId(part.secondaryCategoryId ?? "");
+      setDialogDefaultLocationId(part.defaultLocationId ?? "");
+      setDialogAttributeValues(getPartAttributeValueState(part));
+      setDialogActiveTab("details");
+      setDialogFieldErrors({});
+      window.requestAnimationFrame(() => openDialog(partDialogRef.current));
+    } else {
+      const defaultPrimaryCategoryId = getCreatePrimaryCategoryFromFilter({
+        categories: partCategories,
+        categoryFilterId
+      });
+
+      setEditingPart(null);
+      setDialogCatalogNumber("");
+      setDialogDescription("");
+      setDialogManufacturerName("");
+      setDialogUnitId("");
+      setDialogPrimaryCategoryId(defaultPrimaryCategoryId);
+      setDialogSecondaryCategoryId("");
+      setDialogDefaultLocationId("");
+      setDialogActiveTab("details");
+      setDialogAttributeValues({});
+      setCreateSupplierMatchingPayload("");
+      setDialogFieldErrors({});
+      setDialogFormResetKey((currentKey) => currentKey + 1);
+      openDialog(partDialogRef.current);
+    }
+  }, [categoryFilterId, partCategories]);
+
   const columns = useMemo(() => buildPartsListColumns({
     mode: "full",
     copy: {
@@ -681,7 +694,7 @@ export function PartsListClient({
     isDeletePending: deletePartMutation.isPending,
     canWriteShoppingLists,
     canWritePurchaseOrders,
-    onEditPart: openEditDialog,
+    onEditPart: openPartDialog,
     onDeletePart: handleDeletePart,
     onAddToPO: canWritePurchaseOrders ? (part) => setPartForPODialog(part) : undefined,
     onAddToSL: canWriteShoppingLists ? (part) => setPartForSLDialog(part) : undefined
@@ -694,6 +707,7 @@ export function PartsListClient({
     copy,
     deletePartMutation.isPending,
     isDatabaseAvailable,
+    openPartDialog,
     workspaceAttributes
   ]);
   const tableColumnOrder = useMemo(
@@ -723,38 +737,21 @@ export function PartsListClient({
   });
 
   useEffect(() => {
-    if (!createHasAttributesTab && createActiveTab === "attributes") {
-      setCreateActiveTab("details");
+    if (!dialogHasAttributesTab && dialogActiveTab === "attributes") {
+      setDialogActiveTab("details");
     }
-  }, [createActiveTab, createHasAttributesTab]);
-
-  useEffect(() => {
-    if (!editHasAttributesTab && editActiveTab === "attributes") {
-      setEditActiveTab("details");
-    }
-  }, [editActiveTab, editHasAttributesTab]);
+  }, [dialogActiveTab, dialogHasAttributesTab]);
 
   useLayoutEffect(() => {
-    if (createActiveTab !== "details") {
+    if (dialogActiveTab !== "details") {
       return undefined;
     }
 
     return observeDialogContentHeight(
-      createDetailsContentRef.current,
-      setCreateDetailsContentHeight
+      dialogDetailsContentRef.current,
+      setDialogDetailsContentHeight
     );
-  }, [createActiveTab]);
-
-  useLayoutEffect(() => {
-    if (editActiveTab !== "details") {
-      return undefined;
-    }
-
-    return observeDialogContentHeight(
-      editDetailsContentRef.current,
-      setEditDetailsContentHeight
-    );
-  }, [editActiveTab, editingPart]);
+  }, [dialogActiveTab, editingPart]);
 
   useEffect(() => {
     if (!selectedPartId || currentPartsById.has(selectedPartId) || partsQueryIsLoading) {
@@ -767,7 +764,7 @@ export function PartsListClient({
 
   useEffect(() => {
     if (partDialogOpen) {
-      openDialog(createDialogRef.current);
+      openDialog(partDialogRef.current);
     }
   }, [partDialogOpen]);
 
@@ -786,59 +783,23 @@ export function PartsListClient({
 
     window.requestAnimationFrame(() => {
       setEditingPart(part);
-      setEditCatalogNumber(part.catalogNumber);
-      setEditDescription(part.description ?? "");
-      setEditManufacturerName(part.manufacturerName);
-      setEditUnitId(part.unitId);
-      setEditPrimaryCategoryId(part.primaryCategoryId ?? "");
-      setEditSecondaryCategoryId(part.secondaryCategoryId ?? "");
-      setEditDefaultLocationId(part.defaultLocationId ?? "");
-      setEditAttributeValues(getPartAttributeValueState(part));
-      setEditActiveTab("details");
-      openDialog(editDialogRef.current);
+      setDialogCatalogNumber(part.catalogNumber);
+      setDialogDescription(part.description ?? "");
+      setDialogManufacturerName(part.manufacturerName);
+      setDialogUnitId(part.unitId);
+      setDialogPrimaryCategoryId(part.primaryCategoryId ?? "");
+      setDialogSecondaryCategoryId(part.secondaryCategoryId ?? "");
+      setDialogDefaultLocationId(part.defaultLocationId ?? "");
+      setDialogAttributeValues(getPartAttributeValueState(part));
+      setDialogActiveTab("details");
+      openDialog(partDialogRef.current);
     });
   }, [partEditDialog, currentParts]);
 
-  function openEditDialog(part: PartsListItem) {
-    setEditingPart(part);
-    setEditCatalogNumber(part.catalogNumber);
-    setEditDescription(part.description ?? "");
-    setEditManufacturerName(part.manufacturerName);
-    setEditUnitId(part.unitId);
-    setEditPrimaryCategoryId(part.primaryCategoryId ?? "");
-    setEditSecondaryCategoryId(part.secondaryCategoryId ?? "");
-    setEditDefaultLocationId(part.defaultLocationId ?? "");
-    setEditAttributeValues(getPartAttributeValueState(part));
-    setEditActiveTab("details");
-    setEditFieldErrors({});
-    window.requestAnimationFrame(() => openDialog(editDialogRef.current));
-  }
-
-  function openCreateDialog() {
-    const defaultPrimaryCategoryId = getCreatePrimaryCategoryFromFilter({
-      categories: partCategories,
-      categoryFilterId
-    });
-
-    setCreateCatalogNumber("");
-    setCreateDescription("");
-    setCreateManufacturerName("");
-    setCreateUnitId("");
-    setCreatePrimaryCategoryId(defaultPrimaryCategoryId);
-    setCreateSecondaryCategoryId("");
-    setCreateDefaultLocationId("");
-    setCreateActiveTab("details");
-    setCreateAttributeValues({});
-    setCreateSupplierMatchingPayload("");
-    setCreateFieldErrors({});
-    setCreateFormResetKey((currentKey) => currentKey + 1);
-    openDialog(createDialogRef.current);
-  }
-
-  function closeEditPartDialog() {
-    closeDialog(editDialogRef.current);
+  function closePartDialog() {
+    closeDialog(partDialogRef.current);
     setEditingPart(null);
-    setEditFieldErrors({});
+    setDialogFieldErrors({});
   }
 
   function syncSelectedPartInUrl(nextPartId: string | null) {
@@ -1099,70 +1060,43 @@ export function PartsListClient({
     }
   }
 
-  function handleCreateSubmit(event: FormEvent<HTMLFormElement>) {
+  function handlePartDialogSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const formData = new FormData(event.currentTarget);
     const fieldErrors = validatePartForm(copy, {
-      catalogNumber: createCatalogNumber,
-      manufacturerName: createManufacturerName,
-      unitId: createUnitId
+      catalogNumber: dialogCatalogNumber,
+      manufacturerName: dialogManufacturerName,
+      unitId: dialogUnitId
     });
 
-    setCreateFieldErrors(fieldErrors);
+    setDialogFieldErrors(fieldErrors);
     const firstErrorTab = getFirstTabWithErrors(fieldErrors);
 
     if (firstErrorTab) {
-      setCreateActiveTab(firstErrorTab);
+      setDialogActiveTab(firstErrorTab);
     }
 
     if (hasFieldErrors(fieldErrors)) {
       return;
     }
 
-    formData.set("catalogNumber", createCatalogNumber);
-    formData.set("manufacturerName", createManufacturerName);
-    formData.set("unitId", createUnitId);
-    formData.set("description", createDescription);
-    formData.set("primaryCategoryId", createPrimaryCategoryId);
-    formData.set("secondaryCategoryId", createSecondaryCategoryId);
-    formData.set("defaultLocationId", createDefaultLocationId);
+    formData.set("catalogNumber", dialogCatalogNumber);
+    formData.set("manufacturerName", dialogManufacturerName);
+    formData.set("unitId", dialogUnitId);
+    formData.set("description", dialogDescription);
+    formData.set("primaryCategoryId", dialogPrimaryCategoryId);
+    formData.set("secondaryCategoryId", dialogSecondaryCategoryId);
+    formData.set("defaultLocationId", dialogDefaultLocationId);
 
-    createPartMutation.mutate(formData);
-  }
-
-  function handleUpdateSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const formData = new FormData(event.currentTarget);
-    const fieldErrors = validatePartForm(copy, {
-      catalogNumber: editCatalogNumber,
-      manufacturerName: editManufacturerName,
-      unitId: editUnitId
-    });
-
-    setEditFieldErrors(fieldErrors);
-    const firstErrorTab = getFirstTabWithErrors(fieldErrors);
-
-    if (firstErrorTab) {
-      setEditActiveTab(firstErrorTab);
+    if (editingPart) {
+      updatePartMutation.mutate(formData);
+    } else {
+      createPartMutation.mutate(formData);
     }
-
-    if (hasFieldErrors(fieldErrors)) {
-      return;
-    }
-
-    formData.set("catalogNumber", editCatalogNumber);
-    formData.set("manufacturerName", editManufacturerName);
-    formData.set("unitId", editUnitId);
-    formData.set("description", editDescription);
-    formData.set("primaryCategoryId", editPrimaryCategoryId);
-    formData.set("secondaryCategoryId", editSecondaryCategoryId);
-    formData.set("defaultLocationId", editDefaultLocationId);
-
-    updatePartMutation.mutate(formData);
   }
 
   function handleDeletePart(part: PartsListItem) {
-    setEditFieldErrors((currentErrors) => {
+    setDialogFieldErrors((currentErrors) => {
       const nextErrors = { ...currentErrors };
       delete nextErrors.delete;
       return nextErrors;
@@ -1178,7 +1112,7 @@ export function PartsListClient({
     const formData = new FormData();
     formData.set("workspaceSlug", workspaceSlug);
     formData.set("id", partPendingDelete.id);
-    setEditFieldErrors({});
+    setDialogFieldErrors({});
     deletePartMutation.mutate(formData);
   }
 
@@ -1324,14 +1258,14 @@ export function PartsListClient({
       })
     );
 
-    setCreateAttributeValues((current) => ({
+    setDialogAttributeValues((current) => ({
       ...current,
       ...nextAttributeValues
     }));
-    setCreateManufacturerName(matchingState.targetManufacturerName);
-    clearPartFieldError(setCreateFieldErrors, "manufacturerName");
-    setCreatePrimaryCategoryId(matchingState.targetCategoryId);
-    setCreateSecondaryCategoryId("");
+    setDialogManufacturerName(matchingState.targetManufacturerName);
+    clearPartFieldError(setDialogFieldErrors, "manufacturerName");
+    setDialogPrimaryCategoryId(matchingState.targetCategoryId);
+    setDialogSecondaryCategoryId("");
     closeDialog(matchingDialogRef.current);
   }
 
@@ -1379,7 +1313,7 @@ export function PartsListClient({
               className={primaryButtonClassName}
               disabled={!isDatabaseAvailable}
               type="button"
-              onClick={openCreateDialog}
+              onClick={() => openPartDialog()}
             >
               {copy.addPart}
             </button>
@@ -1709,91 +1643,96 @@ export function PartsListClient({
 
       <ToastNotice messages={toastMessages} onDismiss={dismissToastMessage} />
 
+      {/* Add / edit part dialog */}
       <DialogShell
-        ref={createDialogRef}
+        ref={partDialogRef}
         closeLabel={copy.close}
-        description={copy.newPartBody}
-        title={copy.newPartTitle}
-        titleId="add-part-dialog-title"
+        description={editingPart ? copy.editPartBody : copy.newPartBody}
+        title={editingPart ? copy.editPartTitle : copy.newPartTitle}
+        titleId="part-dialog-title"
         widthClassName="w-[min(58rem,calc(100vw-3rem))]"
+        onClose={closePartDialog}
       >
           <form
             className="flex min-h-0 flex-1 flex-col overflow-hidden"
-            onSubmit={handleCreateSubmit}
+            onSubmit={handlePartDialogSubmit}
           >
             <input name="workspaceSlug" type="hidden" value={workspaceSlug} />
-            <input
-              name="supplierMatchingPayload"
-              type="hidden"
-              value={
-                createSupplierMatchingPayload ||
-                getSupplierMatchingPayloadValue(matchingState)
-              }
-            />
+            {editingPart && <input name="id" type="hidden" value={editingPart.id} />}
+            {!editingPart && (
+              <input
+                name="supplierMatchingPayload"
+                type="hidden"
+                value={
+                  createSupplierMatchingPayload ||
+                  getSupplierMatchingPayloadValue(matchingState)
+                }
+              />
+            )}
             <PartAttributeHiddenInputs
-              attributeValues={createAttributeValues}
+              attributeValues={dialogAttributeValues}
               categoryAttributesByCategoryId={categoryAttributesByCategoryId}
-              part={null}
+              part={editingPart ?? null}
               partCategories={partCategories}
-              selectedPrimaryCategoryId={createPrimaryCategoryId}
-              selectedSecondaryCategoryId={createSecondaryCategoryId}
+              selectedPrimaryCategoryId={dialogPrimaryCategoryId}
+              selectedSecondaryCategoryId={dialogSecondaryCategoryId}
             />
             <div className="shrink-0 border-b border-[var(--color-border)] px-5 pt-4">
               <PartDialogTabs
-                activeTab={createActiveTab}
+                activeTab={dialogActiveTab}
                 copy={copy}
-                showAttributesTab={createHasAttributesTab}
-                onTabChange={setCreateActiveTab}
+                showAttributesTab={dialogHasAttributesTab}
+                onTabChange={setDialogActiveTab}
               />
             </div>
             <DialogBody
               className="flex-[0_1_auto]"
-              style={getDialogBodyHeightStyle(createDetailsContentHeight)}
+              style={getDialogBodyHeightStyle(dialogDetailsContentHeight)}
             >
-              {createActiveTab === "details" ? (
+              {dialogActiveTab === "details" ? (
                 <div
-                  ref={createDetailsContentRef}
+                  ref={dialogDetailsContentRef}
                   className="grid gap-3 pr-1"
                 >
                   <PartDetailsFields
-                    catalogNumber={createCatalogNumber}
-                    catalogNumberInputId="create-catalog-number"
+                    catalogNumber={dialogCatalogNumber}
+                    catalogNumberInputId="part-dialog-catalog-number"
                     categoryTree={categoryTree}
                     copy={copy}
                     disabled={!isDatabaseAvailable}
-                    description={createDescription}
-                    descriptionInputId="create-description"
-                    errors={createFieldErrors}
-                    formResetKey={createFormResetKey}
-                    manufacturerInputId="create-manufacturer-name"
-                    manufacturerName={createManufacturerName}
-                    unitId={createUnitId}
+                    description={dialogDescription}
+                    descriptionInputId="part-dialog-description"
+                    errors={dialogFieldErrors}
+                    formResetKey={editingPart ? `${editingPart.id}-${editingPart.manufacturerName}` : dialogFormResetKey}
+                    manufacturerInputId="part-dialog-manufacturer-name"
+                    manufacturerName={dialogManufacturerName}
+                    unitId={dialogUnitId}
                     units={units}
                     manufacturerSuggestions={currentManufacturerSuggestions}
                     partCategories={partCategories}
-                    primaryCategoryId={createPrimaryCategoryId}
-                    secondaryCategoryId={createSecondaryCategoryId}
-                    defaultLocationId={createDefaultLocationId}
+                    primaryCategoryId={dialogPrimaryCategoryId}
+                    secondaryCategoryId={dialogSecondaryCategoryId}
+                    defaultLocationId={dialogDefaultLocationId}
                     dialogLocations={dialogLocations}
                     dialogLocationTree={dialogLocationTree}
-                    onDefaultLocationChange={setCreateDefaultLocationId}
+                    onDefaultLocationChange={setDialogDefaultLocationId}
                     onCatalogNumberChange={(value) => {
-                      setCreateCatalogNumber(value);
-                      clearPartFieldError(setCreateFieldErrors, "catalogNumber");
+                      setDialogCatalogNumber(value);
+                      clearPartFieldError(setDialogFieldErrors, "catalogNumber");
                     }}
-                    onDescriptionChange={setCreateDescription}
+                    onDescriptionChange={setDialogDescription}
                     onManufacturerNameChange={(value) => {
-                      setCreateManufacturerName(value);
-                      clearPartFieldError(setCreateFieldErrors, "manufacturerName");
+                      setDialogManufacturerName(value);
+                      clearPartFieldError(setDialogFieldErrors, "manufacturerName");
                     }}
                     onUnitIdChange={(value) => {
-                      setCreateUnitId(value);
-                      clearPartFieldError(setCreateFieldErrors, "unitId");
+                      setDialogUnitId(value);
+                      clearPartFieldError(setDialogFieldErrors, "unitId");
                     }}
-                    onSupplierSuggestionSelect={(suggestion) => {
-                      setCreateCatalogNumber(suggestion.catalogNumber);
-                      setCreateManufacturerName(suggestion.manufacturerName);
-                      setCreateDescription(suggestion.description);
+                    onSupplierSuggestionSelect={editingPart ? () => {} : (suggestion) => {
+                      setDialogCatalogNumber(suggestion.catalogNumber);
+                      setDialogManufacturerName(suggestion.manufacturerName);
+                      setDialogDescription(suggestion.description);
                       void (async () => {
                         const sourceAttributes =
                           await getSuggestionSourceAttributesForMatching({
@@ -1810,32 +1749,32 @@ export function PartsListClient({
                       })();
                     }}
                     workspaceSlug={workspaceSlug}
-                    activeSupplierProvider={activeSupplierProvider}
+                    activeSupplierProvider={editingPart ? null : activeSupplierProvider}
                     onPrimaryCategoryChange={(categoryId) => {
-                      setCreatePrimaryCategoryId(categoryId);
-                      setCreateSecondaryCategoryId("");
-                      clearPartFieldError(setCreateFieldErrors, "primaryCategoryId");
-                      clearPartFieldError(setCreateFieldErrors, "secondaryCategoryId");
+                      setDialogPrimaryCategoryId(categoryId);
+                      clearPartFieldError(setDialogFieldErrors, "primaryCategoryId");
+                      if (!categoryId || dialogSecondaryCategoryId === categoryId) {
+                        setDialogSecondaryCategoryId("");
+                        clearPartFieldError(setDialogFieldErrors, "secondaryCategoryId");
+                      }
                     }}
                     onSecondaryCategoryChange={(categoryId) => {
-                      setCreateSecondaryCategoryId(categoryId);
-                      clearPartFieldError(setCreateFieldErrors, "secondaryCategoryId");
+                      setDialogSecondaryCategoryId(categoryId);
+                      clearPartFieldError(setDialogFieldErrors, "secondaryCategoryId");
                     }}
                   />
                   <PartAttributeSections
-                    categoryAttributesByCategoryId={
-                      categoryAttributesByCategoryId
-                    }
+                    categoryAttributesByCategoryId={categoryAttributesByCategoryId}
                     partCategories={partCategories}
                     copy={copy}
                     disabled={!isDatabaseAvailable}
-                    part={null}
-                    selectedPrimaryCategoryId={createPrimaryCategoryId}
-                    selectedSecondaryCategoryId={createSecondaryCategoryId}
+                    part={editingPart ?? null}
+                    selectedPrimaryCategoryId={dialogPrimaryCategoryId}
+                    selectedSecondaryCategoryId={dialogSecondaryCategoryId}
                     tab="details"
-                    values={createAttributeValues}
+                    values={dialogAttributeValues}
                     onValueChange={(attributeId, value) =>
-                      setCreateAttributeValues((currentValues) => ({
+                      setDialogAttributeValues((currentValues) => ({
                         ...currentValues,
                         [attributeId]: value
                       }))
@@ -1843,22 +1782,20 @@ export function PartsListClient({
                   />
                 </div>
               ) : null}
-              {createActiveTab === "attributes" ? (
+              {dialogActiveTab === "attributes" ? (
                 <div className="grid gap-3 pr-1">
                   <PartAttributeSections
-                    categoryAttributesByCategoryId={
-                      categoryAttributesByCategoryId
-                    }
+                    categoryAttributesByCategoryId={categoryAttributesByCategoryId}
                     partCategories={partCategories}
                     copy={copy}
                     disabled={!isDatabaseAvailable}
-                    part={null}
-                    selectedPrimaryCategoryId={createPrimaryCategoryId}
-                    selectedSecondaryCategoryId={createSecondaryCategoryId}
+                    part={editingPart ?? null}
+                    selectedPrimaryCategoryId={dialogPrimaryCategoryId}
+                    selectedSecondaryCategoryId={dialogSecondaryCategoryId}
                     tab="attributes"
-                    values={createAttributeValues}
+                    values={dialogAttributeValues}
                     onValueChange={(attributeId, value) =>
-                      setCreateAttributeValues((currentValues) => ({
+                      setDialogAttributeValues((currentValues) => ({
                         ...currentValues,
                         [attributeId]: value
                       }))
@@ -1867,18 +1804,45 @@ export function PartsListClient({
                 </div>
               ) : null}
             </DialogBody>
-            <DialogFooter className="items-center justify-end gap-3">
-              <div className="relative">
-                <ErrorBubble>{createFieldErrors.submit}</ErrorBubble>
+            {editingPart ? (
+              <DialogFooter className="items-center justify-between gap-3">
                 <button
-                  className={primaryButtonClassName}
-                  type="submit"
-                  disabled={!isDatabaseAvailable || createPartMutation.isPending}
+                  className="min-h-9 rounded-md border border-[var(--color-border-strong)] bg-[var(--color-bg-elevated)] px-3 py-1.5 text-sm font-medium text-[var(--color-text-secondary)] transition hover:border-[var(--color-border-hover)] hover:bg-[var(--color-bg-subtle)] focus:outline-none focus:ring-2 focus:ring-[var(--color-ring-strong)] focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-[var(--color-bg-subtle)] disabled:text-[var(--color-text-placeholder)]"
+                  disabled={!isDatabaseAvailable || deletePartMutation.isPending}
+                  type="button"
+                  onClick={closePartDialog}
                 >
-                  {copy.createPart}
+                  {copy.cancelDelete}
                 </button>
-              </div>
-            </DialogFooter>
+                <div className="relative">
+                  <ErrorBubble>{dialogFieldErrors.submit}</ErrorBubble>
+                  <button
+                    className={primaryButtonClassName}
+                    type="submit"
+                    disabled={
+                      !isDatabaseAvailable ||
+                      updatePartMutation.isPending ||
+                      deletePartMutation.isPending
+                    }
+                  >
+                    {copy.saveChanges}
+                  </button>
+                </div>
+              </DialogFooter>
+            ) : (
+              <DialogFooter className="items-center justify-end gap-3">
+                <div className="relative">
+                  <ErrorBubble>{dialogFieldErrors.submit}</ErrorBubble>
+                  <button
+                    className={primaryButtonClassName}
+                    type="submit"
+                    disabled={!isDatabaseAvailable || createPartMutation.isPending}
+                  >
+                    {copy.createPart}
+                  </button>
+                </div>
+              </DialogFooter>
+            )}
           </form>
       </DialogShell>
 
@@ -2071,179 +2035,6 @@ export function PartsListClient({
         ) : null}
       </DialogShell>
 
-      <DialogShell
-        ref={editDialogRef}
-        closeLabel={copy.close}
-        description={copy.editPartBody}
-        title={copy.editPartTitle}
-        titleId="edit-part-dialog-title"
-        widthClassName="w-[min(58rem,calc(100vw-3rem))]"
-        onClose={closeEditPartDialog}
-      >
-          {editingPart ? (
-            <form
-              className="flex min-h-0 flex-1 flex-col overflow-hidden"
-              onSubmit={handleUpdateSubmit}
-            >
-              <input name="workspaceSlug" type="hidden" value={workspaceSlug} />
-              <input name="id" type="hidden" value={editingPart.id} />
-              <PartAttributeHiddenInputs
-                attributeValues={editAttributeValues}
-                categoryAttributesByCategoryId={categoryAttributesByCategoryId}
-                part={editingPart}
-                partCategories={partCategories}
-                selectedPrimaryCategoryId={editPrimaryCategoryId}
-                selectedSecondaryCategoryId={editSecondaryCategoryId}
-              />
-              <div className="shrink-0 border-b border-[var(--color-border)] px-5 pt-4">
-                <PartDialogTabs
-                  activeTab={editActiveTab}
-                  copy={copy}
-                  showAttributesTab={editHasAttributesTab}
-                  onTabChange={setEditActiveTab}
-                />
-              </div>
-              <DialogBody
-                className="flex-[0_1_auto]"
-                style={getDialogBodyHeightStyle(editDetailsContentHeight)}
-              >
-                {editActiveTab === "details" ? (
-                  <div
-                    ref={editDetailsContentRef}
-                    className="grid gap-3 pr-1"
-                  >
-                    <PartDetailsFields
-                      catalogNumber={editCatalogNumber}
-                      catalogNumberInputId="edit-catalog-number"
-                      categoryTree={categoryTree}
-                      copy={copy}
-                      disabled={!isDatabaseAvailable}
-                      description={editDescription}
-                      descriptionInputId="edit-description"
-                      errors={editFieldErrors}
-                      formResetKey={`${editingPart.id}-${editingPart.manufacturerName}`}
-                      manufacturerInputId="edit-manufacturer-name"
-                      manufacturerName={editManufacturerName}
-                      unitId={editUnitId}
-                      units={units}
-                      manufacturerSuggestions={currentManufacturerSuggestions}
-                      partCategories={partCategories}
-                      primaryCategoryId={editPrimaryCategoryId}
-                      secondaryCategoryId={editSecondaryCategoryId}
-                      defaultLocationId={editDefaultLocationId}
-                      dialogLocations={dialogLocations}
-                      dialogLocationTree={dialogLocationTree}
-                      onDefaultLocationChange={setEditDefaultLocationId}
-                      onCatalogNumberChange={(value) => {
-                        setEditCatalogNumber(value);
-                        clearPartFieldError(setEditFieldErrors, "catalogNumber");
-                      }}
-                      onDescriptionChange={setEditDescription}
-                      onManufacturerNameChange={(value) => {
-                        setEditManufacturerName(value);
-                        clearPartFieldError(setEditFieldErrors, "manufacturerName");
-                      }}
-                      onUnitIdChange={(value) => {
-                        setEditUnitId(value);
-                        clearPartFieldError(setEditFieldErrors, "unitId");
-                      }}
-                      onSupplierSuggestionSelect={() => {
-                        // Supplier suggestions are disabled in edit mode.
-                      }}
-                      workspaceSlug={workspaceSlug}
-                      activeSupplierProvider={null}
-                      onPrimaryCategoryChange={(categoryId) => {
-                        setEditPrimaryCategoryId(categoryId);
-                        clearPartFieldError(setEditFieldErrors, "primaryCategoryId");
-
-                        if (
-                          !categoryId ||
-                          editSecondaryCategoryId === categoryId
-                        ) {
-                          setEditSecondaryCategoryId("");
-                          clearPartFieldError(
-                            setEditFieldErrors,
-                            "secondaryCategoryId"
-                          );
-                        }
-                      }}
-                      onSecondaryCategoryChange={(categoryId) => {
-                        setEditSecondaryCategoryId(categoryId);
-                        clearPartFieldError(setEditFieldErrors, "secondaryCategoryId");
-                      }}
-                    />
-                    <PartAttributeSections
-                      categoryAttributesByCategoryId={
-                        categoryAttributesByCategoryId
-                      }
-                      partCategories={partCategories}
-                      copy={copy}
-                      disabled={!isDatabaseAvailable}
-                      part={editingPart}
-                      selectedPrimaryCategoryId={editPrimaryCategoryId}
-                      selectedSecondaryCategoryId={editSecondaryCategoryId}
-                      tab="details"
-                      values={editAttributeValues}
-                      onValueChange={(attributeId, value) =>
-                        setEditAttributeValues((currentValues) => ({
-                          ...currentValues,
-                          [attributeId]: value
-                        }))
-                      }
-                    />
-                  </div>
-                ) : null}
-                {editActiveTab === "attributes" ? (
-                  <div className="grid gap-3 pr-1">
-                    <PartAttributeSections
-                      categoryAttributesByCategoryId={
-                        categoryAttributesByCategoryId
-                      }
-                      partCategories={partCategories}
-                      copy={copy}
-                      disabled={!isDatabaseAvailable}
-                      part={editingPart}
-                      selectedPrimaryCategoryId={editPrimaryCategoryId}
-                      selectedSecondaryCategoryId={editSecondaryCategoryId}
-                      tab="attributes"
-                      values={editAttributeValues}
-                      onValueChange={(attributeId, value) =>
-                        setEditAttributeValues((currentValues) => ({
-                          ...currentValues,
-                          [attributeId]: value
-                        }))
-                      }
-                    />
-                  </div>
-                ) : null}
-              </DialogBody>
-              <DialogFooter className="items-center justify-between gap-3">
-                <button
-                  className="min-h-9 rounded-md border border-[var(--color-border-strong)] bg-[var(--color-bg-elevated)] px-3 py-1.5 text-sm font-medium text-[var(--color-text-secondary)] transition hover:border-[var(--color-border-hover)] hover:bg-[var(--color-bg-subtle)] focus:outline-none focus:ring-2 focus:ring-[var(--color-ring-strong)] focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-[var(--color-bg-subtle)] disabled:text-[var(--color-text-placeholder)]"
-                  disabled={!isDatabaseAvailable || deletePartMutation.isPending}
-                  type="button"
-                  onClick={closeEditPartDialog}
-                >
-                  {copy.cancelDelete}
-                </button>
-                <div className="relative">
-                  <ErrorBubble>{editFieldErrors.submit}</ErrorBubble>
-                  <button
-                    className={primaryButtonClassName}
-                    type="submit"
-                    disabled={
-                      !isDatabaseAvailable ||
-                      updatePartMutation.isPending ||
-                      deletePartMutation.isPending
-                    }
-                  >
-                    {copy.saveChanges}
-                  </button>
-                </div>
-              </DialogFooter>
-            </form>
-          ) : null}
-      </DialogShell>
       <DeleteConfirmationDialog
         body={copy.deleteConfirmationBody}
         cancelLabel={copy.cancelDelete}

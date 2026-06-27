@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import {
   createColumnHelper,
   flexRender,
@@ -130,8 +130,7 @@ function getErrorMsg(copy: Copy, error: string): string {
 
 export function DesignsClient({ canWrite, copy, initialPage, workspaceSlug }: DesignsClientProps) {
   const queryClient = useQueryClient();
-  const createDialogRef = useRef<HTMLDialogElement>(null);
-  const editDialogRef = useRef<HTMLDialogElement>(null);
+  const designDialogRef = useRef<HTMLDialogElement>(null);
   const revisionDialogRef = useRef<HTMLDialogElement>(null);
   const nextToastIdRef = useRef(0);
 
@@ -143,16 +142,11 @@ export function DesignsClient({ canWrite, copy, initialPage, workspaceSlug }: De
   const [toastMessages, setToastMessages] = useState<ToastMessage[]>([]);
   const [globalError, setGlobalError] = useState<string | null>(null);
 
-  // Create form state
-  const [createName, setCreateName] = useState("");
-  const [createDescription, setCreateDescription] = useState("");
-  const [createCatalogNumber, setCreateCatalogNumber] = useState("");
-  const [createErrors, setCreateErrors] = useState<Record<string, string>>({});
-
-  // Edit form state
-  const [editName, setEditName] = useState("");
-  const [editDescription, setEditDescription] = useState("");
-  const [editErrors, setEditErrors] = useState<Record<string, string>>({});
+  // Unified dialog form state
+  const [dialogName, setDialogName] = useState("");
+  const [dialogDescription, setDialogDescription] = useState("");
+  const [dialogCatalogNumber, setDialogCatalogNumber] = useState("");
+  const [dialogErrors, setDialogErrors] = useState<Record<string, string>>({});
 
   // Revision state
   const [editingRevisionId, setEditingRevisionId] = useState<string | null>(null);
@@ -245,6 +239,24 @@ export function DesignsClient({ canWrite, copy, initialPage, workspaceSlug }: De
 
   // --- TanStack Table ---
 
+  const openDesignDialog = useCallback(function openDesignDialog(design?: DesignSummary) {
+    setEditingDesign(design ?? null);
+    setDialogName(design?.name ?? "");
+    setDialogDescription(design?.description ?? "");
+    setDialogCatalogNumber("");
+    setDialogErrors({});
+    setGlobalError(null);
+    setDialogFormKey((k) => k + 1);
+    window.requestAnimationFrame(() => {
+      openDialog(designDialogRef.current);
+      if (!design) {
+        void getNextDesignCatalogNumberAction({ workspaceSlug }).then((result) => {
+          if (result.ok) setDialogCatalogNumber(result.data);
+        });
+      }
+    });
+  }, [workspaceSlug]);
+
   const columns = useMemo(
     () => [
       columnHelper.accessor("name", {
@@ -319,7 +331,7 @@ export function DesignsClient({ canWrite, copy, initialPage, workspaceSlug }: De
                 title={copy.edit}
                 className="min-h-8 rounded-md border border-[var(--color-border-strong)] bg-[var(--color-bg-elevated)] px-2.5 py-1 text-sm font-medium text-[var(--color-text-secondary)] transition hover:border-[var(--color-border-hover)] hover:bg-[var(--color-bg-subtle)] focus:outline-none focus:ring-2 focus:ring-[var(--color-ring-strong)] focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-[var(--color-bg-subtle)] disabled:text-[var(--color-text-placeholder)]"
                 type="button"
-                onClick={() => openEditDialog(row.original)}
+                onClick={() => openDesignDialog(row.original)}
               >
                 <svg aria-hidden="true" className="h-4 w-4" fill="none" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
                   <path d="M13.9 3.3a1.5 1.5 0 0 1 2.1 0l.7.7a1.5 1.5 0 0 1 0 2.1l-8.4 8.4-3.3.8.8-3.3 8.4-8.4Z" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" />
@@ -340,7 +352,7 @@ export function DesignsClient({ canWrite, copy, initialPage, workspaceSlug }: De
           ) : null
       })
     ],
-    [copy, canWrite]
+    [copy, canWrite, openDesignDialog]
   );
 
   const tableColumnOrder = useMemo(() => persistedColumnOrder, [persistedColumnOrder]);
@@ -381,7 +393,7 @@ export function DesignsClient({ canWrite, copy, initialPage, workspaceSlug }: De
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["designs", workspaceSlug] });
       void queryClient.invalidateQueries({ queryKey: ["parts-list", workspaceSlug] });
-      closeDialog(createDialogRef.current);
+      closeDialog(designDialogRef.current);
       setToastMessages((prev) => [
         ...prev,
         { id: getNextToastId(nextToastIdRef), message: copy.createdToast }
@@ -405,7 +417,7 @@ export function DesignsClient({ canWrite, copy, initialPage, workspaceSlug }: De
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["designs", workspaceSlug] });
-      closeDialog(editDialogRef.current);
+      closeDialog(designDialogRef.current);
       setToastMessages((prev) => [
         ...prev,
         { id: getNextToastId(nextToastIdRef), message: copy.updatedToast }
@@ -413,7 +425,7 @@ export function DesignsClient({ canWrite, copy, initialPage, workspaceSlug }: De
     },
     onError: (error) => {
       const msg = error instanceof Error ? error.message.replaceAll("_", "-") : "invalid-input";
-      setEditErrors({ name: getErrorMsg(copy, msg) });
+      setDialogErrors({ name: getErrorMsg(copy, msg) });
     }
   });
 
@@ -472,59 +484,26 @@ export function DesignsClient({ canWrite, copy, initialPage, workspaceSlug }: De
 
   // --- Handlers ---
 
-  function openCreateDialog() {
-    setCreateName("");
-    setCreateDescription("");
-    setCreateCatalogNumber("");
-    setCreateErrors({});
+  function handleDesignSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    const errors: Record<string, string> = {};
+    if (!dialogName.trim()) errors.name = copy.nameRequired;
+    if (!editingDesign && !dialogCatalogNumber.trim()) errors.catalogNumber = copy.catalogNumberRequired;
+    if (Object.keys(errors).length > 0) { setDialogErrors(errors); return; }
     setGlobalError(null);
-    setDialogFormKey((k) => k + 1);
-    window.requestAnimationFrame(() => {
-      openDialog(createDialogRef.current);
-      void getNextDesignCatalogNumberAction({ workspaceSlug }).then((result) => {
-        if (result.ok) setCreateCatalogNumber(result.data);
+    if (editingDesign) {
+      updateMutation.mutate({
+        designId: editingDesign.id,
+        name: dialogName,
+        description: dialogDescription
       });
-    });
-  }
-
-  function openEditDialog(design: DesignSummary) {
-    setEditingDesign(design);
-    setEditName(design.name);
-    setEditDescription(design.description ?? "");
-    setEditErrors({});
-    setGlobalError(null);
-    setDialogFormKey((k) => k + 1);
-    window.requestAnimationFrame(() => {
-      openDialog(editDialogRef.current);
-    });
-  }
-
-  function handleCreateSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    const errors: Record<string, string> = {};
-    if (!createName.trim()) errors.name = copy.nameRequired;
-    if (!createCatalogNumber.trim()) errors.catalogNumber = copy.catalogNumberRequired;
-    if (Object.keys(errors).length > 0) { setCreateErrors(errors); return; }
-    setGlobalError(null);
-    createMutation.mutate({
-      name: createName,
-      description: createDescription,
-      catalogNumber: createCatalogNumber
-    });
-  }
-
-  function handleEditSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    if (!editingDesign) return;
-    const errors: Record<string, string> = {};
-    if (!editName.trim()) errors.name = copy.nameRequired;
-    if (Object.keys(errors).length > 0) { setEditErrors(errors); return; }
-    setGlobalError(null);
-    updateMutation.mutate({
-      designId: editingDesign.id,
-      name: editName,
-      description: editDescription
-    });
+    } else {
+      createMutation.mutate({
+        name: dialogName,
+        description: dialogDescription,
+        catalogNumber: dialogCatalogNumber
+      });
+    }
   }
 
   function handleAddRevision() {
@@ -556,7 +535,7 @@ export function DesignsClient({ canWrite, copy, initialPage, workspaceSlug }: De
               <button
                 className="inline-flex min-h-9 items-center rounded-md bg-[var(--color-accent)] px-4 text-sm font-semibold text-white transition hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-60"
                 type="button"
-                onClick={() => void openCreateDialog()}
+                onClick={() => openDesignDialog()}
               >
                 {copy.newDesign}
               </button>
@@ -755,64 +734,73 @@ export function DesignsClient({ canWrite, copy, initialPage, workspaceSlug }: De
         </DetailPanel>
       ) : null}
 
-      {/* Create dialog */}
+      {/* Add / edit design dialog */}
       <DialogShell
-        ref={createDialogRef}
-        title={copy.newDesignTitle}
-        titleId="create-design-title"
+        ref={designDialogRef}
+        title={editingDesign ? copy.editDesignTitle : copy.newDesignTitle}
+        titleId="design-dialog-title"
         closeLabel={copy.close}
-        onClose={() => closeDialog(createDialogRef.current)}
+        onClose={() => closeDialog(designDialogRef.current)}
       >
-        <form key={dialogFormKey} className="flex min-h-0 flex-1 flex-col" onSubmit={handleCreateSubmit}>
+        <form key={dialogFormKey} className="flex min-h-0 flex-1 flex-col" onSubmit={handleDesignSubmit}>
           <DialogBody>
             <div className="grid gap-4">
               {globalError && <ErrorBubble>{globalError}</ErrorBubble>}
               <div>
-                <LabelWithError htmlFor="create-design-name" error={createErrors.name}>
+                <LabelWithError htmlFor="design-name" error={dialogErrors.name}>
                   {copy.name}
                 </LabelWithError>
                 <input
-                  id="create-design-name"
+                  id="design-name"
                   className="mt-1 w-full rounded-md border border-[var(--color-border-strong)] bg-[var(--color-bg-input)] px-3 py-2 text-sm text-[var(--color-text-primary)] placeholder-[var(--color-text-placeholder)] focus:border-[var(--color-accent)] focus:outline-none focus:ring-1 focus:ring-[var(--color-accent)]"
                   placeholder={copy.namePlaceholder}
                   type="text"
-                  value={createName}
-                  onChange={(e) => { setCreateName(e.target.value); setCreateErrors((prev) => ({ ...prev, name: "" })); }}
+                  value={dialogName}
+                  onChange={(e) => { setDialogName(e.target.value); setDialogErrors((prev) => ({ ...prev, name: "" })); }}
                 />
               </div>
               <div>
-                <label className="text-sm font-medium text-[var(--color-text-primary)]" htmlFor="create-design-description">
+                <label className="text-sm font-medium text-[var(--color-text-primary)]" htmlFor="design-description">
                   {copy.description}
                 </label>
                 <input
-                  id="create-design-description"
+                  id="design-description"
                   className="mt-1 w-full rounded-md border border-[var(--color-border-strong)] bg-[var(--color-bg-input)] px-3 py-2 text-sm text-[var(--color-text-primary)] placeholder-[var(--color-text-placeholder)] focus:border-[var(--color-accent)] focus:outline-none focus:ring-1 focus:ring-[var(--color-accent)]"
                   placeholder={copy.descriptionPlaceholder}
                   type="text"
-                  value={createDescription}
-                  onChange={(e) => setCreateDescription(e.target.value)}
+                  value={dialogDescription}
+                  onChange={(e) => setDialogDescription(e.target.value)}
                 />
               </div>
-              <div>
-                <LabelWithError htmlFor="create-design-catalog" error={createErrors.catalogNumber}>
-                  {copy.catalogNumber}
-                </LabelWithError>
-                <input
-                  id="create-design-catalog"
-                  className="mt-1 w-full rounded-md border border-[var(--color-border-strong)] bg-[var(--color-bg-input)] px-3 py-2 font-mono text-sm text-[var(--color-text-primary)] placeholder-[var(--color-text-placeholder)] focus:border-[var(--color-accent)] focus:outline-none focus:ring-1 focus:ring-[var(--color-accent)]"
-                  placeholder={copy.catalogNumberPlaceholder}
-                  type="text"
-                  value={createCatalogNumber}
-                  onChange={(e) => { setCreateCatalogNumber(e.target.value); setCreateErrors((prev) => ({ ...prev, catalogNumber: "" })); }}
-                />
-              </div>
+              {editingDesign ? (
+                <div>
+                  <p className="text-sm font-medium text-[var(--color-text-primary)]">{copy.outputPart}</p>
+                  <p className="mt-1 font-mono text-sm text-[var(--color-text-secondary)]">
+                    {editingDesign.outputPart.catalogNumber}
+                  </p>
+                </div>
+              ) : (
+                <div>
+                  <LabelWithError htmlFor="design-catalog" error={dialogErrors.catalogNumber}>
+                    {copy.catalogNumber}
+                  </LabelWithError>
+                  <input
+                    id="design-catalog"
+                    className="mt-1 w-full rounded-md border border-[var(--color-border-strong)] bg-[var(--color-bg-input)] px-3 py-2 font-mono text-sm text-[var(--color-text-primary)] placeholder-[var(--color-text-placeholder)] focus:border-[var(--color-accent)] focus:outline-none focus:ring-1 focus:ring-[var(--color-accent)]"
+                    placeholder={copy.catalogNumberPlaceholder}
+                    type="text"
+                    value={dialogCatalogNumber}
+                    onChange={(e) => { setDialogCatalogNumber(e.target.value); setDialogErrors((prev) => ({ ...prev, catalogNumber: "" })); }}
+                  />
+                </div>
+              )}
             </div>
           </DialogBody>
           <DialogFooter className="justify-end gap-3">
             <button
               className="rounded-md border border-[var(--color-border-strong)] px-4 py-2 text-sm font-medium text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-subtle)]"
               type="button"
-              onClick={() => closeDialog(createDialogRef.current)}
+              onClick={() => closeDialog(designDialogRef.current)}
             >
               {copy.cancel}
             </button>
@@ -821,80 +809,11 @@ export function DesignsClient({ canWrite, copy, initialPage, workspaceSlug }: De
               type="submit"
               disabled={isMutating}
             >
-              {copy.createDesign}
+              {editingDesign ? copy.saveChanges : copy.createDesign}
             </button>
           </DialogFooter>
         </form>
       </DialogShell>
-
-      {/* Edit dialog */}
-      {editingDesign && (
-        <DialogShell
-          ref={editDialogRef}
-          title={copy.editDesignTitle}
-          titleId="edit-design-title"
-          closeLabel={copy.close}
-          onClose={() => closeDialog(editDialogRef.current)}
-        >
-          <form
-            key={`edit-${dialogFormKey}`}
-            className="flex min-h-0 flex-1 flex-col"
-            onSubmit={handleEditSubmit}
-          >
-            <DialogBody>
-              <div className="grid gap-4">
-                {globalError && <ErrorBubble>{globalError}</ErrorBubble>}
-                <div>
-                  <LabelWithError htmlFor="edit-design-name" error={editErrors.name}>
-                    {copy.name}
-                  </LabelWithError>
-                  <input
-                    id="edit-design-name"
-                    className="mt-1 w-full rounded-md border border-[var(--color-border-strong)] bg-[var(--color-bg-input)] px-3 py-2 text-sm text-[var(--color-text-primary)] focus:border-[var(--color-accent)] focus:outline-none focus:ring-1 focus:ring-[var(--color-accent)]"
-                    type="text"
-                    value={editName}
-                    onChange={(e) => { setEditName(e.target.value); setEditErrors((prev) => ({ ...prev, name: "" })); }}
-                  />
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-[var(--color-text-primary)]" htmlFor="edit-design-description">
-                    {copy.description}
-                  </label>
-                  <input
-                    id="edit-design-description"
-                    className="mt-1 w-full rounded-md border border-[var(--color-border-strong)] bg-[var(--color-bg-input)] px-3 py-2 text-sm text-[var(--color-text-primary)] focus:border-[var(--color-accent)] focus:outline-none focus:ring-1 focus:ring-[var(--color-accent)]"
-                    type="text"
-                    value={editDescription}
-                    onChange={(e) => setEditDescription(e.target.value)}
-                  />
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-[var(--color-text-primary)]">{copy.outputPart}</p>
-                  <p className="mt-1 font-mono text-sm text-[var(--color-text-secondary)]">
-                    {editingDesign.outputPart.catalogNumber}
-                  </p>
-                </div>
-              </div>
-            </DialogBody>
-            <DialogFooter className="justify-end gap-3">
-              <button
-                className="rounded-md border border-[var(--color-border-strong)] px-4 py-2 text-sm font-medium text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-subtle)]"
-                type="button"
-                onClick={() => closeDialog(editDialogRef.current)}
-              >
-                {copy.cancel}
-              </button>
-              <button
-                className="rounded-md bg-[var(--color-action-primary)] px-4 py-2 text-sm font-medium text-white hover:bg-[var(--color-action-primary-hover)] disabled:opacity-50"
-                type="submit"
-                disabled={isMutating}
-              >
-                {copy.saveChanges}
-              </button>
-            </DialogFooter>
-          </form>
-        </DialogShell>
-      )}
 
       {/* Add / edit revision dialog */}
       <DialogShell
