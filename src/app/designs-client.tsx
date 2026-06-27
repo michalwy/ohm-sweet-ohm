@@ -132,8 +132,7 @@ export function DesignsClient({ canWrite, copy, initialPage, workspaceSlug }: De
   const queryClient = useQueryClient();
   const createDialogRef = useRef<HTMLDialogElement>(null);
   const editDialogRef = useRef<HTMLDialogElement>(null);
-  const addRevisionDialogRef = useRef<HTMLDialogElement>(null);
-  const editRevisionDialogRef = useRef<HTMLDialogElement>(null);
+  const revisionDialogRef = useRef<HTMLDialogElement>(null);
   const nextToastIdRef = useRef(0);
 
   const [dialogFormKey, setDialogFormKey] = useState(0);
@@ -156,7 +155,6 @@ export function DesignsClient({ canWrite, copy, initialPage, workspaceSlug }: De
   const [editErrors, setEditErrors] = useState<Record<string, string>>({});
 
   // Revision state
-  const [newRevisionNotes, setNewRevisionNotes] = useState("");
   const [editingRevisionId, setEditingRevisionId] = useState<string | null>(null);
   const [editingRevisionNotes, setEditingRevisionNotes] = useState("");
 
@@ -238,17 +236,11 @@ export function DesignsClient({ canWrite, copy, initialPage, workspaceSlug }: De
     window.history.replaceState(null, "", url.toString());
   }
 
-  function openAddRevisionDialog() {
-    setNewRevisionNotes("");
-    setDialogFormKey((k) => k + 1);
-    window.requestAnimationFrame(() => openDialog(addRevisionDialogRef.current));
-  }
-
-  function openEditRevisionDialog(revisionId: string, currentNotes: string | null) {
+  function openRevisionDialog(revisionId: string | null, currentNotes: string | null) {
     setEditingRevisionId(revisionId);
     setEditingRevisionNotes(currentNotes ?? "");
     setDialogFormKey((k) => k + 1);
-    window.requestAnimationFrame(() => openDialog(editRevisionDialogRef.current));
+    window.requestAnimationFrame(() => openDialog(revisionDialogRef.current));
   }
 
   // --- TanStack Table ---
@@ -459,7 +451,7 @@ export function DesignsClient({ canWrite, copy, initialPage, workspaceSlug }: De
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["designs", workspaceSlug] });
       void queryClient.invalidateQueries({ queryKey: ["design-detail", workspaceSlug, selectedDesignId] });
-      closeDialog(addRevisionDialogRef.current);
+      closeDialog(revisionDialogRef.current);
     }
   });
 
@@ -474,7 +466,7 @@ export function DesignsClient({ canWrite, copy, initialPage, workspaceSlug }: De
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["design-detail", workspaceSlug, selectedDesignId] });
-      closeDialog(editRevisionDialogRef.current);
+      closeDialog(revisionDialogRef.current);
     }
   });
 
@@ -537,7 +529,7 @@ export function DesignsClient({ canWrite, copy, initialPage, workspaceSlug }: De
 
   function handleAddRevision() {
     if (!selectedDesignId) return;
-    addRevisionMutation.mutate({ designId: selectedDesignId, notes: newRevisionNotes });
+    addRevisionMutation.mutate({ designId: selectedDesignId, notes: editingRevisionNotes });
   }
 
   function handleSaveRevisionNotes(revisionId: string) {
@@ -698,7 +690,7 @@ export function DesignsClient({ canWrite, copy, initialPage, workspaceSlug }: De
                 <button
                   className="rounded-md border border-[var(--color-border-strong)] px-2.5 py-1 text-xs font-medium text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-subtle)]"
                   type="button"
-                  onClick={openAddRevisionDialog}
+                  onClick={() => openRevisionDialog(null, null)}
                 >
                   {copy.addRevision}
                 </button>
@@ -746,7 +738,7 @@ export function DesignsClient({ canWrite, copy, initialPage, workspaceSlug }: De
                             title={copy.editNotes}
                             className="rounded p-1 text-[var(--color-text-muted)] hover:bg-[var(--color-bg-subtle)] hover:text-[var(--color-text-secondary)]"
                             type="button"
-                            onClick={() => openEditRevisionDialog(rev.id, rev.notes)}
+                            onClick={() => openRevisionDialog(rev.id, rev.notes)}
                           >
                             <svg aria-hidden="true" className="h-3.5 w-3.5" fill="none" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
                               <path d="M13.9 3.3a1.5 1.5 0 0 1 2.1 0l.7.7a1.5 1.5 0 0 1 0 2.1l-8.4 8.4-3.3.8.8-3.3 8.4-8.4Z" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" />
@@ -904,76 +896,31 @@ export function DesignsClient({ canWrite, copy, initialPage, workspaceSlug }: De
         </DialogShell>
       )}
 
-      {/* Add revision dialog */}
+      {/* Add / edit revision dialog */}
       <DialogShell
-        ref={addRevisionDialogRef}
-        title={copy.addRevisionTitle}
-        titleId="add-revision-title"
+        ref={revisionDialogRef}
+        title={editingRevisionId ? copy.editNotes : copy.addRevisionTitle}
+        titleId="revision-dialog-title"
         closeLabel={copy.close}
-        onClose={() => closeDialog(addRevisionDialogRef.current)}
+        onClose={() => closeDialog(revisionDialogRef.current)}
       >
         <form
-          key={`add-revision-${dialogFormKey}`}
+          key={`revision-${dialogFormKey}`}
           className="flex min-h-0 flex-1 flex-col"
-          onSubmit={(e) => { e.preventDefault(); handleAddRevision(); }}
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (editingRevisionId) handleSaveRevisionNotes(editingRevisionId);
+            else handleAddRevision();
+          }}
         >
           <DialogBody>
             <div className="grid gap-4">
               <div>
-                <label className="text-sm font-medium text-[var(--color-text-primary)]" htmlFor="new-revision-notes">
+                <label className="text-sm font-medium text-[var(--color-text-primary)]" htmlFor="revision-notes">
                   {copy.revisionNotes}
                 </label>
                 <input
-                  id="new-revision-notes"
-                  className="mt-1 w-full rounded-md border border-[var(--color-border-strong)] bg-[var(--color-bg-input)] px-3 py-2 text-sm text-[var(--color-text-primary)] placeholder-[var(--color-text-placeholder)] focus:border-[var(--color-accent)] focus:outline-none focus:ring-1 focus:ring-[var(--color-accent)]"
-                  placeholder={copy.notesPlaceholder}
-                  type="text"
-                  value={newRevisionNotes}
-                  onChange={(e) => setNewRevisionNotes(e.target.value)}
-                />
-              </div>
-            </div>
-          </DialogBody>
-          <DialogFooter className="justify-end gap-3">
-            <button
-              className="rounded-md border border-[var(--color-border-strong)] px-4 py-2 text-sm font-medium text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-subtle)]"
-              type="button"
-              onClick={() => closeDialog(addRevisionDialogRef.current)}
-            >
-              {copy.cancel}
-            </button>
-            <button
-              className="rounded-md bg-[var(--color-action-primary)] px-4 py-2 text-sm font-medium text-white hover:bg-[var(--color-action-primary-hover)] disabled:opacity-50"
-              type="submit"
-              disabled={addRevisionMutation.isPending}
-            >
-              {copy.addRevisionConfirm}
-            </button>
-          </DialogFooter>
-        </form>
-      </DialogShell>
-
-      {/* Edit revision notes dialog */}
-      <DialogShell
-        ref={editRevisionDialogRef}
-        title={copy.editNotes}
-        titleId="edit-revision-title"
-        closeLabel={copy.close}
-        onClose={() => closeDialog(editRevisionDialogRef.current)}
-      >
-        <form
-          key={`edit-revision-${dialogFormKey}`}
-          className="flex min-h-0 flex-1 flex-col"
-          onSubmit={(e) => { e.preventDefault(); if (editingRevisionId) handleSaveRevisionNotes(editingRevisionId); }}
-        >
-          <DialogBody>
-            <div className="grid gap-4">
-              <div>
-                <label className="text-sm font-medium text-[var(--color-text-primary)]" htmlFor="edit-revision-notes">
-                  {copy.revisionNotes}
-                </label>
-                <input
-                  id="edit-revision-notes"
+                  id="revision-notes"
                   className="mt-1 w-full rounded-md border border-[var(--color-border-strong)] bg-[var(--color-bg-input)] px-3 py-2 text-sm text-[var(--color-text-primary)] placeholder-[var(--color-text-placeholder)] focus:border-[var(--color-accent)] focus:outline-none focus:ring-1 focus:ring-[var(--color-accent)]"
                   placeholder={copy.notesPlaceholder}
                   type="text"
@@ -987,16 +934,16 @@ export function DesignsClient({ canWrite, copy, initialPage, workspaceSlug }: De
             <button
               className="rounded-md border border-[var(--color-border-strong)] px-4 py-2 text-sm font-medium text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-subtle)]"
               type="button"
-              onClick={() => closeDialog(editRevisionDialogRef.current)}
+              onClick={() => closeDialog(revisionDialogRef.current)}
             >
               {copy.cancel}
             </button>
             <button
               className="rounded-md bg-[var(--color-action-primary)] px-4 py-2 text-sm font-medium text-white hover:bg-[var(--color-action-primary-hover)] disabled:opacity-50"
               type="submit"
-              disabled={updateRevisionNotesMutation.isPending}
+              disabled={editingRevisionId ? updateRevisionNotesMutation.isPending : addRevisionMutation.isPending}
             >
-              {copy.saveNotes}
+              {editingRevisionId ? copy.saveNotes : copy.addRevisionConfirm}
             </button>
           </DialogFooter>
         </form>
