@@ -502,10 +502,6 @@ export function AttributesClient({
                 ? handleCreateSubmit
                 : handleUpdateSubmit
             }
-            onCancel={() => {
-              setAttributeDialogMode(null);
-              setEditingAttribute(null);
-            }}
           />
         ) : null}
       </DialogShell>
@@ -532,8 +528,7 @@ function AttributeDialogContent({
   isPending,
   mode,
   attribute,
-  onSubmit,
-  onCancel
+  onSubmit
 }: {
   copy: Copy;
   errors: AttributeFormErrors;
@@ -542,7 +537,6 @@ function AttributeDialogContent({
   mode: AttributeDialogMode;
   attribute: AttributeListItem | null;
   onSubmit: (formData: FormData) => void;
-  onCancel: () => void;
 }) {
   const formId = "attribute-dialog-form";
   const [type, setType] = useState<AttributeValueType>(
@@ -674,7 +668,6 @@ function AttributeDialogContent({
         </DialogBody>
         <DialogActions
           cancelLabel={copy.cancelDelete}
-          onCancel={onCancel}
           actionLabel={submitLabel}
           disabled={!isDatabaseAvailable || isPending}
           error={errors.submit}

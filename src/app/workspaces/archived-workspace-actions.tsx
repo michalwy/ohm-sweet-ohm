@@ -170,7 +170,6 @@ export function ArchivedWorkspaceActions({
             actionLabel={copy.delete}
             variant="destructive"
             disabled={!canConfirm || mutation.isPending}
-            onCancel={handleCloseDialog}
           />
         </form>
       </DialogShell>

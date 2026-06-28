@@ -2079,7 +2079,6 @@ export function PurchaseOrdersClient({
             <DialogActions
               actionLabel={copy.confirm}
               disabled={isMutating}
-              onCancel={() => { closeDialog(markOrderedDialogRef.current); setMarkOrderedPending(false); }}
               onAction={() => {
                 if (selectedOrderId) markOrderedMutation.mutate({ workspaceSlug, orderId: selectedOrderId });
               }}
@@ -2105,7 +2104,6 @@ export function PurchaseOrdersClient({
             <DialogActions
               actionLabel={copy.confirm}
               disabled={isMutating}
-              onCancel={() => { closeDialog(revertToDraftDialogRef.current); setRevertToDraftPending(false); }}
               onAction={() => {
                 if (selectedOrderId) revertToDraftMutation.mutate({ workspaceSlug, orderId: selectedOrderId });
               }}
@@ -2183,7 +2181,6 @@ export function PurchaseOrdersClient({
               actionLabel={copy.manualRateSubmit}
               disabled={saveManualRateMutation.isPending || !rateRequiredValue.trim()}
               error={rateRequiredError}
-              onCancel={() => { closeDialog(rateRequiredDialogRef.current); setRateRequiredState(null); }}
               onAction={() => {
                 saveManualRateMutation.mutate({
                   workspaceSlug,

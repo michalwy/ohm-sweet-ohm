@@ -3,10 +3,12 @@
 import {
   createContext,
   forwardRef,
+  useCallback,
   useContext,
   type ButtonHTMLAttributes,
   type CSSProperties,
   type MouseEvent,
+  type MutableRefObject,
   type ReactNode,
   type SyntheticEvent,
   useEffect,
@@ -14,7 +16,7 @@ import {
 } from "react";
 
 type DialogContextValue = {
-  onCancel?: () => void;
+  close?: () => void;
 };
 
 const DialogContext = createContext<DialogContextValue>({});
@@ -87,12 +89,19 @@ export const DialogShell = forwardRef<HTMLDialogElement, DialogShellProps>(
       onCancel,
       onCloseClick
     },
-    ref
+    externalRef
   ) {
+    const internalRef = useRef<HTMLDialogElement>(null);
+    const setRef = useCallback((el: HTMLDialogElement | null) => {
+      internalRef.current = el;
+      if (typeof externalRef === "function") externalRef(el);
+      else if (externalRef) (externalRef as MutableRefObject<HTMLDialogElement | null>).current = el;
+    }, [externalRef]);
+
     return (
-      <DialogContext.Provider value={{ onCancel: onClose }}>
+      <DialogContext.Provider value={{ close: () => closeDialog(internalRef.current) }}>
         <dialog
-          ref={ref}
+          ref={setRef}
           aria-labelledby={titleId}
           className={`fixed inset-0 m-auto max-h-[calc(100vh-2rem)] ${widthClassName} overflow-hidden rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-elevated)] p-0 text-[var(--color-text-primary)] shadow-2xl backdrop:bg-slate-950/40`}
           onClose={onClose}
@@ -215,11 +224,14 @@ export function DialogActions({
   error
 }: DialogActionsProps) {
   const ctx = useContext(DialogContext);
-  const onCancel = onCancelProp ?? ctx.onCancel;
+  const handleCancel = () => {
+    onCancelProp?.();
+    ctx.close?.();
+  };
   const ActionButton = variant === "destructive" ? DialogDestructiveButton : DialogPrimaryButton;
   return (
     <DialogFooter>
-      <DialogSecondaryButton onClick={onCancel}>
+      <DialogSecondaryButton onClick={handleCancel}>
         {cancelLabel}
       </DialogSecondaryButton>
       <div className="relative">
