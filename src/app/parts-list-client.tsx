@@ -28,6 +28,7 @@ import { getSupplierMatchingSuggestionsForWorkspace } from "@/server/integration
 import { ManufacturerAutocomplete, type ManufacturerSuggestion } from "@/app/manufacturer-autocomplete";
 import type { PartCategoryListItem } from "@/server/parts/categories";
 import type { PartsListItem } from "@/server/parts/getParts";
+import { getPartsListPageForWorkspace } from "@/server/parts/listActions";
 import type { EffectiveCategoryAttribute } from "@/server/parts/attributes";
 import type { AttributeListItem } from "@/server/parts/attributeMutations";
 import type { SupplierProviderKey } from "@/server/integrations/types";
@@ -331,6 +332,7 @@ type PartsListClientProps = {
   canWritePurchaseOrders: boolean;
   primaryCurrency: string;
   initialSelectedPartId?: string;
+  initialPinnedId?: string;
 };
 
 export function PartsListClient({
@@ -354,7 +356,8 @@ export function PartsListClient({
   canWriteShoppingLists,
   canWritePurchaseOrders,
   primaryCurrency,
-  initialSelectedPartId
+  initialSelectedPartId,
+  initialPinnedId
 }: PartsListClientProps) {
   const queryClient = useQueryClient();
   const partDialogRef = useRef<HTMLDialogElement>(null);
@@ -461,6 +464,7 @@ export function PartsListClient({
     partsCounts,
     hasActiveFilters,
     isLoading: partsQueryIsLoading,
+    isPlaceholderData: partsQueryIsPlaceholderData,
     isError: partsQueryIsError,
     isFetchingNextPage: partsQueryIsFetchingNextPage,
     hasNextPage: partsQueryHasNextPage,
@@ -478,8 +482,8 @@ export function PartsListClient({
     workspaceSlug,
     sorting,
     initialPage,
-    enabled: isDatabaseAvailable,
-    initialPinnedId: initialSelectedPartId
+    enabled: isDatabaseAvailable && isListConfigurationLoaded,
+    initialPinnedId: initialPinnedId
   });
 
   const dialogHasAttributesTab =
@@ -494,8 +498,33 @@ export function PartsListClient({
     () => new Map(currentParts.map((part) => [part.id, part])),
     [currentParts]
   );
+  // When a part is selected via URL (e.g. page refresh or entity link) but is not
+  // present on the loaded list page, fetch it independently so the detail pane can
+  // still render it without filtering the list down to that single part.
+  const isSelectedPartInList = selectedPartId
+    ? currentPartsById.has(selectedPartId)
+    : false;
+  const selectedPartFallbackQuery = useQuery({
+    queryKey: ["part-detail", workspaceSlug, selectedPartId],
+    enabled:
+      Boolean(selectedPartId) &&
+      isListConfigurationLoaded &&
+      !isSelectedPartInList,
+    queryFn: async () => {
+      const result = await getPartsListPageForWorkspace({
+        workspaceSlug,
+        pinnedId: selectedPartId
+      });
+      if (!result.ok) {
+        throw new Error(result.error);
+      }
+      return result.page.items[0] ?? null;
+    }
+  });
   const selectedPart = selectedPartId
-    ? currentPartsById.get(selectedPartId) ?? null
+    ? currentPartsById.get(selectedPartId) ??
+      selectedPartFallbackQuery.data ??
+      null
     : null;
   async function refreshPartsLists() {
     await queryClient.invalidateQueries({
@@ -757,13 +786,31 @@ export function PartsListClient({
   }, [dialogActiveTab, editingPart]);
 
   useEffect(() => {
-    if (!selectedPartId || currentPartsById.has(selectedPartId) || partsQueryIsLoading) {
+    // Only drop the selection once we are certain the part does not exist:
+    // the list config is loaded and the independent fallback fetch has settled
+    // without finding it. Clearing earlier would wipe a valid selection while
+    // the list/fallback are still loading.
+    if (!selectedPartId || isSelectedPartInList || !isListConfigurationLoaded) {
+      return;
+    }
+    if (
+      selectedPartFallbackQuery.isLoading ||
+      selectedPartFallbackQuery.isFetching ||
+      selectedPartFallbackQuery.data
+    ) {
       return;
     }
 
     setSelectedPartId(null);
     syncSelectedPartInUrl(null);
-  }, [currentPartsById, selectedPartId, partsQueryIsLoading]);
+  }, [
+    selectedPartId,
+    isSelectedPartInList,
+    isListConfigurationLoaded,
+    selectedPartFallbackQuery.isLoading,
+    selectedPartFallbackQuery.isFetching,
+    selectedPartFallbackQuery.data
+  ]);
 
   useEffect(() => {
     if (partDialogOpen) {
@@ -1329,7 +1376,10 @@ export function PartsListClient({
             onClear={() => {
               clearPinnedId();
               setSelectedPartId(null);
-              syncSelectedPartInUrl(null);
+              const url = new URL(window.location.href);
+              url.searchParams.delete("selectedPartId");
+              url.searchParams.delete("pinnedId");
+              window.history.replaceState(null, "", url.toString());
             }}
           />
         ) : null}
@@ -1340,7 +1390,7 @@ export function PartsListClient({
           setColumnWidth={setColumnWidth}
           hasNextPage={partsQueryHasNextPage}
           isFetchingNextPage={partsQueryIsFetchingNextPage}
-          isInitialLoading={partsQueryIsLoading || !isListConfigurationLoaded}
+          isInitialLoading={partsQueryIsLoading || !isListConfigurationLoaded || partsQueryIsPlaceholderData}
           isError={partsQueryIsError}
           isEmpty={currentParts.length === 0}
           loadMore={partsQueryFetchNextPage}

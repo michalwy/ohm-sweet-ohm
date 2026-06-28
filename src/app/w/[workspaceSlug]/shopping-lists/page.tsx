@@ -159,7 +159,7 @@ const copy = {
 
 type ShoppingListsPageProps = {
   params: Promise<{ workspaceSlug: string }>;
-  searchParams?: Promise<{ selectedListId?: string }>;
+  searchParams?: Promise<{ selectedListId?: string; pinnedId?: string }>;
 };
 
 export default async function ShoppingListsPage({
@@ -217,6 +217,7 @@ export default async function ShoppingListsPage({
         copy={copy}
         initialPage={initialPage}
         initialSelectedListId={resolvedSearchParams?.selectedListId}
+        initialPinnedListId={resolvedSearchParams?.pinnedId}
         workspaceSlug={workspaceSlug}
       />
     </WorkspaceShell>

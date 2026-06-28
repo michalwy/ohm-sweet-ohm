@@ -116,6 +116,7 @@ export function usePartsListQuery({
     partsCounts,
     hasActiveFilters,
     isLoading: partsQuery.isLoading,
+    isPlaceholderData: partsQuery.isPlaceholderData,
     isError: partsQuery.isError,
     isFetchingNextPage: partsQuery.isFetchingNextPage,
     hasNextPage: Boolean(partsQuery.hasNextPage),

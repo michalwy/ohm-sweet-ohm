@@ -164,6 +164,7 @@ type ShoppingListsClientProps = {
   copy: Copy;
   initialPage: ListPage<ShoppingListSummary>;
   initialSelectedListId?: string;
+  initialPinnedListId?: string;
   workspaceSlug: string;
 };
 
@@ -176,6 +177,7 @@ export function ShoppingListsClient({
   copy,
   initialPage,
   initialSelectedListId,
+  initialPinnedListId,
   workspaceSlug
 }: ShoppingListsClientProps) {
   const queryClient = useQueryClient();
@@ -184,7 +186,7 @@ export function ShoppingListsClient({
     initialSelectedListId ?? null
   );
   const [pinnedListId, setPinnedListId] = useState<string | null>(
-    initialSelectedListId ?? null
+    initialPinnedListId ?? null
   );
   const [hoveredListId, setHoveredListId] = useState<string | null>(null);
   const [listDialogMode, setListDialogMode] = useState<"create" | "edit" | null>(null);
@@ -253,6 +255,7 @@ export function ShoppingListsClient({
 
   const listsQuery = useInfiniteQuery({
     queryKey: ["shopping-lists", workspaceSlug, { sorting, pinnedListId }] as const,
+    enabled: isListConfigLoaded,
     initialPageParam: null as string | null,
     queryFn: async ({ pageParam }) => {
       const result = await getShoppingListsForWorkspace({
@@ -411,6 +414,10 @@ export function ShoppingListsClient({
   const selectedList = selectedListId
     ? (lists.find((l) => l.id === selectedListId) ?? null)
     : null;
+  // Fall back to the independently fetched detail so the panel can render a
+  // selected list that is not on the loaded list page (e.g. page refresh).
+  const panelList =
+    selectedList ?? (listDetail as ShoppingListDetail | null | undefined) ?? null;
 
   // --- Dialog helpers ---
 
@@ -777,6 +784,7 @@ export function ShoppingListsClient({
                 setSelectedListId(null);
                 const url = new URL(window.location.href);
                 url.searchParams.delete("selectedListId");
+                url.searchParams.delete("pinnedId");
                 window.history.replaceState(null, "", url.toString());
               }}
             />
@@ -793,7 +801,7 @@ export function ShoppingListsClient({
             isEmpty={lists.length === 0}
             isError={listsQuery.isError}
             isFetchingNextPage={listsQuery.isFetchingNextPage}
-            isInitialLoading={!isListConfigLoaded || listsQuery.isLoading}
+            isInitialLoading={!isListConfigLoaded || listsQuery.isLoading || listsQuery.isPlaceholderData}
             loadMore={() => void listsQuery.fetchNextPage()}
             loadingLabel={copy.loadingLists}
             loadingMoreLabel={copy.loadingMoreLists}
@@ -882,11 +890,11 @@ export function ShoppingListsClient({
         </section>
 
         {/* Detail panel */}
-        {selectedList && hasLoadedDetailsPanelWidth ? (
+        {panelList && hasLoadedDetailsPanelWidth ? (
           <DetailPanel
             closeLabel={copy.close}
-            subtitle={selectedList.description ?? undefined}
-            title={selectedList.name}
+            subtitle={panelList.description ?? undefined}
+            title={panelList.name}
             width={detailsPanelWidth}
             onClose={closeListDetails}
             onStartResize={startResizingDetailsPanel}

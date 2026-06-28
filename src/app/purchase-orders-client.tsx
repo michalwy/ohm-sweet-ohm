@@ -346,6 +346,7 @@ type PurchaseOrdersClientProps = {
   copy: Copy;
   initialPage: ListPage<PurchaseOrderSummary>;
   initialSelectedOrderId?: string;
+  initialPinnedOrderId?: string;
   allLocations: StorageLocationListItem[];
   assignableLocations: StorageLocationListItem[];
   workspaceSlug: string;
@@ -365,6 +366,7 @@ export function PurchaseOrdersClient({
   copy,
   initialPage,
   initialSelectedOrderId,
+  initialPinnedOrderId,
   allLocations,
   assignableLocations,
   workspaceSlug,
@@ -378,7 +380,7 @@ export function PurchaseOrdersClient({
     initialSelectedOrderId ?? null
   );
   const [pinnedOrderId, setPinnedOrderId] = useState<string | null>(
-    initialSelectedOrderId ?? null
+    initialPinnedOrderId ?? null
   );
   const [hoveredOrderId, setHoveredOrderId] = useState<string | null>(null);
   const [orderDialogMode, setOrderDialogMode] = useState<"edit" | null>(null);
@@ -465,6 +467,7 @@ export function PurchaseOrdersClient({
 
   const ordersQuery = useInfiniteQuery({
     queryKey: ["purchase-orders", workspaceSlug, { sorting, pinnedOrderId }] as const,
+    enabled: isOrderConfigLoaded,
     initialPageParam: null as string | null,
     queryFn: async ({ pageParam }) => {
       const result = await getPurchaseOrdersForWorkspace({
@@ -1235,6 +1238,7 @@ export function PurchaseOrdersClient({
                 setSelectedOrderId(null);
                 const url = new URL(window.location.href);
                 url.searchParams.delete("selectedOrderId");
+                url.searchParams.delete("pinnedId");
                 window.history.replaceState(null, "", url.toString());
               }}
             />
@@ -1251,7 +1255,7 @@ export function PurchaseOrdersClient({
             isEmpty={orders.length === 0}
             isError={ordersQuery.isError}
             isFetchingNextPage={ordersQuery.isFetchingNextPage}
-            isInitialLoading={!isOrderConfigLoaded || ordersQuery.isLoading}
+            isInitialLoading={!isOrderConfigLoaded || ordersQuery.isLoading || ordersQuery.isPlaceholderData}
             loadMore={() => void ordersQuery.fetchNextPage()}
             loadingLabel={copy.loadingOrders}
             loadingMoreLabel={copy.loadingMoreOrders}

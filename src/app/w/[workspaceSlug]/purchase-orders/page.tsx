@@ -198,7 +198,7 @@ const copy = {
 
 type PurchaseOrdersPageProps = {
   params: Promise<{ workspaceSlug: string }>;
-  searchParams?: Promise<{ selectedOrderId?: string }>;
+  searchParams?: Promise<{ selectedOrderId?: string; pinnedId?: string }>;
 };
 
 export default async function PurchaseOrdersPage({ params, searchParams }: PurchaseOrdersPageProps) {
@@ -257,6 +257,7 @@ export default async function PurchaseOrdersPage({ params, searchParams }: Purch
         canReadShoppingLists={canReadShoppingLists}
         initialPage={initialPage}
         initialSelectedOrderId={resolvedSearchParams?.selectedOrderId}
+        initialPinnedOrderId={resolvedSearchParams?.pinnedId}
         allLocations={allLocations}
         assignableLocations={assignableLocations}
         workspaceSlug={workspaceSlug}

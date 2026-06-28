@@ -231,6 +231,7 @@ type PartsPageProps = {
     partDialog?: string;
     partEditDialog?: string;
     selectedPartId?: string;
+    pinnedId?: string;
   }>;
 };
 
@@ -303,6 +304,7 @@ export default async function PartsPage({
   const partDialogOpen = resolvedSearchParams?.partDialog === "open";
   const partEditDialog = resolvedSearchParams?.partEditDialog;
   const initialSelectedPartId = resolvedSearchParams?.selectedPartId;
+  const initialPinnedId = resolvedSearchParams?.pinnedId;
   const activeSupplierProvider = isDatabaseAvailable
     ? await getWorkspaceActiveSupplierProvider(context.workspace.id).catch(() => null)
     : null;
@@ -379,6 +381,7 @@ export default async function PartsPage({
         canWritePurchaseOrders={canWritePurchaseOrders}
         primaryCurrency={context.workspace.primaryCurrency}
         initialSelectedPartId={initialSelectedPartId}
+        initialPinnedId={initialPinnedId}
       />
     </WorkspaceShell>
   );

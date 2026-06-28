@@ -52,7 +52,7 @@ export function PartLink({
   onClick?: (e: React.MouseEvent<HTMLButtonElement>) => void;
 }) {
   const workspaceSlug = useWorkspaceSlug();
-  const href = `/w/${encodeURIComponent(workspaceSlug)}/parts?selectedPartId=${partId}`;
+  const href = `/w/${encodeURIComponent(workspaceSlug)}/parts?selectedPartId=${partId}&pinnedId=${partId}`;
   return <EntityLink label={name} href={href} onClick={onClick} />;
 }
 
@@ -66,7 +66,7 @@ export function PoLink({
   onClick?: (e: React.MouseEvent<HTMLButtonElement>) => void;
 }) {
   const workspaceSlug = useWorkspaceSlug();
-  const href = `/w/${encodeURIComponent(workspaceSlug)}/purchase-orders?selectedOrderId=${poId}`;
+  const href = `/w/${encodeURIComponent(workspaceSlug)}/purchase-orders?selectedOrderId=${poId}&pinnedId=${poId}`;
   return <EntityLink label={reference} href={href} onClick={onClick} />;
 }
 
@@ -80,6 +80,6 @@ export function SlLink({
   onClick?: (e: React.MouseEvent<HTMLButtonElement>) => void;
 }) {
   const workspaceSlug = useWorkspaceSlug();
-  const href = `/w/${encodeURIComponent(workspaceSlug)}/shopping-lists?selectedListId=${slId}`;
+  const href = `/w/${encodeURIComponent(workspaceSlug)}/shopping-lists?selectedListId=${slId}&pinnedId=${slId}`;
   return <EntityLink label={name} href={href} onClick={onClick} />;
 }
