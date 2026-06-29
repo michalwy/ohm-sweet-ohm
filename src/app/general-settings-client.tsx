@@ -38,8 +38,8 @@ const copy = {
   resetConfirmTitle: "Reset workspace to demo data?",
   resetConfirmBody:
     "This will permanently delete all current workspace data — parts, inventory entries, purchase orders, shopping lists, categories, locations, attributes, and organizations. This cannot be undone. The workspace itself (name, URL, and members) will be preserved.",
-  presetPartsOnly: "Parts only",
-  presetPartsAndOrders: "Parts + POs & shopping lists",
+  presetPartsOnly: "Parts & designs",
+  presetPartsAndOrders: "Parts, designs, POs & shopping lists",
   resetButton: "Reset workspace",
   cancel: "Cancel",
   close: "Close",

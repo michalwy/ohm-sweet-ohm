@@ -3,6 +3,8 @@ import "server-only";
 import { Prisma, type PrismaClient } from "@/generated/prisma/client";
 
 import { ensureInternalOrganizationForWorkspace } from "@/server/organizations/organizations";
+import { parseDesignatorRange } from "@/lib/designators";
+import { parseAttributeValue, type ParsedAttributeValue } from "@/server/parts/attributeValues";
 
 import type {
   CategoryFixture,
@@ -65,6 +67,7 @@ export async function applyDemoPreset(
   // ── Step 1: Attributes ─────────────────────────────────────────────────────
   const attributeIdByKey = new Map<string, string>();
   const choiceOptionIdByKey = new Map<string, string>();
+  const attributeFixtureByKey = new Map(fixture.attributes.map((attr) => [attr.key, attr]));
 
   for (const attr of fixture.attributes) {
     const normalizedName = normalize(attr.name);
@@ -585,18 +588,95 @@ export async function applyDemoPreset(
         }))
       ];
 
-      await prisma.design.create({
+      const createdDesign = await prisma.design.create({
         data: {
           workspaceId,
           name: design.name,
           description: design.description ?? null,
           outputPartId,
           revisions: { create: revisions }
+        },
+        select: {
+          revisions: {
+            orderBy: { revisionNumber: "desc" },
+            take: 1,
+            select: { id: true }
+          }
         }
       });
       result.designsCreated++;
+
+      // BOM line items on the latest revision
+      const latestRevisionId = createdDesign.revisions[0]?.id;
+      if (latestRevisionId && design.bomLineItems?.length) {
+        let sortOrder = 0;
+        for (const lineItem of design.bomLineItems) {
+          const { quantity } = parseDesignatorRange(lineItem.designators);
+          const categoryId = lineItem.categoryKey
+            ? (categoryIdByKey.get(lineItem.categoryKey) ?? null)
+            : null;
+          const pinnedPartId = lineItem.pinnedPart
+            ? (partIdByRef.get(
+                `${lineItem.pinnedPart.manufacturerKey}::${lineItem.pinnedPart.catalogNumber}`
+              ) ?? null)
+            : null;
+
+          const matcherData = (lineItem.matchers ?? [])
+            .map((matcher) => {
+              const attributeFixture = attributeFixtureByKey.get(matcher.attributeKey);
+              const attributeId = attributeIdByKey.get(matcher.attributeKey);
+              if (!attributeFixture || !attributeId) return null;
+              const choiceOptions = (attributeFixture.choices ?? []).map((choice) => ({
+                id: choiceOptionIdByKey.get(choice.key) ?? choice.key,
+                label: choice.label
+              }));
+              const parsed = parseAttributeValue({
+                type: attributeFixture.type,
+                rawValue: matcher.value,
+                baseUnitSymbol: attributeFixture.baseUnitSymbol,
+                choiceOptions
+              });
+              return {
+                workspaceId,
+                attributeId,
+                operator: matcher.operator,
+                ...bomMatcherValueFields(parsed)
+              };
+            })
+            .filter((value): value is NonNullable<typeof value> => value !== null);
+
+          await prisma.bomLineItem.create({
+            data: {
+              workspaceId,
+              revisionId: latestRevisionId,
+              categoryId,
+              pinnedPartId,
+              designators: lineItem.designators,
+              quantity,
+              sortOrder: sortOrder++,
+              notes: lineItem.notes ?? null,
+              matchers: { create: matcherData }
+            }
+          });
+        }
+      }
     }
   }
 
   return result;
+}
+
+function bomMatcherValueFields(parsed: ParsedAttributeValue) {
+  switch (parsed.type) {
+    case "TEXT":
+      return { textValue: parsed.textValue, displayValue: parsed.displayValue };
+    case "NUMBER":
+      return { numberValue: parsed.numberValue, displayValue: parsed.displayValue };
+    case "QUANTITY":
+      return { quantityBaseValue: parsed.quantityBaseValue, displayValue: parsed.displayValue };
+    case "BOOLEAN":
+      return { booleanValue: parsed.booleanValue, displayValue: parsed.displayValue };
+    case "CHOICE":
+      return { choiceOptionId: parsed.choiceOptionId, displayValue: parsed.displayValue };
+  }
 }

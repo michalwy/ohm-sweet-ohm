@@ -34,16 +34,73 @@ On creation:
 
 ### Editing a Design
 
-Click **Edit** on a design to open the edit dialog. It has two tabs:
+Click **Edit** on a design to change its name and description. The output part catalog
+number is shown but cannot be changed after creation.
 
-**Details tab** — edit the design name and description.
+### Viewing Design Details
 
-**Revisions tab** — view and manage the revision history.
+Click a design row to open its **details panel** on the right. The panel shows:
+
+- The **output part** catalog number.
+- The **revision history**.
+- The **bill of materials** for the currently selected revision.
+
+#### Revisions
 
 - Each revision has a revision number (v1, v2, …) and optional notes.
 - To add a new revision, click **Add revision** and optionally enter notes.
-- To edit revision notes, click **Edit notes** next to a revision.
+- To edit revision notes, click the edit icon next to a revision.
 - Revision numbers are assigned automatically and cannot be changed.
+- Click a revision row to select it and view (or edit) its bill of materials below.
+
+## Bill of Materials
+
+Each revision has a **bill of materials (BOM)** — the list of components needed to build
+the design. BOM line items are defined as **specs** (what kind of part is needed) rather
+than fixed pointers to specific parts, so passive components can be substituted from
+inventory while specific components can still be pinned to one exact part.
+
+Select a revision in the details panel to see its line items. Each line item shows its
+designators, quantity, spec, and the number of inventory parts that currently match.
+
+### Designators and Quantity
+
+Each line item carries one or more **reference designators** entered as a range string,
+for example `R1, R3, R5-R10`. The system expands ranges into individual designators and
+derives the **quantity** automatically (`R5-R10` → 6 designators, quantity 6). Designators
+must be unique within a line item; duplicates or overlapping ranges are rejected. Tokens
+in one line may use different prefixes (for example `R1, C2`).
+
+### Attribute Matchers
+
+Instead of pointing at a part, a line item holds a set of **attribute matchers**. Each
+matcher compares one workspace attribute against a value using an operator:
+
+- Numeric attributes (number and quantity types) support `=`, `≠`, `<`, `≤`, `>`, `≥`
+  (for example `power rating ≥ 0.25 W`).
+- Text, choice, and yes/no attributes support `=` and `≠` only.
+
+Quantity values are entered with units and SI prefixes (for example `1k`, `0.25 W`) and
+are normalized just like part attribute values, so a matcher and a part value are compared
+on the same basis. Optionally choose a **category** to narrow matching to parts in that
+category (and its subcategories).
+
+A part matches a line item when it satisfies **all** of the line item's matchers.
+
+### Pinning an Exact Part
+
+For components that must be a specific part (for example a particular IC), use the
+**pinned part** field to select that part directly. When a part is pinned, the attribute
+matchers are ignored and the line item resolves to exactly that part.
+
+### Live Match Preview
+
+While editing a line item, a preview lists the inventory parts that satisfy the current
+spec, so you can confirm the spec resolves to the parts you expect before saving. The BOM
+table also shows a live match count per line item.
+
+> Building and allocating concrete parts to designators is handled by the build flow,
+> which is a separate, future feature.
 
 ### Deleting a Design
 

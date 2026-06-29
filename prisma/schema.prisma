@@ -36,6 +36,7 @@ model Part {
   shoppingListItems  ShoppingListItem[]
   purchaseOrderItems PurchaseOrderItem[]
   assembledByDesign  Design?             @relation("DesignOutputPart")
+  pinnedByBomLineItems BomLineItem[]     @relation("BomLineItemPinnedPart")
 
   @@unique([workspaceId, manufacturerId, catalogNumber])
   @@index([workspaceId, catalogNumber])
@@ -79,10 +80,68 @@ model DesignRevision {
 
   design    Design    @relation(fields: [designId], references: [id], onDelete: Cascade)
   workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  lineItems BomLineItem[]
 
   @@unique([designId, revisionNumber])
   @@index([designId])
   @@index([workspaceId])
+}
+
+enum BomMatcherOperator {
+  EQ
+  NEQ
+  LT
+  LTE
+  GT
+  GTE
+}
+
+model BomLineItem {
+  id           String   @id @default(cuid())
+  workspaceId  String
+  revisionId   String
+  categoryId   String?
+  pinnedPartId String?
+  designators  String
+  quantity     Int
+  sortOrder    Int      @default(0)
+  notes        String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  workspace  Workspace      @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  revision   DesignRevision @relation(fields: [revisionId], references: [id], onDelete: Cascade)
+  category   PartCategory?  @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  pinnedPart Part?          @relation("BomLineItemPinnedPart", fields: [pinnedPartId], references: [id], onDelete: SetNull)
+  matchers   BomMatcher[]
+
+  @@index([workspaceId])
+  @@index([revisionId, sortOrder])
+}
+
+model BomMatcher {
+  id                String             @id @default(cuid())
+  workspaceId       String
+  lineItemId        String
+  attributeId       String
+  operator          BomMatcherOperator
+  textValue         String?
+  numberValue       Decimal?
+  quantityBaseValue Decimal?
+  booleanValue      Boolean?
+  choiceOptionId    String?
+  displayValue      String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  workspace    Workspace              @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  lineItem     BomLineItem            @relation(fields: [lineItemId], references: [id], onDelete: Cascade)
+  attribute    Attribute              @relation(fields: [attributeId], references: [id], onDelete: Restrict)
+  choiceOption AttributeChoiceOption? @relation("BomMatcherChoiceOption", fields: [choiceOptionId], references: [id], onDelete: Restrict)
+
+  @@unique([lineItemId, attributeId])
+  @@index([workspaceId, lineItemId])
+  @@index([attributeId])
 }
 
 model Unit {
@@ -188,6 +247,7 @@ model Attribute {
   partValues           PartAttributeValue[]
   valueForCategories   PartCategory[]          @relation("PartCategoryValueAttribute")
   supplierAttributeMappingStats SupplierAttributeMappingStat[]
+  bomMatchers          BomMatcher[]
 
   @@unique([workspaceId, normalizedName])
   @@index([workspaceId, name])
@@ -207,6 +267,7 @@ model AttributeChoiceOption {
   categoryAttributeDefaultValues CategoryAttribute[]  @relation("CategoryAttributeDefaultChoiceOption")
   workspaceAttributeDefaultValues WorkspaceAttribute[] @relation("WorkspaceAttributeDefaultChoiceOption")
   partAttributeValues            PartAttributeValue[] @relation("PartAttributeValueChoiceOption")
+  bomMatchers                    BomMatcher[]         @relation("BomMatcherChoiceOption")
 
   @@unique([attributeId, normalizedLabel])
   @@index([attributeId, sortOrder])
@@ -265,6 +326,7 @@ model PartCategory {
   secondaryParts     Part[]                @relation("PartSecondaryCategory")
   ancestorClosures   PartCategoryClosure[] @relation("PartCategoryClosureAncestor")
   descendantClosures PartCategoryClosure[] @relation("PartCategoryClosureDescendant")
+  bomLineItems       BomLineItem[]
 
   @@index([workspaceId])
   @@index([workspaceId, parentId])
@@ -463,6 +525,8 @@ model Workspace {
   purchaseOrders   PurchaseOrder[]
   designs          Design[]
   designRevisions  DesignRevision[]
+  bomLineItems     BomLineItem[]
+  bomMatchers      BomMatcher[]
 
   @@index([archivedAt])
 }

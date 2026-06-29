@@ -19,6 +19,14 @@ import {
   updateDesignRevisionAction
 } from "@/server/designs/designActions";
 import type { DesignSummary } from "@/server/designs/designActions";
+import {
+  createBomLineItemAction,
+  deleteBomLineItemAction,
+  getBomLineItemsAction,
+  updateBomLineItemAction,
+  type BomLineItemInput,
+  type BomLineItemSummary
+} from "@/server/designs/bomActions";
 import type { ListPage } from "@/server/pagination";
 import {
   closeDialog,
@@ -45,6 +53,7 @@ import {
 } from "@/app/list-page-toolbar";
 import { useDesignsQuery } from "@/app/use-designs-query";
 import { DetailPanel, useDetailsPanelWidth } from "@/app/detail-panel";
+import { BomLineItemDialog } from "@/app/bom-line-item-dialog";
 
 type Copy = {
   title: string;
@@ -103,6 +112,20 @@ type Copy = {
   editNotes: string;
   saveNotes: string;
   cancelEdit: string;
+  bomSection: string;
+  addLineItem: string;
+  noLineItems: string;
+  selectRevisionForBom: string;
+  lineItemDesignators: string;
+  lineItemQuantity: string;
+  lineItemSpec: string;
+  lineItemMatches: string;
+  pinnedLabel: string;
+  deleteLineItem: string;
+  deleteLineItemBody: string;
+  lineItemCreatedToast: string;
+  lineItemUpdatedToast: string;
+  lineItemDeletedToast: string;
 };
 
 type DesignsClientProps = {
@@ -113,6 +136,15 @@ type DesignsClientProps = {
 };
 
 const columnHelper = createColumnHelper<DesignSummary>();
+
+const OPERATOR_SYMBOLS: Record<string, string> = {
+  EQ: "=",
+  NEQ: "≠",
+  LT: "<",
+  LTE: "≤",
+  GT: ">",
+  GTE: "≥"
+};
 
 function getErrorMsg(copy: Copy, error: string): string {
   switch (error) {
@@ -151,6 +183,18 @@ export function DesignsClient({ canWrite, copy, initialPage, workspaceSlug }: De
   // Revision state
   const [editingRevisionId, setEditingRevisionId] = useState<string | null>(null);
   const [editingRevisionNotes, setEditingRevisionNotes] = useState("");
+
+  // BOM state
+  const [selectedRevisionId, setSelectedRevisionId] = useState<string | null>(null);
+  const [bomDialogOpen, setBomDialogOpen] = useState(false);
+  const [bomDialogKey, setBomDialogKey] = useState(0);
+  const [editingLineItem, setEditingLineItem] = useState<BomLineItemSummary | null>(null);
+  const [bomSaveError, setBomSaveError] = useState<string | null>(null);
+  const [lineItemPendingDelete, setLineItemPendingDelete] = useState<BomLineItemSummary | null>(null);
+
+  function pushToast(message: string) {
+    setToastMessages((prev) => [...prev, { id: getNextToastId(nextToastIdRef), message }]);
+  }
 
   // --- Column configuration ---
 
@@ -204,6 +248,83 @@ export function DesignsClient({ canWrite, copy, initialPage, workspaceSlug }: De
     enabled: Boolean(selectedDesignId)
   });
 
+  // --- BOM line items for the selected revision ---
+
+  const { data: bomLineItems } = useQuery({
+    queryKey: ["bom-line-items", workspaceSlug, selectedRevisionId],
+    queryFn: async () => {
+      if (!selectedRevisionId) return [];
+      const result = await getBomLineItemsAction({ workspaceSlug, revisionId: selectedRevisionId });
+      return result.ok ? result.data : [];
+    },
+    enabled: Boolean(selectedRevisionId)
+  });
+
+  function invalidateBom() {
+    void queryClient.invalidateQueries({
+      queryKey: ["bom-line-items", workspaceSlug, selectedRevisionId]
+    });
+  }
+
+  const createLineItemMutation = useMutation({
+    mutationFn: async (input: BomLineItemInput) => {
+      if (!selectedRevisionId) throw new Error("no-revision");
+      const result = await createBomLineItemAction({
+        workspaceSlug,
+        revisionId: selectedRevisionId,
+        lineItem: input
+      });
+      if (!result.ok) throw new Error(result.error);
+    },
+    onSuccess: () => {
+      setBomDialogOpen(false);
+      pushToast(copy.lineItemCreatedToast);
+      invalidateBom();
+    },
+    onError: (error) => setBomSaveError(getErrorMsg(copy, (error as Error).message))
+  });
+
+  const updateLineItemMutation = useMutation({
+    mutationFn: async (input: { lineItemId: string; lineItem: BomLineItemInput }) => {
+      const result = await updateBomLineItemAction({ workspaceSlug, ...input });
+      if (!result.ok) throw new Error(result.error);
+    },
+    onSuccess: () => {
+      setBomDialogOpen(false);
+      pushToast(copy.lineItemUpdatedToast);
+      invalidateBom();
+    },
+    onError: (error) => setBomSaveError(getErrorMsg(copy, (error as Error).message))
+  });
+
+  const deleteLineItemMutation = useMutation({
+    mutationFn: async (lineItemId: string) => {
+      const result = await deleteBomLineItemAction({ workspaceSlug, lineItemId });
+      if (!result.ok) throw new Error(result.error);
+    },
+    onSuccess: () => {
+      setLineItemPendingDelete(null);
+      pushToast(copy.lineItemDeletedToast);
+      invalidateBom();
+    }
+  });
+
+  function openLineItemDialog(lineItem: BomLineItemSummary | null) {
+    setEditingLineItem(lineItem);
+    setBomSaveError(null);
+    setBomDialogKey((k) => k + 1);
+    setBomDialogOpen(true);
+  }
+
+  function submitLineItem(input: BomLineItemInput) {
+    setBomSaveError(null);
+    if (editingLineItem) {
+      updateLineItemMutation.mutate({ lineItemId: editingLineItem.id, lineItem: input });
+    } else {
+      createLineItemMutation.mutate(input);
+    }
+  }
+
   const {
     width: detailsPanelWidth,
     hasLoaded: hasLoadedDetailsPanelWidth,
@@ -217,6 +338,7 @@ export function DesignsClient({ canWrite, copy, initialPage, workspaceSlug }: De
   function openDesignDetails(design: DesignSummary) {
     setSelectedDesignId(design.id);
     setEditingRevisionId(null);
+    setSelectedRevisionId(null);
     const url = new URL(window.location.href);
     url.searchParams.set("selectedDesignId", design.id);
     window.history.replaceState(null, "", url.toString());
@@ -225,6 +347,7 @@ export function DesignsClient({ canWrite, copy, initialPage, workspaceSlug }: De
   function closeDesignDetails() {
     setSelectedDesignId(null);
     setEditingRevisionId(null);
+    setSelectedRevisionId(null);
     const url = new URL(window.location.href);
     url.searchParams.delete("selectedDesignId");
     window.history.replaceState(null, "", url.toString());
@@ -698,9 +821,26 @@ export function DesignsClient({ canWrite, copy, initialPage, workspaceSlug }: De
                   </tr>
                 </thead>
                 <tbody>
-                  {selectedDesignDetail.revisions.map((rev) => (
-                    <tr key={rev.id} className="border-b border-[var(--color-border)]">
-                      <td className="px-3 py-2 font-medium text-[var(--color-text-primary)]">
+                  {selectedDesignDetail.revisions.map((rev) => {
+                    const isSelected = selectedRevisionId === rev.id;
+                    return (
+                    <tr
+                      key={rev.id}
+                      aria-selected={isSelected}
+                      className={`cursor-pointer border-b border-[var(--color-border)] ${
+                        isSelected
+                          ? "bg-[var(--color-accent-soft)]"
+                          : "hover:bg-[var(--color-bg-subtle)]"
+                      }`}
+                      onClick={() => setSelectedRevisionId(rev.id)}
+                    >
+                      <td
+                        className={`py-2 pr-3 font-medium ${
+                          isSelected
+                            ? "border-l-2 border-[var(--color-accent)] pl-2.5 text-[var(--color-accent)]"
+                            : "border-l-2 border-transparent pl-3 text-[var(--color-text-primary)]"
+                        }`}
+                      >
                         v{rev.revisionNumber}
                       </td>
                       <td className="px-3 py-2">
@@ -717,12 +857,121 @@ export function DesignsClient({ canWrite, copy, initialPage, workspaceSlug }: De
                             title={copy.editNotes}
                             className="rounded p-1 text-[var(--color-text-muted)] hover:bg-[var(--color-bg-subtle)] hover:text-[var(--color-text-secondary)]"
                             type="button"
-                            onClick={() => openRevisionDialog(rev.id, rev.notes)}
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              openRevisionDialog(rev.id, rev.notes);
+                            }}
                           >
                             <svg aria-hidden="true" className="h-3.5 w-3.5" fill="none" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
                               <path d="M13.9 3.3a1.5 1.5 0 0 1 2.1 0l.7.7a1.5 1.5 0 0 1 0 2.1l-8.4 8.4-3.3.8.8-3.3 8.4-8.4Z" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" />
                             </svg>
                           </button>
+                        </td>
+                      )}
+                    </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            )}
+          </section>
+
+          {/* Bill of materials for the selected revision */}
+          <section className="grid gap-3">
+            <div className="flex items-center justify-between">
+              <p className="text-xs font-semibold uppercase tracking-wide text-[var(--color-text-muted)]">
+                {copy.bomSection}
+              </p>
+              {canWrite && selectedRevisionId && (
+                <button
+                  className="rounded-md border border-[var(--color-border-strong)] px-2.5 py-1 text-xs font-medium text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-subtle)]"
+                  type="button"
+                  onClick={() => openLineItemDialog(null)}
+                >
+                  {copy.addLineItem}
+                </button>
+              )}
+            </div>
+
+            {!selectedRevisionId ? (
+              <p className="text-sm text-[var(--color-text-muted)]">{copy.selectRevisionForBom}</p>
+            ) : !bomLineItems || bomLineItems.length === 0 ? (
+              <p className="text-sm text-[var(--color-text-muted)]">{copy.noLineItems}</p>
+            ) : (
+              <table className="w-full border-collapse text-sm">
+                <thead>
+                  <tr className="border-b border-[var(--color-border)] text-xs font-semibold uppercase tracking-wide text-[var(--color-text-muted)]">
+                    <th className="px-3 py-2 text-left">{copy.lineItemDesignators}</th>
+                    <th className="px-3 py-2 text-right">{copy.lineItemQuantity}</th>
+                    <th className="px-3 py-2 text-left">{copy.lineItemSpec}</th>
+                    <th className="px-3 py-2 text-right">{copy.lineItemMatches}</th>
+                    {canWrite && <th className="px-3 py-2 text-left">{copy.actions}</th>}
+                  </tr>
+                </thead>
+                <tbody>
+                  {bomLineItems.map((item) => (
+                    <tr key={item.id} className="border-b border-[var(--color-border)] align-top">
+                      <td className="px-3 py-2 font-mono text-[var(--color-text-primary)]">
+                        {item.designators}
+                      </td>
+                      <td className="px-3 py-2 text-right text-[var(--color-text-secondary)]">
+                        {item.quantity}
+                      </td>
+                      <td className="px-3 py-2 text-[var(--color-text-secondary)]">
+                        {item.pinnedPart ? (
+                          <span className="font-mono">
+                            {copy.pinnedLabel}: {item.pinnedPart.catalogNumber}
+                          </span>
+                        ) : item.matchers.length === 0 ? (
+                          <EmptyCell />
+                        ) : (
+                          <span className="flex flex-wrap gap-1">
+                            {item.category ? (
+                              <span className="rounded bg-[var(--color-bg-subtle)] px-1.5 py-0.5 text-xs">
+                                {item.category.name}
+                              </span>
+                            ) : null}
+                            {item.matchers.map((matcher) => (
+                              <span
+                                key={matcher.id}
+                                className="rounded bg-[var(--color-bg-subtle)] px-1.5 py-0.5 text-xs"
+                              >
+                                {matcher.attributeName} {OPERATOR_SYMBOLS[matcher.operator]}{" "}
+                                {matcher.displayValue}
+                              </span>
+                            ))}
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-3 py-2 text-right text-[var(--color-text-secondary)]">
+                        {item.matchCount}
+                      </td>
+                      {canWrite && (
+                        <td className="px-3 py-2">
+                          <div className="flex items-center gap-1">
+                            <button
+                              aria-label={copy.edit}
+                              title={copy.edit}
+                              className="rounded p-1 text-[var(--color-text-muted)] hover:bg-[var(--color-bg-subtle)] hover:text-[var(--color-text-secondary)]"
+                              type="button"
+                              onClick={() => openLineItemDialog(item)}
+                            >
+                              <svg aria-hidden="true" className="h-3.5 w-3.5" fill="none" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M13.9 3.3a1.5 1.5 0 0 1 2.1 0l.7.7a1.5 1.5 0 0 1 0 2.1l-8.4 8.4-3.3.8.8-3.3 8.4-8.4Z" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" />
+                              </svg>
+                            </button>
+                            <button
+                              aria-label={copy.deleteLineItem}
+                              title={copy.deleteLineItem}
+                              className="rounded p-1 text-[var(--color-text-muted)] hover:bg-[var(--color-error-soft)] hover:text-[var(--color-error)]"
+                              type="button"
+                              onClick={() => setLineItemPendingDelete(item)}
+                            >
+                              <svg aria-hidden="true" className="h-3.5 w-3.5" fill="none" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M5 6h10M8 6V4h4v2m-5 0v9m6-9v9M6 6l1 11h6l1-11" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" />
+                              </svg>
+                            </button>
+                          </div>
                         </td>
                       )}
                     </tr>
@@ -733,6 +982,33 @@ export function DesignsClient({ canWrite, copy, initialPage, workspaceSlug }: De
           </section>
         </DetailPanel>
       ) : null}
+
+      {/* Add / edit BOM line item dialog */}
+      <BomLineItemDialog
+        workspaceSlug={workspaceSlug}
+        open={bomDialogOpen}
+        instanceKey={bomDialogKey}
+        editing={editingLineItem}
+        isSaving={createLineItemMutation.isPending || updateLineItemMutation.isPending}
+        saveError={bomSaveError}
+        onClose={() => setBomDialogOpen(false)}
+        onSubmit={submitLineItem}
+      />
+
+      <DeleteConfirmationDialog
+        body={copy.deleteLineItemBody}
+        cancelLabel={copy.cancelDelete}
+        confirmLabel={copy.confirmDelete}
+        closeLabel={copy.close}
+        deleteLabel={copy.delete}
+        isPending={deleteLineItemMutation.isPending}
+        itemName={lineItemPendingDelete?.designators ?? ""}
+        open={Boolean(lineItemPendingDelete)}
+        onCancel={() => setLineItemPendingDelete(null)}
+        onConfirm={() => {
+          if (lineItemPendingDelete) deleteLineItemMutation.mutate(lineItemPendingDelete.id);
+        }}
+      />
 
       {/* Add / edit design dialog */}
       <DialogShell

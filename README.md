@@ -18,7 +18,7 @@ This repository contains a working OSO application slice with authentication, wo
 
 For location lifecycle safety, archived locations cannot be used in new stock movements, and locations with non-zero stock cannot be archived until stock is moved or adjusted to zero.
 
-Purchase-order workflows, pricing policy, lifecycle states, import pipelines, and BOM/project behavior are still intentionally undefined until product decisions are made.
+Design revisions carry a bill of materials of attribute-based line-item specs that resolve against live inventory (see ADR 0020). The downstream build flow and allocation of concrete parts to designators, along with import pipelines and broader project behavior, are still intentionally undefined until product decisions are made.
 
 ## Tech Direction
 

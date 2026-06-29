@@ -99,6 +99,34 @@ describe("demo preset seeding", () => {
     assert.ok(partCount >= 200, `Expected ≥200 parts, got ${partCount}`);
   });
 
+  test("parts-only preset creates designs with BOM line items", async () => {
+    const suffix = uniqueSuffix();
+    const { workspace, unitId } = await createTestWorkspace(suffix);
+    const wid = workspace.id;
+
+    await applyDemoPreset(prisma, wid, unitId, "parts-only", DEMO_PRESET_FIXTURE);
+
+    const designCount = await prisma.design.count({ where: { workspaceId: wid } });
+    assert.ok(designCount >= 3, `Expected ≥3 designs, got ${designCount}`);
+
+    const lineItemCount = await prisma.bomLineItem.count({ where: { workspaceId: wid } });
+    assert.ok(lineItemCount >= 9, `Expected ≥9 BOM line items, got ${lineItemCount}`);
+
+    // A pinned line item must resolve to its exact part; a matcher line item must store
+    // normalized values that resolve against inventory.
+    const pinned = await prisma.bomLineItem.findFirst({
+      where: { workspaceId: wid, pinnedPartId: { not: null } },
+      select: { pinnedPart: { select: { catalogNumber: true } } }
+    });
+    assert.ok(pinned?.pinnedPart, "Expected at least one pinned line item");
+
+    const matcher = await prisma.bomMatcher.findFirst({
+      where: { workspaceId: wid, quantityBaseValue: { not: null } },
+      select: { quantityBaseValue: true, displayValue: true }
+    });
+    assert.ok(matcher, "Expected at least one quantity matcher");
+  });
+
   test("idempotency: applying parts-only twice yields same counts", async () => {
     const suffix = uniqueSuffix();
     const { workspace, unitId } = await createTestWorkspace(suffix);

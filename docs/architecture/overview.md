@@ -14,7 +14,7 @@ The project is no longer only a scaffold. Core architecture now includes:
 - Transaction-safe inventory stock validation for issue, transfer, and negative adjustment writes.
 - Storage-location lifecycle guard that blocks archiving locations with non-zero stock balances.
 - Purchases workflow: shopping lists (informal, no supplier, no status) and purchase orders (per-supplier, DRAFT → ORDERED → RECEIVED, with automatic RECEIPT inventory entry on receive).
-- Designs: workspace-scoped entities that represent build recipes. Each Design owns an output Part linked via `Design.outputPartId`; the output part is created under a per-workspace internal manufacturer organization (`Organization.isInternal = true`) that is hidden from user-facing queries. Designs maintain an immutable revision history (`DesignRevision`); revision notes are editable.
+- Designs: workspace-scoped entities that represent build recipes. Each Design owns an output Part linked via `Design.outputPartId`; the output part is created under a per-workspace internal manufacturer organization (`Organization.isInternal = true`) that is hidden from user-facing queries. Designs maintain an immutable revision history (`DesignRevision`); revision notes are editable. Each revision holds a bill of materials of `BomLineItem` specs (designator range + derived quantity, optional category scope, optional pinned part) with `BomMatcher` attribute matchers; parts are resolved against live inventory by attribute comparison rather than fixed references (see ADR 0020). Build flow and allocation remain out of scope.
 - Browser-level e2e coverage for authentication and core workspace/parts/category flows.
 
 ## Intended Shape

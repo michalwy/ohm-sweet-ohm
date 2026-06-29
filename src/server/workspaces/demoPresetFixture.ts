@@ -68,6 +68,24 @@ export type PurchaseOrderFixture = {
   }>;
 };
 
+export type BomMatcherFixtureOperator = "EQ" | "NEQ" | "LT" | "LTE" | "GT" | "GTE";
+
+export type BomLineItemFixture = {
+  /** Designator range string, e.g. "C1-C4". */
+  designators: string;
+  /** Optional category scope. */
+  categoryKey?: string;
+  /** Optional exact-part pin (resolved by manufacturer + catalog number). */
+  pinnedPart?: { manufacturerKey: string; catalogNumber: string };
+  notes?: string;
+  /** Attribute matchers; `value` is the raw input parsed like a part attribute value. */
+  matchers?: Array<{
+    attributeKey: string;
+    operator: BomMatcherFixtureOperator;
+    value: string;
+  }>;
+};
+
 export type DesignFixture = {
   key: string;
   name: string;
@@ -76,6 +94,8 @@ export type DesignFixture = {
   outputCatalogNumber: string;
   /** Extra revisions beyond the implicit v1. Each entry adds the next revision number. */
   extraRevisions?: Array<{ notes?: string }>;
+  /** BOM line items attached to the latest revision. */
+  bomLineItems?: BomLineItemFixture[];
 };
 
 export type DemoPresetFixture = {
@@ -688,6 +708,31 @@ export const DEMO_PRESET_FIXTURE: DemoPresetFixture = {
       extraRevisions: [
         { notes: "Added bulk input capacitor and reverse-polarity protection." },
         { notes: "Switched output connector to JST-PH." }
+      ],
+      bomLineItems: [
+        {
+          designators: "U1",
+          notes: "5 V LDO regulator",
+          pinnedPart: { manufacturerKey: "diodesinc", catalogNumber: "AMS1117-5.0" }
+        },
+        {
+          designators: "C1, C2",
+          categoryKey: "capacitors",
+          notes: "Input/output decoupling",
+          matchers: [{ attributeKey: "capacitance", operator: "EQ", value: "100nF" }]
+        },
+        {
+          designators: "C3",
+          categoryKey: "capacitors",
+          notes: "Bulk input capacitor",
+          matchers: [{ attributeKey: "capacitance", operator: "GTE", value: "1uF" }]
+        },
+        {
+          designators: "R1",
+          categoryKey: "resistors",
+          notes: "Power LED series resistor",
+          matchers: [{ attributeKey: "resistance", operator: "EQ", value: "1k" }]
+        }
       ]
     },
     {
@@ -695,13 +740,56 @@ export const DEMO_PRESET_FIXTURE: DemoPresetFixture = {
       name: "STM32G0 Breakout",
       description: "Minimal STM32G071 breakout board with SWD header and 3.3 V regulator.",
       outputCatalogNumber: "DESIGN-0002",
-      extraRevisions: [{ notes: "Routed UART to pin header for debugging." }]
+      extraRevisions: [{ notes: "Routed UART to pin header for debugging." }],
+      bomLineItems: [
+        {
+          designators: "U1",
+          notes: "Main microcontroller",
+          pinnedPart: { manufacturerKey: "stmicro", catalogNumber: "STM32G071RBT6" }
+        },
+        {
+          designators: "U2",
+          notes: "3.3 V LDO regulator",
+          pinnedPart: { manufacturerKey: "diodesinc", catalogNumber: "AMS1117-3.3" }
+        },
+        {
+          designators: "C1-C4",
+          categoryKey: "capacitors",
+          notes: "VDD decoupling",
+          matchers: [{ attributeKey: "capacitance", operator: "EQ", value: "100nF" }]
+        },
+        {
+          designators: "R1, R2",
+          categoryKey: "resistors",
+          notes: "BOOT0 / reset pull resistors",
+          matchers: [{ attributeKey: "resistance", operator: "EQ", value: "10k" }]
+        }
+      ]
     },
     {
       key: "shift_register_driver",
       name: "8-Channel Shift Register Driver",
       description: "74HC595-based output expander with transistor-buffered channels.",
-      outputCatalogNumber: "DESIGN-0003"
+      outputCatalogNumber: "DESIGN-0003",
+      bomLineItems: [
+        {
+          designators: "U1",
+          notes: "Shift register",
+          pinnedPart: { manufacturerKey: "ti", catalogNumber: "SN74HC595N" }
+        },
+        {
+          designators: "R1-R8",
+          categoryKey: "resistors",
+          notes: "Transistor base resistors",
+          matchers: [{ attributeKey: "resistance", operator: "EQ", value: "1k" }]
+        },
+        {
+          designators: "C1",
+          categoryKey: "capacitors",
+          notes: "Decoupling capacitor",
+          matchers: [{ attributeKey: "capacitance", operator: "EQ", value: "100nF" }]
+        }
+      ]
     }
   ]
 };

@@ -29,8 +29,9 @@ const copy = {
   preset: "Starting data",
   presetEmpty: "Empty workspace",
   presetEmptyHelp: "Start from scratch with no data.",
-  presetPartsOnly: "Demo parts",
-  presetPartsOnlyHelp: "~250 real parts with categories, attributes, and stock.",
+  presetPartsOnly: "Demo parts & designs",
+  presetPartsOnlyHelp:
+    "~250 real parts with categories, attributes, and stock, plus example designs with bills of materials.",
   presetPartsAndOrders: "Demo parts + orders",
   presetPartsAndOrdersHelp: "Everything above, plus shopping lists and purchase orders.",
   create: "Create workspace",

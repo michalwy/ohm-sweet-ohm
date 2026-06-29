@@ -67,7 +67,21 @@ const copy = {
   noRevisions: "No revisions yet.",
   editNotes: "Edit notes",
   saveNotes: "Save",
-  cancelEdit: "Cancel"
+  cancelEdit: "Cancel",
+  bomSection: "Bill of materials",
+  addLineItem: "Add line item",
+  noLineItems: "No line items yet.",
+  selectRevisionForBom: "Select a revision to view its bill of materials.",
+  lineItemDesignators: "Designators",
+  lineItemQuantity: "Qty",
+  lineItemSpec: "Spec",
+  lineItemMatches: "Matches",
+  pinnedLabel: "Pinned",
+  deleteLineItem: "Delete line item",
+  deleteLineItemBody: "This will remove the line item and its attribute matchers.",
+  lineItemCreatedToast: "Line item added",
+  lineItemUpdatedToast: "Line item updated",
+  lineItemDeletedToast: "Line item removed"
 };
 
 type DesignsPageProps = {

@@ -56,6 +56,7 @@ If you are setting up a new workspace, this sequence usually works best:
 - [Workspaces](workspaces.md) — sign in, create, archive, restore, delete workspaces
 - [Organizations](organizations.md) — manage manufacturers and suppliers
 - [Parts](parts.md) — create and manage parts, categories, attributes, and units
+- [Designs](designs.md) — designs, revisions, and bills of materials
 - [Inventory](inventory.md) — storage locations and stock movements
 - [Purchasing](purchasing.md) — shopping lists and purchase orders
 - [Integrations](integrations.md) — DigiKey, TME, and currency settings
