@@ -7,8 +7,9 @@ import {
   getCurrentSession,
   getCurrentWorkspaceContextBySlug
 } from "@/server/auth/currentContext";
-import { getWorkspaceUnits } from "@/server/units/unitMutations";
+import { getUnitsPageForWorkspace } from "@/server/units/unitMutations";
 import type { UnitListItem } from "@/server/units/unitMutations";
+import type { ListPage } from "@/server/pagination";
 
 export const dynamic = "force-dynamic";
 
@@ -51,6 +52,12 @@ const copy = {
   updatedToast: "Unit updated",
   deletedToast: "Unit deleted",
   invalidInput: "Check the unit fields and try again.",
+  configureList: "Configure list",
+  visibleColumns: "Visible columns",
+  listCountSummary: "{visible} of {total}",
+  loadingUnits: "Loading units...",
+  loadingMore: "Loading more units...",
+  loadError: "Database is not available right now.",
   databaseUnavailableBanner:
     "Database is not available, so units cannot be managed right now."
 };
@@ -76,10 +83,17 @@ export default async function UnitsPage({ params }: UnitsPageProps) {
   }
 
   let isDatabaseAvailable = true;
-  let units: UnitListItem[] = [];
+  let unitsPage: ListPage<UnitListItem> = {
+    items: [],
+    nextCursor: null,
+    totalCount: 0,
+    filteredCount: 0
+  };
 
   try {
-    units = await getWorkspaceUnits(context.workspace.id);
+    unitsPage = await getUnitsPageForWorkspace({
+      workspaceId: context.workspace.id
+    });
   } catch {
     isDatabaseAvailable = false;
   }
@@ -110,7 +124,7 @@ export default async function UnitsPage({ params }: UnitsPageProps) {
       <UnitsClient
         canWriteUnits={canWriteUnits}
         copy={copy}
-        initialUnits={units}
+        initialPage={unitsPage}
         isDatabaseAvailable={isDatabaseAvailable}
         workspaceSlug={workspaceSlug}
       />

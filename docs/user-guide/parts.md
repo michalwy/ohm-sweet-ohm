@@ -102,6 +102,8 @@ For choice attributes, you can manage option lists and option order.
 
 After attributes exist, categories can attach and configure them for actual part entry workflows.
 
+The attributes list supports the same shared list controls as other workspace lists: sort by any column (name, type, base unit, description), resize, reorder, and toggle visible columns via **Configure list**, with cursor-based loading for large dictionaries.
+
 ## Manage Units
 
 Use **Units** to define measurement or counting units used by parts.
@@ -113,3 +115,5 @@ For each unit, you can set:
 - whether fractional values are allowed
 
 This helps keep part data consistent when recording quantities and stock operations.
+
+The units list supports the same shared list controls as other workspace lists: sort by any column (name, symbol, fractional flag), resize, reorder, and toggle visible columns via **Configure list**, with cursor-based loading for large unit sets.

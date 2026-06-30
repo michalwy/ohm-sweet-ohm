@@ -22,7 +22,8 @@ import {
   type AttributeChoiceOptionInput,
   type AttributeChoiceOptionUpdateInput,
   type AttributeDefaultValueInput,
-  type AttributeListItem
+  type AttributeListItem,
+  type AttributeListSortField
 } from "@/server/parts/attributeMutations";
 import type { EffectiveCategoryAttribute } from "@/server/parts/attributes";
 import type { AttributeValueType } from "@/server/parts/attributeValues";
@@ -59,6 +60,8 @@ export async function getAttributeDictionaryPageForWorkspace(input: {
   workspaceSlug: string;
   cursor?: string | null;
   pageSize?: number | null;
+  sortBy?: AttributeListSortField;
+  sortDir?: "asc" | "desc";
 }): Promise<AttributeActionResult<ListPage<AttributeListItem>>> {
   try {
     const context = await getAuthorizedAttributeContext({
@@ -70,7 +73,9 @@ export async function getAttributeDictionaryPageForWorkspace(input: {
       await getWorkspaceAttributePage({
         workspaceId: context.workspace.id,
         cursor: input.cursor,
-        pageSize: input.pageSize
+        pageSize: input.pageSize,
+        sortBy: input.sortBy,
+        sortDir: input.sortDir
       })
     );
   } catch (error) {

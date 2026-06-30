@@ -1,14 +1,38 @@
 "use client";
 
 import { useMemo, useRef, useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import {
+  createColumnHelper,
+  flexRender,
+  getCoreRowModel,
+  useReactTable
+} from "@tanstack/react-table";
+import {
+  keepPreviousData,
+  useInfiniteQuery,
+  useMutation,
+  useQueryClient
+} from "@tanstack/react-query";
 
 import {
   createUnitForWorkspace,
   deleteUnitForWorkspace,
+  getUnitsPageForWorkspace,
   updateUnitForWorkspace
 } from "@/server/units/unitActions";
 import type { UnitListItem } from "@/server/units/unitMutations";
+import type { ListPage } from "@/server/pagination";
+import { InfiniteListViewport } from "@/app/infinite-list";
+import {
+  useListTableConfiguration,
+  type ListColumnDefinition
+} from "@/app/list-table-config";
+import {
+  ListPageToolbar,
+  ListTableHeaderCell,
+  useColumnDragReorder,
+  useColumnResizeCursor
+} from "@/app/list-page-toolbar";
 import {
   getNextToastId,
   ToastNotice,
@@ -54,12 +78,18 @@ type Copy = {
   updatedToast: string;
   deletedToast: string;
   invalidInput: string;
+  configureList: string;
+  visibleColumns: string;
+  listCountSummary: string;
+  loadingUnits: string;
+  loadingMore: string;
+  loadError: string;
 };
 
 type UnitsClientProps = {
   canWriteUnits: boolean;
   copy: Copy;
-  initialUnits: UnitListItem[];
+  initialPage: ListPage<UnitListItem>;
   isDatabaseAvailable: boolean;
   workspaceSlug: string;
 };
@@ -68,10 +98,12 @@ type UnitDialogMode = "create" | "edit";
 type UnitFormField = "name" | "symbol" | "submit" | "delete";
 type UnitFormErrors = Partial<Record<UnitFormField, string>>;
 
+const columnHelper = createColumnHelper<UnitListItem>();
+
 export function UnitsClient({
   canWriteUnits,
   copy,
-  initialUnits,
+  initialPage,
   isDatabaseAvailable,
   workspaceSlug
 }: UnitsClientProps) {
@@ -88,14 +120,87 @@ export function UnitsClient({
   const [unitFieldErrors, setUnitFieldErrors] = useState<UnitFormErrors>({});
   const [dialogFormKey, setDialogFormKey] = useState(0);
   const [toastMessages, setToastMessages] = useState<ToastMessage[]>([]);
-  const [units, setUnits] = useState(initialUnits);
+  const { isResizingColumn, setIsResizingColumn, containerClassName } =
+    useColumnResizeCursor();
+
+  // --- Column configuration ---
+
+  const unitColumns = useMemo<ListColumnDefinition[]>(
+    () => [
+      { id: "name", label: copy.name, group: "base", defaultWidth: 240, minWidth: 120, sortable: true },
+      { id: "symbol", label: copy.symbol, group: "base", defaultWidth: 160, minWidth: 80, sortable: true },
+      { id: "allowsFraction", label: copy.allowsFraction, group: "base", defaultWidth: 220, minWidth: 120, sortable: true }
+    ],
+    [copy]
+  );
+  const fixedColumnIds = useMemo(() => ["actions"], []);
+
+  const {
+    columnSizing,
+    columnVisibility,
+    configurableColumns,
+    setColumnWidth,
+    setColumnSorting,
+    setColumnVisible,
+    setColumnOrder,
+    setColumnSizing,
+    setColumnVisibility,
+    setSorting,
+    sorting,
+    columnOrder: persistedColumnOrder,
+    isLoaded: isConfigLoaded
+  } = useListTableConfiguration({
+    storageKey: `oso:list-config:units:${workspaceSlug}`,
+    columns: unitColumns,
+    fixedColumnIds
+  });
+
+  const { draggedColumnId, onDragEnd, onStartDrag, onDropOnto } =
+    useColumnDragReorder(setColumnOrder);
+
+  // --- Data ---
+
+  const activeSorting = sorting[0] ?? null;
+  const sortDir = activeSorting?.desc ? "desc" : "asc";
+  const sortBy = (activeSorting?.id ??
+    "name") as "name" | "symbol" | "allowsFraction";
+
+  const unitsQuery = useInfiniteQuery({
+    queryKey: ["units-list", workspaceSlug, { sorting }] as const,
+    enabled: isDatabaseAvailable,
+    initialPageParam: null as string | null,
+    queryFn: async ({ pageParam }) => {
+      const result = await getUnitsPageForWorkspace({
+        workspaceSlug,
+        cursor: pageParam,
+        sortBy,
+        sortDir
+      });
+
+      if (!result.ok) {
+        throw new Error(result.error);
+      }
+
+      return result.data;
+    },
+    getNextPageParam: (lastPage) => lastPage.nextCursor,
+    placeholderData: keepPreviousData,
+    initialData:
+      sorting.length === 0
+        ? { pages: [initialPage], pageParams: [null] }
+        : undefined
+  });
+
+  const units = useMemo(
+    () => unitsQuery.data?.pages.flatMap((page) => page.items) ?? [],
+    [unitsQuery.data]
+  );
   const unitsById = useMemo(
     () => new Map(units.map((unit) => [unit.id, unit])),
     [units]
   );
 
-  function refreshUnits(nextUnits: UnitListItem[]) {
-    setUnits(nextUnits.sort((a, b) => a.name.localeCompare(b.name, "en")));
+  function reloadUnits() {
     void queryClient.invalidateQueries({
       queryKey: ["units-list", workspaceSlug]
     });
@@ -109,7 +214,7 @@ export function UnitsClient({
         return;
       }
 
-      refreshUnits([...units, result.data]);
+      reloadUnits();
       addToast(getUnitSuccessMessage(copy.createdToast, result.data.name));
       closeUnitDialog();
     },
@@ -127,9 +232,7 @@ export function UnitsClient({
         return;
       }
 
-      refreshUnits(
-        units.map((unit) => (unit.id === result.data.id ? result.data : unit))
-      );
+      reloadUnits();
       addToast(getUnitSuccessMessage(copy.updatedToast, result.data.name));
       closeUnitDialog();
     },
@@ -149,7 +252,7 @@ export function UnitsClient({
 
       const deletedUnitName =
         unitsById.get(variables.unitId)?.name ?? editingUnit?.name ?? "";
-      refreshUnits(units.filter((unit) => unit.id !== variables.unitId));
+      reloadUnits();
       addToast(getUnitSuccessMessage(copy.deletedToast, deletedUnitName));
       closeUnitDialog();
     },
@@ -253,99 +356,232 @@ export function UnitsClient({
     );
   }
 
-  return (
-    <section className="flex min-h-0 flex-1 flex-col">
-      <div className="mb-3 flex justify-end">
-        <button
-          className="inline-flex min-h-10 items-center rounded-md bg-[var(--color-accent)] px-4 text-sm font-semibold text-white transition hover:brightness-95 focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
-          type="button"
-          disabled={!canWriteUnits || !isDatabaseAvailable}
-          onClick={openCreateDialog}
-        >
-          {copy.addUnit}
-        </button>
-      </div>
+  // --- TanStack Table ---
 
-      <div className="min-h-0 flex-1 overflow-auto rounded-md border border-[var(--color-border)] bg-[var(--color-bg-elevated)]">
-        {units.length === 0 ? (
-          <p className="px-4 py-6 text-sm text-[var(--color-text-secondary)]">{copy.noUnits}</p>
-        ) : (
-          <table className="w-full border-collapse text-left text-sm">
-            <thead>
-              <tr className="border-b border-[var(--color-border)] bg-[var(--color-bg-subtle)]">
-                <th className="px-4 py-3 font-semibold text-[var(--color-text-secondary)]">{copy.name}</th>
-                <th className="px-4 py-3 font-semibold text-[var(--color-text-secondary)]">{copy.symbol}</th>
-                <th className="px-4 py-3 font-semibold text-[var(--color-text-secondary)]">
-                  {copy.allowsFraction}
-                </th>
-                <th className="px-4 py-3 font-semibold text-[var(--color-text-secondary)]">
-                  {copy.actions}
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {units.map((unit) => (
-                <tr key={unit.id} className="border-b border-[var(--color-border)] last:border-b-0">
-                  <td className="px-4 py-3 text-[var(--color-text-primary)]">{unit.name}</td>
-                  <td className="px-4 py-3 font-mono text-[var(--color-text-secondary)]">{unit.symbol}</td>
-                  <td className="px-4 py-3 text-[var(--color-text-secondary)]">
-                    {unit.allowsFraction ? copy.yes : copy.no}
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-2">
-                      <button
-                        className="min-h-9 rounded-md border border-[var(--color-border-strong)] px-3 text-sm font-medium text-[var(--color-text-secondary)] transition hover:border-[var(--color-border-hover)] hover:bg-[var(--color-bg-subtle)] disabled:cursor-not-allowed disabled:opacity-60"
-                        aria-label={copy.edit}
-                        type="button"
-                        disabled={!canWriteUnits}
-                        onClick={() => openEditDialog(unit)}
+  const columns = useMemo(
+    () => [
+      columnHelper.accessor("name", {
+        header: copy.name,
+        size: 240,
+        minSize: 120,
+        cell: ({ getValue }) => (
+          <span className="font-medium text-[var(--color-text-primary)]">{getValue()}</span>
+        )
+      }),
+      columnHelper.accessor("symbol", {
+        header: copy.symbol,
+        size: 160,
+        minSize: 80,
+        cell: ({ getValue }) => (
+          <span className="font-mono text-[var(--color-text-secondary)]">{getValue()}</span>
+        )
+      }),
+      columnHelper.accessor("allowsFraction", {
+        header: copy.allowsFraction,
+        size: 220,
+        minSize: 120,
+        cell: ({ getValue }) => (
+          <span className="text-[var(--color-text-secondary)]">
+            {getValue() ? copy.yes : copy.no}
+          </span>
+        )
+      }),
+      columnHelper.display({
+        id: "actions",
+        header: "",
+        size: 104,
+        minSize: 104,
+        maxSize: 104,
+        enableResizing: false,
+        cell: ({ row }) => (
+          <div className="flex justify-end gap-2">
+            <button
+              className="min-h-8 rounded-md border border-[var(--color-border-strong)] bg-[var(--color-bg-elevated)] px-2.5 py-1 text-sm font-medium text-[var(--color-text-secondary)] transition hover:border-[var(--color-border-hover)] hover:bg-[var(--color-bg-subtle)] focus:outline-none focus:ring-2 focus:ring-[var(--color-ring-strong)] focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-[var(--color-bg-subtle)] disabled:text-[var(--color-text-placeholder)]"
+              aria-label={copy.edit}
+              disabled={!canWriteUnits || !isDatabaseAvailable}
+              type="button"
+              onClick={(event) => {
+                event.stopPropagation();
+                openEditDialog(row.original);
+              }}
+            >
+              <svg
+                aria-hidden="true"
+                className="h-4 w-4"
+                viewBox="0 0 20 20"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path
+                  d="M13.9 3.3a1.5 1.5 0 0 1 2.1 0l.7.7a1.5 1.5 0 0 1 0 2.1l-8.4 8.4-3.3.8.8-3.3 8.4-8.4Z"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </button>
+            <button
+              className="min-h-8 rounded-md border border-[var(--color-error-border)] bg-[var(--color-bg-elevated)] px-2.5 py-1 text-sm font-medium text-[var(--color-error)] transition hover:bg-[var(--color-error-soft)] focus:outline-none focus:ring-2 focus:ring-[var(--color-error-border)] focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-[var(--color-bg-subtle)] disabled:text-[var(--color-text-placeholder)]"
+              aria-label={copy.delete}
+              disabled={
+                !canWriteUnits ||
+                !isDatabaseAvailable ||
+                deleteUnitMutation.isPending
+              }
+              type="button"
+              onClick={(event) => {
+                event.stopPropagation();
+                handleDeleteUnit(row.original);
+              }}
+            >
+              <svg
+                aria-hidden="true"
+                className="h-4 w-4"
+                viewBox="0 0 20 20"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path
+                  d="M5.5 6h9m-7.5 0V4.75A1.75 1.75 0 0 1 8.75 3h2.5A1.75 1.75 0 0 1 13 4.75V6m-6.5 0 .6 9.1A1.75 1.75 0 0 0 8.84 16.75h2.32a1.75 1.75 0 0 0 1.74-1.65L13.5 6M8.75 8.5v5m2.5-5v5"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </button>
+          </div>
+        )
+      })
+    ],
+    [canWriteUnits, copy, isDatabaseAvailable, deleteUnitMutation.isPending]
+  );
+
+  const tableColumnOrder = useMemo(() => persistedColumnOrder, [persistedColumnOrder]);
+
+  // eslint-disable-next-line react-hooks/incompatible-library
+  const table = useReactTable({
+    data: units,
+    columns,
+    state: {
+      columnVisibility,
+      columnOrder: tableColumnOrder,
+      sorting,
+      columnSizing
+    },
+    onColumnVisibilityChange: setColumnVisibility,
+    onColumnOrderChange: setColumnOrder,
+    onSortingChange: setSorting,
+    onColumnSizingChange: setColumnSizing,
+    columnResizeMode: "onChange",
+    enableColumnResizing: true,
+    manualSorting: true,
+    getCoreRowModel: getCoreRowModel()
+  });
+
+  return (
+    <>
+      <div className={`flex min-h-0 flex-1 flex-col overflow-hidden ${containerClassName}`}>
+        <section className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-elevated)] shadow-sm">
+          <ListPageToolbar
+            columnVisibility={columnVisibility}
+            configurableColumns={configurableColumns}
+            configureListLabel={copy.configureList}
+            filteredCount={unitsQuery.data?.pages[0]?.filteredCount}
+            formatCount={(visible, total) =>
+              copy.listCountSummary
+                .replace("{visible}", String(visible))
+                .replace("{total}", String(total))
+            }
+            totalCount={unitsQuery.data?.pages[0]?.totalCount}
+            visibleColumnsLabel={copy.visibleColumns}
+            setColumnVisible={setColumnVisible}
+            primaryAction={
+              <button
+                className="inline-flex min-h-9 items-center rounded-md bg-[var(--color-accent)] px-4 text-sm font-semibold text-white transition hover:brightness-95 focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
+                type="button"
+                disabled={!canWriteUnits || !isDatabaseAvailable}
+                onClick={openCreateDialog}
+              >
+                {copy.addUnit}
+              </button>
+            }
+          />
+
+          <InfiniteListViewport
+            emptyState={
+              <p className="px-4 py-10 text-sm text-[var(--color-text-muted)]">{copy.noUnits}</p>
+            }
+            errorState={
+              <p className="px-4 py-10 text-sm text-[var(--color-text-muted)]">{copy.loadError}</p>
+            }
+            hasNextPage={Boolean(unitsQuery.hasNextPage)}
+            isEmpty={units.length === 0}
+            isError={unitsQuery.isError}
+            isFetchingNextPage={unitsQuery.isFetchingNextPage}
+            isInitialLoading={!isConfigLoaded || unitsQuery.isLoading}
+            loadingLabel={copy.loadingUnits}
+            loadingMoreLabel={copy.loadingMore}
+            loadMore={() => {
+              void unitsQuery.fetchNextPage();
+            }}
+            testId="units-list-viewport"
+          >
+            <table
+              className="table-fixed border-separate border-spacing-0 text-left text-sm"
+              style={{ width: table.getTotalSize() }}
+            >
+              <colgroup>
+                {table.getVisibleLeafColumns().map((col) => (
+                  <col key={col.id} style={{ width: col.getSize() }} />
+                ))}
+              </colgroup>
+              <thead className="sticky top-0 z-10 bg-[var(--color-bg-subtle)]">
+                {table.getHeaderGroups().map((headerGroup) => (
+                  <tr key={headerGroup.id}>
+                    {headerGroup.headers.map((header) => (
+                      <ListTableHeaderCell
+                        key={header.id}
+                        columnDefs={unitColumns}
+                        draggedColumnId={draggedColumnId}
+                        header={header}
+                        isResizingColumn={isResizingColumn}
+                        setColumnSorting={setColumnSorting}
+                        setColumnWidth={setColumnWidth}
+                        setIsResizingColumn={setIsResizingColumn}
+                        onDragEnd={onDragEnd}
+                        onDropOnto={onDropOnto}
+                        onStartDrag={onStartDrag}
+                      />
+                    ))}
+                  </tr>
+                ))}
+              </thead>
+              <tbody className="bg-[var(--color-bg-elevated)]">
+                {table.getRowModel().rows.map((row) => (
+                  <tr key={row.id} className="hover:bg-[var(--color-bg-subtle)]">
+                    {row.getVisibleCells().map((cell) => (
+                      <td
+                        key={cell.id}
+                        className={`overflow-hidden border-b border-[var(--color-border)] px-2 py-2 text-[var(--color-text-secondary)] ${
+                          cell.column.id === "actions"
+                            ? "sticky right-0 z-10 bg-[var(--color-bg-elevated)] px-1 py-1.5 hover:bg-[var(--color-bg-subtle)]"
+                            : ""
+                        }`}
+                        style={{ width: cell.column.getSize() }}
                       >
-                        <svg
-                          aria-hidden="true"
-                          className="h-4 w-4"
-                          viewBox="0 0 20 20"
-                          fill="none"
-                          xmlns="http://www.w3.org/2000/svg"
-                        >
-                          <path
-                            d="M13.9 3.3a1.5 1.5 0 0 1 2.1 0l.7.7a1.5 1.5 0 0 1 0 2.1l-8.4 8.4-3.3.8.8-3.3 8.4-8.4Z"
-                            stroke="currentColor"
-                            strokeWidth="1.5"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                          />
-                        </svg>
-                      </button>
-                      <button
-                        className="min-h-9 rounded-md border border-[var(--color-error-border)] px-3 text-sm font-medium text-[var(--color-error)] transition hover:bg-[var(--color-error-soft)] disabled:cursor-not-allowed disabled:opacity-60"
-                        aria-label={copy.delete}
-                        type="button"
-                        disabled={!canWriteUnits || deleteUnitMutation.isPending}
-                        onClick={() => handleDeleteUnit(unit)}
-                      >
-                        <svg
-                          aria-hidden="true"
-                          className="h-4 w-4"
-                          viewBox="0 0 20 20"
-                          fill="none"
-                          xmlns="http://www.w3.org/2000/svg"
-                        >
-                          <path
-                            d="M5.5 6h9m-7.5 0V4.75A1.75 1.75 0 0 1 8.75 3h2.5A1.75 1.75 0 0 1 13 4.75V6m-6.5 0 .6 9.1A1.75 1.75 0 0 0 8.84 16.75h2.32a1.75 1.75 0 0 0 1.74-1.65L13.5 6M8.75 8.5v5m2.5-5v5"
-                            stroke="currentColor"
-                            strokeWidth="1.5"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                          />
-                        </svg>
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
+                        <div className="overflow-hidden text-ellipsis">
+                          {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                        </div>
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </InfiniteListViewport>
+        </section>
       </div>
       {unitFieldErrors.delete ? (
         <div className="mt-3">
@@ -437,7 +673,7 @@ export function UnitsClient({
       />
 
       <ToastNotice messages={toastMessages} onDismiss={dismissToastMessage} />
-    </section>
+    </>
   );
 }
 

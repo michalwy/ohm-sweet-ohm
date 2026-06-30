@@ -61,7 +61,10 @@ const copy = {
   deletedToast: "Attribute deleted",
   invalidInput: "Check the attribute fields and try again.",
   databaseUnavailable:
-    "Database is not available, so the attribute dictionary is shown empty for now."
+    "Database is not available, so the attribute dictionary is shown empty for now.",
+  configureList: "Configure list",
+  visibleColumns: "Visible columns",
+  listCountSummary: "{visible} of {total}"
 };
 
 type AttributesPageProps = {

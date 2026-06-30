@@ -2,6 +2,12 @@ import "server-only";
 
 import { Prisma, type PrismaClient } from "@/generated/prisma/client";
 import { prisma } from "@/server/db/prisma";
+import {
+  decodeListCursor,
+  encodeListCursor,
+  getListPageSize,
+  type ListPage
+} from "@/server/pagination";
 
 type PrismaTransaction = Omit<
   PrismaClient,
@@ -29,6 +35,78 @@ export async function getWorkspaceUnits(workspaceId: string) {
     },
     orderBy: [{ name: "asc" }, { id: "asc" }],
     select: unitListSelect
+  });
+}
+
+export type UnitListSortField = "name" | "symbol" | "allowsFraction";
+
+type UnitsOffsetCursor = {
+  offset: number;
+};
+
+export async function getUnitsPageForWorkspace({
+  workspaceId,
+  cursor,
+  pageSize,
+  sortBy = "name",
+  sortDir = "asc"
+}: {
+  workspaceId: string;
+  cursor?: string | null;
+  pageSize?: number | null;
+  sortBy?: UnitListSortField;
+  sortDir?: "asc" | "desc";
+}): Promise<ListPage<UnitListItem>> {
+  const resolvedPageSize = getListPageSize(pageSize);
+  const dir = sortDir === "desc" ? "desc" : "asc";
+  const units = await prisma.unit.findMany({
+    where: { workspaceId },
+    select: unitListSelect
+  });
+  const totalCount = units.length;
+
+  const sorted = [...units].sort((left, right) => {
+    const comparison = compareUnitsBySort(left, right, sortBy);
+    if (comparison !== 0) {
+      return dir === "desc" ? -comparison : comparison;
+    }
+    return compareListText(left.id, right.id);
+  });
+
+  const decoded = decodeListCursor<UnitsOffsetCursor>(cursor);
+  const offset = decoded?.offset ?? 0;
+  const items = sorted.slice(offset, offset + resolvedPageSize);
+  const nextOffset = offset + items.length;
+
+  return {
+    items,
+    nextCursor:
+      nextOffset < sorted.length
+        ? encodeListCursor<UnitsOffsetCursor>({ offset: nextOffset })
+        : null,
+    totalCount,
+    filteredCount: totalCount
+  };
+}
+
+function compareUnitsBySort(
+  left: UnitListItem,
+  right: UnitListItem,
+  sortBy: UnitListSortField
+) {
+  if (sortBy === "symbol") {
+    return compareListText(left.symbol, right.symbol);
+  }
+  if (sortBy === "allowsFraction") {
+    return Number(left.allowsFraction) - Number(right.allowsFraction);
+  }
+  return compareListText(left.name, right.name);
+}
+
+function compareListText(left: string, right: string) {
+  return left.localeCompare(right, "en", {
+    sensitivity: "base",
+    numeric: true
   });
 }
 

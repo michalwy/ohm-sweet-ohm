@@ -1,6 +1,13 @@
 "use client";
 
 import {
+  createColumnHelper,
+  flexRender,
+  getCoreRowModel,
+  useReactTable
+} from "@tanstack/react-table";
+import {
+  keepPreviousData,
   useInfiniteQuery,
   useMutation,
   useQueryClient
@@ -16,6 +23,17 @@ import {
 import type { AttributeListItem } from "@/server/parts/attributeMutations";
 import type { AttributeValueType } from "@/server/parts/attributeValues";
 import { InfiniteListViewport } from "@/app/infinite-list";
+import {
+  useListTableConfiguration,
+  type ListColumnDefinition
+} from "@/app/list-table-config";
+import {
+  ListPageToolbar,
+  ListTableHeaderCell,
+  useColumnDragReorder,
+  useColumnResizeCursor
+} from "@/app/list-page-toolbar";
+import { EmptyCell } from "@/app/list-table-cell";
 import {
   getNextToastId,
   ToastNotice,
@@ -70,7 +88,12 @@ type Copy = {
   deletedToast: string;
   databaseUnavailable: string;
   invalidInput: string;
+  configureList: string;
+  visibleColumns: string;
+  listCountSummary: string;
 };
+
+const columnHelper = createColumnHelper<AttributeListItem>();
 
 type ListPage<TItem> = {
   items: TItem[];
@@ -118,14 +141,63 @@ export function AttributesClient({
     useState<AttributeFormErrors>({});
   const [dialogFormKey, setDialogFormKey] = useState(0);
   const [toastMessages, setToastMessages] = useState<ToastMessage[]>([]);
+  const { isResizingColumn, setIsResizingColumn, containerClassName } =
+    useColumnResizeCursor();
+
+  // --- Column configuration ---
+
+  const attributeColumns = useMemo<ListColumnDefinition[]>(
+    () => [
+      { id: "name", label: copy.name, group: "base", defaultWidth: 220, minWidth: 120, sortable: true },
+      { id: "type", label: copy.type, group: "base", defaultWidth: 140, minWidth: 100, sortable: true },
+      { id: "baseUnit", label: copy.baseUnit, group: "base", defaultWidth: 120, minWidth: 80, sortable: true },
+      { id: "options", label: copy.options, group: "base", defaultWidth: 240, minWidth: 120 },
+      { id: "description", label: copy.description, group: "base", defaultWidth: 280, minWidth: 120, sortable: true }
+    ],
+    [copy]
+  );
+  const fixedColumnIds = useMemo(() => ["actions"], []);
+
+  const {
+    columnSizing,
+    columnVisibility,
+    configurableColumns,
+    setColumnWidth,
+    setColumnSorting,
+    setColumnVisible,
+    setColumnOrder,
+    setColumnSizing,
+    setColumnVisibility,
+    setSorting,
+    sorting,
+    columnOrder: persistedColumnOrder,
+    isLoaded: isConfigLoaded
+  } = useListTableConfiguration({
+    storageKey: `oso:list-config:attributes:${workspaceSlug}`,
+    columns: attributeColumns,
+    fixedColumnIds
+  });
+
+  const { draggedColumnId, onDragEnd, onStartDrag, onDropOnto } =
+    useColumnDragReorder(setColumnOrder);
+
+  // --- Data ---
+
+  const activeSorting = sorting[0] ?? null;
+  const sortDir = activeSorting?.desc ? "desc" : "asc";
+  const sortBy = (activeSorting?.id ??
+    "name") as "name" | "type" | "baseUnit" | "description";
+
   const attributesQuery = useInfiniteQuery({
-    queryKey: ["attributes-list", workspaceSlug],
+    queryKey: ["attributes-list", workspaceSlug, { sorting }] as const,
     enabled: isDatabaseAvailable,
     initialPageParam: null as string | null,
     queryFn: async ({ pageParam }) => {
       const result = await getAttributeDictionaryPageForWorkspace({
         workspaceSlug,
-        cursor: pageParam
+        cursor: pageParam,
+        sortBy,
+        sortDir
       });
 
       if (!result.ok) {
@@ -135,10 +207,11 @@ export function AttributesClient({
       return result.data;
     },
     getNextPageParam: (lastPage) => lastPage.nextCursor,
-    initialData: {
-      pages: [initialPage],
-      pageParams: [null]
-    }
+    placeholderData: keepPreviousData,
+    initialData:
+      sorting.length === 0
+        ? { pages: [initialPage], pageParams: [null] }
+        : undefined
   });
   const currentAttributes = useMemo(
     () => attributesQuery.data?.pages.flatMap((page) => page.items) ?? [],
@@ -315,153 +388,267 @@ export function AttributesClient({
     );
   }
 
+  // --- TanStack Table ---
+
+  const columns = useMemo(
+    () => [
+      columnHelper.accessor("name", {
+        header: copy.name,
+        size: 220,
+        minSize: 120,
+        cell: ({ getValue }) => (
+          <span className="font-medium text-[var(--color-text-primary)]">{getValue()}</span>
+        )
+      }),
+      columnHelper.accessor("type", {
+        header: copy.type,
+        size: 140,
+        minSize: 100,
+        cell: ({ getValue }) => (
+          <span className="text-[var(--color-text-secondary)]">
+            {getTypeLabel(copy, getValue())}
+          </span>
+        )
+      }),
+      columnHelper.accessor("baseUnitSymbol", {
+        id: "baseUnit",
+        header: copy.baseUnit,
+        size: 120,
+        minSize: 80,
+        cell: ({ getValue }) => {
+          const value = getValue();
+          if (!value) return <EmptyCell />;
+          return <span className="text-[var(--color-text-secondary)]">{value}</span>;
+        }
+      }),
+      columnHelper.accessor("choiceOptions", {
+        id: "options",
+        header: copy.options,
+        size: 240,
+        minSize: 120,
+        enableSorting: false,
+        cell: ({ getValue }) => {
+          const options = getValue();
+          if (options.length === 0) return <EmptyCell />;
+          return (
+            <span className="line-clamp-2 text-[var(--color-text-secondary)]">
+              {options.map((option) => option.label).join(", ")}
+            </span>
+          );
+        }
+      }),
+      columnHelper.accessor("description", {
+        header: copy.description,
+        size: 280,
+        minSize: 120,
+        cell: ({ getValue }) => {
+          const value = getValue();
+          if (!value) return <EmptyCell />;
+          return <span className="line-clamp-2 text-[var(--color-text-muted)]">{value}</span>;
+        }
+      }),
+      columnHelper.display({
+        id: "actions",
+        header: "",
+        size: 104,
+        minSize: 104,
+        maxSize: 104,
+        enableResizing: false,
+        cell: ({ row }) => (
+          <div className="flex justify-end gap-2">
+            <button
+              className="min-h-8 rounded-md border border-[var(--color-border-strong)] bg-[var(--color-bg-elevated)] px-2.5 py-1 text-sm font-medium text-[var(--color-text-secondary)] transition hover:border-[var(--color-border-hover)] hover:bg-[var(--color-bg-subtle)] focus:outline-none focus:ring-2 focus:ring-[var(--color-ring-strong)] focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-[var(--color-bg-subtle)] disabled:text-[var(--color-text-placeholder)]"
+              aria-label={copy.edit}
+              disabled={!isDatabaseAvailable || !canWriteAttributes}
+              type="button"
+              onClick={(event) => {
+                event.stopPropagation();
+                openEditDialog(row.original);
+              }}
+            >
+              <svg
+                aria-hidden="true"
+                className="h-4 w-4"
+                viewBox="0 0 20 20"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path
+                  d="M13.9 3.3a1.5 1.5 0 0 1 2.1 0l.7.7a1.5 1.5 0 0 1 0 2.1l-8.4 8.4-3.3.8.8-3.3 8.4-8.4Z"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </button>
+            <button
+              className="min-h-8 rounded-md border border-[var(--color-error-border)] bg-[var(--color-bg-elevated)] px-2.5 py-1 text-sm font-medium text-[var(--color-error)] transition hover:bg-[var(--color-error-soft)] focus:outline-none focus:ring-2 focus:ring-[var(--color-error-border)] focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-[var(--color-bg-subtle)] disabled:text-[var(--color-text-placeholder)]"
+              aria-label={copy.delete}
+              disabled={
+                !isDatabaseAvailable ||
+                !canWriteAttributes ||
+                deleteAttributeMutation.isPending
+              }
+              type="button"
+              onClick={(event) => {
+                event.stopPropagation();
+                handleDeleteAttribute(row.original);
+              }}
+            >
+              <svg
+                aria-hidden="true"
+                className="h-4 w-4"
+                viewBox="0 0 20 20"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path
+                  d="M5.5 6h9m-7.5 0V4.75A1.75 1.75 0 0 1 8.75 3h2.5A1.75 1.75 0 0 1 13 4.75V6m-6.5 0 .6 9.1A1.75 1.75 0 0 0 8.84 16.75h2.32a1.75 1.75 0 0 0 1.74-1.65L13.5 6M8.75 8.5v5m2.5-5v5"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </button>
+          </div>
+        )
+      })
+    ],
+    [canWriteAttributes, copy, isDatabaseAvailable, deleteAttributeMutation.isPending]
+  );
+
+  const tableColumnOrder = useMemo(() => persistedColumnOrder, [persistedColumnOrder]);
+
+  // eslint-disable-next-line react-hooks/incompatible-library
+  const table = useReactTable({
+    data: currentAttributes,
+    columns,
+    state: {
+      columnVisibility,
+      columnOrder: tableColumnOrder,
+      sorting,
+      columnSizing
+    },
+    onColumnVisibilityChange: setColumnVisibility,
+    onColumnOrderChange: setColumnOrder,
+    onSortingChange: setSorting,
+    onColumnSizingChange: setColumnSizing,
+    columnResizeMode: "onChange",
+    enableColumnResizing: true,
+    manualSorting: true,
+    getCoreRowModel: getCoreRowModel()
+  });
+
   return (
     <>
-      <section
-        aria-labelledby="attributes-heading"
-        className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-elevated)] shadow-sm"
-      >
-        <h2 id="attributes-heading" className="sr-only">
-          {copy.title}
-        </h2>
-        <div className="flex items-center justify-end border-b border-[var(--color-border)] bg-[var(--color-bg-elevated)] px-4 py-3">
-          <button
-            className={primaryButtonClassName}
-            disabled={!isDatabaseAvailable || !canWriteAttributes}
-            type="button"
-            onClick={openCreateDialog}
-          >
-            {copy.addAttribute}
-          </button>
-        </div>
-        <InfiniteListViewport
-          emptyState={<p className="p-6 text-sm text-[var(--color-text-muted)]">{copy.noAttributes}</p>}
-          errorState={
-            <p className="p-6 text-sm text-[var(--color-text-muted)]">
-              {copy.databaseUnavailable}
-            </p>
-          }
-          hasNextPage={Boolean(attributesQuery.hasNextPage)}
-          isEmpty={currentAttributes.length === 0}
-          isError={attributesQuery.isError}
-          isFetchingNextPage={attributesQuery.isFetchingNextPage}
-          isInitialLoading={attributesQuery.isLoading}
-          loadingLabel={copy.loadingAttributes}
-          loadingMoreLabel={copy.loadingMoreAttributes}
-          loadMore={() => {
-            void attributesQuery.fetchNextPage();
-          }}
-          testId="attributes-list-viewport"
+      <div className={`flex min-h-0 flex-1 flex-col overflow-hidden ${containerClassName}`}>
+        <section
+          aria-labelledby="attributes-heading"
+          className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-elevated)] shadow-sm"
         >
-            <table className="w-full border-collapse text-left text-sm">
-              <thead className="sticky top-0 bg-[var(--color-bg-subtle)] text-xs uppercase tracking-wide text-[var(--color-text-muted)]">
-                <tr>
-                  <th className="border-b border-[var(--color-border)] px-4 py-3 font-semibold">
-                    {copy.name}
-                  </th>
-                  <th className="border-b border-[var(--color-border)] px-4 py-3 font-semibold">
-                    {copy.type}
-                  </th>
-                  <th className="border-b border-[var(--color-border)] px-4 py-3 font-semibold">
-                    {copy.baseUnit}
-                  </th>
-                  <th className="border-b border-[var(--color-border)] px-4 py-3 font-semibold">
-                    {copy.options}
-                  </th>
-                  <th className="border-b border-[var(--color-border)] px-4 py-3 font-semibold">
-                    {copy.description}
-                  </th>
-                  <th className="w-36 border-b border-[var(--color-border)] px-4 py-3 font-semibold">
-                    {copy.actions}
-                  </th>
-                </tr>
+          <h2 id="attributes-heading" className="sr-only">
+            {copy.title}
+          </h2>
+          <ListPageToolbar
+            columnVisibility={columnVisibility}
+            configurableColumns={configurableColumns}
+            configureListLabel={copy.configureList}
+            filteredCount={attributesQuery.data?.pages[0]?.filteredCount}
+            formatCount={(visible, total) =>
+              copy.listCountSummary
+                .replace("{visible}", String(visible))
+                .replace("{total}", String(total))
+            }
+            totalCount={attributesQuery.data?.pages[0]?.totalCount}
+            visibleColumnsLabel={copy.visibleColumns}
+            setColumnVisible={setColumnVisible}
+            primaryAction={
+              <button
+                className={primaryButtonClassName}
+                disabled={!isDatabaseAvailable || !canWriteAttributes}
+                type="button"
+                onClick={openCreateDialog}
+              >
+                {copy.addAttribute}
+              </button>
+            }
+          />
+          <InfiniteListViewport
+            emptyState={<p className="px-4 py-10 text-sm text-[var(--color-text-muted)]">{copy.noAttributes}</p>}
+            errorState={
+              <p className="px-4 py-10 text-sm text-[var(--color-text-muted)]">
+                {copy.databaseUnavailable}
+              </p>
+            }
+            hasNextPage={Boolean(attributesQuery.hasNextPage)}
+            isEmpty={currentAttributes.length === 0}
+            isError={attributesQuery.isError}
+            isFetchingNextPage={attributesQuery.isFetchingNextPage}
+            isInitialLoading={!isConfigLoaded || attributesQuery.isLoading}
+            loadingLabel={copy.loadingAttributes}
+            loadingMoreLabel={copy.loadingMoreAttributes}
+            loadMore={() => {
+              void attributesQuery.fetchNextPage();
+            }}
+            testId="attributes-list-viewport"
+          >
+            <table
+              className="table-fixed border-separate border-spacing-0 text-left text-sm"
+              style={{ width: table.getTotalSize() }}
+            >
+              <colgroup>
+                {table.getVisibleLeafColumns().map((col) => (
+                  <col key={col.id} style={{ width: col.getSize() }} />
+                ))}
+              </colgroup>
+              <thead className="sticky top-0 z-10 bg-[var(--color-bg-subtle)]">
+                {table.getHeaderGroups().map((headerGroup) => (
+                  <tr key={headerGroup.id}>
+                    {headerGroup.headers.map((header) => (
+                      <ListTableHeaderCell
+                        key={header.id}
+                        columnDefs={attributeColumns}
+                        draggedColumnId={draggedColumnId}
+                        header={header}
+                        isResizingColumn={isResizingColumn}
+                        setColumnSorting={setColumnSorting}
+                        setColumnWidth={setColumnWidth}
+                        setIsResizingColumn={setIsResizingColumn}
+                        onDragEnd={onDragEnd}
+                        onDropOnto={onDropOnto}
+                        onStartDrag={onStartDrag}
+                      />
+                    ))}
+                  </tr>
+                ))}
               </thead>
-              <tbody className="divide-y divide-[var(--color-border)]">
-                {currentAttributes.map((attribute) => (
-                  <tr key={attribute.id} className="hover:bg-[var(--color-bg-subtle)]/70">
-                    <td className="px-4 py-3 font-medium text-[var(--color-text-primary)]">
-                      {attribute.name}
-                    </td>
-                    <td className="px-4 py-3 text-[var(--color-text-secondary)]">
-                      {getTypeLabel(copy, attribute.type)}
-                    </td>
-                    <td className="px-4 py-3 text-[var(--color-text-secondary)]">
-                      {attribute.baseUnitSymbol ?? ""}
-                    </td>
-                    <td className="max-w-xs px-4 py-3 text-[var(--color-text-secondary)]">
-                      <span className="line-clamp-2">
-                        {attribute.choiceOptions.length > 0
-                          ? attribute.choiceOptions
-                              .map((option) => option.label)
-                              .join(", ")
-                          : copy.noOptions}
-                      </span>
-                    </td>
-                    <td className="max-w-sm px-4 py-3 text-[var(--color-text-muted)]">
-                      <span className="line-clamp-2">
-                        {attribute.description ?? ""}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-2">
-                        <button
-                          className="min-h-9 rounded-md border border-[var(--color-border-strong)] bg-[var(--color-bg-elevated)] px-3 py-1.5 text-sm font-medium text-[var(--color-text-secondary)] transition hover:border-[var(--color-border-hover)] hover:bg-[var(--color-bg-subtle)] focus:outline-none focus:ring-2 focus:ring-[var(--color-ring-strong)] focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-[var(--color-bg-subtle)] disabled:text-[var(--color-text-placeholder)]"
-                          aria-label={copy.edit}
-                          disabled={!isDatabaseAvailable || !canWriteAttributes}
-                          type="button"
-                          onClick={() => openEditDialog(attribute)}
-                        >
-                          <svg
-                            aria-hidden="true"
-                            className="h-4 w-4"
-                            viewBox="0 0 20 20"
-                            fill="none"
-                            xmlns="http://www.w3.org/2000/svg"
-                          >
-                            <path
-                              d="M13.9 3.3a1.5 1.5 0 0 1 2.1 0l.7.7a1.5 1.5 0 0 1 0 2.1l-8.4 8.4-3.3.8.8-3.3 8.4-8.4Z"
-                              stroke="currentColor"
-                              strokeWidth="1.5"
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                            />
-                          </svg>
-                        </button>
-                        <button
-                          className="min-h-9 rounded-md border border-[var(--color-error-border)] bg-[var(--color-bg-elevated)] px-3 py-1.5 text-sm font-medium text-[var(--color-error)] transition hover:bg-[var(--color-error-soft)] focus:outline-none focus:ring-2 focus:ring-[var(--color-error-border)] focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-[var(--color-bg-subtle)] disabled:text-[var(--color-text-placeholder)]"
-                          aria-label={copy.delete}
-                          disabled={
-                            !isDatabaseAvailable ||
-                            !canWriteAttributes ||
-                            deleteAttributeMutation.isPending
-                          }
-                          type="button"
-                          onClick={() => handleDeleteAttribute(attribute)}
-                        >
-                          <svg
-                            aria-hidden="true"
-                            className="h-4 w-4"
-                            viewBox="0 0 20 20"
-                            fill="none"
-                            xmlns="http://www.w3.org/2000/svg"
-                          >
-                            <path
-                              d="M5.5 6h9m-7.5 0V4.75A1.75 1.75 0 0 1 8.75 3h2.5A1.75 1.75 0 0 1 13 4.75V6m-6.5 0 .6 9.1A1.75 1.75 0 0 0 8.84 16.75h2.32a1.75 1.75 0 0 0 1.74-1.65L13.5 6M8.75 8.5v5m2.5-5v5"
-                              stroke="currentColor"
-                              strokeWidth="1.5"
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                            />
-                          </svg>
-                        </button>
-                      </div>
-                    </td>
+              <tbody className="bg-[var(--color-bg-elevated)]">
+                {table.getRowModel().rows.map((row) => (
+                  <tr key={row.id} className="hover:bg-[var(--color-bg-subtle)]">
+                    {row.getVisibleCells().map((cell) => (
+                      <td
+                        key={cell.id}
+                        className={`overflow-hidden border-b border-[var(--color-border)] px-2 py-2 text-[var(--color-text-secondary)] ${
+                          cell.column.id === "actions"
+                            ? "sticky right-0 z-10 bg-[var(--color-bg-elevated)] px-1 py-1.5 hover:bg-[var(--color-bg-subtle)]"
+                            : ""
+                        }`}
+                        style={{ width: cell.column.getSize() }}
+                      >
+                        <div className="overflow-hidden text-ellipsis">
+                          {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                        </div>
+                      </td>
+                    ))}
                   </tr>
                 ))}
               </tbody>
             </table>
-        </InfiniteListViewport>
-      </section>
+          </InfiniteListViewport>
+        </section>
+      </div>
       {attributeFieldErrors.delete ? (
         <div className="mt-3">
           <ErrorBubble align="start">{attributeFieldErrors.delete}</ErrorBubble>

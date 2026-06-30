@@ -66,75 +66,79 @@ export async function getWorkspaceAttributes(workspaceId: string) {
   });
 }
 
-type AttributeListCursor = {
-  name: string;
-  id: string;
+export type AttributeListSortField = "name" | "type" | "baseUnit" | "description";
+
+type AttributesOffsetCursor = {
+  offset: number;
 };
 
 export async function getWorkspaceAttributePage({
   workspaceId,
   cursor,
-  pageSize
+  pageSize,
+  sortBy = "name",
+  sortDir = "asc"
 }: {
   workspaceId: string;
   cursor?: string | null;
   pageSize?: number | null;
+  sortBy?: AttributeListSortField;
+  sortDir?: "asc" | "desc";
 }): Promise<ListPage<AttributeListItem>> {
-  const decodedCursor = decodeListCursor<AttributeListCursor>(cursor);
   const resolvedPageSize = getListPageSize(pageSize);
-  const cursorWhere = decodedCursor
-    ? {
-        OR: [
-          {
-            name: {
-              gt: decodedCursor.name
-            }
-          },
-          {
-            name: decodedCursor.name,
-            id: {
-              gt: decodedCursor.id
-            }
-          }
-        ]
-      }
-    : {};
-  const where: Prisma.AttributeWhereInput = {
-    AND: [
-      {
-        workspaceId
-      },
-      cursorWhere
-    ]
-  };
-  const [attributes, totalCount] = await Promise.all([
-    prisma.attribute.findMany({
-      where,
-      orderBy: [{ name: "asc" }, { id: "asc" }],
-      take: resolvedPageSize + 1,
-      select: attributeListSelect
-    }),
-    prisma.attribute.count({
-      where: {
-        workspaceId
-      }
-    })
-  ]);
-  const items = attributes.slice(0, resolvedPageSize);
-  const lastItem = items.at(-1);
+  const dir = sortDir === "desc" ? "desc" : "asc";
+  const attributes = await prisma.attribute.findMany({
+    where: { workspaceId },
+    select: attributeListSelect
+  });
+  const totalCount = attributes.length;
+
+  const sorted = [...attributes].sort((left, right) => {
+    const comparison = compareAttributesBySort(left, right, sortBy);
+    if (comparison !== 0) {
+      return dir === "desc" ? -comparison : comparison;
+    }
+    return compareAttributeText(left.id, right.id);
+  });
+
+  const decoded = decodeListCursor<AttributesOffsetCursor>(cursor);
+  const offset = decoded?.offset ?? 0;
+  const items = sorted.slice(offset, offset + resolvedPageSize);
+  const nextOffset = offset + items.length;
 
   return {
     items,
     nextCursor:
-      attributes.length > resolvedPageSize && lastItem
-        ? encodeListCursor<AttributeListCursor>({
-            name: lastItem.name,
-            id: lastItem.id
-          })
+      nextOffset < sorted.length
+        ? encodeListCursor<AttributesOffsetCursor>({ offset: nextOffset })
         : null,
     totalCount,
     filteredCount: totalCount
   };
+}
+
+function compareAttributesBySort(
+  left: AttributeListItem,
+  right: AttributeListItem,
+  sortBy: AttributeListSortField
+) {
+  if (sortBy === "type") {
+    return compareAttributeText(left.type, right.type);
+  }
+  if (sortBy === "baseUnit") {
+    return compareAttributeText(left.baseUnitSymbol ?? "", right.baseUnitSymbol ?? "");
+  }
+  if (sortBy === "description") {
+    return compareAttributeText(left.description ?? "", right.description ?? "");
+  }
+  return compareAttributeText(left.name, right.name);
+}
+
+function compareAttributeText(left: string, right: string) {
+  return left.localeCompare(right, "en", {
+    sensitivity: "base",
+    numeric: true
+  });
 }
 
 export async function createAttribute({

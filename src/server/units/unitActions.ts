@@ -4,12 +4,15 @@
 import { Prisma } from "@/generated/prisma/client";
 import { authorizeWorkspacePermission } from "@/server/access-control/authorize";
 import { getCurrentWorkspaceContextBySlug } from "@/server/auth/currentContext";
+import type { ListPage } from "@/server/pagination";
 import {
   createUnit,
   deleteUnit,
+  getUnitsPageForWorkspace as getUnitsPage,
   getWorkspaceUnits,
   updateUnit,
-  type UnitListItem
+  type UnitListItem,
+  type UnitListSortField
 } from "@/server/units/unitMutations";
 
 export type UnitActionResult<T> =
@@ -34,6 +37,33 @@ export async function getUnitsForWorkspace(input: {
     });
 
     return getSuccessState(await getWorkspaceUnits(context.workspace.id));
+  } catch (error) {
+    return getErrorState(getUnitActionError(error));
+  }
+}
+
+export async function getUnitsPageForWorkspace(input: {
+  workspaceSlug: string;
+  cursor?: string | null;
+  pageSize?: number | null;
+  sortBy?: UnitListSortField;
+  sortDir?: "asc" | "desc";
+}): Promise<UnitActionResult<ListPage<UnitListItem>>> {
+  try {
+    const context = await getAuthorizedUnitsContext({
+      workspaceSlug: input.workspaceSlug,
+      permission: "units:read"
+    });
+
+    return getSuccessState(
+      await getUnitsPage({
+        workspaceId: context.workspace.id,
+        cursor: input.cursor,
+        pageSize: input.pageSize,
+        sortBy: input.sortBy,
+        sortDir: input.sortDir
+      })
+    );
   } catch (error) {
     return getErrorState(getUnitActionError(error));
   }
