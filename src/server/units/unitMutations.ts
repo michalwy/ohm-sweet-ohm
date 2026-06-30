@@ -58,56 +58,31 @@ export async function getUnitsPageForWorkspace({
   sortDir?: "asc" | "desc";
 }): Promise<ListPage<UnitListItem>> {
   const resolvedPageSize = getListPageSize(pageSize);
-  const dir = sortDir === "desc" ? "desc" : "asc";
-  const units = await prisma.unit.findMany({
-    where: { workspaceId },
-    select: unitListSelect
-  });
-  const totalCount = units.length;
+  const dir: Prisma.SortOrder = sortDir === "desc" ? "desc" : "asc";
+  const offset = decodeListCursor<UnitsOffsetCursor>(cursor)?.offset ?? 0;
+  const where: Prisma.UnitWhereInput = { workspaceId };
 
-  const sorted = [...units].sort((left, right) => {
-    const comparison = compareUnitsBySort(left, right, sortBy);
-    if (comparison !== 0) {
-      return dir === "desc" ? -comparison : comparison;
-    }
-    return compareListText(left.id, right.id);
-  });
-
-  const decoded = decodeListCursor<UnitsOffsetCursor>(cursor);
-  const offset = decoded?.offset ?? 0;
-  const items = sorted.slice(offset, offset + resolvedPageSize);
+  const [items, totalCount] = await Promise.all([
+    prisma.unit.findMany({
+      where,
+      orderBy: [{ [sortBy]: dir }, { id: dir }],
+      skip: offset,
+      take: resolvedPageSize,
+      select: unitListSelect
+    }),
+    prisma.unit.count({ where })
+  ]);
   const nextOffset = offset + items.length;
 
   return {
     items,
     nextCursor:
-      nextOffset < sorted.length
+      nextOffset < totalCount
         ? encodeListCursor<UnitsOffsetCursor>({ offset: nextOffset })
         : null,
     totalCount,
     filteredCount: totalCount
   };
-}
-
-function compareUnitsBySort(
-  left: UnitListItem,
-  right: UnitListItem,
-  sortBy: UnitListSortField
-) {
-  if (sortBy === "symbol") {
-    return compareListText(left.symbol, right.symbol);
-  }
-  if (sortBy === "allowsFraction") {
-    return Number(left.allowsFraction) - Number(right.allowsFraction);
-  }
-  return compareListText(left.name, right.name);
-}
-
-function compareListText(left: string, right: string) {
-  return left.localeCompare(right, "en", {
-    sensitivity: "base",
-    numeric: true
-  });
 }
 
 export async function createUnit(input: {

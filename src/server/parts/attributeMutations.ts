@@ -86,30 +86,26 @@ export async function getWorkspaceAttributePage({
   sortDir?: "asc" | "desc";
 }): Promise<ListPage<AttributeListItem>> {
   const resolvedPageSize = getListPageSize(pageSize);
-  const dir = sortDir === "desc" ? "desc" : "asc";
-  const attributes = await prisma.attribute.findMany({
-    where: { workspaceId },
-    select: attributeListSelect
-  });
-  const totalCount = attributes.length;
+  const dir: Prisma.SortOrder = sortDir === "desc" ? "desc" : "asc";
+  const offset = decodeListCursor<AttributesOffsetCursor>(cursor)?.offset ?? 0;
+  const where: Prisma.AttributeWhereInput = { workspaceId };
 
-  const sorted = [...attributes].sort((left, right) => {
-    const comparison = compareAttributesBySort(left, right, sortBy);
-    if (comparison !== 0) {
-      return dir === "desc" ? -comparison : comparison;
-    }
-    return compareAttributeText(left.id, right.id);
-  });
-
-  const decoded = decodeListCursor<AttributesOffsetCursor>(cursor);
-  const offset = decoded?.offset ?? 0;
-  const items = sorted.slice(offset, offset + resolvedPageSize);
+  const [items, totalCount] = await Promise.all([
+    prisma.attribute.findMany({
+      where,
+      orderBy: getAttributeOrderBy(sortBy, dir),
+      skip: offset,
+      take: resolvedPageSize,
+      select: attributeListSelect
+    }),
+    prisma.attribute.count({ where })
+  ]);
   const nextOffset = offset + items.length;
 
   return {
     items,
     nextCursor:
-      nextOffset < sorted.length
+      nextOffset < totalCount
         ? encodeListCursor<AttributesOffsetCursor>({ offset: nextOffset })
         : null,
     totalCount,
@@ -117,28 +113,23 @@ export async function getWorkspaceAttributePage({
   };
 }
 
-function compareAttributesBySort(
-  left: AttributeListItem,
-  right: AttributeListItem,
-  sortBy: AttributeListSortField
-) {
-  if (sortBy === "type") {
-    return compareAttributeText(left.type, right.type);
-  }
-  if (sortBy === "baseUnit") {
-    return compareAttributeText(left.baseUnitSymbol ?? "", right.baseUnitSymbol ?? "");
-  }
-  if (sortBy === "description") {
-    return compareAttributeText(left.description ?? "", right.description ?? "");
-  }
-  return compareAttributeText(left.name, right.name);
-}
+function getAttributeOrderBy(
+  sortBy: AttributeListSortField,
+  dir: Prisma.SortOrder
+): Prisma.AttributeOrderByWithRelationInput[] {
+  const tiebreak: Prisma.AttributeOrderByWithRelationInput = { id: dir };
 
-function compareAttributeText(left: string, right: string) {
-  return left.localeCompare(right, "en", {
-    sensitivity: "base",
-    numeric: true
-  });
+  switch (sortBy) {
+    case "type":
+      return [{ type: dir }, tiebreak];
+    // Nullable columns: keep empty values together at the end regardless of direction.
+    case "baseUnit":
+      return [{ baseUnitSymbol: { sort: dir, nulls: "last" } }, tiebreak];
+    case "description":
+      return [{ description: { sort: dir, nulls: "last" } }, tiebreak];
+    default:
+      return [{ name: dir }, tiebreak];
+  }
 }
 
 export async function createAttribute({
