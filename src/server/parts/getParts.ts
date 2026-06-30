@@ -267,6 +267,24 @@ export async function getPartsListPage(
       canReadShoppingLists,
       canReadPurchaseOrders
     });
+  } else if (
+    activeSortBy === "manufacturerName" ||
+    activeSortBy === "catalogNumber" ||
+    activeSortBy === "description"
+  ) {
+    page = await getStringFieldSortedPartsListPage({
+      field: activeSortBy,
+      baseWhere,
+      categoryPathsById,
+      cursor: input.cursor,
+      pageSize,
+      sortDirection: activeSortDirection,
+      totalCount,
+      workspaceId: context.workspace.id,
+      canReadInventory,
+      canReadShoppingLists,
+      canReadPurchaseOrders
+    });
   } else if (activeSortBy) {
     page = await getSortedPartsListPage({
       baseWhere,
@@ -453,6 +471,167 @@ async function getDecimalFieldSortedPartsListPage({
   };
 }
 
+type StringSortField = "manufacturerName" | "catalogNumber" | "description";
+
+type StringFieldCursor = {
+  value: string | null;
+  id: string;
+};
+
+// DB-level keyset pagination for plain string columns. The in-memory
+// getSortedPartsListPage path is reserved for sort keys that are computed in
+// application code (category paths, per-category value column, attribute values)
+// and cannot be expressed as a plain ORDER BY.
+async function getStringFieldSortedPartsListPage({
+  field,
+  baseWhere,
+  categoryPathsById,
+  cursor,
+  pageSize,
+  sortDirection,
+  totalCount,
+  workspaceId,
+  canReadInventory,
+  canReadShoppingLists,
+  canReadPurchaseOrders
+}: {
+  field: StringSortField;
+  baseWhere: Prisma.PartWhereInput;
+  categoryPathsById: Map<string, string>;
+  cursor?: string | null;
+  pageSize: number;
+  sortDirection: PartsListSortDirection;
+  totalCount: number;
+  workspaceId: string;
+  canReadInventory: boolean;
+  canReadShoppingLists: boolean;
+  canReadPurchaseOrders: boolean;
+}): Promise<ListPage<PartsListItem>> {
+  const decodedCursor = decodeListCursor<StringFieldCursor>(cursor);
+  const cursorWhere = decodedCursor
+    ? getStringFieldCursorWhere({ field, cursor: decodedCursor, sortDirection })
+    : null;
+  const where = cursorWhere ? { AND: [baseWhere, cursorWhere] } : baseWhere;
+  const [parts, filteredCount] = await Promise.all([
+    prisma.part.findMany({
+      where,
+      orderBy: getStringFieldOrderBy({ field, sortDirection }),
+      take: pageSize + 1,
+      select: partListSelect
+    }),
+    prisma.part.count({ where: baseWhere })
+  ]);
+  const pageParts = parts.slice(0, pageSize);
+  const valueAttributeIdsByCategoryId = await getValueAttributeIdsByCategoryId({
+    workspaceId,
+    categoryIds: pageParts
+      .map((part) => part.primaryCategoryId)
+      .filter((categoryId): categoryId is string => Boolean(categoryId))
+  });
+  const lastPart = pageParts.at(-1);
+
+  return {
+    items: pageParts.map((part) =>
+      mapPartListItem({
+        part,
+        categoryPathsById,
+        valueAttributeIdsByCategoryId,
+        canReadInventory,
+        canReadShoppingLists,
+        canReadPurchaseOrders
+      })
+    ),
+    nextCursor:
+      parts.length > pageSize && lastPart
+        ? encodeListCursor<StringFieldCursor>({
+            value: getStringFieldValue(lastPart, field),
+            id: lastPart.id
+          })
+        : null,
+    totalCount,
+    filteredCount
+  };
+}
+
+function getStringFieldOrderBy({
+  field,
+  sortDirection
+}: {
+  field: StringSortField;
+  sortDirection: PartsListSortDirection;
+}): Prisma.PartOrderByWithRelationInput[] {
+  const tiebreak: Prisma.PartOrderByWithRelationInput = { id: "asc" };
+
+  switch (field) {
+    case "manufacturerName":
+      return [{ manufacturer: { name: sortDirection } }, tiebreak];
+    case "catalogNumber":
+      return [{ catalogNumber: sortDirection }, tiebreak];
+    // Nullable column: keep parts without a description grouped at the end
+    // regardless of direction so keyset pagination stays consistent.
+    case "description":
+      return [{ description: { sort: sortDirection, nulls: "last" } }, tiebreak];
+  }
+}
+
+function getStringFieldValue(part: SelectedPartListItem, field: StringSortField) {
+  switch (field) {
+    case "manufacturerName":
+      return part.manufacturer.name;
+    case "catalogNumber":
+      return part.catalogNumber;
+    case "description":
+      return part.description;
+  }
+}
+
+function getStringFieldCursorWhere({
+  field,
+  cursor,
+  sortDirection
+}: {
+  field: StringSortField;
+  cursor: StringFieldCursor;
+  sortDirection: PartsListSortDirection;
+}): Prisma.PartWhereInput {
+  const op = sortDirection === "desc" ? "lt" : "gt";
+
+  if (field === "manufacturerName") {
+    const value = cursor.value ?? "";
+    return {
+      OR: [
+        { manufacturer: { name: { [op]: value } } },
+        { manufacturer: { name: value }, id: { gt: cursor.id } }
+      ]
+    };
+  }
+
+  if (field === "catalogNumber") {
+    const value = cursor.value ?? "";
+    return {
+      OR: [
+        { catalogNumber: { [op]: value } },
+        { catalogNumber: value, id: { gt: cursor.id } }
+      ]
+    };
+  }
+
+  // description is nullable and ordered NULLS LAST in both directions.
+  if (cursor.value === null) {
+    // Already inside the trailing block of null descriptions: page by id only.
+    return { description: null, id: { gt: cursor.id } };
+  }
+
+  return {
+    OR: [
+      { description: { [op]: cursor.value } },
+      { description: cursor.value, id: { gt: cursor.id } },
+      // All null-description rows sort after any non-null value.
+      { description: null }
+    ]
+  };
+}
+
 async function getSortedPartsListPage({
   baseWhere,
   categoryPathsById,
@@ -554,20 +733,10 @@ function comparePartsBySort({
   right: SortablePartRecord;
   sortBy: string;
 }) {
+  // Note: manufacturerName, catalogNumber, and description are sorted at the
+  // database level (getStringFieldSortedPartsListPage) and never reach here.
   if (sortBy === "categories") {
     return compareText(left.item.primaryCategoryPath ?? "", right.item.primaryCategoryPath ?? "");
-  }
-
-  if (sortBy === "manufacturerName") {
-    return compareText(left.item.manufacturerName, right.item.manufacturerName);
-  }
-
-  if (sortBy === "catalogNumber") {
-    return compareText(left.item.catalogNumber, right.item.catalogNumber);
-  }
-
-  if (sortBy === "description") {
-    return compareText(left.item.description ?? "", right.item.description ?? "");
   }
 
   if (sortBy === "valueDisplayValue") {
