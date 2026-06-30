@@ -30,8 +30,8 @@ importers:
         specifier: 8.22.0
         version: 8.22.0
       pg-boss:
-        specifier: 12.20.0
-        version: 12.20.0
+        specifier: 12.23.0
+        version: 12.23.0
       react:
         specifier: 19.2.7
         version: 19.2.7
@@ -1449,8 +1449,8 @@ packages:
   convert-source-map@2.0.0:
     resolution: {integrity: sha512-Kvp459HrV2FEJ1CAsi1Ku+MY3kasH19TFykTz2xWmMeq6bk2NU3XXvfJ+Q61m0xktWwt+1HSYf3JZsTms3aRJg==}
 
-  cron-parser@5.6.0:
-    resolution: {integrity: sha512-6159NDv4eDOjXYDmMTkvUtaVcIrNZI779ydTMOfDdi9fSjhPqmySx0icCHX2+nOyXgNSw6sFCsgLKxYs/2KPuQ==}
+  cron-parser@5.6.1:
+    resolution: {integrity: sha512-QBm4o1PwZiuY7KFbVvW7FLC8bozy7YWzv+Fz6KRS7sQghzcbDZCGxr/Bc5b6TQreAoSwuWVP491dIcK0THCX6A==}
     engines: {node: '>=18'}
 
   cross-spawn@7.0.6:
@@ -2374,8 +2374,8 @@ packages:
   perfect-debounce@2.1.0:
     resolution: {integrity: sha512-LjgdTytVFXeUgtHZr9WYViYSM/g8MkcTPYDlPa3cDqMirHjKiSZPYd6DoL7pK8AJQr+uWkQvCjHNdiMqsrJs+g==}
 
-  pg-boss@12.20.0:
-    resolution: {integrity: sha512-9YMoy8so5nXCzfCYwDfjW+3+nLPrcxRwSDrle8KMqqGDbS8jwzRN2ybT2dTHh8UnIvYtTHE2fFx2kOcTn3Pg3w==}
+  pg-boss@12.23.0:
+    resolution: {integrity: sha512-WOhvsaTZQkvCdE5w8diGoUi/tXcIc9lyuKn4KrmMZXnW+75181U1tzsyqQNMaMVqxIUREjwQtNbgFmFxp3rd1w==}
     engines: {node: '>=22.12.0'}
     hasBin: true
 
@@ -4062,7 +4062,7 @@ snapshots:
 
   convert-source-map@2.0.0: {}
 
-  cron-parser@5.6.0:
+  cron-parser@5.6.1:
     dependencies:
       luxon: 3.7.2
 
@@ -5119,9 +5119,9 @@ snapshots:
 
   perfect-debounce@2.1.0: {}
 
-  pg-boss@12.20.0:
+  pg-boss@12.23.0:
     dependencies:
-      cron-parser: 5.6.0
+      cron-parser: 5.6.1
       pg: 8.22.0
       serialize-error: 13.0.1
     transitivePeerDependencies:
