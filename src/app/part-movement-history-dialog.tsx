@@ -37,8 +37,11 @@ type Copy = {
   databaseUnavailable: string;
   historyColType: string;
   historyColQuantity: string;
-  historyColLocation: string;
+  historyColFrom: string;
+  historyColTo: string;
+  historyColNote: string;
   historyColDate: string;
+  historyColAuthor: string;
   configureList: string;
   visibleColumns: string;
 };
@@ -85,12 +88,23 @@ export function PartMovementHistoryDialog({
 
   const columnDefs = useMemo<ListColumnDefinition[]>(
     () => [
-      { id: "type", label: copy.historyColType, defaultWidth: 130, minWidth: 80, sortable: true },
+      { id: "type", label: copy.historyColType, defaultWidth: 120, minWidth: 80, sortable: true },
       { id: "quantity", label: copy.historyColQuantity, defaultWidth: 80, minWidth: 60, sortable: true, align: "right" },
-      { id: "location", label: copy.historyColLocation, defaultWidth: 220, sortable: true },
-      { id: "date", label: copy.historyColDate, defaultWidth: 160, sortable: true }
+      { id: "from", label: copy.historyColFrom, defaultWidth: 150, minWidth: 100, sortable: true },
+      { id: "to", label: copy.historyColTo, defaultWidth: 150, minWidth: 100, sortable: true },
+      { id: "note", label: copy.historyColNote, defaultWidth: 200, minWidth: 120, sortable: true },
+      { id: "date", label: copy.historyColDate, defaultWidth: 130, minWidth: 90, sortable: true },
+      { id: "author", label: copy.historyColAuthor, defaultWidth: 140, minWidth: 100, sortable: true }
     ],
-    [copy.historyColType, copy.historyColQuantity, copy.historyColLocation, copy.historyColDate]
+    [
+      copy.historyColType,
+      copy.historyColQuantity,
+      copy.historyColFrom,
+      copy.historyColTo,
+      copy.historyColNote,
+      copy.historyColDate,
+      copy.historyColAuthor
+    ]
   );
 
   const tableConfig = useListTableConfiguration({
@@ -128,24 +142,33 @@ export function PartMovementHistoryDialog({
             </span>
           )
         }),
-        columnHelper.accessor(
-          (row) =>
-            [row.fromLocationName, row.toLocationName].filter(Boolean).join(" → "),
-          {
-            id: "location",
-            header: () => copy.historyColLocation,
-            enableSorting: true,
-            sortingFn: "alphanumeric",
-            cell: (info) => (
-              <div className="text-[var(--color-text-secondary)]">
-                <span>{info.getValue() || null}</span>
-                {info.row.original.note ? (
-                  <p className="text-xs text-[var(--color-text-placeholder)]">{info.row.original.note}</p>
-                ) : null}
-              </div>
-            )
-          }
-        ),
+        columnHelper.accessor((row) => row.fromLocationName ?? "", {
+          id: "from",
+          header: () => copy.historyColFrom,
+          enableSorting: true,
+          sortingFn: "alphanumeric",
+          cell: (info) => (
+            <span className="text-[var(--color-text-secondary)]">{info.getValue() || null}</span>
+          )
+        }),
+        columnHelper.accessor((row) => row.toLocationName ?? "", {
+          id: "to",
+          header: () => copy.historyColTo,
+          enableSorting: true,
+          sortingFn: "alphanumeric",
+          cell: (info) => (
+            <span className="text-[var(--color-text-secondary)]">{info.getValue() || null}</span>
+          )
+        }),
+        columnHelper.accessor((row) => row.note ?? "", {
+          id: "note",
+          header: () => copy.historyColNote,
+          enableSorting: true,
+          sortingFn: "alphanumeric",
+          cell: (info) => (
+            <span className="text-[var(--color-text-placeholder)]">{info.getValue() || null}</span>
+          )
+        }),
         columnHelper.accessor("createdAt", {
           id: "date",
           header: () => copy.historyColDate,
@@ -154,20 +177,29 @@ export function PartMovementHistoryDialog({
             new Date(rowA.original.createdAt).getTime() -
             new Date(rowB.original.createdAt).getTime(),
           cell: (info) => (
-            <div className="whitespace-nowrap text-xs text-[var(--color-text-placeholder)]">
+            <span className="whitespace-nowrap text-[var(--color-text-secondary)]">
               {new Date(info.getValue()).toLocaleDateString()}
-              {info.row.original.authorName ? (
-                <p>{info.row.original.authorName}</p>
-              ) : null}
-            </div>
+            </span>
+          )
+        }),
+        columnHelper.accessor((row) => row.authorName ?? "", {
+          id: "author",
+          header: () => copy.historyColAuthor,
+          enableSorting: true,
+          sortingFn: "alphanumeric",
+          cell: (info) => (
+            <span className="text-[var(--color-text-secondary)]">{info.getValue() || null}</span>
           )
         })
       ],
       [
         copy.historyColType,
         copy.historyColQuantity,
-        copy.historyColLocation,
-        copy.historyColDate
+        copy.historyColFrom,
+        copy.historyColTo,
+        copy.historyColNote,
+        copy.historyColDate,
+        copy.historyColAuthor
       ]
     ),
     state: {
@@ -198,7 +230,7 @@ export function PartMovementHistoryDialog({
       closeLabel={copy.close}
       title={`${copy.movementHistory}: ${partTitle}`}
       titleId="movement-history-dialog-title"
-      widthClassName="w-[min(60rem,calc(100vw-3rem))]"
+      widthClassName="w-[min(72rem,calc(100vw-3rem))]"
       heightClassName="h-[min(calc(100vh-2rem),520px)]"
       onClose={onClose}
       onCancel={(event) => {

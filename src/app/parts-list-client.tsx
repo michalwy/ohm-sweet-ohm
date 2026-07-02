@@ -241,8 +241,11 @@ type Copy = {
   noHistory: string;
   historyColType: string;
   historyColQuantity: string;
-  historyColLocation: string;
+  historyColFrom: string;
+  historyColTo: string;
+  historyColNote: string;
   historyColDate: string;
+  historyColAuthor: string;
   poHistory: string;
   noPurchaseOrders: string;
   poHistoryColOrder: string;

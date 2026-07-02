@@ -51,7 +51,7 @@ Click any row in the parts list to open the detail panel on the right. The panel
 
 - **Attributes** — all attribute values recorded for the part.
 - **Locations and stock** — current stock quantity per storage location, plus a button to record a new movement. Requires Inventory read access.
-- **Movement history** — the 50 most recent inventory entries (receipts, issues, transfers, adjustments). Requires Inventory read access.
+- **Movement history** — the 50 most recent inventory entries (receipts, issues, transfers, adjustments). Each entry is shown across separate **Type**, **Qty**, **From**, **To**, **Note**, **Date**, and **Author** columns, which you can sort, resize, reorder, and toggle via **Configure list**. Requires Inventory read access.
 - **Purchase Orders** — all purchase order lines that reference this part, ordered by date descending (most recent first), up to 50 rows. Shows order reference, supplier, status (Draft / Ordered / Received), order date, quantity, and unit price with currency. An **Add to PO** button below the table opens a quick-add dialog. Requires Purchase Orders read access; the button additionally requires Purchase Orders write access.
 - **Shopping Lists** — all shopping lists that currently contain this part, ordered alphabetically by list name. Shows list name (click to open that list), quantity requested, and notes. An **Add to shopping list** button below the table opens a quick-add dialog. Requires Shopping Lists read access; the button additionally requires Shopping Lists write access.
 
