@@ -7,7 +7,9 @@ RUN apt-get update -y \
 RUN corepack enable
 
 FROM base AS deps
-COPY package.json pnpm-lock.yaml* ./
+# pnpm-workspace.yaml carries onlyBuiltDependencies/allowBuilds; without it pnpm 11
+# aborts install with ERR_PNPM_IGNORED_BUILDS for prisma/esbuild/sharp/etc.
+COPY package.json pnpm-lock.yaml* pnpm-workspace.yaml ./
 RUN pnpm install
 
 FROM base AS dev
