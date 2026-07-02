@@ -7,6 +7,8 @@ services:
       POSTGRES_DB: ohm_sweet_ohm_e2e
       POSTGRES_USER: oso
       POSTGRES_PASSWORD: oso_e2e_password
+      # postgres:18 changed the default PGDATA location; pin it back to the tmpfs mount below.
+      PGDATA: /var/lib/postgresql/data
     tmpfs:
       - /var/lib/postgresql/data
     healthcheck:
