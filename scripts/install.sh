@@ -185,9 +185,12 @@ fallback_confirm() {
 # .env helpers
 # =============================================================================
 
-# Escape a value for safe use as a double-quoted shell/.env value.
+# Escape a value for a double-quoted value in a Compose-style .env file:
+# backslash and double quote for the dotenv parser, and $ -> $$ so Compose does
+# not treat $word / ${word} inside the value (e.g. a password) as a variable to
+# interpolate (which would blank it and emit "variable is not set" warnings).
 env_escape() {
-  printf '%s' "$1" | sed -e 's/\\/\\\\/g' -e 's/"/\\"/g'
+  printf '%s' "$1" | sed -e 's/\\/\\\\/g' -e 's/"/\\"/g' -e 's/\$/$$/g'
 }
 
 # Set KEY="value" in the .env file, replacing any existing line for KEY.
@@ -203,9 +206,11 @@ set_env() {
   fi
 }
 
-# Read a value back from .env (unquoted).
+# Read a value back from .env (unquoted, and with Compose's $$ un-escaped back to
+# a single $ so re-writing it does not double-escape).
 get_env() {
-  grep -E "^$1=" .env | tail -n1 | cut -d= -f2- | sed -e 's/^"//' -e 's/"$//'
+  grep -E "^$1=" .env | tail -n1 | cut -d= -f2- |
+    sed -e 's/^"//' -e 's/"$//' -e 's/\$\$/$/g'
 }
 
 gen_secret() {
