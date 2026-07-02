@@ -62,8 +62,10 @@ docker compose pull && docker compose up -d
 docker compose down
 ```
 
-Re-running the installer is safe: it never overwrites an existing `.env`; it only refreshes
-the compose file and restarts the stack.
+Re-running the installer is safe and doubles as a reconfigure step: it re-runs the interview
+with your current `.env` values pre-filled as defaults, so you can change individual settings
+(or press Enter/OK to keep each one). Only the keys you change are written — any other keys in
+`.env` are preserved — and then it refreshes the compose files and restarts the stack.
 
 ## Connecting to a Database on a Shared Docker Network
 

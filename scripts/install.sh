@@ -9,8 +9,9 @@
 # Usage:
 #   curl -fsSL https://raw.githubusercontent.com/michalwy/ohm-sweet-ohm/main/scripts/install.sh | bash
 #
-# Re-running is safe: an existing .env is never overwritten; only the compose
-# files are refreshed so you can pick up deployment changes.
+# Re-running is safe: it re-runs the interview with your current .env values
+# pre-filled as defaults, so you can adjust individual settings; only the keys
+# you change are written and any other keys in .env are preserved.
 #
 # The interview uses whiptail (a native dialog UI, preinstalled on Raspberry Pi
 # OS / Debian) when available, and falls back to a pure-bash arrow-key menu
@@ -72,11 +73,12 @@ ui_password() {
   fi
 }
 
-# ui_menu <var> <question> <value1> <label1> <value2> <label2> ...
-# Sets <var> to the chosen value.
+# ui_menu <var> <default_value> <question> <value1> <label1> <value2> <label2> ...
+# Sets <var> to the chosen value. <default_value> pre-selects a menu item
+# (empty string selects the first).
 ui_menu() {
-  local __var="$1" question="$2"
-  shift 2
+  local __var="$1" default="$2" question="$3"
+  shift 3
   local vals=() labels=()
   while [ "$#" -gt 0 ]; do
     vals+=("$1")
@@ -87,13 +89,17 @@ ui_menu() {
   if have_whiptail; then
     local menu_args=()
     for ((i = 0; i < n; i++)); do menu_args+=("${vals[i]}" "${labels[i]}"); done
+    local default_args=()
+    [ -n "$default" ] && default_args=(--default-item "$default")
     local choice
-    choice=$(whiptail --title "$APP_TITLE" --notags --menu "$question" 16 78 "$n" \
+    choice=$(whiptail --title "$APP_TITLE" --notags "${default_args[@]}" --menu "$question" 16 78 "$n" \
       "${menu_args[@]}" 3>&1 1>&2 2>&3 </dev/tty) || die "Installation cancelled."
     printf -v "$__var" '%s' "$choice"
   else
+    local start=0
+    for ((i = 0; i < n; i++)); do [ "${vals[i]}" = "$default" ] && start=$i; done
     local idx
-    fallback_choose idx "$question" "${labels[@]}"
+    fallback_choose idx "$start" "$question" "${labels[@]}"
     printf -v "$__var" '%s' "${vals[idx]}"
   fi
 }
@@ -122,12 +128,14 @@ fallback_prompt() {
 }
 
 # Arrow-key single-select menu; sets the named variable to the selected index.
+# fallback_choose <var> <start_index> <title> <option> [<option> ...]
 fallback_choose() {
-  local __var="$1" __title="$2"
-  shift 2
+  local __var="$1" __start="$2" __title="$3"
+  shift 3
   local __opts=("$@")
   local __count=${#__opts[@]}
-  local __sel=0 __key __rest __i __first=1
+  local __sel="${__start:-0}" __key __rest __i __first=1
+  [ "$__sel" -ge 0 ] && [ "$__sel" -lt "$__count" ] || __sel=0
 
   printf '\033[1m%s\033[0m\n' "$__title" >/dev/tty
   printf '\033[2m  (↑/↓ to move, Enter to select)\033[0m\n' >/dev/tty
@@ -169,7 +177,7 @@ fallback_choose() {
 # Yes/No via the arrow-key menu. Returns 0 for Yes, 1 for No.
 fallback_confirm() {
   local __idx
-  fallback_choose __idx "$1" "Yes" "No"
+  fallback_choose __idx 0 "$1" "Yes" "No"
   [ "$__idx" -eq 0 ]
 }
 
@@ -255,31 +263,42 @@ main() {
   info "Downloading ${NETWORK_FILE_NAME}"
   download "${RAW_BASE}/${NETWORK_FILE_NAME}" "${NETWORK_FILE_NAME}"
 
+  # Use an existing .env as the base for defaults (reconfigure in place), or seed
+  # a fresh one from the template. Either way the interview runs and only the
+  # keys you set are written; other keys in .env are preserved.
+  local is_reconfigure=0
   if [ -f .env ]; then
-    info "Existing .env found — keeping it, not overwriting."
-    info "Refreshing compose files only. Edit .env by hand if you need to change settings."
-    grep -qE '^COMPOSE_FILE=' .env || set_env COMPOSE_FILE "${COMPOSE_FILE_NAME}"
-    info "Pulling latest images..."
-    compose pull
-    info "Starting stack..."
-    compose up -d
-    print_summary
-    return 0
+    is_reconfigure=1
+    info "Existing .env found — its current values are offered as defaults."
+  else
+    info "Downloading ${ENV_EXAMPLE}"
+    download "${RAW_BASE}/${ENV_EXAMPLE}" "${ENV_EXAMPLE}"
+    cp "${ENV_EXAMPLE}" .env
   fi
 
-  info "Downloading ${ENV_EXAMPLE}"
-  download "${RAW_BASE}/${ENV_EXAMPLE}" "${ENV_EXAMPLE}"
-  cp "${ENV_EXAMPLE}" .env
+  # Default for a question: the current .env value when reconfiguring, else the
+  # provided fresh-install fallback.
+  dflt() {
+    local existing=""
+    [ "$is_reconfigure" -eq 1 ] && existing="$(get_env "$1")"
+    [ -n "$existing" ] && printf '%s' "$existing" || printf '%s' "${2:-}"
+  }
 
   # --- Interview -----------------------------------------------------------
   local database_url auth_url http_port secret interval db_mode secret_mode update_mode net_name db_hint
+  local db_default="port" update_default="off" existing_secret
 
-  ui_menu db_mode "How does the app reach your PostgreSQL database?" \
+  if [ "$is_reconfigure" -eq 1 ]; then
+    case "$(get_env COMPOSE_FILE)" in *"$NETWORK_FILE_NAME"*) db_default="network" ;; esac
+    case "$(get_env COMPOSE_PROFILES)" in *autoupdate*) update_default="on" ;; esac
+  fi
+
+  ui_menu db_mode "$db_default" "How does the app reach your PostgreSQL database?" \
     port "Published host port (or host.docker.internal)" \
     network "Shared Docker network — no exposed DB port"
 
   if [ "$db_mode" = "network" ]; then
-    ui_prompt net_name "Name of the shared Docker network your PostgreSQL container is attached to" "oso"
+    ui_prompt net_name "Name of the shared Docker network your PostgreSQL container is attached to" "$(dflt OSO_DB_NETWORK oso)"
     [ -n "$net_name" ] || net_name="oso"
     set_env OSO_DB_NETWORK "$net_name"
     set_env COMPOSE_FILE "${COMPOSE_FILE_NAME}:${NETWORK_FILE_NAME}"
@@ -299,34 +318,48 @@ main() {
 
   ui_prompt database_url "External DATABASE_URL
 
-$db_hint" ""
+$db_hint" "$(dflt DATABASE_URL "")"
   [ -n "$database_url" ] || die "DATABASE_URL is required."
   set_env DATABASE_URL "$database_url"
 
-  ui_prompt auth_url "Public URL where this deployment will be reachable (BETTER_AUTH_URL)" "http://localhost:3000"
+  ui_prompt auth_url "Public URL where this deployment will be reachable (BETTER_AUTH_URL)" "$(dflt BETTER_AUTH_URL http://localhost:3000)"
   set_env BETTER_AUTH_URL "$auth_url"
 
-  ui_prompt http_port "Host port to expose the app on" "3000"
+  ui_prompt http_port "Host port to expose the app on" "$(dflt OSO_HTTP_PORT 3000)"
   set_env OSO_HTTP_PORT "$http_port"
 
-  ui_menu secret_mode "Authentication secret (BETTER_AUTH_SECRET)" \
-    auto "Auto-generate a strong secret (recommended)" \
-    manual "Enter my own"
-  if [ "$secret_mode" = "auto" ]; then
-    secret="$(gen_secret)"
-    info "Generated a new auth secret."
+  existing_secret="$(dflt BETTER_AUTH_SECRET "")"
+  if [ -n "$existing_secret" ]; then
+    ui_menu secret_mode keep "Authentication secret (BETTER_AUTH_SECRET)" \
+      keep "Keep the current secret" \
+      auto "Generate a new strong secret" \
+      manual "Enter my own"
   else
+    ui_menu secret_mode auto "Authentication secret (BETTER_AUTH_SECRET)" \
+      auto "Auto-generate a strong secret (recommended)" \
+      manual "Enter my own"
+  fi
+  case "$secret_mode" in
+  keep)
+    info "Keeping the existing auth secret."
+    ;;
+  auto)
+    set_env BETTER_AUTH_SECRET "$(gen_secret)"
+    info "Generated a new auth secret."
+    ;;
+  manual)
     ui_password secret "Enter BETTER_AUTH_SECRET (at least 32 random characters)"
     [ ${#secret} -ge 32 ] || die "BETTER_AUTH_SECRET must be at least 32 characters."
-  fi
-  set_env BETTER_AUTH_SECRET "$secret"
+    set_env BETTER_AUTH_SECRET "$secret"
+    ;;
+  esac
 
-  ui_menu update_mode "Automatic updates" \
+  ui_menu update_mode "$update_default" "Automatic updates" \
     off "Disabled — update manually" \
     on "Enabled — Watchtower watches for new release images"
   if [ "$update_mode" = "on" ]; then
     set_env COMPOSE_PROFILES "autoupdate"
-    ui_prompt interval "Update check interval in seconds" "3600"
+    ui_prompt interval "Update check interval in seconds" "$(dflt OSO_UPDATE_INTERVAL 3600)"
     [ -n "$interval" ] || interval="3600"
     set_env OSO_UPDATE_INTERVAL "$interval"
     info "Auto-update enabled."
