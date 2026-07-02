@@ -24,7 +24,7 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:-oso}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-oso_dev_password}
     volumes:
-      - postgres-data:/var/lib/postgresql/data
+      - postgres-data:/var/lib/postgresql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U oso -d ohm_sweet_ohm"]
       interval: 5s
