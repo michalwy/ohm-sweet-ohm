@@ -25,7 +25,7 @@ type InfiniteListViewportProps = {
 
 export function InfiniteListViewport({
   children,
-  className = "min-h-0 flex-1 overflow-auto overscroll-contain",
+  className = "relative min-h-0 flex-1 overflow-auto overscroll-contain",
   emptyState,
   errorState,
   isEmpty,
