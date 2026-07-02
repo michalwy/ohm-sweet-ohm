@@ -48,3 +48,7 @@ Thumbs.db
 
 # claude code
 .claude/
+
+# editor swap files
+*.swp
+*.swo
