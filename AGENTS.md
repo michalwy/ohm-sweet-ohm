@@ -113,6 +113,7 @@ Do not use multiple roles to invent product behavior. Product decisions still re
 - Keep Docker Compose suitable for local use and development, not as the only deployment path.
 - Treat `docker compose up` as the user's normal local-use stack: it should run the built app with `next start` against the persistent development database, without creating a seeded development user.
 - Use `docker compose -f docker-compose.yml -f docker-compose.dev.yml up` for containerized development with hot reload.
+- A self-hosted deployment path exists for real servers (e.g. Raspberry Pi), documented in `docs/decisions/0022-self-hosted-deployment.md`: CI's `publish-image` job pushes a multi-arch image to `ghcr.io/michalwy/ohm-sweet-ohm`, `docker-compose.prod.yml` runs that prebuilt image against an operator-provided external database with all config in a git-ignored `.env` (template `.env.prod.example`), and `scripts/install.sh` is the curl-able installer. Optional auto-update uses Watchtower under the `autoupdate` compose profile. Keep these in sync when changing runtime env vars, the worker command, migrations-on-start behavior, or the Dockerfile `runner` target.
 - Keep dependencies reasonably current; avoid leaving generated scaffolds pinned to old major versions without a documented compatibility reason.
 - DigiKey search payload reference:
   - The repository keeps a supplier-response shape note at `docs/integrations-digikey-search-sample.json`.

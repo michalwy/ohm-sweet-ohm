@@ -69,6 +69,24 @@ The default app URL is:
 http://localhost:3000
 ```
 
+## Self-Hosting / Deployment
+
+To run OSO on your own always-on server (for example a Raspberry Pi) using a prebuilt
+image and your own PostgreSQL database, run the installer on the server:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/michalwy/ohm-sweet-ohm/main/scripts/install.sh | bash
+```
+
+The script downloads `docker-compose.prod.yml`, interviews you for configuration, writes a
+local `.env`, and starts the app against your external database. See the
+[Deployment guide](docs/user-guide/deployment.md) and
+[ADR 0022](docs/decisions/0022-self-hosted-deployment.md) for details.
+
+`docker-compose.yml` is for **local use** (builds the image and runs its own database).
+`docker-compose.prod.yml` is for **real servers** (pulls a prebuilt image from GHCR and
+uses an external database). Images are built and published to GHCR automatically by CI.
+
 ## Repository Guide
 
 - [AGENTS.md](AGENTS.md): instructions for future coding agents

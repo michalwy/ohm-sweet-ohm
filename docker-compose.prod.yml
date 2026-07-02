@@ -1,0 +1,61 @@
+# Production / self-hosting stack for OhmSweetOhm.
+#
+# This file is meant to run a pre-built image from GitHub Container Registry on a
+# target server (for example a Raspberry Pi). It does NOT build anything locally
+# and does NOT run a database — the operator provides an external PostgreSQL via
+# DATABASE_URL in the sibling .env file.
+#
+# You should never need to edit this file. All configuration lives in .env.
+# Start it with:  docker compose -f docker-compose.prod.yml up -d
+# (the install script at scripts/install.sh sets this up for you).
+
+services:
+  app:
+    image: ghcr.io/michalwy/ohm-sweet-ohm:${OSO_IMAGE_TAG:-latest}
+    # The app container owns schema migrations against the external database.
+    command: sh -c "pnpm prisma:migrate:deploy && pnpm start"
+    env_file:
+      - .env
+    ports:
+      - "${OSO_HTTP_PORT:-3000}:3000"
+    restart: unless-stopped
+    labels:
+      # Opt this service in to Watchtower auto-updates (only active with the
+      # "autoupdate" compose profile below).
+      com.centurylinklabs.watchtower.enable: "true"
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "node -e \"fetch('http://localhost:3000/').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))\"",
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
+
+  worker:
+    image: ghcr.io/michalwy/ohm-sweet-ohm:${OSO_IMAGE_TAG:-latest}
+    command: pnpm worker
+    env_file:
+      - .env
+    restart: unless-stopped
+    labels:
+      com.centurylinklabs.watchtower.enable: "true"
+
+  # Optional auto-update watcher. Enabled only when COMPOSE_PROFILES=autoupdate
+  # (the install script sets this on request). Watchtower polls GHCR and restarts
+  # the app/worker containers when a newer image is published.
+  watchtower:
+    image: containrrr/watchtower
+    profiles:
+      - autoupdate
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    environment:
+      # Only update containers that carry the watchtower.enable label, so
+      # unrelated containers on the same host are left alone.
+      WATCHTOWER_LABEL_ENABLE: "true"
+      WATCHTOWER_CLEANUP: "true"
+      WATCHTOWER_POLL_INTERVAL: ${OSO_UPDATE_INTERVAL:-3600}
+    restart: unless-stopped

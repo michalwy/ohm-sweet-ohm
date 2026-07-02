@@ -35,6 +35,11 @@ docker compose up
 
 To stop the app, press `Ctrl+C` in the terminal where it is running.
 
+## Run OSO On A Server (Self-Hosting)
+
+To run OSO on an always-on server such as a Raspberry Pi, using a prebuilt image and your
+own PostgreSQL database, see the [Deployment guide](deployment.md).
+
 ## Quick Start Checklist
 
 If you are setting up a new workspace, this sequence usually works best:
@@ -63,3 +68,4 @@ If you are setting up a new workspace, this sequence usually works best:
 - [Purchasing](purchasing.md) — shopping lists and purchase orders
 - [Integrations](integrations.md) — DigiKey, TME, and currency settings
 - [Settings & Permissions](settings.md) — workspace settings and access control
+- [Deployment](deployment.md) — self-host OSO on your own server with a prebuilt image
