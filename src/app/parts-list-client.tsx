@@ -162,6 +162,9 @@ type Copy = {
   actions: string;
   source: string;
   stock: string;
+  reserved: string;
+  allocated: string;
+  available: string;
   planned: string;
   onOrder: string;
   avgNetCost: string;
@@ -426,6 +429,9 @@ export function PartsListClient({
           value: copy.value,
           source: copy.source,
           stock: copy.stock,
+          reserved: copy.reserved,
+          allocated: copy.allocated,
+          available: copy.available,
           planned: copy.planned,
           onOrder: copy.onOrder,
           avgNetCost: copy.avgNetCost,
@@ -708,6 +714,9 @@ export function PartsListClient({
       value: copy.value,
       source: copy.source,
       stock: copy.stock,
+      reserved: copy.reserved,
+      allocated: copy.allocated,
+      available: copy.available,
       planned: copy.planned,
       onOrder: copy.onOrder,
       avgNetCost: copy.avgNetCost,

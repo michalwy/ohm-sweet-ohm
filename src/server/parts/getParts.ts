@@ -30,6 +30,9 @@ export type PartsListItem = {
   defaultLocationId: string | null;
   defaultLocationName: string | null;
   currentStock: string | null;
+  reservedQuantity: string | null;
+  allocatedQuantity: string | null;
+  availableQuantity: string | null;
   plannedQuantity: string | null;
   onOrderQuantity: string | null;
   avgNetCost: string | null;
@@ -358,6 +361,8 @@ const partListSelect = {
   catalogNumber: true,
   description: true,
   currentStock: true,
+  reservedQty: true,
+  allocatedQty: true,
   plannedQty: true,
   onOrderQty: true,
   avgNetCostPrimary: true,
@@ -902,6 +907,11 @@ function mapPartListItem({
     defaultLocationId: part.defaultLocation?.id ?? null,
     defaultLocationName: part.defaultLocation?.name ?? null,
     currentStock: canReadInventory ? part.currentStock.toString() : null,
+    reservedQuantity: canReadInventory ? part.reservedQty.toString() : null,
+    allocatedQuantity: canReadInventory ? part.allocatedQty.toString() : null,
+    availableQuantity: canReadInventory
+      ? part.currentStock.minus(part.reservedQty).toString()
+      : null,
     plannedQuantity: canReadShoppingLists ? part.plannedQty.toString() : null,
     onOrderQuantity: canReadPurchaseOrders ? part.onOrderQty.toString() : null,
     avgNetCost: canReadPurchaseOrders

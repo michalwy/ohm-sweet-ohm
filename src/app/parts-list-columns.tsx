@@ -14,6 +14,14 @@ import {
 } from "@/app/parts-list-sort-utils";
 import { EmptyCell } from "@/app/list-table-cell";
 
+// A stock/quantity column shows nothing for an absent value *or* a numeric zero, so an empty
+// shelf reads as blank rather than a noisy "0".
+function nonZeroQuantity(value: string | null): string | null {
+  if (!value) return null;
+  const numeric = Number(value);
+  return Number.isFinite(numeric) && numeric === 0 ? null : value;
+}
+
 // ---------------------------------------------------------------------------
 // Copy types
 // ---------------------------------------------------------------------------
@@ -30,6 +38,9 @@ export type PartsListColumnsCopy = PartsListCategoriesCopy & {
   value: string;
   source: string;
   stock: string;
+  reserved: string;
+  allocated: string;
+  available: string;
   planned: string;
   onOrder: string;
   avgNetCost: string;
@@ -84,6 +95,9 @@ type BuildColumnDefsOpts = {
     | "value"
     | "source"
     | "stock"
+    | "reserved"
+    | "allocated"
+    | "available"
     | "planned"
     | "onOrder"
     | "avgNetCost"
@@ -175,6 +189,33 @@ export function buildPartsListColumnDefs({
             defaultWidth: 120,
             minWidth: 72,
             sortable: true,
+            align: "right" as const
+          },
+          {
+            id: "reservedQuantity",
+            label: copy.reserved,
+            group: "base" as const,
+            defaultVisible: false,
+            defaultWidth: 120,
+            minWidth: 72,
+            align: "right" as const
+          },
+          {
+            id: "allocatedQuantity",
+            label: copy.allocated,
+            group: "base" as const,
+            defaultVisible: false,
+            defaultWidth: 120,
+            minWidth: 72,
+            align: "right" as const
+          },
+          {
+            id: "availableQuantity",
+            label: copy.available,
+            group: "base" as const,
+            defaultVisible: false,
+            defaultWidth: 120,
+            minWidth: 72,
             align: "right" as const
           }
         ]
@@ -416,7 +457,58 @@ export function buildPartsListColumns(
                 rowB.original.currentStock ?? ""
               ),
             cell: ({ getValue }) => {
-              const value = getValue();
+              const value = nonZeroQuantity(getValue());
+
+              return value ? (
+                <span className="block text-right text-[var(--color-text-primary)]">{value}</span>
+              ) : (
+                <span className="block text-right"><EmptyCell /></span>
+              );
+            }
+          }),
+          columnHelper.accessor("reservedQuantity", {
+            header: () => (
+              <span className="block w-full text-right">{copy.reserved}</span>
+            ),
+            size: 120,
+            minSize: 72,
+            enableSorting: false,
+            cell: ({ getValue }) => {
+              const value = nonZeroQuantity(getValue());
+
+              return value ? (
+                <span className="block text-right text-[var(--color-text-secondary)]">{value}</span>
+              ) : (
+                <span className="block text-right"><EmptyCell /></span>
+              );
+            }
+          }),
+          columnHelper.accessor("allocatedQuantity", {
+            header: () => (
+              <span className="block w-full text-right">{copy.allocated}</span>
+            ),
+            size: 120,
+            minSize: 72,
+            enableSorting: false,
+            cell: ({ getValue }) => {
+              const value = nonZeroQuantity(getValue());
+
+              return value ? (
+                <span className="block text-right text-[var(--color-text-secondary)]">{value}</span>
+              ) : (
+                <span className="block text-right"><EmptyCell /></span>
+              );
+            }
+          }),
+          columnHelper.accessor("availableQuantity", {
+            header: () => (
+              <span className="block w-full text-right">{copy.available}</span>
+            ),
+            size: 120,
+            minSize: 72,
+            enableSorting: false,
+            cell: ({ getValue }) => {
+              const value = nonZeroQuantity(getValue());
 
               return value ? (
                 <span className="block text-right text-[var(--color-text-primary)]">{value}</span>
@@ -441,7 +533,7 @@ export function buildPartsListColumns(
                 rowB.original.plannedQuantity ?? ""
               ),
             cell: ({ getValue }) => {
-              const value = getValue();
+              const value = nonZeroQuantity(getValue());
 
               return value ? (
                 <span className="block text-right text-[var(--color-text-primary)]">{value}</span>
@@ -466,7 +558,7 @@ export function buildPartsListColumns(
                 rowB.original.onOrderQuantity ?? ""
               ),
             cell: ({ getValue }) => {
-              const value = getValue();
+              const value = nonZeroQuantity(getValue());
 
               return value ? (
                 <span className="block text-right text-[var(--color-text-primary)]">{value}</span>

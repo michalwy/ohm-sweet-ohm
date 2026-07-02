@@ -15,6 +15,8 @@ model Part {
   currentStock        Decimal  @default(0)
   plannedQty          Decimal  @default(0)
   onOrderQty          Decimal  @default(0)
+  reservedQty         Decimal  @default(0)
+  allocatedQty        Decimal  @default(0)
   avgNetCostPrimary   Decimal?
   avgGrossCostPrimary Decimal?
   catalogNumber       String
@@ -37,6 +39,7 @@ model Part {
   purchaseOrderItems PurchaseOrderItem[]
   assembledByDesign  Design?             @relation("DesignOutputPart")
   pinnedByBomLineItems BomLineItem[]     @relation("BomLineItemPinnedPart")
+  buildLineItems     BuildLineItem[]
 
   @@unique([workspaceId, manufacturerId, catalogNumber])
   @@index([workspaceId, catalogNumber])
@@ -45,6 +48,8 @@ model Part {
   @@index([workspaceId, currentStock, id])
   @@index([workspaceId, plannedQty, id])
   @@index([workspaceId, onOrderQty, id])
+  @@index([workspaceId, reservedQty, id])
+  @@index([workspaceId, allocatedQty, id])
   @@index([workspaceId, avgNetCostPrimary, id])
   @@index([workspaceId, avgGrossCostPrimary, id])
   @@index([workspaceId, manufacturerId])
@@ -81,6 +86,7 @@ model DesignRevision {
   design    Design    @relation(fields: [designId], references: [id], onDelete: Cascade)
   workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   lineItems BomLineItem[]
+  builds    Build[]
 
   @@unique([designId, revisionNumber])
   @@index([designId])
@@ -114,6 +120,7 @@ model BomLineItem {
   category   PartCategory?  @relation(fields: [categoryId], references: [id], onDelete: SetNull)
   pinnedPart Part?          @relation("BomLineItemPinnedPart", fields: [pinnedPartId], references: [id], onDelete: SetNull)
   matchers   BomMatcher[]
+  buildLineItems BuildLineItem[]
 
   @@index([workspaceId])
   @@index([revisionId, sortOrder])
@@ -142,6 +149,82 @@ model BomMatcher {
   @@unique([lineItemId, attributeId])
   @@index([workspaceId, lineItemId])
   @@index([attributeId])
+}
+
+enum BuildState {
+  CREATED
+  ALLOCATED
+  STARTED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+model Build {
+  id               String     @id @default(cuid())
+  workspaceId      String
+  designRevisionId String
+  outputLocationId String?
+  targetQuantity   Int
+  state            BuildState @default(CREATED)
+  startedAt        DateTime?
+  completedAt      DateTime?
+  cancelledAt      DateTime?
+  createdByUserId  String?
+  createdAt        DateTime   @default(now())
+  updatedAt        DateTime   @updatedAt
+
+  workspace      Workspace        @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  designRevision DesignRevision   @relation(fields: [designRevisionId], references: [id], onDelete: Restrict)
+  outputLocation StorageLocation? @relation("BuildOutputLocation", fields: [outputLocationId], references: [id], onDelete: Restrict)
+  createdByUser  User?            @relation(fields: [createdByUserId], references: [id], onDelete: SetNull)
+  lineItems      BuildLineItem[]
+
+  @@index([workspaceId, state, createdAt])
+  @@index([workspaceId, createdAt])
+  @@index([designRevisionId])
+}
+
+model BuildLineItem {
+  id                  String  @id @default(cuid())
+  workspaceId         String
+  buildId             String
+  sourceBomLineItemId String?
+  designators         String
+  designatorCount     Int
+  categoryName        String?
+  partId              String?
+  sourceLocationId    String?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  workspace        Workspace        @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  build            Build            @relation(fields: [buildId], references: [id], onDelete: Cascade)
+  sourceBomLineItem BomLineItem?    @relation(fields: [sourceBomLineItemId], references: [id], onDelete: SetNull)
+  part             Part?            @relation(fields: [partId], references: [id], onDelete: Restrict)
+  sourceLocation   StorageLocation? @relation("BuildLineSourceLocation", fields: [sourceLocationId], references: [id], onDelete: Restrict)
+  assignments      BuildDesignatorAssignment[]
+
+  @@index([workspaceId])
+  @@index([buildId])
+  @@index([partId])
+}
+
+model BuildDesignatorAssignment {
+  id                String   @id @default(cuid())
+  workspaceId       String
+  buildLineItemId   String
+  designator        String
+  quantity          Int
+  assembledQuantity Int      @default(0)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  workspace     Workspace     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  buildLineItem BuildLineItem @relation(fields: [buildLineItemId], references: [id], onDelete: Cascade)
+
+  @@index([workspaceId])
+  @@index([buildLineItemId])
 }
 
 model Unit {
@@ -178,6 +261,8 @@ model StorageLocation {
   defaultForParts       Part[]            @relation("PartDefaultLocation")
   inventoryEntriesFrom  InventoryEntry[]  @relation("InventoryEntryFromLocation")
   inventoryEntriesTo    InventoryEntry[]  @relation("InventoryEntryToLocation")
+  buildLineSources      BuildLineItem[]   @relation("BuildLineSourceLocation")
+  buildOutputs          Build[]           @relation("BuildOutputLocation")
 
   @@unique([workspaceId, parentId, normalizedName])
   @@index([workspaceId, parentId])
@@ -441,6 +526,7 @@ model User {
   inventoryEntriesCreated InventoryEntry[]
   shoppingListsCreated    ShoppingList[]
   purchaseOrdersCreated   PurchaseOrder[]
+  buildsCreated           Build[]
 }
 
 model Session {
@@ -527,6 +613,9 @@ model Workspace {
   designRevisions  DesignRevision[]
   bomLineItems     BomLineItem[]
   bomMatchers      BomMatcher[]
+  builds                     Build[]
+  buildLineItems             BuildLineItem[]
+  buildDesignatorAssignments BuildDesignatorAssignment[]
 
   @@index([archivedAt])
 }

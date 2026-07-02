@@ -8,6 +8,7 @@ import { WorkspaceProvider } from "@/app/workspace-context";
 type WorkspaceNavItem =
   | "parts"
   | "designs"
+  | "builds"
   | "locations"
   | "organizations"
   | "shopping-lists"
@@ -38,6 +39,7 @@ const copy = {
   inventorySection: "Inventory",
   parts: "Parts",
   designs: "Designs",
+  builds: "Builds",
   locations: "Storage Locations",
   purchasesSection: "Purchases",
   shoppingLists: "Shopping Lists",
@@ -106,6 +108,13 @@ export function WorkspaceShell({
               aria-current={activeNavItem === "designs" ? "page" : undefined}
             >
               {copy.designs}
+            </Link>
+            <Link
+              className={getNavLinkClass(activeNavItem === "builds")}
+              href={`/w/${workspaceSlug}/builds`}
+              aria-current={activeNavItem === "builds" ? "page" : undefined}
+            >
+              {copy.builds}
             </Link>
             <Link
               className={getNavLinkClass(activeNavItem === "locations")}

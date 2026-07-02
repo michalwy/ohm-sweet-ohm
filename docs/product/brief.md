@@ -29,12 +29,13 @@ Current implemented extension scope beyond the base parts list includes:
 - shopping lists (informal lists of parts to buy)
 - purchase orders (formal per-supplier orders with item-level receive flow)
 - designs (recipes for building parts in-house, each with an auto-created output part and a revision history; each revision carries a bill of materials of attribute-based line-item specs that resolve against inventory)
+- builds (production runs of a design revision for a target quantity, advancing through created → allocated → started → in_progress → completed/cancelled, with per-part allocated/reserved/available stock tracking)
 
 Location lifecycle rule: a location can be archived only when its stock balance is zero. Archived locations are read-only for inventory movement purposes and remain visible in stock views when they still hold non-zero balances from earlier history.
 
 Purchases workflow decisions (see ADR-0014): shopping lists are informal and ad-hoc with no supplier or status; purchase orders are formal per-supplier documents with states DRAFT → ORDERED → RECEIVED; receiving items automatically creates RECEIPT inventory entries; shopping list items can be converted into a purchase order; suppliers are Organizations with a `"supplier"` role; DigiKey/TME integration is used to look up supplier SKU when adding items to a purchase order.
 
-BOM line-item specs and attribute-based matching are defined (see ADR-0020); the build/assembly flow and allocation of concrete parts to designators remain intentionally undefined, along with pricing policy, lifecycle states, and import behavior.
+BOM line-item specs and attribute-based matching are defined (see ADR-0020). The build/assembly flow and state-driven stock transitions are defined (see ADR-0021): a build allocates a part and source location per BOM line, reserves stock on start, consumes per assembled designator, and receives the output part on completion. Split allocation across multiple matching parts, shortage analysis, pricing policy, and import behavior remain intentionally undefined.
 
 ## Open Questions
 

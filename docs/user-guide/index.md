@@ -50,6 +50,7 @@ If you are setting up a new workspace, this sequence usually works best:
 9. Configure integrations if needed.
 10. Use shopping lists to collect parts to buy.
 11. Create purchase orders and receive deliveries to update inventory automatically.
+12. Run builds of a design revision to allocate, reserve, and consume parts and produce the output part.
 
 ## Guide Sections
 
@@ -57,6 +58,7 @@ If you are setting up a new workspace, this sequence usually works best:
 - [Organizations](organizations.md) — manage manufacturers and suppliers
 - [Parts](parts.md) — create and manage parts, categories, attributes, and units
 - [Designs](designs.md) — designs, revisions, and bills of materials
+- [Builds](builds.md) — production runs that allocate, reserve, and consume stock
 - [Inventory](inventory.md) — storage locations and stock movements
 - [Purchasing](purchasing.md) — shopping lists and purchase orders
 - [Integrations](integrations.md) — DigiKey, TME, and currency settings

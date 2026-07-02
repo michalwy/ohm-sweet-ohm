@@ -28,7 +28,9 @@ export const PERMISSIONS = [
   "purchase-orders:read",
   "purchase-orders:write",
   "designs:read",
-  "designs:write"
+  "designs:write",
+  "builds:read",
+  "builds:write"
 ] as const;
 
 export type PermissionKey = (typeof PERMISSIONS)[number];
@@ -60,7 +62,10 @@ export const permissionDescriptions: Record<PermissionKey, string> = {
   "purchase-orders:read": "Read purchase orders and their items in a workspace.",
   "purchase-orders:write": "Create, update, and delete purchase orders, mark as ordered, and receive items in a workspace.",
   "designs:read": "Read designs and their revisions in a workspace.",
-  "designs:write": "Create, update, and delete designs and revisions in a workspace."
+  "designs:write": "Create, update, and delete designs and revisions in a workspace.",
+  "builds:read": "Read builds and their allocation/assembly state in a workspace.",
+  "builds:write":
+    "Create builds and advance their state (allocate, start, assemble, complete, cancel) in a workspace."
 };
 
 export const defaultWorkspaceRoles = [
@@ -83,7 +88,8 @@ export const defaultWorkspaceRoles = [
       "workspace:read",
       "shopping-lists:read",
       "purchase-orders:read",
-      "designs:read"
+      "designs:read",
+      "builds:read"
     ]
   },
   {
@@ -114,7 +120,9 @@ export const defaultWorkspaceRoles = [
       "purchase-orders:read",
       "purchase-orders:write",
       "designs:read",
-      "designs:write"
+      "designs:write",
+      "builds:read",
+      "builds:write"
     ]
   }
 ] as const satisfies ReadonlyArray<{

@@ -5,7 +5,7 @@ import { prisma } from "@/server/db/prisma";
 
 type InventoryEntryType = "RECEIPT" | "ISSUE" | "TRANSFER" | "ADJUSTMENT";
 
-export async function createInventoryEntry(input: {
+export type CreateInventoryEntryInput = {
   workspaceId: string;
   partId: string;
   entryType: InventoryEntryType;
@@ -18,7 +18,22 @@ export async function createInventoryEntry(input: {
   costCurrency?: string | null;
   unitCostPrimary?: Prisma.Decimal | null;
   unitGrossCostPrimary?: Prisma.Decimal | null;
-}) {
+};
+
+export async function createInventoryEntry(input: CreateInventoryEntryInput) {
+  return prisma.$transaction((tx) => createInventoryEntryWithinTx(tx, input));
+}
+
+/**
+ * Core inventory-entry creation usable inside a caller-provided transaction, so a higher-level
+ * mutation (e.g. a build assembling a designator) can issue stock and update its own
+ * denormalized counters atomically in one transaction. `createInventoryEntry` simply wraps
+ * this in `prisma.$transaction`.
+ */
+export async function createInventoryEntryWithinTx(
+  tx: Prisma.TransactionClient,
+  input: CreateInventoryEntryInput
+) {
   const quantity = parseQuantity(input.quantity);
   const nextEntryShape = {
     fromLocationId: input.fromLocationId ?? null,
@@ -27,7 +42,7 @@ export async function createInventoryEntry(input: {
 
   validateEntryShape(input.entryType, nextEntryShape);
 
-  return prisma.$transaction(async (tx) => {
+  {
     await lockPartRow(tx, {
       workspaceId: input.workspaceId,
       partId: input.partId
@@ -117,7 +132,7 @@ export async function createInventoryEntry(input: {
     });
 
     return entry;
-  });
+  }
 }
 
 export async function getPartLocationBalances(input: {
@@ -331,7 +346,7 @@ function getPartStockDelta(input: {
   return input.quantity;
 }
 
-async function getPartLocationBalancesWithDb(
+export async function getPartLocationBalancesWithDb(
   db: Prisma.TransactionClient | typeof prisma,
   input: {
     workspaceId: string;

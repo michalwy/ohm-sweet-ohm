@@ -99,8 +99,8 @@ While editing a line item, a preview lists the inventory parts that satisfy the 
 spec, so you can confirm the spec resolves to the parts you expect before saving. The BOM
 table also shows a live match count per line item.
 
-> Building and allocating concrete parts to designators is handled by the build flow,
-> which is a separate, future feature.
+> Building and allocating concrete parts to designators is handled by the build flow.
+> See [Builds](builds.md) to turn a revision's bill of materials into a production run.
 
 ### Deleting a Design
 
