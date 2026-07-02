@@ -41,7 +41,10 @@ Introduce a **self-hosting deployment path** built from boring, well-supported t
 
 4. **Config only via `.env`.** A committed, never-edited `docker-compose.prod.yml` reads
    every tunable and secret from a sibling `.env` (git-ignored). Operators never edit the
-   compose file. `.env.prod.example` documents the keys.
+   compose file. `.env.prod.example` documents the keys. Management commands run as a bare
+   `docker compose ...` from the install directory; the file list comes from the
+   `COMPOSE_FILE` key in `.env`, so optional overlays can be toggled without changing any
+   command or editing compose.
 
 5. **One-shot installer.** `scripts/install.sh` is curl-able, checks prerequisites,
    downloads the compose file + env template, interviews the operator, generates
@@ -53,6 +56,15 @@ Introduce a **self-hosting deployment path** built from boring, well-supported t
    containers on new images. Opt-in: the installer sets `COMPOSE_PROFILES=autoupdate`.
    Because the app container runs `prisma migrate deploy` on start, auto-updates apply
    new migrations automatically.
+
+7. **Optional shared-network database.** For operators who do not want to publish a database
+   port and instead run PostgreSQL as a container on a dedicated Docker network, an optional
+   overlay `docker-compose.network.yml` attaches the app and worker to that pre-existing
+   external network (named by `OSO_DB_NETWORK`, default `oso`). It is enabled purely through
+   `.env` by appending the overlay to `COMPOSE_FILE`; `DATABASE_URL` then targets the
+   PostgreSQL container name on that network. The installer offers this and can create the
+   network. This keeps the "never edit compose" invariant while supporting private,
+   port-less database connectivity.
 
 ## Consequences
 

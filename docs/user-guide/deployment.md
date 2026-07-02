@@ -48,21 +48,48 @@ compose file. To change a setting later, edit `.env` and run the update command 
 
 ## Everyday Management
 
-Run these from the install directory:
+Run these from the install directory. They read the compose file list from `.env`
+(the `COMPOSE_FILE` key), so no `-f` flags are needed:
 
 ```bash
 # View logs
-docker compose -f docker-compose.prod.yml logs -f
+docker compose logs -f
 
 # Apply configuration changes / pull the latest image
-docker compose -f docker-compose.prod.yml pull && docker compose -f docker-compose.prod.yml up -d
+docker compose pull && docker compose up -d
 
 # Stop everything
-docker compose -f docker-compose.prod.yml down
+docker compose down
 ```
 
 Re-running the installer is safe: it never overwrites an existing `.env`; it only refreshes
 the compose file and restarts the stack.
+
+## Connecting to a Database on a Shared Docker Network
+
+By default the app reaches PostgreSQL over a network address — either a port published on
+the host, or `host.docker.internal` for a database running on the host outside Docker.
+
+If you prefer **not to publish any database port** and instead run PostgreSQL as a
+container on a dedicated Docker network, the deployment can join that network directly:
+
+1. Create the network and attach your PostgreSQL container to it, for example:
+
+   ```bash
+   docker network create oso
+   docker network connect oso <your-postgres-container>
+   ```
+
+2. When the installer asks *"Is PostgreSQL on a shared Docker network?"*, answer **yes**
+   and give the network name (default `oso`). It offers to create the network for you if it
+   does not exist yet.
+3. Set `DATABASE_URL` to use the PostgreSQL **container name** as the host and its internal
+   port, e.g. `postgresql://oso:password@oso-postgres:5432/ohm_sweet_ohm?schema=public`.
+
+Under the hood this enables an optional overlay (`docker-compose.network.yml`) by setting
+`COMPOSE_FILE=docker-compose.prod.yml:docker-compose.network.yml` and `OSO_DB_NETWORK` in
+`.env`. To toggle it on an existing install, edit those two keys in `.env` and run
+`docker compose up -d`. No database port is exposed to the host in this mode.
 
 ## Updates
 

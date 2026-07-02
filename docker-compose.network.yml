@@ -1,0 +1,31 @@
+# Optional overlay — attach the app and worker to a pre-existing external Docker
+# network so they can reach a PostgreSQL container that is NOT published to the
+# host (no exposed localhost port).
+#
+# Enable it by adding this file to COMPOSE_FILE in .env, for example:
+#
+#   COMPOSE_FILE=docker-compose.prod.yml:docker-compose.network.yml
+#
+# The install script (scripts/install.sh) sets this up for you when you choose
+# the shared-network option. Requirements when this overlay is active:
+#   - The external network named by OSO_DB_NETWORK (default "oso") must already
+#     exist, and your PostgreSQL container must be attached to it.
+#   - DATABASE_URL must use that PostgreSQL container's name/alias as the host
+#     and the internal port (usually 5432), e.g.
+#     postgresql://oso:password@oso-postgres:5432/ohm_sweet_ohm?schema=public
+
+services:
+  app:
+    networks:
+      - default
+      - db
+
+  worker:
+    networks:
+      - default
+      - db
+
+networks:
+  db:
+    external: true
+    name: ${OSO_DB_NETWORK:-oso}

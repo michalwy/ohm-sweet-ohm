@@ -10,14 +10,15 @@
 #   curl -fsSL https://raw.githubusercontent.com/michalwy/ohm-sweet-ohm/main/scripts/install.sh | bash
 #
 # Re-running is safe: an existing .env is never overwritten; only the compose
-# file is refreshed so you can pick up deployment changes.
+# files are refreshed so you can pick up deployment changes.
 
 set -euo pipefail
 
 REPO="michalwy/ohm-sweet-ohm"
 BRANCH="main"
 RAW_BASE="https://raw.githubusercontent.com/${REPO}/${BRANCH}"
-COMPOSE_FILE="docker-compose.prod.yml"
+COMPOSE_FILE_NAME="docker-compose.prod.yml"
+NETWORK_FILE_NAME="docker-compose.network.yml"
 ENV_EXAMPLE=".env.prod.example"
 
 info() { printf '\033[1;34m==>\033[0m %s\n' "$*"; }
@@ -76,6 +77,11 @@ set_env() {
   fi
 }
 
+# Read a value back from .env (unquoted).
+get_env() {
+  grep -E "^$1=" .env | tail -n1 | cut -d= -f2- | sed -e 's/^"//' -e 's/"$//'
+}
+
 gen_secret() {
   if command -v openssl >/dev/null 2>&1; then
     openssl rand -base64 48
@@ -95,9 +101,13 @@ download() {
   fi
 }
 
-# Resolve the Docker Compose v2 command (plugin form only).
+# Run docker compose using the file list from .env's COMPOSE_FILE. Exporting it
+# guarantees the right files are used regardless of how compose parses .env.
 compose() {
-  docker compose "$@"
+  local files
+  files="$(get_env COMPOSE_FILE)"
+  [ -n "$files" ] || files="${COMPOSE_FILE_NAME}"
+  COMPOSE_FILE="$files" docker compose "$@"
 }
 
 main() {
@@ -120,16 +130,20 @@ main() {
   info "Using $(pwd)"
 
   # --- Fetch deployment files ---------------------------------------------
-  info "Downloading ${COMPOSE_FILE}"
-  download "${RAW_BASE}/${COMPOSE_FILE}" "${COMPOSE_FILE}"
+  info "Downloading ${COMPOSE_FILE_NAME}"
+  download "${RAW_BASE}/${COMPOSE_FILE_NAME}" "${COMPOSE_FILE_NAME}"
+  info "Downloading ${NETWORK_FILE_NAME}"
+  download "${RAW_BASE}/${NETWORK_FILE_NAME}" "${NETWORK_FILE_NAME}"
 
   if [ -f .env ]; then
     info "Existing .env found — keeping it, not overwriting."
-    info "Refreshing ${COMPOSE_FILE} only. Edit .env by hand if you need to change settings."
+    info "Refreshing compose files only. Edit .env by hand if you need to change settings."
+    # Make sure legacy .env files still resolve a compose file list.
+    grep -qE '^COMPOSE_FILE=' .env || set_env COMPOSE_FILE "${COMPOSE_FILE_NAME}"
     info "Pulling latest images..."
-    compose -f "${COMPOSE_FILE}" pull
+    compose pull
     info "Starting stack..."
-    compose -f "${COMPOSE_FILE}" up -d
+    compose up -d
     print_summary
     return 0
   fi
@@ -141,10 +155,34 @@ main() {
   # --- Interview -----------------------------------------------------------
   info "Let's configure your deployment. Press Enter to accept a default."
 
-  local database_url auth_url http_port secret_choice secret interval
+  local database_url auth_url http_port secret interval network_mode net_name
   echo >/dev/tty
-  echo "Your PostgreSQL database must already exist and be reachable from Docker." >/dev/tty
-  echo "If Postgres runs on this host outside Docker, use host.docker.internal as the host." >/dev/tty
+  echo "How does the app reach your PostgreSQL database?" >/dev/tty
+  echo "  - Published host port (or host.docker.internal): answer No below." >/dev/tty
+  echo "  - A shared Docker network the DB is attached to (no exposed port): answer Yes." >/dev/tty
+  if confirm "Is PostgreSQL on a shared Docker network (not a published host port)?"; then
+    network_mode=1
+    prompt net_name "Name of the shared Docker network" "oso"
+    set_env OSO_DB_NETWORK "$net_name"
+    set_env COMPOSE_FILE "${COMPOSE_FILE_NAME}:${NETWORK_FILE_NAME}"
+    info "The app and worker will join the '${net_name}' network."
+    echo "In DATABASE_URL, use your PostgreSQL CONTAINER name as the host and its" >/dev/tty
+    echo "internal port (usually 5432), e.g. postgresql://user:pass@oso-postgres:5432/db?schema=public" >/dev/tty
+    if ! docker network inspect "$net_name" >/dev/null 2>&1; then
+      warn "The Docker network '${net_name}' does not exist yet."
+      if confirm "Create the '${net_name}' network now?"; then
+        docker network create "$net_name" >/dev/null
+        info "Created network '${net_name}'. Remember to attach your PostgreSQL container to it (docker network connect ${net_name} <postgres-container>)."
+      else
+        warn "Create it and attach PostgreSQL before starting: docker network create ${net_name}"
+      fi
+    fi
+  else
+    network_mode=0
+    set_env COMPOSE_FILE "${COMPOSE_FILE_NAME}"
+    echo "If PostgreSQL runs on this host outside Docker, use host.docker.internal as the host." >/dev/tty
+  fi
+
   prompt database_url "External DATABASE_URL" ""
   [ -n "$database_url" ] || die "DATABASE_URL is required."
   set_env DATABASE_URL "$database_url"
@@ -171,23 +209,22 @@ main() {
     info "Auto-update enabled."
   else
     set_env COMPOSE_PROFILES ""
-    info "Auto-update disabled. Update manually with: docker compose -f ${COMPOSE_FILE} pull && docker compose -f ${COMPOSE_FILE} up -d"
+    info "Auto-update disabled. Update manually with: docker compose pull && docker compose up -d"
   fi
 
   # --- Launch --------------------------------------------------------------
   info "Pulling images..."
-  compose -f "${COMPOSE_FILE}" pull
+  compose pull
   info "Starting stack..."
-  compose -f "${COMPOSE_FILE}" up -d
+  compose up -d
 
   print_summary
 }
 
 print_summary() {
   local url port
-  # Read back what we ended up with for a friendly summary.
-  port="$(grep -E '^OSO_HTTP_PORT=' .env | head -n1 | cut -d= -f2- | tr -d '"' || true)"
-  url="$(grep -E '^BETTER_AUTH_URL=' .env | head -n1 | cut -d= -f2- | tr -d '"' || true)"
+  port="$(get_env OSO_HTTP_PORT || true)"
+  url="$(get_env BETTER_AUTH_URL || true)"
   echo >/dev/tty
   info "OhmSweetOhm is starting."
   echo "  Directory:   $(pwd)" >/dev/tty
@@ -196,9 +233,9 @@ print_summary() {
   [ -n "$port" ] && echo "  Local port:  ${port}" >/dev/tty
   echo >/dev/tty
   echo "Useful commands (run from $(pwd)):" >/dev/tty
-  echo "  View logs:   docker compose -f ${COMPOSE_FILE} logs -f" >/dev/tty
-  echo "  Update:      docker compose -f ${COMPOSE_FILE} pull && docker compose -f ${COMPOSE_FILE} up -d" >/dev/tty
-  echo "  Stop:        docker compose -f ${COMPOSE_FILE} down" >/dev/tty
+  echo "  View logs:   docker compose logs -f" >/dev/tty
+  echo "  Update:      docker compose pull && docker compose up -d" >/dev/tty
+  echo "  Stop:        docker compose down" >/dev/tty
 }
 
 main "$@"
