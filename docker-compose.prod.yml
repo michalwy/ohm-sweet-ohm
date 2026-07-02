@@ -58,4 +58,8 @@ services:
       WATCHTOWER_LABEL_ENABLE: "true"
       WATCHTOWER_CLEANUP: "true"
       WATCHTOWER_POLL_INTERVAL: ${OSO_UPDATE_INTERVAL:-3600}
+      # containrrr/watchtower defaults its Docker API client to a very old version
+      # (1.25) that modern Docker daemons reject ("client version too old").
+      # Pin a modern API version; override via .env if your daemon needs another.
+      DOCKER_API_VERSION: ${OSO_DOCKER_API_VERSION:-1.44}
     restart: unless-stopped
