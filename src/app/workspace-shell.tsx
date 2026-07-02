@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import { signOut } from "@/server/auth/actions";
 import { ThemeToggle } from "@/app/theme-toggle";
 import { WorkspaceProvider } from "@/app/workspace-context";
+import { getAppVersionLabel } from "@/lib/version";
 
 type WorkspaceNavItem =
   | "parts"
@@ -234,6 +235,9 @@ export function WorkspaceShell({
                 {copy.signOut}
               </button>
             </form>
+            <p className="mt-3 text-center text-[11px] leading-4 text-[var(--color-text-muted)]">
+              {copy.appShortName} {getAppVersionLabel()}
+            </p>
           </div>
         </aside>
 

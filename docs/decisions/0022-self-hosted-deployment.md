@@ -19,14 +19,18 @@ build, and a self-hoster typically already runs (or wants to own) their own data
 
 Introduce a **self-hosting deployment path** built from boring, well-supported tooling:
 
-1. **Prebuilt multi-arch images in GHCR.** CI builds and pushes
+1. **Prebuilt multi-arch images in GHCR, on release only.** CI builds and pushes
    `ghcr.io/michalwy/ohm-sweet-ohm` for `linux/amd64` and `linux/arm64` (buildx + QEMU)
    via a `publish-image` job in `.github/workflows/ci.yml`. The job `needs` the
-   static/unit/integration jobs and runs only on `main` pushes and `v*` tags, so images
-   are only ever published from green history. Tags: rolling `latest` (default branch),
-   `sha-<short>` for every build, and `{{version}}`/`{{major}}.{{minor}}` on release tags.
-   The image reuses the existing `runner` Dockerfile target — the app and the pg-boss
-   worker share one image, differing only by command.
+   static/unit/integration jobs and runs **only for release tags** (`v*`), so a build is
+   cut deliberately by pushing a version tag — not on every `main` commit (which would
+   waste CI on routine/Renovate commits and churn the auto-update image). Tags:
+   `{{version}}` and `{{major}}.{{minor}}` from the git tag, `sha-<short>` for rollback
+   traceability, and `latest` pointing at the newest release (`flavor: latest=true`), which
+   is what deployments and Watchtower track. The release version is passed into the build as
+   the `OSO_VERSION` build arg so the app can display it. The image reuses the existing
+   `runner` Dockerfile target — the app and the pg-boss worker share one image, differing
+   only by command.
 
 2. **Public image.** The GHCR package is public, so the target server and Watchtower pull
    without credentials. Tradeoff: the container image is world-readable. This is acceptable
@@ -69,6 +73,10 @@ Introduce a **self-hosting deployment path** built from boring, well-supported t
 ## Consequences
 
 - Raspberry Pi and similar low-power hosts run OSO without local builds.
+- Releasing is an explicit act (push a `v*` tag); `main` commits no longer produce images.
+- The running version is visible in the app UI (workspace sidebar), read at runtime from
+  `OSO_VERSION` via `getAppVersion()` in `src/lib/version.ts`; local/non-release runs show
+  `dev`.
 - CI cost increases modestly: the arm64 leg is QEMU-emulated (mitigated by GHA layer cache).
 - The arm64 image depends on Prisma's `linux-arm64` query engine; the base image already
   installs `openssl`. This must be verified on real/emulated arm64 (see the plan's

@@ -26,6 +26,9 @@ RUN BETTER_AUTH_URL=http://localhost:3000 \
 
 FROM base AS runner
 ENV NODE_ENV=production
+# Release version, injected by CI from the git tag; shown in the app UI.
+ARG OSO_VERSION=dev
+ENV OSO_VERSION=$OSO_VERSION
 COPY --from=build /app/package.json ./package.json
 COPY --from=build /app/.next ./.next
 COPY --from=build /app/public ./public

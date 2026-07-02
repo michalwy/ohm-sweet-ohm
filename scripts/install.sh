@@ -30,8 +30,14 @@ die() {
   exit 1
 }
 
-# Prompt helpers. Read from /dev/tty so they work when the script is piped into
-# bash via `curl | bash` (stdin is the script body, not the terminal).
+# Always restore the cursor, even if interrupted while a menu is drawn.
+restore_cursor() { printf '\033[?25h' >/dev/tty 2>/dev/null || true; }
+trap restore_cursor EXIT INT TERM
+
+# --- Interactive prompts -----------------------------------------------------
+# All prompts read from /dev/tty so they work under `curl ... | bash`, where the
+# script body is on stdin.
+
 prompt() {
   # prompt <variable_name> <question> [default]
   local __var="$1" __question="$2" __default="${3:-}" __reply
@@ -47,16 +53,67 @@ prompt() {
   printf -v "$__var" '%s' "$__reply"
 }
 
-confirm() {
-  # confirm <question> — returns 0 for yes, 1 for no (default no)
-  local __reply
-  printf '%s [y/N]: ' "$1" >/dev/tty
-  IFS= read -r __reply </dev/tty || __reply=""
-  case "$__reply" in
-  [yY] | [yY][eE][sS]) return 0 ;;
-  *) return 1 ;;
-  esac
+# Arrow-key single-select menu. Sets the named variable to the selected index.
+# Falls back to index 0 when no terminal is available (non-interactive).
+#   choose <result_var> <title> <option> [<option> ...]
+choose() {
+  local __var="$1" __title="$2"
+  shift 2
+  local __opts=("$@")
+  local __count=${#__opts[@]}
+  local __sel=0 __key __rest __i __first=1
+
+  if [ ! -e /dev/tty ] || [ ! -t 1 ]; then
+    printf -v "$__var" '%s' "0"
+    return 0
+  fi
+
+  printf '\033[1m%s\033[0m\n' "$__title" >/dev/tty
+  printf '\033[2m  (↑/↓ to move, Enter to select)\033[0m\n' >/dev/tty
+  printf '\033[?25l' >/dev/tty # hide cursor
+
+  while true; do
+    if [ "$__first" -eq 1 ]; then
+      __first=0
+    else
+      printf '\033[%dA' "$__count" >/dev/tty # move up to redraw
+    fi
+    for __i in "${!__opts[@]}"; do
+      if [ "$__i" -eq "$__sel" ]; then
+        printf '\033[K\033[1;36m  ❯ %s\033[0m\n' "${__opts[$__i]}" >/dev/tty
+      else
+        printf '\033[K    \033[2m%s\033[0m\n' "${__opts[$__i]}" >/dev/tty
+      fi
+    done
+
+    IFS= read -rsn1 __key </dev/tty || __key=""
+    case "$__key" in
+    $'\x1b') # escape sequence — arrow keys
+      IFS= read -rsn2 __rest </dev/tty || __rest=""
+      case "$__rest" in
+      '[A') __sel=$(((__sel - 1 + __count) % __count)) ;;
+      '[B') __sel=$(((__sel + 1) % __count)) ;;
+      esac
+      ;;
+    'k' | 'K') __sel=$(((__sel - 1 + __count) % __count)) ;;
+    'j' | 'J') __sel=$(((__sel + 1) % __count)) ;;
+    '') break ;; # Enter
+    esac
+  done
+
+  printf '\033[?25h' >/dev/tty # show cursor
+  printf '\033[1;36m  → %s\033[0m\n' "${__opts[$__sel]}" >/dev/tty
+  printf -v "$__var" '%s' "$__sel"
 }
+
+# Yes/No menu. Returns 0 for Yes, 1 for No. Default (first option) is Yes.
+confirm() {
+  local __idx
+  choose __idx "$1" "Yes" "No"
+  [ "$__idx" -eq 0 ]
+}
+
+# --- .env helpers ------------------------------------------------------------
 
 # Escape a value for safe use as a double-quoted shell/.env value.
 env_escape() {
@@ -68,7 +125,6 @@ set_env() {
   local key="$1" value="$2" escaped
   escaped="$(env_escape "$value")"
   if grep -qE "^${key}=" .env; then
-    # Use a temp file to stay portable across GNU/BSD sed.
     grep -vE "^${key}=" .env >.env.tmp
     printf '%s="%s"\n' "$key" "$escaped" >>.env.tmp
     mv .env.tmp .env
@@ -138,7 +194,6 @@ main() {
   if [ -f .env ]; then
     info "Existing .env found — keeping it, not overwriting."
     info "Refreshing compose files only. Edit .env by hand if you need to change settings."
-    # Make sure legacy .env files still resolve a compose file list.
     grep -qE '^COMPOSE_FILE=' .env || set_env COMPOSE_FILE "${COMPOSE_FILE_NAME}"
     info "Pulling latest images..."
     compose pull
@@ -153,15 +208,17 @@ main() {
   cp "${ENV_EXAMPLE}" .env
 
   # --- Interview -----------------------------------------------------------
-  info "Let's configure your deployment. Press Enter to accept a default."
-
-  local database_url auth_url http_port secret interval network_mode net_name
+  info "Let's configure your deployment."
   echo >/dev/tty
-  echo "How does the app reach your PostgreSQL database?" >/dev/tty
-  echo "  - Published host port (or host.docker.internal): answer No below." >/dev/tty
-  echo "  - A shared Docker network the DB is attached to (no exposed port): answer Yes." >/dev/tty
-  if confirm "Is PostgreSQL on a shared Docker network (not a published host port)?"; then
-    network_mode=1
+
+  local database_url auth_url http_port secret interval db_mode secret_mode update_mode net_name
+
+  choose db_mode "How does the app reach your PostgreSQL database?" \
+    "Published host port (or host.docker.internal)" \
+    "Shared Docker network — no exposed DB port"
+  echo >/dev/tty
+
+  if [ "$db_mode" -eq 1 ]; then
     prompt net_name "Name of the shared Docker network" "oso"
     set_env OSO_DB_NETWORK "$net_name"
     set_env COMPOSE_FILE "${COMPOSE_FILE_NAME}:${NETWORK_FILE_NAME}"
@@ -172,16 +229,16 @@ main() {
       warn "The Docker network '${net_name}' does not exist yet."
       if confirm "Create the '${net_name}' network now?"; then
         docker network create "$net_name" >/dev/null
-        info "Created network '${net_name}'. Remember to attach your PostgreSQL container to it (docker network connect ${net_name} <postgres-container>)."
+        info "Created network '${net_name}'. Attach your PostgreSQL container to it: docker network connect ${net_name} <postgres-container>"
       else
         warn "Create it and attach PostgreSQL before starting: docker network create ${net_name}"
       fi
     fi
   else
-    network_mode=0
     set_env COMPOSE_FILE "${COMPOSE_FILE_NAME}"
     echo "If PostgreSQL runs on this host outside Docker, use host.docker.internal as the host." >/dev/tty
   fi
+  echo >/dev/tty
 
   prompt database_url "External DATABASE_URL" ""
   [ -n "$database_url" ] || die "DATABASE_URL is required."
@@ -192,8 +249,13 @@ main() {
 
   prompt http_port "Host port to expose the app on" "3000"
   set_env OSO_HTTP_PORT "$http_port"
+  echo >/dev/tty
 
-  if confirm "Auto-generate a BETTER_AUTH_SECRET for you?"; then
+  choose secret_mode "Authentication secret (BETTER_AUTH_SECRET)" \
+    "Auto-generate a strong secret (recommended)" \
+    "Enter my own"
+  echo >/dev/tty
+  if [ "$secret_mode" -eq 0 ]; then
     secret="$(gen_secret)"
     info "Generated a new auth secret."
   else
@@ -201,8 +263,13 @@ main() {
     [ ${#secret} -ge 32 ] || die "BETTER_AUTH_SECRET must be at least 32 characters."
   fi
   set_env BETTER_AUTH_SECRET "$secret"
+  echo >/dev/tty
 
-  if confirm "Enable automatic updates (Watchtower)?"; then
+  choose update_mode "Automatic updates" \
+    "Disabled — update manually" \
+    "Enabled — Watchtower watches for new release images"
+  echo >/dev/tty
+  if [ "$update_mode" -eq 1 ]; then
     set_env COMPOSE_PROFILES "autoupdate"
     prompt interval "Update check interval in seconds" "3600"
     set_env OSO_UPDATE_INTERVAL "$interval"

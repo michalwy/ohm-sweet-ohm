@@ -85,7 +85,8 @@ local `.env`, and starts the app against your external database. See the
 
 `docker-compose.yml` is for **local use** (builds the image and runs its own database).
 `docker-compose.prod.yml` is for **real servers** (pulls a prebuilt image from GHCR and
-uses an external database). Images are built and published to GHCR automatically by CI.
+uses an external database). Multi-arch images (amd64 + arm64) are published to GHCR by CI
+for each tagged release (`v*`); `latest` tracks the newest release.
 
 ## Repository Guide
 

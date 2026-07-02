@@ -93,8 +93,12 @@ Under the hood this enables an optional overlay (`docker-compose.network.yml`) b
 
 ## Updates
 
-By default the deployment tracks the rolling `latest` image. You update on your own schedule
-with the `pull && up -d` command above.
+New images are published only when a new **release** is tagged, so `latest` always points at
+the newest release (never at an in-progress `main` commit). The deployment tracks `latest`, so
+you update on your own schedule with the `pull && up -d` command above.
+
+The running version is shown in the app's left sidebar (e.g. `OSO v1.4.0`), so you can see at a
+glance which release is deployed.
 
 **Automatic updates (optional).** If you answered yes to automatic updates, a
 [Watchtower](https://containrrr.dev/watchtower/) container runs alongside the app, checks
