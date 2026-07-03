@@ -26,16 +26,17 @@ Builds live under **Builds** in the workspace navigation. Reading builds require
 4. Choose an **output location** — where the finished output part will be received on completion.
 
 When the build is created, the chosen revision's bill of materials is **frozen** into the build:
-each BOM line becomes a build line, and every reference designator becomes its own assembly
-item. Each designator needs `target quantity` parts, so a line with designators `R1, R2, R3`
-and a target quantity of 2 requires 6 of that part in total.
+each BOM line becomes a build line. Each designator needs `target quantity` parts, so a line with
+designators `R1, R2, R3` and a target quantity of 2 requires 6 parts in total. The build also
+pre-fills a suggested allocation for each line from stock that is currently available, which you
+can adjust.
 
 ## Build states
 
 | State | What it means | Effect on stock |
 |---|---|---|
-| **Created** | Editable. Assign a part and a source location to each line. | None |
-| **Allocated** | Every line has a part and source location. | Marks parts **allocated** (informational) |
+| **Created** | Editable. Allocate each line to one or more parts. | None |
+| **Allocated** | Every line is fully allocated. | Marks parts **allocated** (informational) |
 | **Started** | Stock is hard-reserved. | Converts allocated into **reserved**; reduces Available |
 | **In progress** | At least one designator assembled. | Each assembled designator **issues** its parts from the line's source location |
 | **Completed** | All designators assembled (reached automatically). | **Receives** the target quantity of the output part into the output location |
@@ -43,12 +44,26 @@ and a target quantity of 2 requires 6 of that part in total.
 
 ## Allocating parts
 
-While a build is **Created**, open it and, for each line, choose the **part** and the **source
-location** to consume from. Pinned BOM lines come pre-assigned to their pinned part; for other
-lines you pick from the parts that match the line's specification.
+While a build is **Created**, open it and allocate each line. A line can be **split across several
+parts** — for example 50 resistors met as 20 from one part and 30 from another — and each part is
+drawn from its own **source location**. For each entry you choose the **part** (from the parts that
+match the line's specification **and still have available stock**, each shown with its manufacturer
+and available quantity), the **source location** to consume from, and a **quantity**. **Add part** adds another entry, pre-filled with the next best available part,
+location, and quantity to cover what is still unallocated (the same greedy suggestion the build
+makes when it is created); adjust it as needed. The remove button drops an entry.
 
-When every line has a part and a source location, choose **Allocate** to move the build to the
-**Allocated** state. To change an allocation afterwards, choose **Reopen** to return to
+Each line shows its running **Allocated** total against the required quantity. You cannot allocate
+more of a part than is **available**, nor more from a location than that location holds — an entry
+that exceeds either is highlighted.
+
+**Apply** saves the allocation of **all lines at once**, in a single step. This is deliberate: it
+keeps the whole build consistent, so rearranging parts between lines (for example moving a part off
+one line and onto another) can never leave the build temporarily over-allocated. Apply is available
+once your edits differ from what is saved, every entry is complete, and nothing exceeds available
+stock; partial lines are allowed while you work.
+
+When every line is fully allocated (and your changes are saved), choose **Allocate** to move the
+build to the **Allocated** state. To change an allocation afterwards, choose **Reopen** to return to
 **Created**.
 
 ## Starting a build
@@ -57,18 +72,26 @@ From **Allocated**, choose **Start**. A build can only start when:
 
 1. Every line is fully allocated.
 2. **Available** stock (on hand minus existing reservations) covers every part's requirement.
-3. Each line's chosen source location physically holds enough of its part.
+3. Each chosen source location physically holds enough of its part.
 
 Starting converts the soft allocation into a hard reservation, so the reserved parts are no
-longer available to other builds.
+longer available to other builds. Starting also **distributes** each line's allocation across its
+individual designators to build the assembly list — assigning a concrete part (and location) to
+every designator. When a line is split, whole designators are handed to each part in turn; if a
+single designator's units straddle two parts (possible when the target quantity is greater than
+one), it is listed once per part.
 
 ## Assembling and completing
 
-From **Started**/**In progress**, mark designators as assembled. For a target quantity greater
-than one, each designator needs that many units, so you can assemble it one unit at a time
-(**+1**) or all remaining units at once (**All**) — for example to assemble the run board by
-board. Assembling issues the parts from the line's source location (reducing on-hand stock) and
-releases that much of the reservation. When every designator is fully assembled, the build
+From **Started**/**In progress**, mark designators as assembled. Each designator shows the part it
+is set to use. For a target quantity greater than one, each designator needs that many units, so
+you can assemble it one unit at a time (**+1**) or all remaining units at once (**All**) — for
+example to assemble the run board by board. Assembling issues the parts from that designator's
+source location (reducing on-hand stock) and releases that much of the reservation.
+
+If the wrong part was actually used, choose **Change part** on a designator that has not been
+assembled yet and pick any part that matches the line's specification (with its source location);
+the reservation moves to the new part. When every designator is fully assembled, the build
 completes automatically and the target quantity of the output part is received into the output
 location.
 

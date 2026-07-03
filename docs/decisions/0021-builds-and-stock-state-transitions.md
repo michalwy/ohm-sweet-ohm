@@ -89,10 +89,15 @@ model BuildDesignatorAssignment {   // one row per individual designator
 
 ### Grain and target quantity
 
+> **Superseded in part by [ADR 0023](0023-split-allocation-across-parts.md).** As of #64 a line's
+> allocation is no longer a single part + location: it is a set of `BuildLineAllocation` entries,
+> and `BuildDesignatorAssignment` carries its own `partId`/`sourceLocationId` at a
+> per-(designator × part) grain. The state machine, stock semantics, and `availableQty` behavior
+> below are unchanged.
+
 - **Per-line allocation, per-designator assembly.** A part and a source location are chosen
-  once per BOM line (split allocation across multiple parts remains out of scope, refs #9), but
-  each designator is tracked individually so a build can be partially assembled and reach
-  `completed` automatically when the last designator is assembled.
+  once per BOM line, but each designator is tracked individually so a build can be partially
+  assembled and reach `completed` automatically when the last designator is assembled.
 - Each `BuildDesignatorAssignment.quantity` equals the build's `targetQuantity` — the number of
   that part needed at that reference designator across the whole run. So total required for a
   part = (count of its designators across allocated lines) × `targetQuantity`. A designator can
@@ -125,5 +130,6 @@ inventory and have a distinct lifecycle.
   desoldering) requires a manual stock adjustment, consistent with the issue.
 - Reservation is tracked at the part level while consumption is location-specific; `started`
   therefore guards both part-level availability and per-line source-location balance.
-- Split allocation across multiple matching parts and shortage analysis remain out of scope and
-  are tracked separately (refs #9).
+- Split allocation across multiple matching parts is implemented separately in
+  [ADR 0023](0023-split-allocation-across-parts.md) (#64). Shortage analysis remains out of scope
+  and is tracked separately (refs #9).

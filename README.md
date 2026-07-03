@@ -18,7 +18,7 @@ This repository contains a working OSO application slice with authentication, wo
 
 For location lifecycle safety, archived locations cannot be used in new stock movements, and locations with non-zero stock cannot be archived until stock is moved or adjusted to zero.
 
-Design revisions carry a bill of materials of attribute-based line-item specs that resolve against live inventory (see ADR 0020). Builds turn a design revision into a production run for a target quantity, advancing through created → allocated → started → in_progress → completed/cancelled with allocated/reserved/available stock tracking and automatic output-part receipt (see ADR 0021). Split allocation across multiple matching parts, shortage analysis, import pipelines, and broader project behavior remain intentionally undefined until product decisions are made.
+Design revisions carry a bill of materials of attribute-based line-item specs that resolve against live inventory (see ADR 0020). Builds turn a design revision into a production run for a target quantity, advancing through created → allocated → started → in_progress → completed/cancelled with allocated/reserved/available stock tracking and automatic output-part receipt (see ADR 0021). A single BOM line can be split across multiple matching parts, each with its own quantity and source location, and distributed across designators for the assembly list (see ADR 0023). Shortage analysis, import pipelines, and broader project behavior remain intentionally undefined until product decisions are made.
 
 ## Tech Direction
 

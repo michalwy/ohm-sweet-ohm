@@ -10,13 +10,16 @@ import {
 } from "../../src/server/units/defaultUnits";
 import { createDesign } from "../../src/server/designs/designs";
 import { createBomLineItem } from "../../src/server/designs/bomLineItems";
+import { createPartCategory } from "../../src/server/parts/categories";
 import { createInventoryEntry } from "../../src/server/inventory/entryMutations";
 import {
-  allocateBuildLine,
   assembleDesignator,
   cancelBuild,
   createBuild,
   markBuildAllocated,
+  reassignDesignatorAssignment,
+  setBuildAllocations,
+  setBuildLineAllocations,
   startBuild
 } from "../../src/server/builds/builds";
 
@@ -35,17 +38,8 @@ type Scenario = {
   outputLocationId: string;
 };
 
-/**
- * Build a workspace with one component part, two locations, an output design + revision, and a
- * BOM line pinned to the component with designators R1-R3. Returns the ids needed to drive a
- * build. `stockAtSource` parts are received into the source location (default 6).
- */
-async function createScenario(
-  suffix: string,
-  options: { stockAtSource?: string; stockAtSecond?: string } = {}
-): Promise<Scenario> {
+async function createWorkspaceWithOwner(suffix: string) {
   await ensurePermissions();
-
   const { workspaceId, userId } = await prisma.$transaction(async (tx) => {
     const user = await tx.user.create({
       data: {
@@ -78,6 +72,42 @@ async function createScenario(
   await ensureDefaultUnitsForWorkspace(prisma, workspaceId);
   const unitId = await getDefaultPartUnitId(prisma, workspaceId);
   assert.ok(unitId, "default unit must exist");
+  return { workspaceId, userId, unitId: unitId as string };
+}
+
+async function createLocation(workspaceId: string, name: string, normalized: string) {
+  return prisma.storageLocation.create({
+    data: { workspaceId, name, normalizedName: normalized, isAssignable: true },
+    select: { id: true }
+  });
+}
+
+async function receive(
+  workspaceId: string,
+  partId: string,
+  quantity: string,
+  toLocationId: string
+) {
+  if (quantity === "0") return;
+  await createInventoryEntry({
+    workspaceId,
+    partId,
+    entryType: "RECEIPT",
+    quantity,
+    toLocationId
+  });
+}
+
+/**
+ * Build a workspace with one component part, two locations, an output design + revision, and a
+ * BOM line pinned to the component with designators R1-R3. `stockAtSource` parts are received into
+ * the source location (default 6).
+ */
+async function createScenario(
+  suffix: string,
+  options: { stockAtSource?: string; stockAtSecond?: string } = {}
+): Promise<Scenario> {
+  const { workspaceId, userId, unitId } = await createWorkspaceWithOwner(suffix);
 
   const manufacturer = await prisma.organization.create({
     data: {
@@ -89,110 +119,192 @@ async function createScenario(
   });
 
   const componentPart = await prisma.part.create({
-    data: {
-      workspaceId,
-      unitId: unitId as string,
-      manufacturerId: manufacturer.id,
-      catalogNumber: `RES-${suffix}`
-    },
+    data: { workspaceId, unitId, manufacturerId: manufacturer.id, catalogNumber: `RES-${suffix}` },
     select: { id: true }
   });
 
-  const sourceLocation = await prisma.storageLocation.create({
-    data: {
-      workspaceId,
-      name: `Source ${suffix}`,
-      normalizedName: `source-${suffix}`,
-      isAssignable: true
-    },
-    select: { id: true }
-  });
-  const secondLocation = await prisma.storageLocation.create({
-    data: {
-      workspaceId,
-      name: `Second ${suffix}`,
-      normalizedName: `second-${suffix}`,
-      isAssignable: true
-    },
-    select: { id: true }
-  });
-  const outputLocation = await prisma.storageLocation.create({
-    data: {
-      workspaceId,
-      name: `Output ${suffix}`,
-      normalizedName: `output-${suffix}`,
-      isAssignable: true
-    },
-    select: { id: true }
-  });
+  const sourceLocation = await createLocation(workspaceId, `Source ${suffix}`, `source-${suffix}`);
+  const secondLocation = await createLocation(workspaceId, `Second ${suffix}`, `second-${suffix}`);
+  const outputLocation = await createLocation(workspaceId, `Output ${suffix}`, `output-${suffix}`);
 
-  const stockAtSource = options.stockAtSource ?? "6";
-  if (stockAtSource !== "0") {
-    await createInventoryEntry({
-      workspaceId,
-      partId: componentPart.id,
-      entryType: "RECEIPT",
-      quantity: stockAtSource,
-      toLocationId: sourceLocation.id
-    });
-  }
-  if (options.stockAtSecond && options.stockAtSecond !== "0") {
-    await createInventoryEntry({
-      workspaceId,
-      partId: componentPart.id,
-      entryType: "RECEIPT",
-      quantity: options.stockAtSecond,
-      toLocationId: secondLocation.id
-    });
+  await receive(workspaceId, componentPart.id, options.stockAtSource ?? "6", sourceLocation.id);
+  if (options.stockAtSecond) {
+    await receive(workspaceId, componentPart.id, options.stockAtSecond, secondLocation.id);
   }
 
-  const design = await createDesign({
-    userId,
+  const { revisionId, outputPartId } = await createDesignWithLine(
+    suffix,
     workspaceId,
-    workspaceName: `Builds Workspace ${suffix}`,
-    name: "Board",
-    catalogNumber: `BOARD-${suffix}`,
-    unitId: unitId as string
-  });
-  assert.ok(design.ok);
-
-  const revision = await prisma.designRevision.findFirst({
-    where: { workspaceId, designId: design.id },
-    select: { id: true }
-  });
-  assert.ok(revision);
-
-  const design2 = await prisma.design.findUnique({
-    where: { id: design.id },
-    select: { outputPartId: true }
-  });
-  assert.ok(design2);
-
-  const line = await createBomLineItem({
     userId,
-    workspaceId,
-    revisionId: revision.id,
-    input: {
-      designators: "R1, R2, R3",
-      pinnedPartId: componentPart.id,
-      matchers: []
-    }
-  });
-  assert.ok(line.ok, JSON.stringify(line));
+    unitId,
+    { designators: "R1, R2, R3", pinnedPartId: componentPart.id, matchers: [] }
+  );
 
   return {
     workspaceId,
     userId,
-    revisionId: revision.id,
+    revisionId,
     buildLinePartId: componentPart.id,
-    outputPartId: design2.outputPartId,
+    outputPartId,
     sourceLocationId: sourceLocation.id,
     secondLocationId: secondLocation.id,
     outputLocationId: outputLocation.id
   };
 }
 
-async function reservedAndStock(workspaceId: string, partId: string) {
+type SplitScenario = {
+  workspaceId: string;
+  userId: string;
+  revisionId: string;
+  partAId: string;
+  partBId: string;
+  outsiderPartId: string;
+  locationAId: string;
+  locationBId: string;
+  outputPartId: string;
+  outputLocationId: string;
+};
+
+/**
+ * Build a workspace with a category holding two matching parts (A, B), one non-matching outsider
+ * part, per-part locations, and an unpinned category-based BOM line. This drives split allocation
+ * across multiple parts and assembly-time reassignment.
+ */
+async function createSplitScenario(
+  suffix: string,
+  options: {
+    designators?: string;
+    secondLineDesignators?: string;
+    stockA?: string;
+    stockB?: string;
+  } = {}
+): Promise<SplitScenario> {
+  const { workspaceId, userId, unitId } = await createWorkspaceWithOwner(suffix);
+
+  const manufacturer = await prisma.organization.create({
+    data: {
+      workspaceId,
+      name: `Split Manufacturer ${suffix}`,
+      normalizedName: `split-manufacturer-${suffix}`
+    },
+    select: { id: true }
+  });
+
+  const category = await createPartCategory({
+    workspaceId,
+    parentId: null,
+    name: `Resistors ${suffix}`,
+    isAssignable: true
+  });
+
+  const partA = await prisma.part.create({
+    data: {
+      workspaceId,
+      unitId,
+      manufacturerId: manufacturer.id,
+      catalogNumber: `A-${suffix}`,
+      primaryCategoryId: category.id
+    },
+    select: { id: true }
+  });
+  const partB = await prisma.part.create({
+    data: {
+      workspaceId,
+      unitId,
+      manufacturerId: manufacturer.id,
+      catalogNumber: `B-${suffix}`,
+      primaryCategoryId: category.id
+    },
+    select: { id: true }
+  });
+  // A part outside the category never satisfies the line spec.
+  const outsider = await prisma.part.create({
+    data: { workspaceId, unitId, manufacturerId: manufacturer.id, catalogNumber: `Z-${suffix}` },
+    select: { id: true }
+  });
+
+  const locationA = await createLocation(workspaceId, `Drawer A ${suffix}`, `drawer-a-${suffix}`);
+  const locationB = await createLocation(workspaceId, `Drawer B ${suffix}`, `drawer-b-${suffix}`);
+  const outputLocation = await createLocation(workspaceId, `Output ${suffix}`, `output-${suffix}`);
+
+  await receive(workspaceId, partA.id, options.stockA ?? "10", locationA.id);
+  await receive(workspaceId, partB.id, options.stockB ?? "10", locationB.id);
+
+  const { revisionId, outputPartId } = await createDesignWithLine(
+    suffix,
+    workspaceId,
+    userId,
+    unitId,
+    { designators: options.designators ?? "R1, R2, R3", categoryId: category.id, matchers: [] }
+  );
+
+  if (options.secondLineDesignators) {
+    const second = await createBomLineItem({
+      userId,
+      workspaceId,
+      revisionId,
+      input: { designators: options.secondLineDesignators, categoryId: category.id, matchers: [] }
+    });
+    assert.ok(second.ok, JSON.stringify(second));
+  }
+
+  return {
+    workspaceId,
+    userId,
+    revisionId,
+    partAId: partA.id,
+    partBId: partB.id,
+    outsiderPartId: outsider.id,
+    locationAId: locationA.id,
+    locationBId: locationB.id,
+    outputPartId,
+    outputLocationId: outputLocation.id
+  };
+}
+
+async function createDesignWithLine(
+  suffix: string,
+  workspaceId: string,
+  userId: string,
+  unitId: string,
+  line: { designators: string; pinnedPartId?: string; categoryId?: string; matchers: [] }
+) {
+  const design = await createDesign({
+    userId,
+    workspaceId,
+    workspaceName: `Builds Workspace ${suffix}`,
+    name: "Board",
+    catalogNumber: `BOARD-${suffix}`,
+    unitId
+  });
+  assert.ok(design.ok, JSON.stringify(design));
+
+  const revision = await prisma.designRevision.findFirstOrThrow({
+    where: { workspaceId, designId: design.id },
+    select: { id: true }
+  });
+  const designRow = await prisma.design.findUniqueOrThrow({
+    where: { id: design.id },
+    select: { outputPartId: true }
+  });
+
+  const created = await createBomLineItem({
+    userId,
+    workspaceId,
+    revisionId: revision.id,
+    input: {
+      designators: line.designators,
+      pinnedPartId: line.pinnedPartId ?? null,
+      categoryId: line.categoryId ?? null,
+      matchers: line.matchers
+    }
+  });
+  assert.ok(created.ok, JSON.stringify(created));
+
+  return { revisionId: revision.id, outputPartId: designRow.outputPartId };
+}
+
+async function partStock(workspaceId: string, partId: string) {
   const part = await prisma.part.findFirstOrThrow({
     where: { id: partId, workspaceId },
     select: { currentStock: true, reservedQty: true, allocatedQty: true }
@@ -204,7 +316,18 @@ async function reservedAndStock(workspaceId: string, partId: string) {
   };
 }
 
-async function createAndAllocateBuild(scenario: Scenario, targetQuantity = 2) {
+async function firstLineId(buildId: string) {
+  const line = await prisma.buildLineItem.findFirstOrThrow({
+    where: { buildId },
+    select: { id: true, designatorCount: true }
+  });
+  return line;
+}
+
+async function createBuildFor(
+  scenario: { userId: string; workspaceId: string; revisionId: string; outputLocationId: string },
+  targetQuantity: number
+) {
   const build = await createBuild({
     userId: scenario.userId,
     workspaceId: scenario.workspaceId,
@@ -213,49 +336,59 @@ async function createAndAllocateBuild(scenario: Scenario, targetQuantity = 2) {
     outputLocationId: scenario.outputLocationId
   });
   assert.ok(build.ok, JSON.stringify(build));
+  return build.data.id;
+}
 
-  const line = await prisma.buildLineItem.findFirstOrThrow({
-    where: { buildId: build.data.id },
-    select: { id: true }
-  });
-
-  const allocate = await allocateBuildLine({
+async function setAllocations(
+  scenario: { userId: string; workspaceId: string },
+  buildLineItemId: string,
+  entries: { partId: string; sourceLocationId: string | null; quantity: number }[]
+) {
+  const result = await setBuildLineAllocations({
     userId: scenario.userId,
     workspaceId: scenario.workspaceId,
-    buildLineItemId: line.id,
-    partId: scenario.buildLinePartId,
-    sourceLocationId: scenario.sourceLocationId
+    buildLineItemId,
+    entries
   });
-  assert.ok(allocate.ok, JSON.stringify(allocate));
+  assert.ok(result.ok, JSON.stringify(result));
+}
 
-  return { buildId: build.data.id, lineId: line.id };
+/** Single-part build allocated fully at the source location. */
+async function createAndAllocateBuild(scenario: Scenario, targetQuantity = 2) {
+  const buildId = await createBuildFor(scenario, targetQuantity);
+  const line = await firstLineId(buildId);
+  await setAllocations(scenario, line.id, [
+    {
+      partId: scenario.buildLinePartId,
+      sourceLocationId: scenario.sourceLocationId,
+      quantity: line.designatorCount * targetQuantity
+    }
+  ]);
+  return { buildId, lineId: line.id };
 }
 
 describe("build flow", () => {
-  test("createBuild snapshots one line and three designator assignments", async () => {
+  test("createBuild snapshots one line and pre-fills its allocation", async () => {
     const scenario = await createScenario(uniqueSuffix());
-    const build = await createBuild({
-      userId: scenario.userId,
-      workspaceId: scenario.workspaceId,
-      designRevisionId: scenario.revisionId,
-      targetQuantity: 2,
-      outputLocationId: scenario.outputLocationId
-    });
-    assert.ok(build.ok);
+    const buildId = await createBuildFor(scenario, 2);
 
     const lines = await prisma.buildLineItem.findMany({
-      where: { buildId: build.data.id },
+      where: { buildId },
       select: {
         designatorCount: true,
-        partId: true,
-        assignments: { select: { designator: true, quantity: true, assembledQuantity: true } }
+        assignments: { select: { id: true } },
+        allocations: { select: { partId: true, sourceLocationId: true, quantity: true } }
       }
     });
     assert.equal(lines.length, 1);
     assert.equal(lines[0]?.designatorCount, 3);
-    assert.equal(lines[0]?.partId, scenario.buildLinePartId, "pinned part auto-assigned");
-    assert.equal(lines[0]?.assignments.length, 3);
-    assert.ok(lines[0]?.assignments.every((a) => a.quantity === 2 && a.assembledQuantity === 0));
+    // Designator assignment rows are only created at start (distribution), not at creation.
+    assert.equal(lines[0]?.assignments.length, 0);
+    // The pinned part is greedily pre-filled from its stocked location for the full requirement.
+    assert.equal(lines[0]?.allocations.length, 1);
+    assert.equal(lines[0]?.allocations[0]?.partId, scenario.buildLinePartId);
+    assert.equal(lines[0]?.allocations[0]?.sourceLocationId, scenario.sourceLocationId);
+    assert.equal(lines[0]?.allocations[0]?.quantity, 6);
   });
 
   test("allocate → start reserves stock; assemble consumes and completes", async () => {
@@ -268,7 +401,7 @@ describe("build flow", () => {
       buildId
     });
     assert.ok(allocated.ok, JSON.stringify(allocated));
-    assert.equal((await reservedAndStock(scenario.workspaceId, scenario.buildLinePartId)).allocatedQty, "6");
+    assert.equal((await partStock(scenario.workspaceId, scenario.buildLinePartId)).allocatedQty, "6");
 
     const started = await startBuild({
       userId: scenario.userId,
@@ -277,7 +410,7 @@ describe("build flow", () => {
     });
     assert.ok(started.ok, JSON.stringify(started));
 
-    let component = await reservedAndStock(scenario.workspaceId, scenario.buildLinePartId);
+    let component = await partStock(scenario.workspaceId, scenario.buildLinePartId);
     assert.equal(component.reservedQty, "6", "reservation applied");
     assert.equal(component.allocatedQty, "0", "allocation converted to reservation");
     assert.equal(component.currentStock, "6", "stock not yet consumed");
@@ -285,12 +418,12 @@ describe("build flow", () => {
     const assignments = await prisma.buildDesignatorAssignment.findMany({
       where: { buildLineItem: { buildId } },
       orderBy: { designator: "asc" },
-      select: { id: true }
+      select: { id: true, partId: true }
     });
     assert.equal(assignments.length, 3);
+    assert.ok(assignments.every((a) => a.partId === scenario.buildLinePartId));
 
-    // Partially assemble the first designator: 1 of its 2 units. Consumes 1, releases 1
-    // reserved, build → IN_PROGRESS but not complete.
+    // Partially assemble the first designator: 1 of its 2 units.
     const partial = await assembleDesignator({
       userId: scenario.userId,
       workspaceId: scenario.workspaceId,
@@ -300,7 +433,7 @@ describe("build flow", () => {
     assert.ok(partial.ok, JSON.stringify(partial));
     assert.equal(partial.data.completed, false);
 
-    component = await reservedAndStock(scenario.workspaceId, scenario.buildLinePartId);
+    component = await partStock(scenario.workspaceId, scenario.buildLinePartId);
     assert.equal(component.currentStock, "5", "only one unit consumed");
     assert.equal(component.reservedQty, "5");
     assert.equal(
@@ -308,23 +441,18 @@ describe("build flow", () => {
       "IN_PROGRESS"
     );
 
-    // Assemble the second unit of the first designator, then the remaining two designators.
-    const first = await assembleDesignator({
+    await assembleDesignator({
       userId: scenario.userId,
       workspaceId: scenario.workspaceId,
       assignmentId: assignments[0]!.id,
       quantity: 1
     });
-    assert.ok(first.ok && first.data.completed === false);
-
-    const second = await assembleDesignator({
+    await assembleDesignator({
       userId: scenario.userId,
       workspaceId: scenario.workspaceId,
       assignmentId: assignments[1]!.id,
       quantity: 2
     });
-    assert.ok(second.ok && second.data.completed === false);
-
     const third = await assembleDesignator({
       userId: scenario.userId,
       workspaceId: scenario.workspaceId,
@@ -334,7 +462,7 @@ describe("build flow", () => {
     assert.ok(third.ok, JSON.stringify(third));
     assert.equal(third.data.completed, true);
 
-    component = await reservedAndStock(scenario.workspaceId, scenario.buildLinePartId);
+    component = await partStock(scenario.workspaceId, scenario.buildLinePartId);
     assert.equal(component.currentStock, "0", "all component stock consumed");
     assert.equal(component.reservedQty, "0", "all reservation released");
 
@@ -352,11 +480,348 @@ describe("build flow", () => {
     assert.equal(output.currentStock.toString(), "2", "output part received targetQuantity");
   });
 
-  test("start is rejected when available stock is insufficient", async () => {
-    const scenario = await createScenario(uniqueSuffix(), { stockAtSource: "5" });
-    const { buildId } = await createAndAllocateBuild(scenario, 2); // requires 6
+  test("split allocation across two parts reserves and assembles each part", async () => {
+    const scenario = await createSplitScenario(uniqueSuffix(), { stockA: "10", stockB: "10" });
+    const buildId = await createBuildFor(scenario, 2); // R1-R3 × 2 = 6 units
+    const line = await firstLineId(buildId);
+
+    // 4 from part A, 2 from part B.
+    await setAllocations(scenario, line.id, [
+      { partId: scenario.partAId, sourceLocationId: scenario.locationAId, quantity: 4 },
+      { partId: scenario.partBId, sourceLocationId: scenario.locationBId, quantity: 2 }
+    ]);
 
     await markBuildAllocated({ userId: scenario.userId, workspaceId: scenario.workspaceId, buildId });
+    assert.equal((await partStock(scenario.workspaceId, scenario.partAId)).allocatedQty, "4");
+    assert.equal((await partStock(scenario.workspaceId, scenario.partBId)).allocatedQty, "2");
+
+    const started = await startBuild({ userId: scenario.userId, workspaceId: scenario.workspaceId, buildId });
+    assert.ok(started.ok, JSON.stringify(started));
+    assert.equal((await partStock(scenario.workspaceId, scenario.partAId)).reservedQty, "4");
+    assert.equal((await partStock(scenario.workspaceId, scenario.partBId)).reservedQty, "2");
+
+    const assignments = await prisma.buildDesignatorAssignment.findMany({
+      where: { buildLineItem: { buildId } },
+      orderBy: [{ designator: "asc" }, { partId: "asc" }],
+      select: { id: true, designator: true, partId: true, quantity: true }
+    });
+    // R1, R2 -> part A (2 each); R3 -> part B (2). One row per designator.
+    assert.equal(assignments.length, 3);
+    const partAUnits = assignments
+      .filter((a) => a.partId === scenario.partAId)
+      .reduce((s, a) => s + a.quantity, 0);
+    const partBUnits = assignments
+      .filter((a) => a.partId === scenario.partBId)
+      .reduce((s, a) => s + a.quantity, 0);
+    assert.equal(partAUnits, 4);
+    assert.equal(partBUnits, 2);
+
+    // Assemble everything and confirm each part is consumed from its own stock.
+    for (const assignment of assignments) {
+      const result = await assembleDesignator({
+        userId: scenario.userId,
+        workspaceId: scenario.workspaceId,
+        assignmentId: assignment.id,
+        quantity: assignment.quantity
+      });
+      assert.ok(result.ok, JSON.stringify(result));
+    }
+
+    assert.equal((await partStock(scenario.workspaceId, scenario.partAId)).currentStock, "6");
+    assert.equal((await partStock(scenario.workspaceId, scenario.partBId)).currentStock, "8");
+    assert.equal(
+      (await prisma.build.findFirstOrThrow({ where: { id: buildId }, select: { state: true } })).state,
+      "COMPLETED"
+    );
+    assert.equal(
+      (await prisma.part.findFirstOrThrow({ where: { id: scenario.outputPartId }, select: { currentStock: true } }))
+        .currentStock.toString(),
+      "2"
+    );
+  });
+
+  test("per-unit split assigns mixed parts to a single designator", async () => {
+    // 2 designators × build qty 5 = 10 units; 7 from A + 3 from B splits R2 across both.
+    const scenario = await createSplitScenario(uniqueSuffix(), {
+      designators: "R1, R2",
+      stockA: "10",
+      stockB: "10"
+    });
+    const buildId = await createBuildFor(scenario, 5);
+    const line = await firstLineId(buildId);
+
+    await setAllocations(scenario, line.id, [
+      { partId: scenario.partAId, sourceLocationId: scenario.locationAId, quantity: 7 },
+      { partId: scenario.partBId, sourceLocationId: scenario.locationBId, quantity: 3 }
+    ]);
+    await markBuildAllocated({ userId: scenario.userId, workspaceId: scenario.workspaceId, buildId });
+    const started = await startBuild({ userId: scenario.userId, workspaceId: scenario.workspaceId, buildId });
+    assert.ok(started.ok, JSON.stringify(started));
+
+    const r2Rows = await prisma.buildDesignatorAssignment.findMany({
+      where: { buildLineItem: { buildId }, designator: "R2" },
+      orderBy: { partId: "asc" },
+      select: { partId: true, quantity: true }
+    });
+    // R1 takes 5 of A, so R2 is 2×A + 3×B — two rows for one designator.
+    assert.equal(r2Rows.length, 2);
+    const r2ByPart = new Map(r2Rows.map((r) => [r.partId, r.quantity]));
+    assert.equal(r2ByPart.get(scenario.partAId), 2);
+    assert.equal(r2ByPart.get(scenario.partBId), 3);
+
+    assert.equal((await partStock(scenario.workspaceId, scenario.partAId)).reservedQty, "7");
+    assert.equal((await partStock(scenario.workspaceId, scenario.partBId)).reservedQty, "3");
+  });
+
+  test("reassign moves a designator to another matching part and rejects invalid targets", async () => {
+    const scenario = await createSplitScenario(uniqueSuffix(), {
+      designators: "R1, R2, R3",
+      stockA: "10",
+      stockB: "10"
+    });
+    const buildId = await createBuildFor(scenario, 1); // 3 units
+    const line = await firstLineId(buildId);
+    await setAllocations(scenario, line.id, [
+      { partId: scenario.partAId, sourceLocationId: scenario.locationAId, quantity: 3 }
+    ]);
+    await markBuildAllocated({ userId: scenario.userId, workspaceId: scenario.workspaceId, buildId });
+    await startBuild({ userId: scenario.userId, workspaceId: scenario.workspaceId, buildId });
+
+    assert.equal((await partStock(scenario.workspaceId, scenario.partAId)).reservedQty, "3");
+
+    const rows = await prisma.buildDesignatorAssignment.findMany({
+      where: { buildLineItem: { buildId } },
+      orderBy: { designator: "asc" },
+      select: { id: true }
+    });
+
+    // Reject a non-matching part.
+    const badPart = await reassignDesignatorAssignment({
+      userId: scenario.userId,
+      workspaceId: scenario.workspaceId,
+      assignmentId: rows[0]!.id,
+      partId: scenario.outsiderPartId,
+      sourceLocationId: scenario.locationAId
+    });
+    assert.equal(badPart.ok, false);
+    if (!badPart.ok) assert.equal(badPart.error, "part-does-not-match-spec");
+
+    // Move R1 from part A to part B.
+    const moved = await reassignDesignatorAssignment({
+      userId: scenario.userId,
+      workspaceId: scenario.workspaceId,
+      assignmentId: rows[0]!.id,
+      partId: scenario.partBId,
+      sourceLocationId: scenario.locationBId
+    });
+    assert.ok(moved.ok, JSON.stringify(moved));
+    assert.equal((await partStock(scenario.workspaceId, scenario.partAId)).reservedQty, "2");
+    assert.equal((await partStock(scenario.workspaceId, scenario.partBId)).reservedQty, "1");
+
+    // An already-assembled row can no longer be reassigned.
+    await assembleDesignator({
+      userId: scenario.userId,
+      workspaceId: scenario.workspaceId,
+      assignmentId: rows[1]!.id,
+      quantity: 1
+    });
+    const tooLate = await reassignDesignatorAssignment({
+      userId: scenario.userId,
+      workspaceId: scenario.workspaceId,
+      assignmentId: rows[1]!.id,
+      partId: scenario.partBId,
+      sourceLocationId: scenario.locationBId
+    });
+    assert.equal(tooLate.ok, false);
+    if (!tooLate.ok) assert.equal(tooLate.error, "designator-already-assembled");
+  });
+
+  test("setBuildLineAllocations rejects allocating more than available stock", async () => {
+    const scenario = await createSplitScenario(uniqueSuffix(), { stockA: "3", stockB: "3" });
+    const buildId = await createBuildFor(scenario, 2); // R1-R3 × 2 = 6 units
+    const line = await firstLineId(buildId);
+
+    // Over part A's available (3).
+    const overPart = await setBuildLineAllocations({
+      userId: scenario.userId,
+      workspaceId: scenario.workspaceId,
+      buildLineItemId: line.id,
+      entries: [{ partId: scenario.partAId, sourceLocationId: scenario.locationAId, quantity: 6 }]
+    });
+    assert.equal(overPart.ok, false);
+    if (!overPart.ok) assert.equal(overPart.error, "insufficient-available-stock");
+
+    // Give part A enough overall (6) but keep only 3 at location A; allocating 6 there overdraws
+    // the location even though the part-level total would cover it.
+    await createInventoryEntry({
+      workspaceId: scenario.workspaceId,
+      partId: scenario.partAId,
+      entryType: "RECEIPT",
+      quantity: "3",
+      toLocationId: scenario.locationBId
+    });
+    const overLocation = await setBuildLineAllocations({
+      userId: scenario.userId,
+      workspaceId: scenario.workspaceId,
+      buildLineItemId: line.id,
+      entries: [{ partId: scenario.partAId, sourceLocationId: scenario.locationAId, quantity: 6 }]
+    });
+    assert.equal(overLocation.ok, false);
+    if (!overLocation.ok) assert.equal(overLocation.error, "insufficient-location-stock");
+
+    // Within stock: 3 from A (location A) + 3 from A (location B).
+    const ok = await setBuildLineAllocations({
+      userId: scenario.userId,
+      workspaceId: scenario.workspaceId,
+      buildLineItemId: line.id,
+      entries: [
+        { partId: scenario.partAId, sourceLocationId: scenario.locationAId, quantity: 3 },
+        { partId: scenario.partAId, sourceLocationId: scenario.locationBId, quantity: 3 }
+      ]
+    });
+    assert.ok(ok.ok, JSON.stringify(ok));
+  });
+
+  test("setBuildAllocations saves all lines atomically and rejects aggregate over-allocation", async () => {
+    // Two lines share part A (only 5 in stock): line 1 needs 5, line 2 needs 1.
+    const scenario = await createSplitScenario(uniqueSuffix(), {
+      designators: "R1, R2, R3, R4, R5",
+      secondLineDesignators: "R6",
+      stockA: "5",
+      stockB: "10"
+    });
+    const buildId = await createBuildFor(scenario, 1);
+    const lines = await prisma.buildLineItem.findMany({
+      where: { buildId },
+      orderBy: { createdAt: "asc" },
+      select: { id: true }
+    });
+    const [line1, line2] = lines;
+
+    // Both lines on A at once would need 6 > 5 — rejected atomically.
+    const over = await setBuildAllocations({
+      userId: scenario.userId,
+      workspaceId: scenario.workspaceId,
+      buildId,
+      lines: [
+        { buildLineItemId: line1!.id, entries: [{ partId: scenario.partAId, sourceLocationId: scenario.locationAId, quantity: 5 }] },
+        { buildLineItemId: line2!.id, entries: [{ partId: scenario.partAId, sourceLocationId: scenario.locationAId, quantity: 1 }] }
+      ]
+    });
+    assert.equal(over.ok, false);
+    if (!over.ok) assert.equal(over.error, "insufficient-available-stock");
+
+    // Valid: line 1 uses all of A, line 2 uses B.
+    const ok = await setBuildAllocations({
+      userId: scenario.userId,
+      workspaceId: scenario.workspaceId,
+      buildId,
+      lines: [
+        { buildLineItemId: line1!.id, entries: [{ partId: scenario.partAId, sourceLocationId: scenario.locationAId, quantity: 5 }] },
+        { buildLineItemId: line2!.id, entries: [{ partId: scenario.partBId, sourceLocationId: scenario.locationBId, quantity: 1 }] }
+      ]
+    });
+    assert.ok(ok.ok, JSON.stringify(ok));
+
+    // Reallocate atomically — move A off line 1 and onto line 2 in a single save. Because it is one
+    // transaction, the intermediate "A on both lines" over-allocation can never be persisted.
+    const moved = await setBuildAllocations({
+      userId: scenario.userId,
+      workspaceId: scenario.workspaceId,
+      buildId,
+      lines: [
+        { buildLineItemId: line1!.id, entries: [] },
+        { buildLineItemId: line2!.id, entries: [{ partId: scenario.partAId, sourceLocationId: scenario.locationAId, quantity: 1 }] }
+      ]
+    });
+    assert.ok(moved.ok, JSON.stringify(moved));
+
+    const line1Allocs = await prisma.buildLineAllocation.count({ where: { buildLineItemId: line1!.id } });
+    const line2Allocs = await prisma.buildLineAllocation.findMany({
+      where: { buildLineItemId: line2!.id },
+      select: { partId: true, quantity: true }
+    });
+    assert.equal(line1Allocs, 0, "line 1 emptied");
+    assert.equal(line2Allocs.length, 1);
+    assert.equal(line2Allocs[0]?.partId, scenario.partAId);
+    assert.equal(line2Allocs[0]?.quantity, 1);
+  });
+
+  test("createBuild pre-fill does not over-allocate a part shared by two lines", async () => {
+    // Part A has only 3 in stock; two lines each need 2. The greedy pre-fill must split A across the
+    // lines rather than suggest 2+2, so its total suggested quantity of A never exceeds 3.
+    const scenario = await createSplitScenario(uniqueSuffix(), {
+      designators: "R1, R2",
+      secondLineDesignators: "R3, R4",
+      stockA: "3",
+      stockB: "5"
+    });
+    const buildId = await createBuildFor(scenario, 1); // each line requires 2
+
+    const allocations = await prisma.buildLineAllocation.findMany({
+      where: { buildLineItem: { buildId }, partId: scenario.partAId },
+      select: { quantity: true }
+    });
+    const totalA = allocations.reduce((sum, a) => sum + a.quantity, 0);
+    assert.ok(totalA <= 3, `pre-fill suggested ${totalA} of part A but only 3 exist`);
+  });
+
+  test("allocation nets stock already allocated by the build's other lines", async () => {
+    // Two lines share the same matching part A, which has only 5 available.
+    const scenario = await createSplitScenario(uniqueSuffix(), {
+      designators: "R1, R2",
+      secondLineDesignators: "R3, R4",
+      stockA: "5",
+      stockB: "0"
+    });
+    const buildId = await createBuildFor(scenario, 1); // each line requires 2
+    const lines = await prisma.buildLineItem.findMany({
+      where: { buildId },
+      orderBy: { createdAt: "asc" },
+      select: { id: true }
+    });
+    const [line1, line2] = lines;
+
+    // Line 2 takes 2 of A.
+    await setAllocations(scenario, line2!.id, [
+      { partId: scenario.partAId, sourceLocationId: scenario.locationAId, quantity: 2 }
+    ]);
+
+    // Line 1 cannot take 4: only 3 of A remain once line 2's 2 are netted out.
+    const over = await setBuildLineAllocations({
+      userId: scenario.userId,
+      workspaceId: scenario.workspaceId,
+      buildLineItemId: line1!.id,
+      entries: [{ partId: scenario.partAId, sourceLocationId: scenario.locationAId, quantity: 4 }]
+    });
+    assert.equal(over.ok, false);
+    if (!over.ok) assert.equal(over.error, "insufficient-available-stock");
+
+    // 3 fits within what remains.
+    const ok = await setBuildLineAllocations({
+      userId: scenario.userId,
+      workspaceId: scenario.workspaceId,
+      buildLineItemId: line1!.id,
+      entries: [{ partId: scenario.partAId, sourceLocationId: scenario.locationAId, quantity: 3 }]
+    });
+    assert.ok(ok.ok, JSON.stringify(ok));
+  });
+
+  test("start is rejected when available stock drops after allocation", async () => {
+    // Allocation succeeds against 6 on hand; stock is then consumed elsewhere so start no longer
+    // has enough available — the start guard is the safety net once allocation is locked in.
+    const scenario = await createScenario(uniqueSuffix(), { stockAtSource: "6" });
+    const { buildId } = await createAndAllocateBuild(scenario, 2); // requires 6
+    await markBuildAllocated({ userId: scenario.userId, workspaceId: scenario.workspaceId, buildId });
+
+    await createInventoryEntry({
+      workspaceId: scenario.workspaceId,
+      partId: scenario.buildLinePartId,
+      entryType: "ISSUE",
+      quantity: "3",
+      fromLocationId: scenario.sourceLocationId
+    });
+
     const started = await startBuild({
       userId: scenario.userId,
       workspaceId: scenario.workspaceId,
@@ -365,19 +830,26 @@ describe("build flow", () => {
     assert.equal(started.ok, false);
     if (!started.ok) assert.equal(started.error, "insufficient-available-stock");
 
-    const component = await reservedAndStock(scenario.workspaceId, scenario.buildLinePartId);
+    const component = await partStock(scenario.workspaceId, scenario.buildLinePartId);
     assert.equal(component.reservedQty, "0", "no reservation on failed start");
   });
 
-  test("start is rejected when the source location balance is insufficient", async () => {
-    // Part-level available is 6 (3 + 3) but only 3 sit in the chosen source location.
-    const scenario = await createScenario(uniqueSuffix(), {
-      stockAtSource: "3",
-      stockAtSecond: "3"
-    });
+  test("start is rejected when the source location balance drops after allocation", async () => {
+    // Allocate 6 at the source, then move 3 away so part-level available (6) still covers the
+    // requirement but the chosen source location no longer does.
+    const scenario = await createScenario(uniqueSuffix(), { stockAtSource: "6" });
     const { buildId } = await createAndAllocateBuild(scenario, 2); // requires 6 at source
-
     await markBuildAllocated({ userId: scenario.userId, workspaceId: scenario.workspaceId, buildId });
+
+    await createInventoryEntry({
+      workspaceId: scenario.workspaceId,
+      partId: scenario.buildLinePartId,
+      entryType: "TRANSFER",
+      quantity: "3",
+      fromLocationId: scenario.sourceLocationId,
+      toLocationId: scenario.secondLocationId
+    });
+
     const started = await startBuild({
       userId: scenario.userId,
       workspaceId: scenario.workspaceId,
@@ -399,7 +871,6 @@ describe("build flow", () => {
       orderBy: { designator: "asc" },
       select: { id: true }
     });
-    // Assemble one full designator (consumes 2), then cancel.
     await assembleDesignator({
       userId: scenario.userId,
       workspaceId: scenario.workspaceId,
@@ -414,7 +885,7 @@ describe("build flow", () => {
     });
     assert.ok(cancelled.ok, JSON.stringify(cancelled));
 
-    const component = await reservedAndStock(scenario.workspaceId, scenario.buildLinePartId);
+    const component = await partStock(scenario.workspaceId, scenario.buildLinePartId);
     assert.equal(component.currentStock, "4", "assembled parts stay consumed");
     assert.equal(component.reservedQty, "0", "remaining reservation released");
 
@@ -429,7 +900,7 @@ describe("build flow", () => {
     const { buildId } = await createAndAllocateBuild(scenario, 2);
 
     await markBuildAllocated({ userId: scenario.userId, workspaceId: scenario.workspaceId, buildId });
-    assert.equal((await reservedAndStock(scenario.workspaceId, scenario.buildLinePartId)).allocatedQty, "6");
+    assert.equal((await partStock(scenario.workspaceId, scenario.buildLinePartId)).allocatedQty, "6");
 
     const cancelled = await cancelBuild({
       userId: scenario.userId,
@@ -438,7 +909,7 @@ describe("build flow", () => {
     });
     assert.ok(cancelled.ok);
 
-    const component = await reservedAndStock(scenario.workspaceId, scenario.buildLinePartId);
+    const component = await partStock(scenario.workspaceId, scenario.buildLinePartId);
     assert.equal(component.allocatedQty, "0", "soft allocation released");
     assert.equal(component.reservedQty, "0");
   });

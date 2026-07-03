@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   createColumnHelper,
   flexRender,
@@ -10,7 +10,6 @@ import {
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import {
-  allocateBuildLineAction,
   assembleDesignatorAction,
   cancelBuildAction,
   createBuildAction,
@@ -18,7 +17,9 @@ import {
   getBuildCreateOptionsAction,
   getBuildDetailAction,
   markBuildAllocatedAction,
+  reassignDesignatorAssignmentAction,
   reopenBuildAction,
+  setBuildAllocationsAction,
   startBuildAction,
   type BuildDetail,
   type BuildSummary
@@ -50,9 +51,11 @@ import { useBuildsQuery } from "@/app/use-builds-query";
 import { DetailPanel, useDetailsPanelWidth } from "@/app/detail-panel";
 import { buildTree } from "@/app/tree-picker-utils";
 import { PartLink } from "@/app/entity-links";
+import { BuildPartSelect, type BuildPartOption } from "@/app/build-part-select";
 import {
   LocationTreeSelect,
   formLocationSelectButtonClassName,
+  type LocationTreeItem,
   type LocationTreeSelectCopy
 } from "@/app/location-tree-select";
 
@@ -95,6 +98,18 @@ export type BuildsCopy = {
   sourceLocation: string;
   unassigned: string;
   available: string;
+  quantity: string;
+  noAvailableParts: string;
+  addPartEntry: string;
+  removeEntry: string;
+  applyAllocation: string;
+  applyBeforeAllocate: string;
+  allocatedOfRequired: string;
+  allocationTotalMismatch: string;
+  invalidAllocationQuantity: string;
+  partDoesNotMatchSpec: string;
+  changePart: string;
+  confirm: string;
   markAllocated: string;
   reopen: string;
   start: string;
@@ -138,6 +153,9 @@ function getErrorMsg(copy: BuildsCopy, error: string): string {
     case "insufficient-available-stock": return copy.insufficientAvailableStock;
     case "insufficient-location-stock": return copy.insufficientLocationStock;
     case "output-location-required": return copy.outputLocationRequired;
+    case "allocation-total-mismatch": return copy.allocationTotalMismatch;
+    case "invalid-allocation-quantity": return copy.invalidAllocationQuantity;
+    case "part-does-not-match-spec": return copy.partDoesNotMatchSpec;
     case "workspace-permission-denied": return copy.permissionDenied;
     case "database-unavailable": return copy.databaseUnavailable;
     default: return copy.invalidInput;
@@ -157,7 +175,7 @@ function locationTreeSelectCopy(copy: BuildsCopy): LocationTreeSelectCopy {
 const inputClass =
   "mt-1 w-full rounded-md border border-[var(--color-border-strong)] bg-[var(--color-bg-input)] px-3 py-2 text-sm text-[var(--color-text-primary)] focus:border-[var(--color-accent)] focus:outline-none focus:ring-1 focus:ring-[var(--color-accent)]";
 const smallSelectClass =
-  "w-full rounded-md border border-[var(--color-border-strong)] bg-[var(--color-bg-input)] px-2 py-1 text-sm text-[var(--color-text-primary)] focus:border-[var(--color-accent)] focus:outline-none focus:ring-1 focus:ring-[var(--color-accent)] disabled:opacity-60";
+  "h-10 w-full rounded-md border border-[var(--color-border-strong)] bg-[var(--color-bg-input)] px-2 py-1 text-sm text-[var(--color-text-primary)] focus:border-[var(--color-accent)] focus:outline-none focus:ring-1 focus:ring-[var(--color-accent)] disabled:opacity-60";
 
 export function BuildsClient({ canWrite, copy, initialPage, workspaceSlug }: BuildsClientProps) {
   const queryClient = useQueryClient();
@@ -277,13 +295,28 @@ export function BuildsClient({ canWrite, copy, initialPage, workspaceSlug }: Bui
     onError: (error) => showError((error as Error).message.replaceAll("_", "-"))
   });
 
-  const allocateMutation = useMutation({
+  const setAllocationsMutation = useMutation({
     mutationFn: async (input: {
-      buildLineItemId: string;
-      partId: string | null;
+      buildId: string;
+      lines: {
+        buildLineItemId: string;
+        entries: { partId: string; sourceLocationId: string | null; quantity: number }[];
+      }[];
+    }) => {
+      const result = await setBuildAllocationsAction({ workspaceSlug, ...input });
+      if (!result.ok) throw new Error(result.error);
+    },
+    onSuccess: invalidateBuilds,
+    onError: (error) => showError((error as Error).message.replaceAll("_", "-"))
+  });
+
+  const reassignMutation = useMutation({
+    mutationFn: async (input: {
+      assignmentId: string;
+      partId: string;
       sourceLocationId: string | null;
     }) => {
-      const result = await allocateBuildLineAction({ workspaceSlug, ...input });
+      const result = await reassignDesignatorAssignmentAction({ workspaceSlug, ...input });
       if (!result.ok) throw new Error(result.error);
     },
     onSuccess: invalidateBuilds,
@@ -590,8 +623,9 @@ export function BuildsClient({ canWrite, copy, initialPage, workspaceSlug }: Bui
             canWrite={canWrite}
             copy={copy}
             detail={buildDetail ?? null}
-            onAllocate={(input) => allocateMutation.mutate(input)}
+            onSetBuildAllocations={(input) => setAllocationsMutation.mutate(input)}
             onAssemble={(input) => assembleMutation.mutate(input)}
+            onReassign={(input) => reassignMutation.mutate(input)}
             onMarkAllocated={(buildId) => markAllocatedMutation.mutate(buildId)}
             onReopen={(buildId) => reopenMutation.mutate(buildId)}
             onStart={(buildId) => startMutation.mutate(buildId)}
@@ -700,12 +734,20 @@ export function BuildsClient({ canWrite, copy, initialPage, workspaceSlug }: Bui
   );
 }
 
+type AllocationEntryInput = { partId: string; sourceLocationId: string | null; quantity: number };
+
+type BuildAllocationsInput = {
+  buildId: string;
+  lines: { buildLineItemId: string; entries: AllocationEntryInput[] }[];
+};
+
 type BuildDetailContentProps = {
   canWrite: boolean;
   copy: BuildsCopy;
   detail: BuildDetail | null;
-  onAllocate: (input: { buildLineItemId: string; partId: string | null; sourceLocationId: string | null }) => void;
+  onSetBuildAllocations: (input: BuildAllocationsInput) => void;
   onAssemble: (input: { assignmentId: string; quantity: number }) => void;
+  onReassign: (input: { assignmentId: string; partId: string; sourceLocationId: string | null }) => void;
   onMarkAllocated: (buildId: string) => void;
   onReopen: (buildId: string) => void;
   onStart: (buildId: string) => void;
@@ -722,20 +764,79 @@ function BuildDetailContent({
   canWrite,
   copy,
   detail,
-  onAllocate,
+  onSetBuildAllocations,
   onAssemble,
+  onReassign,
   onMarkAllocated,
   onReopen,
   onStart,
   onCancel,
   onDelete
 }: BuildDetailContentProps) {
+  // Full per-line allocation drafts are owned here so a single build-wide Apply can persist every
+  // line atomically — per-line saves could otherwise leave the build over-allocated.
+  const [draftsByLine, setDraftsByLine] = useState<Record<string, AllocationDraft[]>>({});
+  const serverSignature = allocationsSignatureOf(detail?.lines ?? []);
+  const syncedRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (syncedRef.current === serverSignature) return;
+    syncedRef.current = serverSignature;
+    setDraftsByLine(
+      Object.fromEntries((detail?.lines ?? []).map((line) => [line.id, draftsFromLine(line)]))
+    );
+    // Re-sync is keyed on the persisted-allocations signature, which already encodes detail.lines.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [serverSignature]);
+  const setLineEntries = useCallback((lineId: string, entries: AllocationDraft[]) => {
+    setDraftsByLine((prev) => ({ ...prev, [lineId]: entries }));
+  }, []);
+
   if (!detail) {
     return <p className="text-sm text-[var(--color-text-muted)]">{copy.loadingBuilds}</p>;
   }
 
-  const editable = detail.state === "CREATED";
-  const fullyAllocated = detail.lines.every((line) => line.part && line.sourceLocation);
+  const build = detail;
+  const editable = build.state === "CREATED";
+  const entriesFor = (line: BuildLine): AllocationDraft[] => draftsByLine[line.id] ?? draftsFromLine(line);
+
+  // Aggregate the live draft usage of every line except the target, so each editor validates
+  // against shared stock immediately.
+  const externalUsageFor = (targetLineId: string): LineUsage => {
+    const parts: Record<string, number> = {};
+    const locs: Record<string, number> = {};
+    for (const other of build.lines) {
+      if (other.id === targetLineId) continue;
+      const usage = usageFromEntries(entriesFor(other));
+      for (const [partId, qty] of Object.entries(usage.parts)) parts[partId] = (parts[partId] ?? 0) + qty;
+      for (const [key, qty] of Object.entries(usage.locs)) locs[key] = (locs[key] ?? 0) + qty;
+    }
+    return { parts, locs };
+  };
+
+  // Build-wide Apply gating: dirty vs persisted, every present entry complete, aggregate within stock.
+  const dirty = draftSignatureOf(build.lines, entriesFor) !== serverSignature;
+  const entriesComplete = build.lines
+    .flatMap((line) => entriesFor(line))
+    .every((e) => e.partId && e.sourceLocationId && Number.isInteger(Number(e.quantity)) && Number(e.quantity) >= 1);
+  const applyStockOk = buildAllocationStockOk(build.lines, entriesFor);
+  const applyEnabled = dirty && entriesComplete && applyStockOk;
+  const fullyAllocated = build.lines.every((line) => isLineFullyAllocated(line));
+
+  function handleApply() {
+    onSetBuildAllocations({
+      buildId: build.id,
+      lines: build.lines.map((line) => ({
+        buildLineItemId: line.id,
+        entries: entriesFor(line)
+          .filter((e) => e.partId && e.sourceLocationId)
+          .map((e) => ({
+            partId: e.partId,
+            sourceLocationId: e.sourceLocationId,
+            quantity: Number.parseInt(e.quantity, 10)
+          }))
+      }))
+    });
+  }
 
   return (
     <>
@@ -772,7 +873,16 @@ function BuildDetailContent({
               <button
                 className={primaryActionClass}
                 type="button"
-                disabled={!fullyAllocated}
+                disabled={!applyEnabled}
+                onClick={handleApply}
+              >
+                {copy.applyAllocation}
+              </button>
+              <button
+                className={actionButtonClass}
+                type="button"
+                disabled={!fullyAllocated || dirty}
+                title={dirty ? copy.applyBeforeAllocate : undefined}
                 onClick={() => onMarkAllocated(detail.id)}
               >
                 {copy.markAllocated}
@@ -820,8 +930,11 @@ function BuildDetailContent({
                 line={line}
                 locations={detail.locations}
                 showAssembly={detail.state === "STARTED" || detail.state === "IN_PROGRESS"}
-                onAllocate={onAllocate}
+                entries={entriesFor(line)}
+                externalUsage={externalUsageFor(line.id)}
+                onEntriesChange={(entries) => setLineEntries(line.id, entries)}
                 onAssemble={onAssemble}
+                onReassign={onReassign}
               />
             ))}
           </div>
@@ -831,16 +944,146 @@ function BuildDetailContent({
   );
 }
 
+type BuildLine = NonNullable<BuildDetail["lines"]>[number];
+type BuildAssignment = BuildLine["assignments"][number];
+
+/** A line's allocated quantities per part and per (part, location) — used for cross-line netting. */
+type LineUsage = { parts: Record<string, number>; locs: Record<string, number> };
+
+/** Seed a line's editable draft from its persisted allocations. */
+function draftsFromLine(line: BuildLine): AllocationDraft[] {
+  return line.allocations.map((a) => ({
+    partId: a.part.id,
+    sourceLocationId: a.sourceLocation?.id ?? null,
+    quantity: String(a.quantity)
+  }));
+}
+
+/** Aggregate a set of draft entries into per-part and per-(part, location) quantities. */
+function usageFromEntries(entries: AllocationDraft[]): LineUsage {
+  const parts: Record<string, number> = {};
+  const locs: Record<string, number> = {};
+  for (const entry of entries) {
+    const qty = Number.parseInt(entry.quantity, 10) || 0;
+    if (entry.partId) parts[entry.partId] = (parts[entry.partId] ?? 0) + qty;
+    if (entry.partId && entry.sourceLocationId) {
+      const key = `${entry.partId}::${entry.sourceLocationId}`;
+      locs[key] = (locs[key] ?? 0) + qty;
+    }
+  }
+  return { parts, locs };
+}
+
+/** Stable signature of the build's persisted allocations, used to detect server changes. */
+function allocationsSignatureOf(lines: BuildLine[]): string {
+  return lines
+    .map(
+      (line) =>
+        `${line.id}#${line.allocations
+          .map((a) => `${a.part.id}:${a.sourceLocation?.id ?? ""}:${a.quantity}`)
+          .join("|")}`
+    )
+    .join("~");
+}
+
+/** Same signature shape, computed from the current drafts (to compare against the server one). */
+function draftSignatureOf(lines: BuildLine[], entriesFor: (line: BuildLine) => AllocationDraft[]): string {
+  return lines
+    .map(
+      (line) =>
+        `${line.id}#${entriesFor(line)
+          .map((e) => `${e.partId}:${e.sourceLocationId ?? ""}:${Number.parseInt(e.quantity, 10) || 0}`)
+          .join("|")}`
+    )
+    .join("~");
+}
+
+/** True when the build's whole draft stays within available part stock and per-location balances. */
+function buildAllocationStockOk(lines: BuildLine[], entriesFor: (line: BuildLine) => AllocationDraft[]): boolean {
+  const availableByPart = new Map<string, number>();
+  const balanceByLocation = new Map<string, number>();
+  for (const line of lines) {
+    for (const candidate of line.matchCandidates) {
+      availableByPart.set(candidate.id, Number(candidate.availableQuantity));
+    }
+    for (const allocation of line.allocations) {
+      if (!availableByPart.has(allocation.part.id)) {
+        availableByPart.set(allocation.part.id, Number(allocation.part.availableQuantity));
+      }
+    }
+    for (const pb of line.partBalances) {
+      for (const balance of pb.balances) balanceByLocation.set(`${pb.partId}::${balance.locationId}`, Number(balance.balance));
+    }
+  }
+  const totalByPart = new Map<string, number>();
+  const totalByLocation = new Map<string, number>();
+  for (const line of lines) {
+    for (const entry of entriesFor(line)) {
+      const qty = Number.parseInt(entry.quantity, 10) || 0;
+      if (entry.partId) totalByPart.set(entry.partId, (totalByPart.get(entry.partId) ?? 0) + qty);
+      if (entry.partId && entry.sourceLocationId) {
+        const key = `${entry.partId}::${entry.sourceLocationId}`;
+        totalByLocation.set(key, (totalByLocation.get(key) ?? 0) + qty);
+      }
+    }
+  }
+  for (const [partId, qty] of totalByPart) if (qty > (availableByPart.get(partId) ?? 0)) return false;
+  for (const [key, qty] of totalByLocation) if (qty > (balanceByLocation.get(key) ?? 0)) return false;
+  return true;
+}
+
 type BuildLineRowProps = {
   canWrite: boolean;
   copy: BuildsCopy;
   editable: boolean;
-  line: NonNullable<BuildDetail["lines"]>[number];
+  line: BuildLine;
   locations: StorageLocationListItem[];
   showAssembly: boolean;
-  onAllocate: (input: { buildLineItemId: string; partId: string | null; sourceLocationId: string | null }) => void;
+  entries: AllocationDraft[];
+  externalUsage: LineUsage;
+  onEntriesChange: (entries: AllocationDraft[]) => void;
   onAssemble: (input: { assignmentId: string; quantity: number }) => void;
+  onReassign: (input: { assignmentId: string; partId: string; sourceLocationId: string | null }) => void;
 };
+
+/** A line is fully allocated when its entries cover the requirement and each has a source location. */
+function isLineFullyAllocated(line: BuildLine): boolean {
+  if (line.requiredUnits === 0) return true;
+  if (line.allocations.length === 0) return false;
+  if (line.allocations.some((a) => !a.sourceLocation)) return false;
+  const total = line.allocations.reduce((sum, a) => sum + a.quantity, 0);
+  return total === line.requiredUnits;
+}
+
+/** Narrow a location tree to those that hold the given part, annotating each with its balance. */
+function narrowLocationsToBalances(
+  locations: StorageLocationListItem[],
+  balances: { locationId: string; balance: string }[]
+): { items: StorageLocationListItem[]; tree: LocationTreeItem[] } {
+  const balanceById = new Map(balances.map((b) => [b.locationId, b.balance]));
+  if (balanceById.size === 0) return { items: [], tree: [] };
+  const byId = new Map(locations.map((l) => [l.id, l]));
+  const includeIds = new Set<string>();
+  for (const balance of balances) {
+    let current = byId.get(balance.locationId);
+    while (current) {
+      includeIds.add(current.id);
+      current = current.parentId ? byId.get(current.parentId) : undefined;
+    }
+  }
+  const items = locations
+    .filter((l) => includeIds.has(l.id))
+    .map((l) => {
+      const balance = balanceById.get(l.id);
+      return {
+        ...l,
+        // Only locations with a balance are selectable; ancestors are structural.
+        isAssignable: balance !== undefined,
+        name: balance !== undefined ? `${l.name} · ${balance}` : l.name
+      };
+    });
+  return { items, tree: buildTree(items) };
+}
 
 function BuildLineRow({
   canWrite,
@@ -849,181 +1092,501 @@ function BuildLineRow({
   line,
   locations,
   showAssembly,
-  onAllocate,
-  onAssemble
+  entries,
+  externalUsage,
+  onEntriesChange,
+  onAssemble,
+  onReassign
 }: BuildLineRowProps) {
-  // Narrow the source-location picker to locations that physically hold the chosen part
-  // (with their current balance), keeping ancestors as structural-only nodes for the tree.
-  const sourceLocationData = useMemo(() => {
-    const balanceById = new Map(line.sourceLocationBalances.map((b) => [b.locationId, b.balance]));
-    if (balanceById.size === 0) return { items: [] as StorageLocationListItem[], tree: [] };
-    const byId = new Map(locations.map((l) => [l.id, l]));
-    const includeIds = new Set<string>();
-    for (const balance of line.sourceLocationBalances) {
-      let current = byId.get(balance.locationId);
-      while (current) {
-        includeIds.add(current.id);
-        current = current.parentId ? byId.get(current.parentId) : undefined;
-      }
-    }
-    const items = locations
-      .filter((l) => includeIds.has(l.id))
-      .map((l) => {
-        const balance = balanceById.get(l.id);
-        return {
-          ...l,
-          // Only locations with a balance are selectable; ancestors are structural.
-          isAssignable: balance !== undefined,
-          name: balance !== undefined ? `${l.name} · ${balance}` : l.name
-        };
-      });
-    return { items, tree: buildTree(items) };
-  }, [line.sourceLocationBalances, locations]);
-
-  const partOptions = useMemo(() => {
-    const options = line.matchCandidates.slice();
-    if (line.part && !options.some((p) => p.id === line.part!.id)) {
-      options.unshift({
-        id: line.part.id,
-        catalogNumber: line.part.catalogNumber,
-        description: null,
-        manufacturerName: "",
-        availableQuantity: line.part.availableQuantity
-      });
-    }
-    return options;
-  }, [line.matchCandidates, line.part]);
+  const editing = editable && canWrite;
+  const allocatedTotal = editing
+    ? entries.reduce((sum, e) => sum + (Number.parseInt(e.quantity, 10) || 0), 0)
+    : line.allocations.reduce((sum, a) => sum + a.quantity, 0);
 
   return (
     <div className="grid gap-1.5 rounded-md border border-[var(--color-border)] px-2.5 py-2">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-2">
         <span className="font-mono text-sm text-[var(--color-text-primary)]">{line.designators}</span>
-        {line.categoryName && (
-          <span className="rounded bg-[var(--color-bg-subtle)] px-1.5 py-0.5 text-xs text-[var(--color-text-secondary)]">
-            {line.categoryName}
-          </span>
-        )}
+        <div className="flex items-center gap-2">
+          {line.categoryName && (
+            <span className="rounded bg-[var(--color-bg-subtle)] px-1.5 py-0.5 text-xs text-[var(--color-text-secondary)]">
+              {line.categoryName}
+            </span>
+          )}
+          <AllocatedCounter copy={copy} total={allocatedTotal} required={line.requiredUnits} />
+        </div>
       </div>
 
-      {editable && canWrite ? (
-        <div className="grid grid-cols-2 items-end gap-2">
-          <label className="grid gap-1 text-xs text-[var(--color-text-muted)]">
-            {copy.part}
-            <select
-              className={smallSelectClass}
-              value={line.part?.id ?? ""}
-              onChange={(e) =>
-                onAllocate({
-                  buildLineItemId: line.id,
-                  partId: e.target.value || null,
-                  sourceLocationId: line.sourceLocation?.id ?? null
-                })
-              }
-            >
-              <option value="">{copy.unassigned}</option>
-              {partOptions.map((part) => (
-                <option key={part.id} value={part.id}>
-                  {part.catalogNumber}
-                  {part.manufacturerName ? ` · ${part.manufacturerName}` : ""}
-                  {part.description ? ` · ${part.description}` : ""}
-                  {` — ${copy.available} ${part.availableQuantity}`}
-                </option>
-              ))}
-            </select>
-          </label>
-          <div className="grid gap-1 text-xs text-[var(--color-text-muted)]">
-            {copy.sourceLocation}
-            <LocationTreeSelect
-              locations={sourceLocationData.items}
-              locationTree={sourceLocationData.tree}
-              copy={locationTreeSelectCopy(copy)}
-              name={`build-source-${line.id}`}
-              selectedId={line.sourceLocation?.id ?? ""}
-              onSelectedIdChange={(locationId) =>
-                onAllocate({
-                  buildLineItemId: line.id,
-                  partId: line.part?.id ?? null,
-                  sourceLocationId: locationId || null
-                })
-              }
-              clearable
-              emptyLabel={copy.unassigned}
-              className="w-full"
-              buttonClassName={formLocationSelectButtonClassName}
-            />
-          </div>
-        </div>
+      {editing ? (
+        <AllocationEditor
+          copy={copy}
+          line={line}
+          locations={locations}
+          entries={entries}
+          externalUsage={externalUsage}
+          onEntriesChange={onEntriesChange}
+        />
       ) : (
-        <div className="grid grid-cols-2 gap-2 text-sm">
-          <div className="group">
-            <span className="text-xs text-[var(--color-text-muted)]">{copy.part}</span>
-            <p className="font-mono text-[var(--color-text-primary)]">
-              {line.part ? (
-                <PartLink partId={line.part.id} name={line.part.catalogNumber} />
-              ) : (
-                <span className="font-sans text-[var(--color-text-muted)]">{copy.unassigned}</span>
-              )}
-            </p>
-          </div>
-          <div>
-            <span className="text-xs text-[var(--color-text-muted)]">{copy.sourceLocation}</span>
-            <p className="text-[var(--color-text-primary)]">
-              {line.sourceLocation?.name ?? copy.unassigned}
-            </p>
-          </div>
-        </div>
+        <ReadOnlyAllocations copy={copy} line={line} />
       )}
 
       {showAssembly && (
-        <div className="flex flex-wrap gap-1.5">
-          {line.assignments.map((assignment) => {
-            const remaining = assignment.quantity - assignment.assembledQuantity;
-            const done = remaining <= 0;
-            const label =
-              assignment.quantity > 1
-                ? `${assignment.designator} ${assignment.assembledQuantity}/${assignment.quantity}`
-                : assignment.designator;
-            if (done) {
-              return (
-                <span
-                  key={assignment.id}
-                  className="inline-flex items-center gap-1 rounded bg-[var(--color-success-soft)] px-2 py-0.5 font-mono text-xs text-[var(--color-success)]"
-                >
-                  ✓ {label}
-                </span>
-              );
-            }
-            return (
+        <AssemblyList
+          canWrite={canWrite}
+          copy={copy}
+          line={line}
+          locations={locations}
+          onAssemble={onAssemble}
+          onReassign={onReassign}
+        />
+      )}
+    </div>
+  );
+}
+
+const removeButtonClass =
+  "inline-flex h-10 items-center rounded-md border border-[var(--color-border-strong)] px-2 text-sm text-[var(--color-text-muted)] transition hover:bg-[var(--color-bg-subtle)] disabled:opacity-50";
+
+// Applied to an allocation control whose quantity exceeds available stock.
+const stockErrorBorder = "border-[var(--color-error)] focus:border-[var(--color-error)]";
+
+type AllocationDraft = { partId: string; sourceLocationId: string | null; quantity: string };
+
+function AllocationEditor({
+  copy,
+  line,
+  locations,
+  entries,
+  externalUsage,
+  onEntriesChange
+}: {
+  copy: BuildsCopy;
+  line: BuildLine;
+  locations: StorageLocationListItem[];
+  entries: AllocationDraft[];
+  externalUsage: LineUsage;
+  onEntriesChange: (entries: AllocationDraft[]) => void;
+}) {
+  // Part options: the live match candidates plus any already-chosen part not among them.
+  const partOptions = useMemo(() => {
+    const byId = new Map<string, { catalogNumber: string; manufacturerName: string; description: string | null }>();
+    for (const candidate of line.matchCandidates) {
+      byId.set(candidate.id, {
+        catalogNumber: candidate.catalogNumber,
+        manufacturerName: candidate.manufacturerName,
+        description: candidate.description
+      });
+    }
+    for (const allocation of line.allocations) {
+      if (!byId.has(allocation.part.id)) {
+        byId.set(allocation.part.id, {
+          catalogNumber: allocation.part.catalogNumber,
+          manufacturerName: "",
+          description: null
+        });
+      }
+    }
+    return [...byId.entries()].map(([id, value]) => ({ id, ...value }));
+  }, [line.matchCandidates, line.allocations]);
+
+  const balancesByPart = useMemo(
+    () => new Map(line.partBalances.map((pb) => [pb.partId, pb.balances])),
+    [line.partBalances]
+  );
+
+  // Available stock per part (on hand − reserved) and physical balance per (part, location), net of
+  // what the build's *other* lines currently draw (live) — so this line cannot claim the same stock.
+  const availableByPart = useMemo(() => {
+    const map = new Map<string, number>();
+    const net = (partId: string, gross: number) =>
+      Math.max(0, gross - (externalUsage.parts[partId] ?? 0));
+    for (const candidate of line.matchCandidates) {
+      map.set(candidate.id, net(candidate.id, Number(candidate.availableQuantity)));
+    }
+    for (const allocation of line.allocations) {
+      if (!map.has(allocation.part.id)) {
+        map.set(allocation.part.id, net(allocation.part.id, Number(allocation.part.availableQuantity)));
+      }
+    }
+    return map;
+  }, [line.matchCandidates, line.allocations, externalUsage]);
+  const balanceByPartLocation = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const pb of line.partBalances) {
+      for (const balance of pb.balances) {
+        const key = `${pb.partId}::${balance.locationId}`;
+        map.set(key, Math.max(0, Number(balance.balance) - (externalUsage.locs[key] ?? 0)));
+      }
+    }
+    return map;
+  }, [line.partBalances, externalUsage]);
+
+  // Rich options for the part picker, carrying each part's net-available count.
+  const selectablePartOptions = useMemo<BuildPartOption[]>(
+    () => partOptions.map((part) => ({ ...part, available: availableByPart.get(part.id) ?? 0 })),
+    [partOptions, availableByPart]
+  );
+
+  const qtyByPart = new Map<string, number>();
+  const qtyByPartLocation = new Map<string, number>();
+  for (const entry of entries) {
+    const qty = Number.parseInt(entry.quantity, 10) || 0;
+    if (entry.partId) qtyByPart.set(entry.partId, (qtyByPart.get(entry.partId) ?? 0) + qty);
+    if (entry.partId && entry.sourceLocationId) {
+      const key = `${entry.partId}::${entry.sourceLocationId}`;
+      qtyByPartLocation.set(key, (qtyByPartLocation.get(key) ?? 0) + qty);
+    }
+  }
+  const partOver = (partId: string) =>
+    Boolean(partId) && (qtyByPart.get(partId) ?? 0) > (availableByPart.get(partId) ?? 0);
+  const locationOver = (partId: string, locationId: string | null) =>
+    Boolean(partId && locationId) &&
+    (qtyByPartLocation.get(`${partId}::${locationId}`) ?? 0) >
+      (balanceByPartLocation.get(`${partId}::${locationId}`) ?? 0);
+  const anyPartOver = [...qtyByPart.keys()].some((partId) => partOver(partId));
+  const anyLocationOver = entries.some((e) => locationOver(e.partId, e.sourceLocationId));
+  const stockOk = !anyPartOver && !anyLocationOver;
+
+  function update(index: number, patch: Partial<AllocationDraft>) {
+    onEntriesChange(entries.map((entry, i) => (i === index ? { ...entry, ...patch } : entry)));
+  }
+
+  // Greedily suggest the next entry the way the build does on creation: cover the remaining
+  // requirement from the best-stocked matching part/location that still has spare capacity, net of
+  // what the current entries already use. Falls back to a blank row when nothing is left to draw.
+  function suggestNextEntry(current: AllocationDraft[]): AllocationDraft {
+    const blank: AllocationDraft = { partId: "", sourceLocationId: null, quantity: "0" };
+    const used = current.reduce((sum, e) => sum + (Number.parseInt(e.quantity, 10) || 0), 0);
+    const remaining = line.requiredUnits - used;
+    if (remaining <= 0) return blank;
+
+    const usedByPart = new Map<string, number>();
+    const usedByPartLocation = new Map<string, number>();
+    for (const e of current) {
+      const qty = Number.parseInt(e.quantity, 10) || 0;
+      if (e.partId) usedByPart.set(e.partId, (usedByPart.get(e.partId) ?? 0) + qty);
+      if (e.partId && e.sourceLocationId) {
+        const key = `${e.partId}::${e.sourceLocationId}`;
+        usedByPartLocation.set(key, (usedByPartLocation.get(key) ?? 0) + qty);
+      }
+    }
+
+    for (const candidate of line.matchCandidates) {
+      const partCapacity =
+        (availableByPart.get(candidate.id) ?? 0) - (usedByPart.get(candidate.id) ?? 0);
+      if (partCapacity <= 0) continue;
+      // Remaining at each location = balance net of the build's other lines (balanceByPartLocation)
+      // minus this line's own entries. Using the raw balance here would over-suggest when a sibling
+      // line already draws from the same location.
+      const locations = (balancesByPart.get(candidate.id) ?? [])
+        .map((balance) => {
+          const key = `${candidate.id}::${balance.locationId}`;
+          return {
+            locationId: balance.locationId,
+            remaining: (balanceByPartLocation.get(key) ?? 0) - (usedByPartLocation.get(key) ?? 0)
+          };
+        })
+        .sort((a, b) => b.remaining - a.remaining);
+      for (const location of locations) {
+        const capacity = Math.min(partCapacity, location.remaining);
+        if (capacity <= 0) continue;
+        return {
+          partId: candidate.id,
+          sourceLocationId: location.locationId,
+          quantity: String(Math.min(remaining, capacity))
+        };
+      }
+    }
+
+    return blank;
+  }
+
+  return (
+    <div className="grid gap-2">
+      {entries.length > 0 && (
+        <div className="grid grid-cols-[1fr_1fr_auto_auto] gap-2 text-xs text-[var(--color-text-muted)]">
+          <span>{copy.part}</span>
+          <span>{copy.sourceLocation}</span>
+          <span>{copy.quantity}</span>
+          <span aria-hidden="true" />
+        </div>
+      )}
+      {entries.map((entry, index) => {
+        const narrowed = narrowLocationsToBalances(locations, balancesByPart.get(entry.partId) ?? []);
+        const overPart = partOver(entry.partId);
+        const overLocation = locationOver(entry.partId, entry.sourceLocationId);
+        return (
+          <div key={index} className="grid grid-cols-[1fr_1fr_auto_auto] items-center gap-2">
+            <BuildPartSelect
+              name={`alloc-part-${line.id}-${index}`}
+              options={selectablePartOptions.filter((p) => p.available > 0 || p.id === entry.partId)}
+              value={entry.partId}
+              placeholder={copy.unassigned}
+              availableLabel={copy.available}
+              noOptionsLabel={copy.noAvailableParts}
+              invalid={overPart}
+              onChange={(partId) => update(index, { partId, sourceLocationId: null })}
+            />
+            <LocationTreeSelect
+              locations={narrowed.items}
+              locationTree={narrowed.tree}
+              copy={locationTreeSelectCopy(copy)}
+              name={`alloc-${line.id}-${index}`}
+              selectedId={entry.sourceLocationId ?? ""}
+              onSelectedIdChange={(locationId) => update(index, { sourceLocationId: locationId || null })}
+              emptyLabel={copy.unassigned}
+              className="w-full"
+              buttonClassName={`${formLocationSelectButtonClassName}${
+                overLocation ? ` ${stockErrorBorder}` : ""
+              }`}
+            />
+            <input
+              className={`${smallSelectClass} w-20${overPart || overLocation ? ` ${stockErrorBorder}` : ""}`}
+              type="number"
+              min={1}
+              step={1}
+              value={entry.quantity}
+              onChange={(e) => update(index, { quantity: e.target.value })}
+            />
+            <button
+              type="button"
+              className={removeButtonClass}
+              title={copy.removeEntry}
+              onClick={() => onEntriesChange(entries.filter((_, i) => i !== index))}
+            >
+              ✕
+            </button>
+          </div>
+        );
+      })}
+      {!stockOk && (
+        <p className="text-xs text-[var(--color-error)]">
+          {anyPartOver ? copy.insufficientAvailableStock : copy.insufficientLocationStock}
+        </p>
+      )}
+      <div>
+        <button
+          type="button"
+          className={actionButtonClass}
+          onClick={() => onEntriesChange([...entries, suggestNextEntry(entries)])}
+        >
+          {copy.addPartEntry}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function AllocatedCounter({
+  copy,
+  total,
+  required
+}: {
+  copy: BuildsCopy;
+  total: number;
+  required: number;
+}) {
+  return (
+    <span
+      className={`text-xs ${
+        total === required ? "text-[var(--color-success)]" : "text-[var(--color-text-muted)]"
+      }`}
+    >
+      {copy.allocatedOfRequired}: {total}/{required}
+    </span>
+  );
+}
+
+function ReadOnlyAllocations({ copy, line }: { copy: BuildsCopy; line: BuildLine }) {
+  if (line.allocations.length === 0) {
+    return <p className="text-sm text-[var(--color-text-muted)]">{copy.unassigned}</p>;
+  }
+  return (
+    <div className="grid gap-1 text-sm">
+      {line.allocations.map((allocation) => (
+        <div key={allocation.id} className="flex items-center justify-between gap-2">
+          <span className="font-mono text-[var(--color-text-primary)]">
+            <PartLink partId={allocation.part.id} name={allocation.part.catalogNumber} />
+          </span>
+          <span className="text-[var(--color-text-secondary)]">
+            {(allocation.sourceLocation?.name ?? copy.unassigned) + " · " + allocation.quantity}
+          </span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function AssemblyList({
+  canWrite,
+  copy,
+  line,
+  locations,
+  onAssemble,
+  onReassign
+}: {
+  canWrite: boolean;
+  copy: BuildsCopy;
+  line: BuildLine;
+  locations: StorageLocationListItem[];
+  onAssemble: (input: { assignmentId: string; quantity: number }) => void;
+  onReassign: (input: { assignmentId: string; partId: string; sourceLocationId: string | null }) => void;
+}) {
+  const [reassignId, setReassignId] = useState<string | null>(null);
+  const balancesByPart = useMemo(
+    () => new Map(line.partBalances.map((pb) => [pb.partId, pb.balances])),
+    [line.partBalances]
+  );
+
+  return (
+    <div className="grid gap-1.5">
+      {line.assignments.map((assignment) => {
+        const remaining = assignment.quantity - assignment.assembledQuantity;
+        const done = remaining <= 0;
+        const partLabel = assignment.part?.catalogNumber ?? copy.unassigned;
+        const qtyLabel = assignment.quantity > 1 ? ` ${assignment.assembledQuantity}/${assignment.quantity}` : "";
+        return (
+          <div key={assignment.id} className="grid gap-1">
+            <div className="flex flex-wrap items-center gap-1.5">
               <span
-                key={assignment.id}
-                className="inline-flex items-center gap-1 rounded border border-[var(--color-border-strong)] px-1.5 py-0.5 font-mono text-xs text-[var(--color-text-secondary)]"
+                className={`inline-flex items-center gap-1 rounded px-1.5 py-0.5 font-mono text-xs ${
+                  done
+                    ? "bg-[var(--color-success-soft)] text-[var(--color-success)]"
+                    : "border border-[var(--color-border-strong)] text-[var(--color-text-secondary)]"
+                }`}
               >
-                {label}
-                <button
-                  className="rounded px-1 text-[var(--color-accent)] hover:bg-[var(--color-bg-subtle)] disabled:opacity-50"
-                  type="button"
-                  disabled={!canWrite}
-                  title={copy.assembleOne}
-                  onClick={() => onAssemble({ assignmentId: assignment.id, quantity: 1 })}
-                >
-                  +1
-                </button>
-                {remaining > 1 && (
+                {done ? "✓ " : ""}
+                {`${assignment.designator}${qtyLabel} · ${partLabel}`}
+              </span>
+              {!done && (
+                <>
                   <button
                     className="rounded px-1 text-[var(--color-accent)] hover:bg-[var(--color-bg-subtle)] disabled:opacity-50"
                     type="button"
                     disabled={!canWrite}
-                    title={copy.assembleAll}
-                    onClick={() => onAssemble({ assignmentId: assignment.id, quantity: remaining })}
+                    title={copy.assembleOne}
+                    onClick={() => onAssemble({ assignmentId: assignment.id, quantity: 1 })}
                   >
-                    {copy.assembleAll}
+                    +1
                   </button>
-                )}
-              </span>
-            );
-          })}
-        </div>
-      )}
+                  {remaining > 1 && (
+                    <button
+                      className="rounded px-1 text-[var(--color-accent)] hover:bg-[var(--color-bg-subtle)] disabled:opacity-50"
+                      type="button"
+                      disabled={!canWrite}
+                      title={copy.assembleAll}
+                      onClick={() => onAssemble({ assignmentId: assignment.id, quantity: remaining })}
+                    >
+                      {copy.assembleAll}
+                    </button>
+                  )}
+                  {canWrite && assignment.assembledQuantity === 0 && (
+                    <button
+                      className="rounded px-1 text-xs text-[var(--color-accent)] underline hover:bg-[var(--color-bg-subtle)]"
+                      type="button"
+                      onClick={() => setReassignId(reassignId === assignment.id ? null : assignment.id)}
+                    >
+                      {copy.changePart}
+                    </button>
+                  )}
+                </>
+              )}
+            </div>
+            {reassignId === assignment.id && (
+              <ReassignEditor
+                copy={copy}
+                assignment={assignment}
+                candidates={line.matchCandidates}
+                balancesByPart={balancesByPart}
+                locations={locations}
+                onConfirm={(partId, sourceLocationId) => {
+                  onReassign({ assignmentId: assignment.id, partId, sourceLocationId });
+                  setReassignId(null);
+                }}
+              />
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function ReassignEditor({
+  copy,
+  assignment,
+  candidates,
+  balancesByPart,
+  locations,
+  onConfirm
+}: {
+  copy: BuildsCopy;
+  assignment: BuildAssignment;
+  candidates: BuildLine["matchCandidates"];
+  balancesByPart: Map<string, { locationId: string; balance: string }[]>;
+  locations: StorageLocationListItem[];
+  onConfirm: (partId: string, sourceLocationId: string | null) => void;
+}) {
+  const [partId, setPartId] = useState(assignment.part?.id ?? "");
+  const [sourceLocationId, setSourceLocationId] = useState<string | null>(
+    assignment.sourceLocation?.id ?? null
+  );
+
+  const options = useMemo(() => {
+    const opts = candidates.slice();
+    if (assignment.part && !opts.some((p) => p.id === assignment.part!.id)) {
+      opts.unshift({
+        id: assignment.part.id,
+        catalogNumber: assignment.part.catalogNumber,
+        description: null,
+        manufacturerName: "",
+        availableQuantity: ""
+      });
+    }
+    return opts;
+  }, [candidates, assignment.part]);
+
+  const narrowed = narrowLocationsToBalances(locations, balancesByPart.get(partId) ?? []);
+
+  return (
+    <div className="grid grid-cols-[1fr_1fr_auto] items-end gap-2 rounded-md border border-[var(--color-border)] bg-[var(--color-bg-subtle)] p-1.5">
+      <select
+        className={smallSelectClass}
+        value={partId}
+        onChange={(e) => {
+          setPartId(e.target.value);
+          setSourceLocationId(null);
+        }}
+      >
+        <option value="">{copy.unassigned}</option>
+        {options.map((part) => (
+          <option key={part.id} value={part.id}>
+            {part.catalogNumber}
+            {part.manufacturerName ? ` · ${part.manufacturerName}` : ""}
+            {part.availableQuantity ? ` — ${copy.available} ${part.availableQuantity}` : ""}
+          </option>
+        ))}
+      </select>
+      <LocationTreeSelect
+        locations={narrowed.items}
+        locationTree={narrowed.tree}
+        copy={locationTreeSelectCopy(copy)}
+        name={`reassign-${assignment.id}`}
+        selectedId={sourceLocationId ?? ""}
+        onSelectedIdChange={(locationId) => setSourceLocationId(locationId || null)}
+        clearable
+        emptyLabel={copy.unassigned}
+        className="w-full"
+        buttonClassName={formLocationSelectButtonClassName}
+      />
+      <button
+        type="button"
+        className={`${primaryActionClass} h-10`}
+        disabled={!partId || !sourceLocationId}
+        onClick={() => onConfirm(partId, sourceLocationId)}
+      >
+        {copy.confirm}
+      </button>
     </div>
   );
 }

@@ -3,7 +3,6 @@
 import { getCurrentWorkspaceContextBySlug } from "@/server/auth/currentContext";
 import type { ListPage } from "@/server/pagination";
 import {
-  allocateBuildLine,
   assembleDesignator,
   cancelBuild,
   createBuild,
@@ -12,7 +11,10 @@ import {
   getBuildDetail,
   getBuildsForWorkspace,
   markBuildAllocated,
+  reassignDesignatorAssignment,
   reopenBuild,
+  setBuildAllocations,
+  setBuildLineAllocations,
   startBuild,
   type BuildCreateOptions,
   type BuildDetail,
@@ -121,18 +123,61 @@ export async function deleteBuildAction(input: {
   }
 }
 
-export async function allocateBuildLineAction(input: {
+export async function setBuildLineAllocationsAction(input: {
   workspaceSlug: string;
   buildLineItemId: string;
-  partId: string | null;
+  entries: { partId: string; sourceLocationId: string | null; quantity: number }[];
+}): Promise<BuildActionResult<null>> {
+  try {
+    const context = await getContext(input.workspaceSlug);
+    const result = await setBuildLineAllocations({
+      userId: context.user.id,
+      workspaceId: context.workspace.id,
+      buildLineItemId: input.buildLineItemId,
+      entries: input.entries
+    });
+    if (!result.ok) throw new Error(result.error);
+    return success(null);
+  } catch (error) {
+    return failure(error);
+  }
+}
+
+export async function setBuildAllocationsAction(input: {
+  workspaceSlug: string;
+  buildId: string;
+  lines: {
+    buildLineItemId: string;
+    entries: { partId: string; sourceLocationId: string | null; quantity: number }[];
+  }[];
+}): Promise<BuildActionResult<null>> {
+  try {
+    const context = await getContext(input.workspaceSlug);
+    const result = await setBuildAllocations({
+      userId: context.user.id,
+      workspaceId: context.workspace.id,
+      buildId: input.buildId,
+      lines: input.lines
+    });
+    if (!result.ok) throw new Error(result.error);
+    return success(null);
+  } catch (error) {
+    return failure(error);
+  }
+}
+
+export async function reassignDesignatorAssignmentAction(input: {
+  workspaceSlug: string;
+  assignmentId: string;
+  partId: string;
   sourceLocationId: string | null;
 }): Promise<BuildActionResult<null>> {
   try {
     const context = await getContext(input.workspaceSlug);
-    const result = await allocateBuildLine({
+    const result = await reassignDesignatorAssignment({
       userId: context.user.id,
       workspaceId: context.workspace.id,
-      buildLineItemId: input.buildLineItemId,
+      assignmentId: input.assignmentId,
       partId: input.partId,
       sourceLocationId: input.sourceLocationId
     });
