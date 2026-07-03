@@ -53,6 +53,7 @@ This project is intentionally vibe-coded. Future agents must preserve product in
 - When asked to cut a new version, first review the changes merged since the previous released tag, then decide patch vs minor based on that review (e.g. `feat:` commits → minor, `fix:`/`chore:` only → patch).
 - Never bump the major version unless the user explicitly asks for a major bump.
 - After tagging and pushing a new version, always create a GitHub Release for that tag (e.g. `gh release create vX.Y.Z --title vX.Y.Z --generate-notes`) automatically, without waiting to be asked.
+- If, after reviewing the changes since the previous tag, a new release does not seem warranted (e.g. no user-facing or shippable changes), do not skip or proceed silently — ask the user for confirmation before deciding either way.
 
 ## Multi-Step Implementation Plans
 
