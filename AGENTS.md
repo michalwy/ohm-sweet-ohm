@@ -47,6 +47,12 @@ This project is intentionally vibe-coded. Future agents must preserve product in
 - Include a GitHub issue reference in every commit message when an issue exists for the work (for example `Refs #11` in the commit body, or `(#11)` in the title).
 - When a commit title alone would omit useful context, include an extended commit message body with concise details about motivation, scope, or notable tradeoffs.
 
+## Release Versioning
+
+- Never assume the last released version from memory or from local git tags cached mentally — always check GitHub (releases/tags) directly, since versions can change outside an agent's awareness.
+- When asked to cut a new version, first review the changes merged since the previous released tag, then decide patch vs minor based on that review (e.g. `feat:` commits → minor, `fix:`/`chore:` only → patch).
+- Never bump the major version unless the user explicitly asks for a major bump.
+
 ## Multi-Step Implementation Plans
 
 When a task spans more than one logical area or cannot be safely completed in a single session, write an implementation plan before starting. Store it as a Markdown file under `.claude/plans/` (create the directory if needed). Plans must follow these rules:
