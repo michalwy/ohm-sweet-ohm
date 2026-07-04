@@ -909,7 +909,10 @@ function BuildDetailContent({
   const applyStockOk = buildAllocationStockOk(build.lines, entriesFor);
   const applyEnabled = dirty && entriesComplete && applyStockOk;
   const fullyAllocated = build.lines.every((line) => isLineFullyAllocated(line));
-  const readyToAllocate = !dirty && fullyAllocated;
+  // Stock can drop out from under a saved plan (another build reserves the same part/location)
+  // between Apply and Allocate; applyStockOk re-derives from the freshly fetched line data on every
+  // render, so it also catches that case even though the draft itself did not change.
+  const readyToAllocate = !dirty && fullyAllocated && applyStockOk;
 
   function handleApply() {
     onSetBuildAllocations({
