@@ -54,6 +54,7 @@ This project is intentionally vibe-coded. Future agents must preserve product in
 - Never bump the major version unless the user explicitly asks for a major bump.
 - After tagging and pushing a new version, always create a GitHub Release for that tag (e.g. `gh release create vX.Y.Z --title vX.Y.Z --generate-notes`) automatically, without waiting to be asked.
 - If, after reviewing the changes since the previous tag, a new release does not seem warranted (e.g. no user-facing or shippable changes), do not skip or proceed silently — ask the user for confirmation before deciding either way.
+- Always write a proper, human-readable release description instead of relying on bare `gh release create --generate-notes` output. Group changes into sections (e.g. Highlights/Fixes/Other), summarize each commit/PR in plain English with its reference number, and keep the auto-generated "Full Changelog" compare link at the end.
 
 ## Multi-Step Implementation Plans
 
