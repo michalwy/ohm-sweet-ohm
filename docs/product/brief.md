@@ -35,7 +35,7 @@ Location lifecycle rule: a location can be archived only when its stock balance 
 
 Purchases workflow decisions (see ADR-0014): shopping lists are informal and ad-hoc with no supplier or status; purchase orders are formal per-supplier documents with states DRAFT → ORDERED → RECEIVED; receiving items automatically creates RECEIPT inventory entries; shopping list items can be converted into a purchase order; suppliers are Organizations with a `"supplier"` role; DigiKey/TME integration is used to look up supplier SKU when adding items to a purchase order.
 
-BOM line-item specs and attribute-based matching are defined (see ADR-0020). The build/assembly flow and state-driven stock transitions are defined (see ADR-0021): a build allocates a part and source location per BOM line, reserves stock on start, consumes per assembled designator, and receives the output part on completion. Split allocation across multiple matching parts, shortage analysis, pricing policy, and import behavior remain intentionally undefined.
+BOM line-item specs and attribute-based matching are defined (see ADR-0020). The build/assembly flow and state-driven stock transitions are defined (see ADR-0021): a build allocates parts and source locations per BOM line (splittable across several parts, see ADR-0023), reserves stock on start, consumes per assembled physical unit's designator (see ADR-0024), and receives the output part on completion. Shortage analysis, pricing policy, and import behavior remain intentionally undefined.
 
 ## Open Questions
 

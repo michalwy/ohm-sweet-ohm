@@ -10,6 +10,8 @@ export type StorageLocationListItem = {
   isArchived: boolean;
 };
 
+export const STORAGE_LOCATION_PATH_SEPARATOR = " / ";
+
 export async function getStorageLocations(workspaceId: string) {
   return prisma.storageLocation.findMany({
     where: {
@@ -24,6 +26,41 @@ export async function getStorageLocations(workspaceId: string) {
       isArchived: true
     }
   });
+}
+
+/** Build each location's full ancestor path (e.g. "Warehouse / Shelf A / Drawer 5"), by id. */
+export function buildStorageLocationPaths(
+  locations: Array<{ id: string; parentId: string | null; name: string }>
+): Map<string, string> {
+  const locationsById = new Map(locations.map((location) => [location.id, location]));
+  const pathsById = new Map<string, string>();
+
+  function getPath(locationId: string, seen: Set<string>): string {
+    const existingPath = pathsById.get(locationId);
+    if (existingPath) return existingPath;
+
+    const location = locationsById.get(locationId);
+    if (!location) return "";
+
+    if (!location.parentId || seen.has(location.parentId)) {
+      pathsById.set(locationId, location.name);
+      return location.name;
+    }
+
+    const parentPath = getPath(location.parentId, new Set(seen).add(locationId));
+    const path = parentPath
+      ? `${parentPath}${STORAGE_LOCATION_PATH_SEPARATOR}${location.name}`
+      : location.name;
+
+    pathsById.set(locationId, path);
+    return path;
+  }
+
+  for (const location of locations) {
+    getPath(location.id, new Set());
+  }
+
+  return pathsById;
 }
 
 export async function createStorageLocation(input: {

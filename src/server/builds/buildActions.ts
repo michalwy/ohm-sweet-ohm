@@ -3,6 +3,7 @@
 import { getCurrentWorkspaceContextBySlug } from "@/server/auth/currentContext";
 import type { ListPage } from "@/server/pagination";
 import {
+  assembleBuildUnit,
   assembleDesignator,
   cancelBuild,
   createBuild,
@@ -243,15 +244,33 @@ export async function startBuildAction(input: {
 export async function assembleDesignatorAction(input: {
   workspaceSlug: string;
   assignmentId: string;
-  quantity?: number;
 }): Promise<BuildActionResult<{ completed: boolean }>> {
   try {
     const context = await getContext(input.workspaceSlug);
     const result = await assembleDesignator({
       userId: context.user.id,
       workspaceId: context.workspace.id,
-      assignmentId: input.assignmentId,
-      quantity: input.quantity
+      assignmentId: input.assignmentId
+    });
+    if (!result.ok) throw new Error(result.error);
+    return success(result.data);
+  } catch (error) {
+    return failure(error);
+  }
+}
+
+export async function assembleBuildUnitAction(input: {
+  workspaceSlug: string;
+  buildId: string;
+  unitIndex: number;
+}): Promise<BuildActionResult<{ completed: boolean }>> {
+  try {
+    const context = await getContext(input.workspaceSlug);
+    const result = await assembleBuildUnit({
+      userId: context.user.id,
+      workspaceId: context.workspace.id,
+      buildId: input.buildId,
+      unitIndex: input.unitIndex
     });
     if (!result.ok) throw new Error(result.error);
     return success(result.data);

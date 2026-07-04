@@ -10,6 +10,7 @@ import {
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import {
+  assembleBuildUnitAction,
   assembleDesignatorAction,
   cancelBuildAction,
   createBuildAction,
@@ -72,6 +73,8 @@ export type BuildsCopy = {
   targetQuantity: string;
   state: string;
   progress: string;
+  unitsComplete: string;
+  partsAssembled: string;
   createdAt: string;
   close: string;
   cancel: string;
@@ -106,6 +109,7 @@ export type BuildsCopy = {
   applyAllocation: string;
   applyBeforeAllocate: string;
   allocatedOfRequired: string;
+  assembledOfRequired: string;
   allocationTotalMismatch: string;
   invalidAllocationQuantity: string;
   partDoesNotMatchSpec: string;
@@ -117,8 +121,10 @@ export type BuildsCopy = {
   cancelBuild: string;
   deleteBuild: string;
   deleteBuildConfirmationBody: string;
+  units: string;
+  unit: string;
   assembleOne: string;
-  assembleAll: string;
+  assembleUnit: string;
   notFullyAllocated: string;
   insufficientAvailableStock: string;
   insufficientLocationStock: string;
@@ -375,8 +381,17 @@ export function BuildsClient({ canWrite, copy, initialPage, workspaceSlug }: Bui
   }
 
   const assembleMutation = useMutation({
-    mutationFn: async (input: { assignmentId: string; quantity: number }) => {
+    mutationFn: async (input: { assignmentId: string }) => {
       const result = await assembleDesignatorAction({ workspaceSlug, ...input });
+      if (!result.ok) throw new Error(result.error);
+    },
+    onSuccess: invalidateBuilds,
+    onError: (error) => showError((error as Error).message.replaceAll("_", "-"))
+  });
+
+  const assembleUnitMutation = useMutation({
+    mutationFn: async (input: { buildId: string; unitIndex: number }) => {
+      const result = await assembleBuildUnitAction({ workspaceSlug, ...input });
       if (!result.ok) throw new Error(result.error);
     },
     onSuccess: invalidateBuilds,
@@ -651,6 +666,7 @@ export function BuildsClient({ canWrite, copy, initialPage, workspaceSlug }: Bui
             unitsTotal={selectedBuild.unitsTotal}
             onSetBuildAllocations={(input) => setAllocationsMutation.mutate(input)}
             onAssemble={(input) => assembleMutation.mutate(input)}
+            onAssembleUnit={(input) => assembleUnitMutation.mutate(input)}
             onReassign={(input) => reassignMutation.mutate(input)}
             onMarkAllocated={(buildId) => markAllocatedMutation.mutate(buildId)}
             onReopen={(buildId) => reopenMutation.mutate(buildId)}
@@ -807,7 +823,8 @@ type BuildDetailContentProps = {
   unitsAssembled: number;
   unitsTotal: number;
   onSetBuildAllocations: (input: BuildAllocationsInput) => void;
-  onAssemble: (input: { assignmentId: string; quantity: number }) => void;
+  onAssemble: (input: { assignmentId: string }) => void;
+  onAssembleUnit: (input: { buildId: string; unitIndex: number }) => void;
   onReassign: (input: { assignmentId: string; partId: string; sourceLocationId: string | null }) => void;
   onMarkAllocated: (buildId: string) => void;
   onReopen: (buildId: string) => void;
@@ -829,6 +846,7 @@ function BuildDetailContent({
   unitsTotal,
   onSetBuildAllocations,
   onAssemble,
+  onAssembleUnit,
   onReassign,
   onMarkAllocated,
   onReopen,
@@ -860,6 +878,7 @@ function BuildDetailContent({
 
   const build = detail;
   const editable = build.state === "CREATED";
+  const unitsComplete = detail.units.filter((u) => u.status === "complete").length;
   const entriesFor = (line: BuildLine): AllocationDraft[] => draftsByLine[line.id] ?? draftsFromLine(line);
 
   // Aggregate the live draft usage of every line except the target, so each editor validates
@@ -933,7 +952,10 @@ function BuildDetailContent({
             {copy.progress}
           </p>
           <p className="text-sm font-medium text-[var(--color-text-primary)]">
-            {unitsAssembled} / {unitsTotal}
+            {unitsComplete} / {detail.targetQuantity} {copy.unitsComplete}
+          </p>
+          <p className="text-xs text-[var(--color-text-muted)]">
+            {unitsAssembled} / {unitsTotal} {copy.partsAssembled}
           </p>
           <div className="h-1 overflow-hidden rounded-full bg-[var(--color-border)]">
             <div
@@ -993,6 +1015,17 @@ function BuildDetailContent({
         </section>
       )}
 
+      {detail.units.length > 0 && (
+        <BuildUnitGrid
+          canWrite={canWrite}
+          copy={copy}
+          detail={detail}
+          onAssemble={onAssemble}
+          onAssembleUnit={onAssembleUnit}
+          onReassign={onReassign}
+        />
+      )}
+
       <section className="grid gap-2">
         <p className="text-xs font-semibold uppercase tracking-wide text-[var(--color-text-muted)]">
           {copy.bom}
@@ -1009,12 +1042,9 @@ function BuildDetailContent({
                 editable={editable}
                 line={line}
                 locations={detail.locations}
-                showAssembly={detail.state === "STARTED" || detail.state === "IN_PROGRESS"}
                 entries={entriesFor(line)}
                 externalUsage={externalUsageFor(line.id)}
                 onEntriesChange={(entries) => setLineEntries(line.id, entries)}
-                onAssemble={onAssemble}
-                onReassign={onReassign}
               />
             ))}
           </div>
@@ -1025,7 +1055,8 @@ function BuildDetailContent({
 }
 
 type BuildLine = NonNullable<BuildDetail["lines"]>[number];
-type BuildAssignment = BuildLine["assignments"][number];
+type BuildUnit = NonNullable<BuildDetail["units"]>[number];
+type BuildUnitDesignator = BuildUnit["designators"][number];
 
 /** A line's allocated quantities per part and per (part, location) — used for cross-line netting. */
 type LineUsage = { parts: Record<string, number>; locs: Record<string, number> };
@@ -1118,12 +1149,9 @@ type BuildLineRowProps = {
   editable: boolean;
   line: BuildLine;
   locations: StorageLocationListItem[];
-  showAssembly: boolean;
   entries: AllocationDraft[];
   externalUsage: LineUsage;
   onEntriesChange: (entries: AllocationDraft[]) => void;
-  onAssemble: (input: { assignmentId: string; quantity: number }) => void;
-  onReassign: (input: { assignmentId: string; partId: string; sourceLocationId: string | null }) => void;
 };
 
 /** A line is fully allocated when its entries cover the requirement and each has a source location. */
@@ -1171,29 +1199,41 @@ function BuildLineRow({
   editable,
   line,
   locations,
-  showAssembly,
   entries,
   externalUsage,
-  onEntriesChange,
-  onAssemble,
-  onReassign
+  onEntriesChange
 }: BuildLineRowProps) {
   const editing = editable && canWrite;
   const allocatedTotal = editing
     ? entries.reduce((sum, e) => sum + (Number.parseInt(e.quantity, 10) || 0), 0)
     : line.allocations.reduce((sum, a) => sum + a.quantity, 0);
+  const assembledTotal = line.assignments.filter((a) => a.assembled).length;
+  const started = line.assignments.length > 0;
 
   return (
     <div className="grid gap-1.5 rounded-md border border-[var(--color-border)] px-2.5 py-2">
       <div className="flex items-center justify-between gap-2">
-        <span className="font-mono text-sm text-[var(--color-text-primary)]">{line.designators}</span>
         <div className="flex items-center gap-2">
+          <span className="font-mono text-sm text-[var(--color-text-primary)]">{line.designators}</span>
           {line.categoryName && (
             <span className="rounded bg-[var(--color-bg-subtle)] px-1.5 py-0.5 text-xs text-[var(--color-text-secondary)]">
               {line.categoryName}
             </span>
           )}
-          <AllocatedCounter copy={copy} total={allocatedTotal} required={line.requiredUnits} />
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="whitespace-nowrap text-xs text-[var(--color-text-muted)]">
+            {started
+              ? `${copy.assembledOfRequired} ${assembledTotal}/${line.requiredUnits}`
+              : `${copy.allocatedOfRequired} ${allocatedTotal}/${line.requiredUnits}`}
+          </span>
+          <StackedProgressBar
+            className="w-20"
+            // Once started, allocation is always complete (starting requires full allocation), so
+            // showing it would just be a redundant full bar — only assembly progress matters then.
+            basePercent={started || line.requiredUnits === 0 ? 0 : (allocatedTotal / line.requiredUnits) * 100}
+            overlayPercent={line.requiredUnits > 0 ? (assembledTotal / line.requiredUnits) * 100 : 0}
+          />
         </div>
       </div>
 
@@ -1207,19 +1247,39 @@ function BuildLineRow({
           onEntriesChange={onEntriesChange}
         />
       ) : (
-        <ReadOnlyAllocations copy={copy} line={line} />
+        <BomLineBreakdown copy={copy} line={line} showAssembled={started} />
       )}
+    </div>
+  );
+}
 
-      {showAssembly && (
-        <AssemblyList
-          canWrite={canWrite}
-          copy={copy}
-          line={line}
-          locations={locations}
-          onAssemble={onAssemble}
-          onReassign={onReassign}
-        />
-      )}
+/**
+ * A two-layer horizontal progress bar: `basePercent` (e.g. allocated) fills first in the accent
+ * color, `overlayPercent` (e.g. assembled) draws on top in success green from the same left edge —
+ * since assembled units are always a subset of allocated ones, the overlay never exceeds the base.
+ */
+function StackedProgressBar({
+  basePercent,
+  overlayPercent,
+  className
+}: {
+  basePercent: number;
+  overlayPercent: number;
+  className?: string;
+}) {
+  const clamp = (value: number) => Math.min(100, Math.max(0, value));
+  return (
+    <div
+      className={`relative h-1.5 shrink-0 overflow-hidden rounded-full bg-[var(--color-border)] ${className ?? ""}`}
+    >
+      <div
+        className="absolute inset-y-0 left-0 rounded-full bg-[var(--color-warning)]"
+        style={{ width: `${clamp(basePercent)}%` }}
+      />
+      <div
+        className="absolute inset-y-0 left-0 rounded-full bg-[var(--color-success)]"
+        style={{ width: `${clamp(overlayPercent)}%` }}
+      />
     </div>
   );
 }
@@ -1457,138 +1517,367 @@ function AllocationEditor({
   );
 }
 
-function AllocatedCounter({
-  copy,
-  total,
-  required
-}: {
-  copy: BuildsCopy;
-  total: number;
-  required: number;
-}) {
-  return (
-    <span
-      className={`text-xs ${
-        total === required ? "text-[var(--color-success)]" : "text-[var(--color-text-muted)]"
-      }`}
-    >
-      {copy.allocatedOfRequired}: {total}/{required}
-    </span>
-  );
+/** One (part, source location) group within a line, merged from either assignments or allocations. */
+type BomGroupRow = {
+  key: string;
+  partId: string;
+  catalogNumber: string;
+  sourceLocation: { id: string; name: string; path: string } | null;
+  quantity: number;
+  assembledCount: number;
+};
+
+/**
+ * Merge a line's parts down to one row per (part, source location), summing quantities. Once
+ * assembly has started, groups are built from the live assignment rows (so a reassignment is
+ * reflected and each group's own assembled count is known); before that, groups come from the
+ * allocation plan instead.
+ */
+function bomGroupsForLine(line: BuildLine): BomGroupRow[] {
+  const byKey = new Map<string, BomGroupRow>();
+  if (line.assignments.length > 0) {
+    for (const assignment of line.assignments) {
+      if (!assignment.part) continue;
+      const key = `${assignment.part.id}::${assignment.sourceLocation?.id ?? ""}`;
+      const existing = byKey.get(key);
+      if (existing) {
+        existing.quantity += 1;
+        if (assignment.assembled) existing.assembledCount += 1;
+      } else {
+        byKey.set(key, {
+          key,
+          partId: assignment.part.id,
+          catalogNumber: assignment.part.catalogNumber,
+          sourceLocation: assignment.sourceLocation,
+          quantity: 1,
+          assembledCount: assignment.assembled ? 1 : 0
+        });
+      }
+    }
+  } else {
+    for (const allocation of line.allocations) {
+      const key = `${allocation.part.id}::${allocation.sourceLocation?.id ?? ""}`;
+      const existing = byKey.get(key);
+      if (existing) {
+        existing.quantity += allocation.quantity;
+      } else {
+        byKey.set(key, {
+          key,
+          partId: allocation.part.id,
+          catalogNumber: allocation.part.catalogNumber,
+          sourceLocation: allocation.sourceLocation,
+          quantity: allocation.quantity,
+          assembledCount: 0
+        });
+      }
+    }
+  }
+  return [...byKey.values()];
 }
 
-function ReadOnlyAllocations({ copy, line }: { copy: BuildsCopy; line: BuildLine }) {
-  if (line.allocations.length === 0) {
+function BomLineBreakdown({
+  copy,
+  line,
+  showAssembled
+}: {
+  copy: BuildsCopy;
+  line: BuildLine;
+  showAssembled: boolean;
+}) {
+  const rows = bomGroupsForLine(line);
+  if (rows.length === 0) {
     return <p className="text-sm text-[var(--color-text-muted)]">{copy.unassigned}</p>;
   }
   return (
-    <div className="grid gap-1 text-sm">
-      {line.allocations.map((allocation) => (
-        <div key={allocation.id} className="flex items-center justify-between gap-2">
-          <span className="font-mono text-[var(--color-text-primary)]">
-            <PartLink partId={allocation.part.id} name={allocation.part.catalogNumber} />
-          </span>
-          <span className="text-[var(--color-text-secondary)]">
-            {(allocation.sourceLocation?.name ?? copy.unassigned) + " · " + allocation.quantity}
-          </span>
+    <div className="grid gap-1.5 text-sm">
+      {rows.map((row) => (
+        <div key={row.key} className="grid grid-cols-[1fr_auto] items-start gap-x-2">
+          <div className="grid min-w-0 gap-0.5">
+            <span className="truncate font-mono text-[var(--color-text-primary)]">
+              <PartLink partId={row.partId} name={row.catalogNumber} />
+            </span>
+            <span className="truncate text-xs text-[var(--color-text-muted)]">
+              {row.sourceLocation?.path ?? copy.unassigned}
+            </span>
+          </div>
+          {/* Same fixed width as the line header's bar, so both form one aligned column. */}
+          <div className="grid justify-items-end gap-0.5">
+            {showAssembled ? (
+              <>
+                <StackedProgressBar
+                  className="w-20"
+                  basePercent={0}
+                  overlayPercent={row.quantity > 0 ? (row.assembledCount / row.quantity) * 100 : 0}
+                />
+                <span className="whitespace-nowrap text-[10px] text-[var(--color-text-muted)]">
+                  {row.assembledCount}/{row.quantity}
+                </span>
+              </>
+            ) : (
+              <span className="whitespace-nowrap text-xs text-[var(--color-text-secondary)]">
+                {row.quantity}
+              </span>
+            )}
+          </div>
         </div>
       ))}
     </div>
   );
 }
 
-function AssemblyList({
+/**
+ * The primary assembly interface for a started build: a grid of physical units (boards), one per
+ * `targetQuantity`. Selecting a unit shows that unit's designators (across every line) to assemble
+ * or reassign one at a time, plus an "assemble whole unit" convenience.
+ */
+function BuildUnitGrid({
   canWrite,
   copy,
-  line,
-  locations,
+  detail,
   onAssemble,
+  onAssembleUnit,
   onReassign
 }: {
   canWrite: boolean;
   copy: BuildsCopy;
-  line: BuildLine;
+  detail: BuildDetail;
+  onAssemble: (input: { assignmentId: string }) => void;
+  onAssembleUnit: (input: { buildId: string; unitIndex: number }) => void;
+  onReassign: (input: { assignmentId: string; partId: string; sourceLocationId: string | null }) => void;
+}) {
+  const units = detail.units;
+  const [selectedUnitIndex, setSelectedUnitIndex] = useState<number>(
+    units.find((u) => u.status !== "complete")?.unitIndex ?? units[0]?.unitIndex ?? 1
+  );
+  const selectedUnit = units.find((u) => u.unitIndex === selectedUnitIndex) ?? units[0];
+  const linesById = useMemo(() => new Map(detail.lines.map((line) => [line.id, line])), [detail.lines]);
+
+  return (
+    <section className="grid gap-2">
+      <p className="text-xs font-semibold uppercase tracking-wide text-[var(--color-text-muted)]">
+        {copy.units}
+      </p>
+      <div className="flex flex-wrap gap-1.5">
+        {units.map((unit) => {
+          const percent =
+            unit.designators.length > 0
+              ? (unit.designators.filter((d) => d.assembled).length / unit.designators.length) * 100
+              : 0;
+          return (
+            <button
+              key={unit.unitIndex}
+              type="button"
+              className={`relative overflow-hidden rounded border border-[var(--color-border-strong)] px-2 py-1 text-xs font-medium text-[var(--color-text-secondary)] ${
+                unit.unitIndex === selectedUnit?.unitIndex ? "ring-2 ring-[var(--color-accent)]" : ""
+              }`}
+              onClick={() => setSelectedUnitIndex(unit.unitIndex)}
+            >
+              <span
+                className="absolute inset-y-0 left-0 bg-[var(--color-success-soft)] transition-[width]"
+                style={{ width: `${percent}%` }}
+                aria-hidden="true"
+              />
+              <span
+                className={`relative ${unit.status === "complete" ? "text-[var(--color-success)]" : ""}`}
+              >
+                {unit.status === "complete" ? "✓ " : ""}
+                {copy.unit} {unit.unitIndex}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+
+      {selectedUnit && (
+        <UnitDesignatorList
+          canWrite={canWrite}
+          copy={copy}
+          buildId={detail.id}
+          unit={selectedUnit}
+          linesById={linesById}
+          locations={detail.locations}
+          onAssemble={onAssemble}
+          onAssembleUnit={onAssembleUnit}
+          onReassign={onReassign}
+        />
+      )}
+    </section>
+  );
+}
+
+function UnitDesignatorList({
+  canWrite,
+  copy,
+  buildId,
+  unit,
+  linesById,
+  locations,
+  onAssemble,
+  onAssembleUnit,
+  onReassign
+}: {
+  canWrite: boolean;
+  copy: BuildsCopy;
+  buildId: string;
+  unit: BuildUnit;
+  linesById: Map<string, BuildLine>;
   locations: StorageLocationListItem[];
-  onAssemble: (input: { assignmentId: string; quantity: number }) => void;
+  onAssemble: (input: { assignmentId: string }) => void;
+  onAssembleUnit: (input: { buildId: string; unitIndex: number }) => void;
   onReassign: (input: { assignmentId: string; partId: string; sourceLocationId: string | null }) => void;
 }) {
   const [reassignId, setReassignId] = useState<string | null>(null);
-  const balancesByPart = useMemo(
-    () => new Map(line.partBalances.map((pb) => [pb.partId, pb.balances])),
-    [line.partBalances]
-  );
+  const [hoveredId, setHoveredId] = useState<string | null>(null);
 
   return (
-    <div className="grid gap-1.5">
-      {line.assignments.map((assignment) => {
-        const remaining = assignment.quantity - assignment.assembledQuantity;
-        const done = remaining <= 0;
-        const partLabel = assignment.part?.catalogNumber ?? copy.unassigned;
-        const qtyLabel = assignment.quantity > 1 ? ` ${assignment.assembledQuantity}/${assignment.quantity}` : "";
-        return (
-          <div key={assignment.id} className="grid gap-1">
-            <div className="flex flex-wrap items-center gap-1.5">
-              <span
-                className={`inline-flex items-center gap-1 rounded px-1.5 py-0.5 font-mono text-xs ${
-                  done
-                    ? "bg-[var(--color-success-soft)] text-[var(--color-success)]"
-                    : "border border-[var(--color-border-strong)] text-[var(--color-text-secondary)]"
-                }`}
-              >
-                {done ? "✓ " : ""}
-                {`${assignment.designator}${qtyLabel} · ${partLabel}`}
-              </span>
-              {!done && (
-                <>
-                  <button
-                    className="rounded px-1 text-[var(--color-accent)] hover:bg-[var(--color-bg-subtle)] disabled:opacity-50"
-                    type="button"
-                    disabled={!canWrite}
-                    title={copy.assembleOne}
-                    onClick={() => onAssemble({ assignmentId: assignment.id, quantity: 1 })}
-                  >
-                    +1
-                  </button>
-                  {remaining > 1 && (
-                    <button
-                      className="rounded px-1 text-[var(--color-accent)] hover:bg-[var(--color-bg-subtle)] disabled:opacity-50"
-                      type="button"
-                      disabled={!canWrite}
-                      title={copy.assembleAll}
-                      onClick={() => onAssemble({ assignmentId: assignment.id, quantity: remaining })}
-                    >
-                      {copy.assembleAll}
-                    </button>
-                  )}
-                  {canWrite && assignment.assembledQuantity === 0 && (
-                    <button
-                      className="rounded px-1 text-xs text-[var(--color-accent)] underline hover:bg-[var(--color-bg-subtle)]"
-                      type="button"
-                      onClick={() => setReassignId(reassignId === assignment.id ? null : assignment.id)}
-                    >
-                      {copy.changePart}
-                    </button>
-                  )}
-                </>
-              )}
-            </div>
-            {reassignId === assignment.id && (
-              <ReassignEditor
-                copy={copy}
-                assignment={assignment}
-                candidates={line.matchCandidates}
-                balancesByPart={balancesByPart}
-                locations={locations}
-                onConfirm={(partId, sourceLocationId) => {
-                  onReassign({ assignmentId: assignment.id, partId, sourceLocationId });
-                  setReassignId(null);
-                }}
-              />
-            )}
-          </div>
-        );
-      })}
+    <div className="grid gap-1.5 rounded-md border border-[var(--color-border)] px-2.5 py-2">
+      {canWrite && unit.status !== "complete" && (
+        <div>
+          <button
+            type="button"
+            className={actionButtonClass}
+            onClick={() => onAssembleUnit({ buildId, unitIndex: unit.unitIndex })}
+          >
+            {copy.assembleUnit}
+          </button>
+        </div>
+      )}
+      <div className="grid grid-cols-[1fr_auto_auto] items-center gap-x-1 gap-y-2">
+        {unit.designators.map((designator) => (
+          <UnitDesignatorRow
+            key={designator.assignmentId}
+            canWrite={canWrite}
+            copy={copy}
+            designator={designator}
+            line={linesById.get(designator.lineItemId)}
+            locations={locations}
+            reassigning={reassignId === designator.assignmentId}
+            hovered={hoveredId === designator.assignmentId}
+            onAssemble={onAssemble}
+            onReassign={onReassign}
+            onToggleReassign={() =>
+              setReassignId(reassignId === designator.assignmentId ? null : designator.assignmentId)
+            }
+            onHoverChange={(hovering) => setHoveredId(hovering ? designator.assignmentId : null)}
+          />
+        ))}
+      </div>
     </div>
+  );
+}
+
+function UnitDesignatorRow({
+  canWrite,
+  copy,
+  designator,
+  line,
+  locations,
+  reassigning,
+  hovered,
+  onAssemble,
+  onReassign,
+  onToggleReassign,
+  onHoverChange
+}: {
+  canWrite: boolean;
+  copy: BuildsCopy;
+  designator: BuildUnitDesignator;
+  line: BuildLine | undefined;
+  locations: StorageLocationListItem[];
+  reassigning: boolean;
+  hovered: boolean;
+  onAssemble: (input: { assignmentId: string }) => void;
+  onReassign: (input: { assignmentId: string; partId: string; sourceLocationId: string | null }) => void;
+  onToggleReassign: () => void;
+  onHoverChange: (hovering: boolean) => void;
+}) {
+  const balancesByPart = useMemo(
+    () => new Map((line?.partBalances ?? []).map((pb) => [pb.partId, pb.balances])),
+    [line]
+  );
+  const partLabel = designator.part?.catalogNumber ?? copy.unassigned;
+  const hoverProps = {
+    onMouseEnter: () => onHoverChange(true),
+    onMouseLeave: () => onHoverChange(false)
+  };
+  // All cells of a row share this background when any of them is hovered, so it reads as one row
+  // even though the Assemble/Change part actions sit in their own aligned columns to the right.
+  const cellClass = `flex items-center rounded py-1 ${hovered ? "bg-[var(--color-bg-subtle)]" : ""}`;
+
+  // Each cell below is a direct child of the parent's `grid-cols-[1fr_auto_auto]` container (a
+  // Fragment doesn't add a wrapping element), so the Assemble/Change part columns line up across
+  // every designator row regardless of how long the designator/part/location text is. The
+  // not-assembled/no-write placeholders render the same label with `invisible` (not empty), so the
+  // action columns keep a constant width/height and assembling a row never reshuffles the list.
+  return (
+    <>
+      <div className={`grid gap-0.5 px-1 ${cellClass}`} {...hoverProps}>
+        <span
+          className={`inline-flex w-fit items-center gap-1 rounded border px-1.5 py-0.5 font-mono text-xs ${
+            // Always keep the border (just make it transparent once assembled) so the badge's box
+            // height never changes when it switches from bordered to filled — a real border vs. no
+            // border at all shifts the row height by the border width.
+            designator.assembled
+              ? "border-transparent bg-[var(--color-success-soft)] text-[var(--color-success)]"
+              : "border-[var(--color-border-strong)] text-[var(--color-text-secondary)]"
+          }`}
+        >
+          {designator.assembled ? "✓ " : ""}
+          {`${designator.designator} · ${partLabel}`}
+        </span>
+        <span className="text-xs text-[var(--color-text-muted)]">
+          {designator.sourceLocation?.path ?? copy.unassigned}
+        </span>
+      </div>
+      {!designator.assembled ? (
+        <button
+          className={`px-2 text-xs text-[var(--color-accent)] disabled:opacity-50 ${cellClass}`}
+          type="button"
+          disabled={!canWrite}
+          onClick={() => onAssemble({ assignmentId: designator.assignmentId })}
+          {...hoverProps}
+        >
+          {copy.assembleOne}
+        </button>
+      ) : (
+        <span className={`invisible px-2 text-xs ${cellClass}`} {...hoverProps} aria-hidden="true">
+          {copy.assembleOne}
+        </span>
+      )}
+      {!designator.assembled && canWrite ? (
+        <button
+          className={`px-2 text-xs text-[var(--color-accent)] underline ${cellClass}`}
+          type="button"
+          onClick={onToggleReassign}
+          {...hoverProps}
+        >
+          {copy.changePart}
+        </button>
+      ) : (
+        <span className={`invisible px-2 text-xs ${cellClass}`} {...hoverProps} aria-hidden="true">
+          {copy.changePart}
+        </span>
+      )}
+      {reassigning && line && (
+        <div className="col-span-3">
+          <ReassignEditor
+            copy={copy}
+            assignment={{
+              id: designator.assignmentId,
+              part: designator.part,
+              sourceLocation: designator.sourceLocation
+            }}
+            candidates={line.matchCandidates}
+            balancesByPart={balancesByPart}
+            locations={locations}
+            onConfirm={(partId, sourceLocationId) => {
+              onReassign({ assignmentId: designator.assignmentId, partId, sourceLocationId });
+              onToggleReassign();
+            }}
+          />
+        </div>
+      )}
+    </>
   );
 }
 
@@ -1601,7 +1890,11 @@ function ReassignEditor({
   onConfirm
 }: {
   copy: BuildsCopy;
-  assignment: BuildAssignment;
+  assignment: {
+    id: string;
+    part: { id: string; catalogNumber: string } | null;
+    sourceLocation: { id: string; name: string } | null;
+  };
   candidates: BuildLine["matchCandidates"];
   balancesByPart: Map<string, { locationId: string; balance: string }[]>;
   locations: StorageLocationListItem[];

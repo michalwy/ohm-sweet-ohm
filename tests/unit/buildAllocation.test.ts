@@ -52,28 +52,39 @@ describe("build split allocation", () => {
         rows.map((r) => r.partId),
         ["yageo", "yageo", "yageo", "yageo", "royal", "royal", "royal", "royal", "royal", "royal"]
       );
-      assert.ok(rows.every((r) => r.quantity === 1));
+      assert.ok(rows.every((r) => r.unitIndex === 1));
     });
 
     test("splits a single designator across parts when target quantity > 1", () => {
-      // 2 designators × build qty 5 = 10 units; 7 A + 3 B -> R2 is mixed.
+      // 2 designators × build qty 5 = 10 units; 7 A + 3 B -> R2 is mixed (units 1-2 A, 3-5 B).
       const rows = distributeAllocations(["R1", "R2"], 5, [
         { partId: "A", sourceLocationId: "la", quantity: 7 },
         { partId: "B", sourceLocationId: "lb", quantity: 3 }
       ]);
       assert.deepEqual(rows, [
-        { designator: "R1", partId: "A", sourceLocationId: "la", quantity: 5 },
-        { designator: "R2", partId: "A", sourceLocationId: "la", quantity: 2 },
-        { designator: "R2", partId: "B", sourceLocationId: "lb", quantity: 3 }
+        { designator: "R1", unitIndex: 1, partId: "A", sourceLocationId: "la" },
+        { designator: "R1", unitIndex: 2, partId: "A", sourceLocationId: "la" },
+        { designator: "R1", unitIndex: 3, partId: "A", sourceLocationId: "la" },
+        { designator: "R1", unitIndex: 4, partId: "A", sourceLocationId: "la" },
+        { designator: "R1", unitIndex: 5, partId: "A", sourceLocationId: "la" },
+        { designator: "R2", unitIndex: 1, partId: "A", sourceLocationId: "la" },
+        { designator: "R2", unitIndex: 2, partId: "A", sourceLocationId: "la" },
+        { designator: "R2", unitIndex: 3, partId: "B", sourceLocationId: "lb" },
+        { designator: "R2", unitIndex: 4, partId: "B", sourceLocationId: "lb" },
+        { designator: "R2", unitIndex: 5, partId: "B", sourceLocationId: "lb" }
       ]);
     });
 
-    test("produces one row per designator for a single-part line", () => {
+    test("produces one row per (designator, unit) for a single-part line", () => {
       const rows = distributeAllocations(["R1", "R2", "R3"], 2, [
         { partId: "only", sourceLocationId: "l", quantity: 6 }
       ]);
-      assert.equal(rows.length, 3);
-      assert.ok(rows.every((r) => r.partId === "only" && r.quantity === 2));
+      assert.equal(rows.length, 6);
+      assert.ok(rows.every((r) => r.partId === "only"));
+      assert.deepEqual(
+        rows.map((r) => r.unitIndex),
+        [1, 2, 1, 2, 1, 2]
+      );
     });
 
     test("rejects a mismatched total before distributing", () => {

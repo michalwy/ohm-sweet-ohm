@@ -13,6 +13,7 @@ import { createBomLineItem } from "../../src/server/designs/bomLineItems";
 import { createPartCategory } from "../../src/server/parts/categories";
 import { createInventoryEntry } from "../../src/server/inventory/entryMutations";
 import {
+  assembleBuildUnit,
   assembleDesignator,
   cancelBuild,
   createBuild,
@@ -417,18 +418,18 @@ describe("build flow", () => {
 
     const assignments = await prisma.buildDesignatorAssignment.findMany({
       where: { buildLineItem: { buildId } },
-      orderBy: { designator: "asc" },
-      select: { id: true, partId: true }
+      orderBy: [{ designator: "asc" }, { unitIndex: "asc" }],
+      select: { id: true, partId: true, designator: true, unitIndex: true }
     });
-    assert.equal(assignments.length, 3);
+    // 3 designators × targetQuantity 2 = 6 (designator, unit) rows.
+    assert.equal(assignments.length, 6);
     assert.ok(assignments.every((a) => a.partId === scenario.buildLinePartId));
 
-    // Partially assemble the first designator: 1 of its 2 units.
+    // Partially assemble the first designator: unit 1 of its 2 units.
     const partial = await assembleDesignator({
       userId: scenario.userId,
       workspaceId: scenario.workspaceId,
-      assignmentId: assignments[0]!.id,
-      quantity: 1
+      assignmentId: assignments[0]!.id
     });
     assert.ok(partial.ok, JSON.stringify(partial));
     assert.equal(partial.data.completed, false);
@@ -441,23 +442,18 @@ describe("build flow", () => {
       "IN_PROGRESS"
     );
 
-    await assembleDesignator({
-      userId: scenario.userId,
-      workspaceId: scenario.workspaceId,
-      assignmentId: assignments[0]!.id,
-      quantity: 1
-    });
-    await assembleDesignator({
-      userId: scenario.userId,
-      workspaceId: scenario.workspaceId,
-      assignmentId: assignments[1]!.id,
-      quantity: 2
-    });
+    // Assemble unit 2 of the first designator, then both units of the remaining two designators.
+    for (const assignment of assignments.slice(1, 5)) {
+      await assembleDesignator({
+        userId: scenario.userId,
+        workspaceId: scenario.workspaceId,
+        assignmentId: assignment.id
+      });
+    }
     const third = await assembleDesignator({
       userId: scenario.userId,
       workspaceId: scenario.workspaceId,
-      assignmentId: assignments[2]!.id,
-      quantity: 2
+      assignmentId: assignments[5]!.id
     });
     assert.ok(third.ok, JSON.stringify(third));
     assert.equal(third.data.completed, true);
@@ -502,17 +498,13 @@ describe("build flow", () => {
 
     const assignments = await prisma.buildDesignatorAssignment.findMany({
       where: { buildLineItem: { buildId } },
-      orderBy: [{ designator: "asc" }, { partId: "asc" }],
-      select: { id: true, designator: true, partId: true, quantity: true }
+      orderBy: [{ designator: "asc" }, { unitIndex: "asc" }],
+      select: { id: true, designator: true, partId: true, unitIndex: true }
     });
-    // R1, R2 -> part A (2 each); R3 -> part B (2). One row per designator.
-    assert.equal(assignments.length, 3);
-    const partAUnits = assignments
-      .filter((a) => a.partId === scenario.partAId)
-      .reduce((s, a) => s + a.quantity, 0);
-    const partBUnits = assignments
-      .filter((a) => a.partId === scenario.partBId)
-      .reduce((s, a) => s + a.quantity, 0);
+    // R1, R2 -> part A (2 units each); R3 -> part B (2 units). One row per (designator, unit).
+    assert.equal(assignments.length, 6);
+    const partAUnits = assignments.filter((a) => a.partId === scenario.partAId).length;
+    const partBUnits = assignments.filter((a) => a.partId === scenario.partBId).length;
     assert.equal(partAUnits, 4);
     assert.equal(partBUnits, 2);
 
@@ -521,8 +513,7 @@ describe("build flow", () => {
       const result = await assembleDesignator({
         userId: scenario.userId,
         workspaceId: scenario.workspaceId,
-        assignmentId: assignment.id,
-        quantity: assignment.quantity
+        assignmentId: assignment.id
       });
       assert.ok(result.ok, JSON.stringify(result));
     }
@@ -538,6 +529,62 @@ describe("build flow", () => {
         .currentStock.toString(),
       "2"
     );
+  });
+
+  test("assembleBuildUnit assembles every designator for one unit and completes only when all units are done", async () => {
+    const scenario = await createScenario(uniqueSuffix(), { stockAtSource: "6" });
+    const { buildId } = await createAndAllocateBuild(scenario, 2); // 3 designators × 2 units
+
+    await markBuildAllocated({ userId: scenario.userId, workspaceId: scenario.workspaceId, buildId });
+    await startBuild({ userId: scenario.userId, workspaceId: scenario.workspaceId, buildId });
+
+    const unit1 = await assembleBuildUnit({
+      userId: scenario.userId,
+      workspaceId: scenario.workspaceId,
+      buildId,
+      unitIndex: 1
+    });
+    assert.ok(unit1.ok, JSON.stringify(unit1));
+    assert.equal(unit1.data.completed, false);
+
+    const rowsAfterUnit1 = await prisma.buildDesignatorAssignment.findMany({
+      where: { buildLineItem: { buildId } },
+      select: { unitIndex: true, assembled: true }
+    });
+    assert.ok(rowsAfterUnit1.filter((r) => r.unitIndex === 1).every((r) => r.assembled));
+    assert.ok(rowsAfterUnit1.filter((r) => r.unitIndex === 2).every((r) => !r.assembled));
+
+    const partial = await partStock(scenario.workspaceId, scenario.buildLinePartId);
+    assert.equal(partial.currentStock, "3", "one whole unit (3 designators) consumed");
+    assert.equal(
+      (await prisma.build.findFirstOrThrow({ where: { id: buildId }, select: { state: true } })).state,
+      "IN_PROGRESS"
+    );
+
+    // Re-assembling an already-complete unit is rejected.
+    const again = await assembleBuildUnit({
+      userId: scenario.userId,
+      workspaceId: scenario.workspaceId,
+      buildId,
+      unitIndex: 1
+    });
+    assert.equal(again.ok, false);
+    if (!again.ok) assert.equal(again.error, "unit-already-assembled");
+
+    const unit2 = await assembleBuildUnit({
+      userId: scenario.userId,
+      workspaceId: scenario.workspaceId,
+      buildId,
+      unitIndex: 2
+    });
+    assert.ok(unit2.ok, JSON.stringify(unit2));
+    assert.equal(unit2.data.completed, true);
+
+    const build = await prisma.build.findFirstOrThrow({
+      where: { id: buildId },
+      select: { state: true }
+    });
+    assert.equal(build.state, "COMPLETED");
   });
 
   test("per-unit split assigns mixed parts to a single designator", async () => {
@@ -560,12 +607,15 @@ describe("build flow", () => {
 
     const r2Rows = await prisma.buildDesignatorAssignment.findMany({
       where: { buildLineItem: { buildId }, designator: "R2" },
-      orderBy: { partId: "asc" },
-      select: { partId: true, quantity: true }
+      orderBy: { unitIndex: "asc" },
+      select: { partId: true, unitIndex: true }
     });
-    // R1 takes 5 of A, so R2 is 2×A + 3×B — two rows for one designator.
-    assert.equal(r2Rows.length, 2);
-    const r2ByPart = new Map(r2Rows.map((r) => [r.partId, r.quantity]));
+    // R1 takes 5 of A, so R2 is 2×A + 3×B — 5 (designator, unit) rows split across two parts.
+    assert.equal(r2Rows.length, 5);
+    const r2ByPart = new Map<string, number>();
+    for (const row of r2Rows) {
+      r2ByPart.set(row.partId as string, (r2ByPart.get(row.partId as string) ?? 0) + 1);
+    }
     assert.equal(r2ByPart.get(scenario.partAId), 2);
     assert.equal(r2ByPart.get(scenario.partBId), 3);
 
@@ -622,8 +672,7 @@ describe("build flow", () => {
     await assembleDesignator({
       userId: scenario.userId,
       workspaceId: scenario.workspaceId,
-      assignmentId: rows[1]!.id,
-      quantity: 1
+      assignmentId: rows[1]!.id
     });
     const tooLate = await reassignDesignatorAssignment({
       userId: scenario.userId,
@@ -868,14 +917,19 @@ describe("build flow", () => {
 
     const assignments = await prisma.buildDesignatorAssignment.findMany({
       where: { buildLineItem: { buildId } },
-      orderBy: { designator: "asc" },
+      orderBy: [{ designator: "asc" }, { unitIndex: "asc" }],
       select: { id: true }
+    });
+    // Assemble both units of the first designator.
+    await assembleDesignator({
+      userId: scenario.userId,
+      workspaceId: scenario.workspaceId,
+      assignmentId: assignments[0]!.id
     });
     await assembleDesignator({
       userId: scenario.userId,
       workspaceId: scenario.workspaceId,
-      assignmentId: assignments[0]!.id,
-      quantity: 2
+      assignmentId: assignments[1]!.id
     });
 
     const cancelled = await cancelBuild({

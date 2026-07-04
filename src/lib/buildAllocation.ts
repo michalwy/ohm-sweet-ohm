@@ -20,12 +20,12 @@ export type AllocationEntry = {
   quantity: number;
 };
 
-/** A distributed unit of one part at one designator (the assembly-list grain). */
+/** A distributed unit of one part at one designator for one physical unit (the assembly grain). */
 export type DesignatorPartRow = {
   designator: string;
+  unitIndex: number;
   partId: string;
   sourceLocationId: string | null;
-  quantity: number;
 };
 
 /** A candidate part+location the greedy suggestion can draw from, best-first. */
@@ -68,9 +68,10 @@ export function validateAllocation(
 }
 
 /**
- * Distribute a validated split allocation down to per-designator, per-part rows. Designators are
- * filled in order, each consuming `targetQuantity` units drawn from the entries in order; a
- * designator emits one row per part it draws from (so a per-unit split yields multiple rows).
+ * Distribute a validated split allocation down to per-designator, per-unit rows. Designators are
+ * filled in order; for each designator, units 1..targetQuantity are drawn one at a time from the
+ * entries in order (so a per-unit split may assign different parts to different unit indices of
+ * the same designator).
  *
  * @throws the same codes as {@link validateAllocation}.
  */
@@ -86,23 +87,20 @@ export function distributeAllocations(
   let remainingInEntry = entries.length > 0 ? entries[0].quantity : 0;
 
   for (const designator of designators) {
-    let needed = targetQuantity;
-    while (needed > 0) {
+    for (let unitIndex = 1; unitIndex <= targetQuantity; unitIndex += 1) {
       // Skip over any exhausted entries.
       while (entryIndex < entries.length && remainingInEntry === 0) {
         entryIndex += 1;
         remainingInEntry = entryIndex < entries.length ? entries[entryIndex].quantity : 0;
       }
       const entry = entries[entryIndex];
-      const take = Math.min(needed, remainingInEntry);
       rows.push({
         designator,
+        unitIndex,
         partId: entry.partId,
-        sourceLocationId: entry.sourceLocationId,
-        quantity: take
+        sourceLocationId: entry.sourceLocationId
       });
-      needed -= take;
-      remainingInEntry -= take;
+      remainingInEntry -= 1;
     }
   }
 

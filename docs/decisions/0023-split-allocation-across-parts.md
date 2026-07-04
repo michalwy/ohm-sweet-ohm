@@ -5,6 +5,12 @@
 
 ## Context
 
+> **Further superseded by [ADR 0024](0024-per-unit-build-assembly.md).** As of #168
+> `BuildDesignatorAssignment` is refined again to a per-(designator × unit) grain: `quantity`/
+> `assembledQuantity` are replaced by a single `assembled` boolean per physical unit.
+> `distributeAllocations` now emits one row per unit instead of grouping consecutive units of the
+> same part.
+
 [ADR 0021](0021-builds-and-stock-state-transitions.md) introduced builds with a **per-line
 allocation**: each build line chose a single part and a single source location, shared by all of
 its designators. It explicitly deferred *split allocation* — fulfilling one BOM line from more

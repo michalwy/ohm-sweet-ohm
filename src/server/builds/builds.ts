@@ -24,7 +24,12 @@ import {
   getPartLocationBalances,
   getPartLocationBalancesWithDb
 } from "@/server/inventory/entryMutations";
-import { getStorageLocations, type StorageLocationListItem } from "@/server/inventory/locationMutations";
+import {
+  buildStorageLocationPaths,
+  getStorageLocations,
+  type StorageLocationListItem
+} from "@/server/inventory/locationMutations";
+import { getPartCategories } from "@/server/parts/categories";
 import { aggregateRequirementsByPart, isCancellable } from "@/server/builds/buildTransitions";
 
 export type BuildState =
@@ -67,20 +72,23 @@ export type BuildPartBalances = {
   balances: BuildSourceLocationBalance[];
 };
 
+/** A storage location reference with its full ancestor path (e.g. "Warehouse / Shelf A / Drawer 5"). */
+export type BuildLocationRef = { id: string; name: string; path: string };
+
 export type BuildAllocationDetail = {
   id: string;
   part: { id: string; catalogNumber: string; availableQuantity: string };
-  sourceLocation: { id: string; name: string } | null;
+  sourceLocation: BuildLocationRef | null;
   quantity: number;
 };
 
 export type BuildAssignmentDetail = {
   id: string;
   designator: string;
+  unitIndex: number;
   part: { id: string; catalogNumber: string } | null;
-  sourceLocation: { id: string; name: string } | null;
-  quantity: number;
-  assembledQuantity: number;
+  sourceLocation: BuildLocationRef | null;
+  assembled: boolean;
 };
 
 export type BuildLineDetail = {
@@ -94,6 +102,25 @@ export type BuildLineDetail = {
   assignments: BuildAssignmentDetail[];
   matchCandidates: BuildMatchCandidate[];
   partBalances: BuildPartBalances[];
+};
+
+/** One designator's row within a single physical unit — the per-unit assembly grain. */
+export type BuildUnitDesignatorDetail = {
+  assignmentId: string;
+  lineItemId: string;
+  designator: string;
+  categoryName: string | null;
+  part: { id: string; catalogNumber: string } | null;
+  sourceLocation: BuildLocationRef | null;
+  assembled: boolean;
+};
+
+export type BuildUnitStatus = "not_started" | "in_progress" | "complete";
+
+export type BuildUnitDetail = {
+  unitIndex: number;
+  status: BuildUnitStatus;
+  designators: BuildUnitDesignatorDetail[];
 };
 
 export type BuildDetail = {
@@ -111,6 +138,7 @@ export type BuildDetail = {
   createdAt: Date;
   locations: StorageLocationListItem[];
   lines: BuildLineDetail[];
+  units: BuildUnitDetail[];
 };
 
 type ActionResult<T> = { ok: true; data: T } | { ok: false; error: string };
@@ -171,7 +199,7 @@ export async function getBuildsForWorkspace({
       lineItems: {
         select: {
           designatorCount: true,
-          assignments: { select: { assembledQuantity: true } }
+          assignments: { select: { assembled: true } }
         }
       }
     }
@@ -186,7 +214,7 @@ export async function getBuildsForWorkspace({
       // build is started and the per-designator assignment rows exist.
       unitsTotal += line.designatorCount * row.targetQuantity;
       for (const assignment of line.assignments) {
-        unitsAssembled += assignment.assembledQuantity;
+        if (assignment.assembled) unitsAssembled += 1;
       }
     }
     return {
@@ -266,12 +294,12 @@ export async function getBuildDetail({
             }
           },
           assignments: {
-            orderBy: [{ designator: "asc" }, { createdAt: "asc" }],
+            orderBy: [{ designator: "asc" }, { unitIndex: "asc" }],
             select: {
               id: true,
               designator: true,
-              quantity: true,
-              assembledQuantity: true,
+              unitIndex: true,
+              assembled: true,
               part: { select: { id: true, catalogNumber: true } },
               sourceLocation: { select: { id: true, name: true } }
             }
@@ -318,7 +346,43 @@ export async function getBuildDetail({
     }
   }
 
-  const locations = showPickers ? await getStorageLocations(workspaceId) : [];
+  // Always fetched (not just while pickers are shown): needed to render each already-chosen
+  // location's full ancestor path in the read-only allocation/assembly views.
+  const rawLocations = await getStorageLocations(workspaceId);
+  const locations = showPickers ? rawLocations : [];
+  const locationPathsById = buildStorageLocationPaths(rawLocations);
+  const withPath = (location: { id: string; name: string } | null): BuildLocationRef | null =>
+    location ? { ...location, path: locationPathsById.get(location.id) ?? location.name } : null;
+
+  // Group assignment rows by unitIndex across all lines for the per-unit assembly view.
+  const unitsByIndex = new Map<number, BuildUnitDesignatorDetail[]>();
+  for (const line of build.lineItems) {
+    for (const a of line.assignments) {
+      const list = unitsByIndex.get(a.unitIndex) ?? [];
+      list.push({
+        assignmentId: a.id,
+        lineItemId: line.id,
+        designator: a.designator,
+        categoryName: line.categoryName,
+        part: a.part,
+        sourceLocation: withPath(a.sourceLocation),
+        assembled: a.assembled
+      });
+      unitsByIndex.set(a.unitIndex, list);
+    }
+  }
+  const units: BuildUnitDetail[] = [...unitsByIndex.entries()]
+    .sort(([a], [b]) => a - b)
+    .map(([unitIndex, designators]) => {
+      const assembledCount = designators.filter((d) => d.assembled).length;
+      const status: BuildUnitStatus =
+        assembledCount === 0
+          ? "not_started"
+          : assembledCount === designators.length
+            ? "complete"
+            : "in_progress";
+      return { unitIndex, status, designators };
+    });
 
   return {
     id: build.id,
@@ -334,6 +398,7 @@ export async function getBuildDetail({
     cancelledAt: build.cancelledAt,
     createdAt: build.createdAt,
     locations,
+    units,
     lines: build.lineItems.map((line) => {
       const candidates = line.sourceBomLineItemId
         ? (candidatesByLine.get(line.sourceBomLineItemId) ?? [])
@@ -357,16 +422,16 @@ export async function getBuildDetail({
             catalogNumber: a.part.catalogNumber,
             availableQuantity: a.part.currentStock.minus(a.part.reservedQty).toString()
           },
-          sourceLocation: a.sourceLocation,
+          sourceLocation: withPath(a.sourceLocation),
           quantity: a.quantity
         })),
         assignments: line.assignments.map((a) => ({
           id: a.id,
           designator: a.designator,
+          unitIndex: a.unitIndex,
           part: a.part,
-          sourceLocation: a.sourceLocation,
-          quantity: a.quantity,
-          assembledQuantity: a.assembledQuantity
+          sourceLocation: withPath(a.sourceLocation),
+          assembled: a.assembled
         })),
         matchCandidates: candidates,
         partBalances: [...partIdsForLine].map((partId) => ({
@@ -602,12 +667,18 @@ export async function createBuild({
         select: {
           id: true,
           designators: true,
-          category: { select: { name: true } }
+          category: { select: { id: true, name: true } }
         }
       }
     }
   });
   if (!revision) return { ok: false, error: "revision-not-found" };
+
+  // Full ancestor path (e.g. "Passives » Resistors"), so the frozen snapshot doesn't lose context
+  // if the category is later moved or renamed.
+  const categoryPathById = new Map(
+    (await getPartCategories(workspaceId)).map((category) => [category.id, category.path])
+  );
 
   if (outputLocationId) {
     const error = await assertUsableLocation(workspaceId, outputLocationId);
@@ -660,7 +731,7 @@ export async function createBuild({
           sourceBomLineItemId: line.id,
           designators: line.designators,
           designatorCount,
-          categoryName: line.category?.name ?? null
+          categoryName: line.category ? (categoryPathById.get(line.category.id) ?? line.category.name) : null
         },
         select: { id: true }
       });
@@ -1085,9 +1156,9 @@ export async function startBuild({
               workspaceId,
               buildLineItemId: line.id,
               designator: row.designator,
+              unitIndex: row.unitIndex,
               partId: row.partId,
-              sourceLocationId: row.sourceLocationId,
-              quantity: row.quantity
+              sourceLocationId: row.sourceLocationId
             }))
           });
         }
@@ -1105,22 +1176,116 @@ export async function startBuild({
   return { ok: true, data: null };
 }
 
+type AssignmentForAssembly = {
+  id: string;
+  designator: string;
+  unitIndex: number;
+  assembled: boolean;
+  partId: string | null;
+  sourceLocationId: string | null;
+};
+
+type BuildForAssembly = {
+  id: string;
+  state: BuildState;
+  targetQuantity: number;
+  outputLocationId: string | null;
+  designRevision: { design: { outputPartId: string } };
+};
+
 /**
- * Assemble part of a designator's part row: issue `quantity` units (default 1, capped at the
- * un-assembled remainder) from the row's source location, release that much reservation, and —
- * when the whole build is fully assembled — auto-complete it by receiving the output part.
- * `STARTED → IN_PROGRESS → COMPLETED`.
+ * Issue one assignment row's single unit from its source location, release its reservation, and
+ * mark it assembled. Shared by {@link assembleDesignator} and {@link assembleBuildUnit}; does not
+ * check build completion — callers run that once after all of their rows are issued.
+ */
+async function issueAssignmentWithinTx(
+  tx: Prisma.TransactionClient,
+  {
+    workspaceId,
+    userId,
+    build,
+    assignment
+  }: {
+    workspaceId: string;
+    userId: string;
+    build: Pick<BuildForAssembly, "id">;
+    assignment: AssignmentForAssembly;
+  }
+): Promise<void> {
+  await createInventoryEntryWithinTx(tx, {
+    workspaceId,
+    partId: assignment.partId as string,
+    entryType: "ISSUE",
+    quantity: "1",
+    fromLocationId: assignment.sourceLocationId,
+    note: `Build ${build.id} — designator ${assignment.designator} (unit ${assignment.unitIndex})`,
+    createdByUserId: userId
+  });
+
+  await tx.part.update({
+    where: { id: assignment.partId as string },
+    data: { reservedQty: { decrement: 1 } }
+  });
+
+  await tx.buildDesignatorAssignment.update({
+    where: { id: assignment.id },
+    data: { assembled: true, assembledAt: new Date() }
+  });
+}
+
+/**
+ * Check whether every assignment row of a build is assembled and, if so, produce the output part
+ * and complete the build; otherwise move `STARTED` to `IN_PROGRESS`. Returns whether the build
+ * completed as a result of this call.
+ */
+async function checkBuildCompletionWithinTx(
+  tx: Prisma.TransactionClient,
+  { userId, workspaceId, build }: { userId: string; workspaceId: string; build: BuildForAssembly }
+): Promise<boolean> {
+  const totalRows = await tx.buildDesignatorAssignment.count({
+    where: { buildLineItem: { buildId: build.id } }
+  });
+  const assembledRows = await tx.buildDesignatorAssignment.count({
+    where: { buildLineItem: { buildId: build.id }, assembled: true }
+  });
+
+  if (assembledRows < totalRows) {
+    if (build.state === "STARTED") {
+      await tx.build.update({ where: { id: build.id }, data: { state: "IN_PROGRESS" } });
+    }
+    return false;
+  }
+
+  // Last unit assembled: produce the output part and complete the build.
+  await createInventoryEntryWithinTx(tx, {
+    workspaceId,
+    partId: build.designRevision.design.outputPartId,
+    entryType: "RECEIPT",
+    quantity: String(build.targetQuantity),
+    toLocationId: build.outputLocationId as string,
+    note: `Build ${build.id} — output`,
+    createdByUserId: userId
+  });
+  await tx.build.update({
+    where: { id: build.id },
+    data: { state: "COMPLETED", completedAt: new Date() }
+  });
+  return true;
+}
+
+/**
+ * Assemble a single (designator × unit) row: issue that one unit from the row's source location,
+ * release its reservation, mark it assembled, and — when the whole build is fully assembled —
+ * auto-complete it by receiving the output part. `STARTED → IN_PROGRESS → COMPLETED`.
  */
 export async function assembleDesignator({
   userId,
   workspaceId,
-  assignmentId,
-  quantity = 1
+  assignmentId
 }: {
   userId: string;
   workspaceId: string;
   assignmentId: string;
-  quantity?: number;
 }): Promise<ActionResult<{ completed: boolean }>> {
   await authorizeWorkspacePermission({ userId, workspaceId, permission: "builds:write" });
 
@@ -1129,8 +1294,8 @@ export async function assembleDesignator({
     select: {
       id: true,
       designator: true,
-      quantity: true,
-      assembledQuantity: true,
+      unitIndex: true,
+      assembled: true,
       partId: true,
       sourceLocationId: true,
       buildLineItem: {
@@ -1151,13 +1316,7 @@ export async function assembleDesignator({
     }
   });
   if (!assignment) return { ok: false, error: "assignment-not-found" };
-
-  const remainingForDesignator = assignment.quantity - assignment.assembledQuantity;
-  if (remainingForDesignator <= 0) return { ok: false, error: "designator-already-assembled" };
-  if (!Number.isInteger(quantity) || quantity < 1) {
-    return { ok: false, error: "invalid-assemble-quantity" };
-  }
-  const assembleQuantity = Math.min(quantity, remainingForDesignator);
+  if (assignment.assembled) return { ok: false, error: "designator-already-assembled" };
 
   const build = assignment.buildLineItem.build;
   if (build.state !== "STARTED" && build.state !== "IN_PROGRESS") {
@@ -1172,55 +1331,78 @@ export async function assembleDesignator({
 
   try {
     const completed = await prisma.$transaction(async (tx) => {
-      await createInventoryEntryWithinTx(tx, {
+      await issueAssignmentWithinTx(tx, { workspaceId, userId, build, assignment });
+      return checkBuildCompletionWithinTx(tx, {
+        userId,
         workspaceId,
-        partId: assignment.partId as string,
-        entryType: "ISSUE",
-        quantity: String(assembleQuantity),
-        fromLocationId: assignment.sourceLocationId,
-        note: `Build ${build.id} — designator ${assignment.designator}`,
-        createdByUserId: userId
+        build: build as BuildForAssembly
       });
+    });
 
-      await tx.part.update({
-        where: { id: assignment.partId as string },
-        data: { reservedQty: { decrement: assembleQuantity } }
-      });
+    return { ok: true, data: { completed } };
+  } catch (error) {
+    return { ok: false, error: error instanceof Error ? error.message : "assemble-failed" };
+  }
+}
 
-      await tx.buildDesignatorAssignment.update({
-        where: { id: assignmentId },
-        data: { assembledQuantity: { increment: assembleQuantity } }
-      });
+/**
+ * Assemble every not-yet-assembled row for one physical unit (across all of the build's lines) in
+ * a single transaction — the "assemble this whole board" convenience. Rows already assembled are
+ * skipped rather than erroring; auto-completes the build the same way as {@link assembleDesignator}.
+ */
+export async function assembleBuildUnit({
+  userId,
+  workspaceId,
+  buildId,
+  unitIndex
+}: {
+  userId: string;
+  workspaceId: string;
+  buildId: string;
+  unitIndex: number;
+}): Promise<ActionResult<{ completed: boolean }>> {
+  await authorizeWorkspacePermission({ userId, workspaceId, permission: "builds:write" });
 
-      const remainingUnits = await tx.buildDesignatorAssignment.aggregate({
-        where: { buildLineItem: { buildId: build.id } },
-        _sum: { quantity: true, assembledQuantity: true }
-      });
-      const totalUnits = remainingUnits._sum.quantity ?? 0;
-      const assembledUnits = remainingUnits._sum.assembledQuantity ?? 0;
+  const build = await prisma.build.findFirst({
+    where: { id: buildId, workspaceId },
+    select: {
+      id: true,
+      state: true,
+      targetQuantity: true,
+      outputLocationId: true,
+      designRevision: { select: { design: { select: { outputPartId: true } } } }
+    }
+  });
+  if (!build) return { ok: false, error: "build-not-found" };
+  if (build.state !== "STARTED" && build.state !== "IN_PROGRESS") {
+    return { ok: false, error: "invalid-build-transition" };
+  }
+  if (!build.outputLocationId) {
+    return { ok: false, error: "output-location-required" };
+  }
 
-      if (assembledUnits < totalUnits) {
-        if (build.state === "STARTED") {
-          await tx.build.update({ where: { id: build.id }, data: { state: "IN_PROGRESS" } });
-        }
-        return false;
+  const assignments = await prisma.buildDesignatorAssignment.findMany({
+    where: { workspaceId, unitIndex, assembled: false, buildLineItem: { buildId } },
+    select: {
+      id: true,
+      designator: true,
+      unitIndex: true,
+      assembled: true,
+      partId: true,
+      sourceLocationId: true
+    }
+  });
+  if (assignments.length === 0) return { ok: false, error: "unit-already-assembled" };
+  if (assignments.some((a) => !a.partId || !a.sourceLocationId)) {
+    return { ok: false, error: "build-not-fully-allocated" };
+  }
+
+  try {
+    const completed = await prisma.$transaction(async (tx) => {
+      for (const assignment of assignments) {
+        await issueAssignmentWithinTx(tx, { workspaceId, userId, build, assignment });
       }
-
-      // Last unit assembled: produce the output part and complete the build.
-      await createInventoryEntryWithinTx(tx, {
-        workspaceId,
-        partId: build.designRevision.design.outputPartId,
-        entryType: "RECEIPT",
-        quantity: String(build.targetQuantity),
-        toLocationId: build.outputLocationId,
-        note: `Build ${build.id} — output`,
-        createdByUserId: userId
-      });
-      await tx.build.update({
-        where: { id: build.id },
-        data: { state: "COMPLETED", completedAt: new Date() }
-      });
-      return true;
+      return checkBuildCompletionWithinTx(tx, { userId, workspaceId, build });
     });
 
     return { ok: true, data: { completed } };
@@ -1253,8 +1435,7 @@ export async function reassignDesignatorAssignment({
     where: { id: assignmentId, workspaceId },
     select: {
       id: true,
-      quantity: true,
-      assembledQuantity: true,
+      assembled: true,
       partId: true,
       buildLineItem: {
         select: {
@@ -1270,7 +1451,7 @@ export async function reassignDesignatorAssignment({
   if (state !== "STARTED" && state !== "IN_PROGRESS") {
     return { ok: false, error: "invalid-build-transition" };
   }
-  if (assignment.assembledQuantity > 0) {
+  if (assignment.assembled) {
     return { ok: false, error: "designator-already-assembled" };
   }
 
@@ -1299,7 +1480,7 @@ export async function reassignDesignatorAssignment({
   }
 
   const oldPartId = assignment.partId;
-  const amount = assignment.quantity; // assembledQuantity is 0, so the whole row moves.
+  const amount = 1; // each row is exactly one physical unit's designator.
 
   try {
     await prisma.$transaction(async (tx) => {
@@ -1371,7 +1552,7 @@ export async function cancelBuild({
       lineItems: {
         select: {
           allocations: { select: { partId: true, quantity: true } },
-          assignments: { select: { partId: true, quantity: true, assembledQuantity: true } }
+          assignments: { select: { partId: true, assembled: true } }
         }
       }
     }
@@ -1398,7 +1579,7 @@ export async function cancelBuild({
           build.lineItems.flatMap((line) =>
             line.assignments.map((a) => ({
               partId: a.partId,
-              required: a.quantity - a.assembledQuantity
+              required: a.assembled ? 0 : 1
             }))
           )
         );

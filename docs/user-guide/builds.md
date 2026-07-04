@@ -80,25 +80,28 @@ From **Allocated**, choose **Start**. A build can only start when:
 3. Each chosen source location physically holds enough of its part.
 
 Starting converts the soft allocation into a hard reservation, so the reserved parts are no
-longer available to other builds. Starting also **distributes** each line's allocation across its
-individual designators to build the assembly list — assigning a concrete part (and location) to
-every designator. When a line is split, whole designators are handed to each part in turn; if a
-single designator's units straddle two parts (possible when the target quantity is greater than
-one), it is listed once per part.
+longer available to other builds. Starting also **distributes** each line's allocation down to a
+per-unit assembly list: every one of the build's `target quantity` physical units gets its own
+assignment for each designator, each naming a concrete part (and location). When a line is split
+across parts, units are handed out in order, so a single designator can end up using different
+parts on different units (possible when the target quantity is greater than one) — for example
+unit 1's `R5` might use one resistor and unit 3's `R5` another.
 
 ## Assembling and completing
 
-From **Started**/**In progress**, mark designators as assembled. Each designator shows the part it
-is set to use. For a target quantity greater than one, each designator needs that many units, so
-you can assemble it one unit at a time (**+1**) or all remaining units at once (**All**) — for
-example to assemble the run board by board. Assembling issues the parts from that designator's
-source location (reducing on-hand stock) and releases that much of the reservation.
+From **Started**/**In progress**, the build detail view shows a grid of its units (boards) —
+**Unit 1** through **Unit *target quantity***, each labeled not started, in progress, or complete.
+Select a unit to see its designators and the part assigned to each. Assemble a single designator
+(**Assemble**) or the whole selected unit at once (**Assemble whole unit**) — useful for building
+board by board. Assembling issues the part from that designator's source location for that one
+unit (reducing on-hand stock) and releases its reservation.
 
 If the wrong part was actually used, choose **Change part** on a designator that has not been
-assembled yet and pick any part that matches the line's specification (with its source location);
-the reservation moves to the new part. When every designator is fully assembled, the build
-completes automatically and the target quantity of the output part is received into the output
-location.
+assembled yet (on that unit) and pick any part that matches the line's specification (with its
+source location); the reservation moves to the new part for that unit only — other units of the
+same designator are unaffected. A unit is complete once every one of its designators is assembled;
+the build completes automatically once every unit is complete, and the target quantity of the
+output part is received into the output location.
 
 ## Cancelling
 

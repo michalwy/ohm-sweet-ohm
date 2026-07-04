@@ -94,6 +94,10 @@ model BuildDesignatorAssignment {   // one row per individual designator
 > and `BuildDesignatorAssignment` carries its own `partId`/`sourceLocationId` at a
 > per-(designator × part) grain. The state machine, stock semantics, and `availableQty` behavior
 > below are unchanged.
+>
+> **Further superseded by [ADR 0024](0024-per-unit-build-assembly.md).** As of #168
+> `BuildDesignatorAssignment` is refined again to a per-(designator × unit) grain: `quantity`/
+> `assembledQuantity` are replaced by a single `assembled` boolean per physical unit.
 
 - **Per-line allocation, per-designator assembly.** A part and a source location are chosen
   once per BOM line, but each designator is tracked individually so a build can be partially
