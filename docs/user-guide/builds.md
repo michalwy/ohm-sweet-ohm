@@ -24,6 +24,7 @@ Builds live under **Builds** in the workspace navigation. Reading builds require
 2. Pick a **design** and one of its **revisions**.
 3. Enter the **target quantity** — how many units of the design you intend to produce.
 4. Choose an **output location** — where the finished output part will be received on completion.
+   This is required; a build cannot be created without one.
 
 Once a revision and target quantity are set, the dialog shows a **shortage preview** — which
 BOM lines cannot be fulfilled from available stock and which parts you would need to acquire or

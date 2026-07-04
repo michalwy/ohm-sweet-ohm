@@ -392,6 +392,19 @@ describe("build flow", () => {
     assert.equal(lines[0]?.allocations[0]?.quantity, 6);
   });
 
+  test("createBuild rejects a missing output location", async () => {
+    const scenario = await createScenario(uniqueSuffix());
+    const build = await createBuild({
+      userId: scenario.userId,
+      workspaceId: scenario.workspaceId,
+      designRevisionId: scenario.revisionId,
+      targetQuantity: 2,
+      outputLocationId: null
+    });
+    assert.equal(build.ok, false);
+    assert.equal((build as { ok: false; error: string }).error, "output-location-required");
+  });
+
   test("allocate → start reserves stock; assemble consumes and completes", async () => {
     const scenario = await createScenario(uniqueSuffix(), { stockAtSource: "6" });
     const { buildId } = await createAndAllocateBuild(scenario, 2);

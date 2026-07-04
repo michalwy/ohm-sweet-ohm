@@ -429,6 +429,7 @@ export function BuildsClient({ canWrite, copy, initialPage, workspaceSlug }: Bui
     if (!formRevisionId) errors.revision = copy.revisionRequired;
     const target = Number(formTargetQuantity);
     if (!Number.isInteger(target) || target < 1) errors.targetQuantity = copy.targetQuantityRequired;
+    if (!formOutputLocationId) errors.outputLocation = copy.outputLocationRequired;
     if (Object.keys(errors).length > 0) {
       setFormErrors(errors);
       return;
@@ -763,17 +764,20 @@ export function BuildsClient({ canWrite, copy, initialPage, workspaceSlug }: Bui
                 />
               </div>
               <div className="grid gap-1">
-                <label className="text-sm font-medium text-[var(--color-text-primary)]">
+                <LabelWithError htmlFor="build-output-location-button" error={formErrors.outputLocation}>
                   {copy.outputLocation}
-                </label>
+                </LabelWithError>
                 <LocationTreeSelect
                   locations={outputLocations}
                   locationTree={outputLocationTree}
                   copy={locationTreeSelectCopy(copy)}
                   name="build-output-location"
                   selectedId={formOutputLocationId}
-                  onSelectedIdChange={setFormOutputLocationId}
-                  clearable
+                  onSelectedIdChange={(id) => {
+                    setFormOutputLocationId(id);
+                    setFormErrors((prev) => ({ ...prev, outputLocation: "" }));
+                  }}
+                  clearable={false}
                   emptyLabel={copy.selectLocation}
                   className="w-full"
                   buttonClassName={formLocationSelectButtonClassName}

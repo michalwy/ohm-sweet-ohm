@@ -658,6 +658,10 @@ export async function createBuild({
     return { ok: false, error: "invalid-target-quantity" };
   }
 
+  if (!outputLocationId) {
+    return { ok: false, error: "output-location-required" };
+  }
+
   const revision = await prisma.designRevision.findFirst({
     where: { id: designRevisionId, workspaceId },
     select: {

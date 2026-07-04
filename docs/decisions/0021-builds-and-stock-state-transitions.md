@@ -63,7 +63,9 @@ enum BuildState { CREATED ALLOCATED STARTED IN_PROGRESS COMPLETED CANCELLED }
 
 model Build {                       // a production run of one DesignRevision
   designRevisionId String
-  outputLocationId String?          // where the produced output part is received
+  outputLocationId String?          // where the produced output part is received; nullable in
+                                     // schema, but required by the create build UI/action (#169)
+                                     // so a build can never get stuck unable to reach `completed`
   targetQuantity   Int
   state            BuildState @default(CREATED)
   startedAt / completedAt / cancelledAt DateTime?
