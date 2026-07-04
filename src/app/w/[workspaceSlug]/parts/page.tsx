@@ -122,6 +122,7 @@ const copy = {
   collapseCategory: "Collapse",
   defaultLocation: "Default location",
   chooseDefaultLocation: "Choose a default location",
+  chooseLocation: "Choose a location",
   searchLocations: "Search locations",
   noMatchingLocations: "No matching locations",
   expandLocation: "Expand",

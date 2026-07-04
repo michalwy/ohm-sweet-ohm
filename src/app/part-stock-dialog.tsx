@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import {
-  createInventoryEntryForWorkspace
+  createInventoryEntryForWorkspace,
+  getPartBalancesForWorkspace
 } from "@/server/inventory/entryActions";
 import { getLocationsForWorkspace } from "@/server/inventory/locationActions";
 import type { PartsListItem } from "@/server/parts/getParts";
@@ -15,6 +16,13 @@ import {
   closeDialog,
   openDialog
 } from "@/app/dialog-shell";
+import { buildTree } from "@/app/tree-picker-utils";
+import {
+  LocationTreeSelect,
+  formLocationSelectButtonClassName,
+  type LocationTreeItem,
+  type LocationTreeSelectCopy
+} from "@/app/location-tree-select";
 
 type Copy = {
   cancel: string;
@@ -39,7 +47,43 @@ type Copy = {
   stockFractionalQuantityNotAllowed: string;
   stockLocationArchived: string;
   stockLocationNotAssignable: string;
+  chooseLocation: string;
+  searchLocations: string;
+  noMatchingLocations: string;
+  expandLocation: string;
+  collapseLocation: string;
+  available: string;
 };
+
+function locationTreeSelectCopy(copy: Copy): LocationTreeSelectCopy {
+  return {
+    chooseLocation: copy.chooseLocation,
+    searchLocations: copy.searchLocations,
+    noMatchingLocations: copy.noMatchingLocations,
+    expandLocation: copy.expandLocation,
+    collapseLocation: copy.collapseLocation
+  };
+}
+
+function collectLocationIdsWithStock(
+  tree: LocationTreeItem[],
+  availableQuantityByLocationId: Map<string, string>,
+  keep: Set<string>
+): boolean {
+  let anyKept = false;
+
+  for (const node of tree) {
+    const childKept = collectLocationIdsWithStock(node.children, availableQuantityByLocationId, keep);
+    const ownQuantity = Number(availableQuantityByLocationId.get(node.id) ?? 0);
+    const shouldKeep = ownQuantity > 0 || childKept;
+    if (shouldKeep) {
+      keep.add(node.id);
+    }
+    anyKept = anyKept || shouldKeep;
+  }
+
+  return anyKept;
+}
 
 function getStockActionErrorMessage(copy: Copy, error: string) {
   if (error === "insufficient-stock") {
@@ -104,16 +148,58 @@ export function PartStockDialog({
   }, [open, part?.id]);
 
   const locationsQuery = useQuery({
-    queryKey: ["locations-assignable", workspaceSlug],
+    queryKey: ["locations-all", workspaceSlug, "stock-dialog"],
     enabled: open && canReadInventory,
     queryFn: async () => {
       const result = await getLocationsForWorkspace({ workspaceSlug });
       if (!result.ok) {
         throw new Error(result.error);
       }
-      return result.data.filter((location) => location.isAssignable && !location.isArchived);
+      return result.data.filter((location) => !location.isArchived);
     }
   });
+  const locations = useMemo(() => locationsQuery.data ?? [], [locationsQuery.data]);
+  const locationTree = useMemo(() => buildTree(locations), [locations]);
+
+  const balancesQuery = useQuery({
+    queryKey: ["part-balances", workspaceSlug, part?.id, "stock-dialog"],
+    enabled: open && canReadInventory && Boolean(part),
+    queryFn: async () => {
+      const result = await getPartBalancesForWorkspace({ workspaceSlug, partId: part!.id });
+      if (!result.ok) {
+        throw new Error(result.error);
+      }
+      return result.data;
+    }
+  });
+  const availableQuantityByLocationId = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const balance of balancesQuery.data ?? []) {
+      map.set(balance.locationId, balance.availableQuantity);
+    }
+    return map;
+  }, [balancesQuery.data]);
+
+  const fromLocations = useMemo(() => {
+    const keep = new Set<string>();
+    collectLocationIdsWithStock(locationTree, availableQuantityByLocationId, keep);
+    return locations
+      .filter((location) => keep.has(location.id))
+      .map((location) => ({
+        ...location,
+        isAssignable:
+          location.isAssignable && Number(availableQuantityByLocationId.get(location.id) ?? 0) > 0
+      }));
+  }, [locations, locationTree, availableQuantityByLocationId]);
+  const fromLocationTree = useMemo(() => buildTree(fromLocations), [fromLocations]);
+
+  function describeFromLocation(location: { id: string }) {
+    const quantity = availableQuantityByLocationId.get(location.id);
+    if (quantity === undefined || Number(quantity) <= 0) {
+      return undefined;
+    }
+    return `${copy.available}: ${quantity}`;
+  }
 
   const movementMutation = useMutation({
     mutationFn: createInventoryEntryForWorkspace,
@@ -219,41 +305,44 @@ export function PartStockDialog({
             </label>
 
             {showFromLocation ? (
-              <label className="grid gap-1 text-sm">
+              <div className="grid gap-1 text-sm">
                 <span className="font-medium text-[var(--color-text-secondary)]">{copy.fromLocation}</span>
-                <select
-                  className="min-h-10 rounded-md border border-[var(--color-border-strong)] bg-[var(--color-bg-elevated)] px-3 py-1.5 text-sm text-[var(--color-text-primary)] outline-none"
+                <LocationTreeSelect
+                  locations={fromLocations}
+                  locationTree={fromLocationTree}
+                  copy={locationTreeSelectCopy(copy)}
+                  name="from-location-picker"
+                  selectedId={fromLocationId}
+                  onSelectedIdChange={setFromLocationId}
+                  clearable={true}
+                  onClear={() => setFromLocationId("")}
+                  emptyLabel={copy.location}
                   disabled={!canWriteInventory}
-                  onChange={(event) => setFromLocationId(event.currentTarget.value)}
-                  value={fromLocationId}
-                >
-                  <option value="">{copy.location}</option>
-                  {(locationsQuery.data ?? []).map((location) => (
-                    <option key={location.id} value={location.id}>
-                      {location.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
+                  describeLocation={describeFromLocation}
+                  buttonClassName={formLocationSelectButtonClassName}
+                  className="w-full"
+                />
+              </div>
             ) : null}
 
             {showToLocation ? (
-              <label className="grid gap-1 text-sm">
+              <div className="grid gap-1 text-sm">
                 <span className="font-medium text-[var(--color-text-secondary)]">{copy.toLocation}</span>
-                <select
-                  className="min-h-10 rounded-md border border-[var(--color-border-strong)] bg-[var(--color-bg-elevated)] px-3 py-1.5 text-sm text-[var(--color-text-primary)] outline-none"
+                <LocationTreeSelect
+                  locations={locations}
+                  locationTree={locationTree}
+                  copy={locationTreeSelectCopy(copy)}
+                  name="to-location-picker"
+                  selectedId={toLocationId}
+                  onSelectedIdChange={setToLocationId}
+                  clearable={true}
+                  onClear={() => setToLocationId("")}
+                  emptyLabel={copy.location}
                   disabled={!canWriteInventory}
-                  onChange={(event) => setToLocationId(event.currentTarget.value)}
-                  value={toLocationId}
-                >
-                  <option value="">{copy.location}</option>
-                  {(locationsQuery.data ?? []).map((location) => (
-                    <option key={location.id} value={location.id}>
-                      {location.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
+                  buttonClassName={formLocationSelectButtonClassName}
+                  className="w-full"
+                />
+              </div>
             ) : null}
 
             <label className="grid gap-1 text-sm">

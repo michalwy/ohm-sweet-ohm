@@ -47,6 +47,8 @@ export function LocationTreeSelect({
   clearable,
   onClear,
   emptyLabel,
+  disabled,
+  describeLocation,
   className = "w-44",
   buttonClassName = defaultLocationSelectButtonClassName
 }: {
@@ -59,6 +61,8 @@ export function LocationTreeSelect({
   clearable?: boolean;
   onClear?: () => void;
   emptyLabel?: string;
+  disabled?: boolean;
+  describeLocation?: (location: StorageLocationListItem) => string | undefined;
   className?: string;
   buttonClassName?: string;
 }) {
@@ -100,7 +104,14 @@ export function LocationTreeSelect({
 
   const handleKeyDown = buildHandleKeyDown(commitActive);
 
-  const triggerLabel = currentSelectedLocation?.name ?? emptyLabel ?? copy.chooseLocation;
+  const selectedDescription = currentSelectedLocation
+    ? describeLocation?.(currentSelectedLocation)
+    : undefined;
+  const triggerLabel = currentSelectedLocation
+    ? selectedDescription
+      ? `${currentSelectedLocation.name} — ${selectedDescription}`
+      : currentSelectedLocation.name
+    : emptyLabel ?? copy.chooseLocation;
   const showClear = clearable && Boolean(selectedId);
 
   return (
@@ -109,12 +120,13 @@ export function LocationTreeSelect({
         ariaExpanded={isOpen}
         buttonClassName={buttonClassName}
         buttonId={buttonId}
+        disabled={disabled}
         hasSelection={Boolean(currentSelectedLocation)}
         selectedLabel={triggerLabel}
         onKeyDown={handleKeyDown}
         onToggle={() => (isOpen ? setIsOpen(false) : openSelect())}
       />
-      {showClear ? (
+      {showClear && !disabled ? (
         <button
           type="button"
           className="grid h-8 w-8 flex-none place-items-center rounded-md border border-[var(--color-border)] bg-[var(--color-bg-elevated)] text-[var(--color-text-placeholder)] transition hover:border-[var(--color-border-strong)] hover:text-[var(--color-text-secondary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-ring)]"
@@ -148,6 +160,7 @@ export function LocationTreeSelect({
                   key={location.id}
                   location={location}
                   copy={copy}
+                  describeLocation={describeLocation}
                   expandedIds={effectiveExpandedIds}
                   activeId={activeId}
                   level={0}
@@ -171,6 +184,7 @@ export function LocationTreeSelect({
 function LocationTreeSelectNode({
   location,
   copy,
+  describeLocation,
   expandedIds,
   activeId,
   level,
@@ -180,6 +194,7 @@ function LocationTreeSelectNode({
 }: {
   location: LocationTreeItem;
   copy: LocationTreeSelectCopy;
+  describeLocation?: (location: StorageLocationListItem) => string | undefined;
   expandedIds: Set<string>;
   activeId: string;
   level: number;
@@ -192,6 +207,7 @@ function LocationTreeSelectNode({
   const isSelected = selectedId === location.id;
   const isActive = activeId === location.id;
   const canSelect = location.isAssignable;
+  const description = describeLocation?.(location);
   const toggleLabel = isExpanded
     ? `${copy.collapseLocation} ${location.name}`
     : `${copy.expandLocation} ${location.name}`;
@@ -223,7 +239,7 @@ function LocationTreeSelectNode({
         {canSelect ? (
           <button
             aria-selected={isSelected}
-            className={`min-h-9 rounded-md px-2 py-1.5 text-left text-sm transition focus:outline-none focus:ring-2 focus:ring-[var(--color-ring-strong)] ${
+            className={`grid min-h-9 grid-cols-[1fr_auto] items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm transition focus:outline-none focus:ring-2 focus:ring-[var(--color-ring-strong)] ${
               isActive
                 ? "bg-[var(--color-accent-soft)] font-semibold text-[var(--color-text-primary)] hover:bg-[var(--color-accent-soft)]"
                 : "text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-subtle)]"
@@ -233,6 +249,9 @@ function LocationTreeSelectNode({
             onClick={() => onSelect(location.id)}
           >
             <span className="block truncate">{location.name}</span>
+            {description ? (
+              <span className="truncate text-xs text-[var(--color-text-muted)]">{description}</span>
+            ) : null}
           </button>
         ) : (
           <span className="truncate px-2 py-1.5 text-sm text-[var(--color-text-placeholder)]">{location.name}</span>
@@ -245,6 +264,7 @@ function LocationTreeSelectNode({
               key={child.id}
               location={child}
               copy={copy}
+              describeLocation={describeLocation}
               expandedIds={expandedIds}
               activeId={activeId}
               level={level + 1}

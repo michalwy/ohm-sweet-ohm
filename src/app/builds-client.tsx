@@ -1195,9 +1195,9 @@ function isLineFullyAllocated(line: BuildLine): boolean {
 function narrowLocationsToBalances(
   locations: StorageLocationListItem[],
   balances: { locationId: string; balance: string }[]
-): { items: StorageLocationListItem[]; tree: LocationTreeItem[] } {
+): { items: StorageLocationListItem[]; tree: LocationTreeItem[]; balanceById: Map<string, string> } {
   const balanceById = new Map(balances.map((b) => [b.locationId, b.balance]));
-  if (balanceById.size === 0) return { items: [], tree: [] };
+  if (balanceById.size === 0) return { items: [], tree: [], balanceById };
   const byId = new Map(locations.map((l) => [l.id, l]));
   const includeIds = new Set<string>();
   for (const balance of balances) {
@@ -1209,16 +1209,20 @@ function narrowLocationsToBalances(
   }
   const items = locations
     .filter((l) => includeIds.has(l.id))
-    .map((l) => {
-      const balance = balanceById.get(l.id);
-      return {
-        ...l,
-        // Only locations with a balance are selectable; ancestors are structural.
-        isAssignable: balance !== undefined,
-        name: balance !== undefined ? `${l.name} · ${balance}` : l.name
-      };
-    });
-  return { items, tree: buildTree(items) };
+    .map((l) => ({
+      ...l,
+      // Only locations with a balance are selectable; ancestors are structural.
+      isAssignable: balanceById.has(l.id)
+    }));
+  return { items, tree: buildTree(items), balanceById };
+}
+
+/** Renders "Available: <balance>" for a location, matching the part stock dialog's from-location picker. */
+function describeLocationBalance(copy: BuildsCopy, balanceById: Map<string, string>) {
+  return (location: { id: string }) => {
+    const balance = balanceById.get(location.id);
+    return balance !== undefined ? `${copy.available}: ${balance}` : undefined;
+  };
 }
 
 function BuildLineRow({
@@ -1554,6 +1558,7 @@ function AllocationEditor({
               selectedId={entry.sourceLocationId ?? ""}
               onSelectedIdChange={(locationId) => update(index, { sourceLocationId: locationId || null })}
               emptyLabel={copy.unassigned}
+              describeLocation={describeLocationBalance(copy, narrowed.balanceById)}
               className="w-full"
               buttonClassName={`${formLocationSelectButtonClassName}${
                 overLocation ? ` ${stockErrorBorder}` : ""
@@ -2028,6 +2033,7 @@ function ReassignEditor({
         onSelectedIdChange={(locationId) => setSourceLocationId(locationId || null)}
         clearable
         emptyLabel={copy.unassigned}
+        describeLocation={describeLocationBalance(copy, narrowed.balanceById)}
         className="w-full"
         buttonClassName={formLocationSelectButtonClassName}
       />

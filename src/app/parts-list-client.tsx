@@ -183,6 +183,7 @@ type Copy = {
   collapseCategory: string;
   defaultLocation: string;
   chooseDefaultLocation: string;
+  chooseLocation: string;
   searchLocations: string;
   noMatchingLocations: string;
   expandLocation: string;

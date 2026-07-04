@@ -51,7 +51,7 @@ const copy: BuildsCopy = {
   part: "Part",
   sourceLocation: "Source location",
   unassigned: "Unassigned",
-  available: "available",
+  available: "Available",
   quantity: "Qty",
   noAvailableParts: "No matching parts with available stock",
   addPartEntry: "Add part",
