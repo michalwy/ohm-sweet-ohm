@@ -222,7 +222,7 @@ export function BuildsClient({ canWrite, copy, initialPage, workspaceSlug }: Bui
       { id: "revision", label: copy.revision, group: "base", defaultWidth: 100, minWidth: 80 },
       { id: "targetQuantity", label: copy.targetQuantity, group: "base", defaultWidth: 110, minWidth: 80, align: "right" },
       { id: "state", label: copy.state, group: "base", defaultWidth: 140, minWidth: 110 },
-      { id: "progress", label: copy.progress, group: "base", defaultWidth: 120, minWidth: 90, align: "right" },
+      { id: "progress", label: copy.progress, group: "base", defaultWidth: 150, minWidth: 90, align: "right" },
       { id: "createdAt", label: copy.createdAt, group: "base", defaultWidth: 160, minWidth: 100 }
     ],
     [copy]
@@ -484,12 +484,24 @@ export function BuildsClient({ canWrite, copy, initialPage, workspaceSlug }: Bui
           );
         }
       }),
-      columnHelper.accessor((row) => `${row.unitsAssembled}/${row.unitsTotal}`, {
+      columnHelper.accessor((row) => row.unitsAssembled, {
         id: "progress",
         header: copy.progress,
-        cell: ({ getValue }) => (
-          <span className="block text-right text-[var(--color-text-secondary)]">{getValue()}</span>
-        )
+        cell: ({ row }) => {
+          const { unitsAssembled, unitsTotal } = row.original;
+          const percent = unitsTotal > 0 ? (unitsAssembled / unitsTotal) * 100 : 0;
+          return (
+            <div
+              className="grid justify-items-end gap-0.5"
+              title={`${unitsAssembled} / ${unitsTotal} ${copy.partsAssembled}`}
+            >
+              <span className="text-xs text-[var(--color-text-secondary)]">
+                {unitsAssembled}/{unitsTotal}
+              </span>
+              <LinearProgressBar percent={percent} className="w-full" />
+            </div>
+          );
+        }
       }),
       columnHelper.accessor("createdAt", {
         id: "createdAt",
@@ -969,14 +981,7 @@ function BuildDetailContent({
           <p className="text-xs text-[var(--color-text-muted)]">
             {unitsAssembled} / {unitsTotal} {copy.partsAssembled}
           </p>
-          <div className="h-1 overflow-hidden rounded-full bg-[var(--color-border)]">
-            <div
-              className="h-full rounded-full bg-[var(--color-accent)]"
-              style={{
-                width: `${unitsTotal > 0 ? Math.min(100, (unitsAssembled / unitsTotal) * 100) : 0}%`
-              }}
-            />
-          </div>
+          <LinearProgressBar percent={unitsTotal > 0 ? (unitsAssembled / unitsTotal) * 100 : 0} />
         </div>
       </section>
 
@@ -1272,6 +1277,16 @@ function BuildLineRow({
       ) : (
         <BomLineBreakdown copy={copy} line={line} showAssembled={started} />
       )}
+    </div>
+  );
+}
+
+/** A single-layer horizontal progress bar for a simple 0-100% ratio (e.g. assembled/total units). */
+function LinearProgressBar({ percent, className }: { percent: number; className?: string }) {
+  const clamped = Math.min(100, Math.max(0, percent));
+  return (
+    <div className={`h-1 shrink-0 overflow-hidden rounded-full bg-[var(--color-border)] ${className ?? ""}`}>
+      <div className="h-full rounded-full bg-[var(--color-accent)]" style={{ width: `${clamped}%` }} />
     </div>
   );
 }
