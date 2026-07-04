@@ -157,6 +157,58 @@ export type BuildDetail = {
   allocationWarnings: BuildAllocationWarning[];
 };
 
+/** One part entry to pick from a single source location, aggregated across the build's lines. */
+export type BuildPickListEntry = {
+  partId: string;
+  catalogNumber: string;
+  manufacturerName: string;
+  /** The BOM line's frozen full category path (e.g. "Passives » Resistors"), from the first line contributing this entry. */
+  categoryName: string | null;
+  totalQuantity: number;
+  /** Units already assembled from this (part, location) pair; always 0 while `state === "ALLOCATED"`. */
+  assembledQuantity: number;
+};
+
+export type BuildPickListGroup = {
+  locationId: string | null;
+  locationPath: string;
+  entries: BuildPickListEntry[];
+};
+
+export type BuildPickList = {
+  id: string;
+  designName: string;
+  revisionNumber: number;
+  targetQuantity: number;
+  state: BuildState;
+  groups: BuildPickListGroup[];
+};
+
+/** One designator's assignment within a printable assembly list unit. */
+export type BuildAssemblyListEntry = {
+  assignmentId: string;
+  designator: string;
+  categoryName: string | null;
+  part: { id: string; catalogNumber: string; manufacturerName: string } | null;
+  sourceLocation: BuildLocationRef | null;
+  assembled: boolean;
+};
+
+export type BuildAssemblyListUnit = {
+  unitIndex: number;
+  status: BuildUnitStatus;
+  entries: BuildAssemblyListEntry[];
+};
+
+export type BuildAssemblyList = {
+  id: string;
+  designName: string;
+  revisionNumber: number;
+  targetQuantity: number;
+  state: BuildState;
+  units: BuildAssemblyListUnit[];
+};
+
 type ActionResult<T> = { ok: true; data: T } | { ok: false; error: string };
 
 type BuildCursor = { key: string; id: string };
@@ -590,6 +642,288 @@ export async function getBuildDetail({
       };
     }),
     allocationWarnings
+  };
+}
+
+// --- Pick list ---
+
+/**
+ * A printable, location-grouped pick list for a build: how much of each part to physically gather
+ * from each source location. Only available once an allocation plan exists (`ALLOCATED` or
+ * later); returns `null` otherwise (or if the build doesn't exist / isn't in this workspace).
+ *
+ * - `ALLOCATED`: aggregates the editable allocation plan (`BuildLineAllocation`) — nothing has
+ *   been assembled yet.
+ * - `STARTED` / `IN_PROGRESS`: aggregates *all* per-unit assignment rows (`BuildDesignatorAssignment`),
+ *   not just the unassembled ones, so the list keeps showing the full original need while flagging
+ *   how much of it has already been picked/assembled (`assembledQuantity`).
+ */
+export async function getBuildPickList({
+  userId,
+  workspaceId,
+  buildId
+}: {
+  userId: string;
+  workspaceId: string;
+  buildId: string;
+}): Promise<BuildPickList | null> {
+  await authorizeWorkspacePermission({ userId, workspaceId, permission: "builds:read" });
+
+  const build = await prisma.build.findFirst({
+    where: { id: buildId, workspaceId },
+    select: {
+      id: true,
+      targetQuantity: true,
+      state: true,
+      designRevision: {
+        select: {
+          revisionNumber: true,
+          design: { select: { name: true } }
+        }
+      },
+      lineItems: {
+        select: {
+          categoryName: true,
+          allocations: {
+            select: {
+              quantity: true,
+              part: {
+                select: {
+                  id: true,
+                  catalogNumber: true,
+                  manufacturer: { select: { name: true } }
+                }
+              },
+              sourceLocation: { select: { id: true, name: true } }
+            }
+          },
+          assignments: {
+            select: {
+              assembled: true,
+              part: {
+                select: {
+                  id: true,
+                  catalogNumber: true,
+                  manufacturer: { select: { name: true } }
+                }
+              },
+              sourceLocation: { select: { id: true, name: true } }
+            }
+          }
+        }
+      }
+    }
+  });
+
+  if (!build) return null;
+  if (build.state !== "ALLOCATED" && build.state !== "STARTED" && build.state !== "IN_PROGRESS") {
+    return null;
+  }
+
+  const rawLocations = await getStorageLocations(workspaceId);
+  const locationPathsById = buildStorageLocationPaths(rawLocations);
+  const pathFor = (location: { id: string; name: string } | null) =>
+    location ? (locationPathsById.get(location.id) ?? location.name) : null;
+
+  type Bucket = {
+    locationId: string | null;
+    locationPath: string;
+    entriesByPart: Map<
+      string,
+      {
+        partId: string;
+        catalogNumber: string;
+        manufacturerName: string;
+        categoryName: string | null;
+        totalQuantity: number;
+        assembledQuantity: number;
+      }
+    >;
+  };
+
+  const buckets = new Map<string, Bucket>();
+  const noLocationKey = "__no-location__";
+
+  const addEntry = (
+    part: { id: string; catalogNumber: string; manufacturer: { name: string } },
+    location: { id: string; name: string } | null,
+    quantity: number,
+    assembled: boolean,
+    categoryName: string | null
+  ) => {
+    const locationKey = location?.id ?? noLocationKey;
+    let bucket = buckets.get(locationKey);
+    if (!bucket) {
+      bucket = {
+        locationId: location?.id ?? null,
+        locationPath: location ? (pathFor(location) ?? location.name) : "No location assigned",
+        entriesByPart: new Map()
+      };
+      buckets.set(locationKey, bucket);
+    }
+    const existing = bucket.entriesByPart.get(part.id);
+    if (existing) {
+      existing.totalQuantity += quantity;
+      if (assembled) existing.assembledQuantity += quantity;
+    } else {
+      bucket.entriesByPart.set(part.id, {
+        partId: part.id,
+        catalogNumber: part.catalogNumber,
+        manufacturerName: part.manufacturer.name,
+        categoryName,
+        totalQuantity: quantity,
+        assembledQuantity: assembled ? quantity : 0
+      });
+    }
+  };
+
+  if (build.state === "ALLOCATED") {
+    for (const line of build.lineItems) {
+      for (const allocation of line.allocations) {
+        addEntry(allocation.part, allocation.sourceLocation, allocation.quantity, false, line.categoryName);
+      }
+    }
+  } else {
+    for (const line of build.lineItems) {
+      for (const assignment of line.assignments) {
+        if (!assignment.part) continue;
+        addEntry(assignment.part, assignment.sourceLocation, 1, assignment.assembled, line.categoryName);
+      }
+    }
+  }
+
+  const groups: BuildPickListGroup[] = [...buckets.values()]
+    .sort((a, b) => a.locationPath.localeCompare(b.locationPath))
+    .map((bucket) => ({
+      locationId: bucket.locationId,
+      locationPath: bucket.locationPath,
+      entries: [...bucket.entriesByPart.values()].sort((a, b) =>
+        a.catalogNumber.localeCompare(b.catalogNumber)
+      )
+    }));
+
+  return {
+    id: build.id,
+    designName: build.designRevision.design.name,
+    revisionNumber: build.designRevision.revisionNumber,
+    targetQuantity: build.targetQuantity,
+    state: build.state as BuildState,
+    groups
+  };
+}
+
+// --- Assembly list ---
+
+/**
+ * A printable, unit-grouped assembly list for a build: for each physical unit, every designator's
+ * assigned part and source location, in designator order — a print-friendly mirror of the build
+ * detail view's unit grid. Only available once assignments exist (`STARTED`/`IN_PROGRESS`/
+ * `COMPLETED`); returns `null` otherwise (or if the build doesn't exist / isn't in this workspace).
+ * Already-assembled entries are kept (not dropped) and flagged, so the printed list always shows
+ * the whole unit while reflecting current progress.
+ */
+export async function getBuildAssemblyList({
+  userId,
+  workspaceId,
+  buildId
+}: {
+  userId: string;
+  workspaceId: string;
+  buildId: string;
+}): Promise<BuildAssemblyList | null> {
+  await authorizeWorkspacePermission({ userId, workspaceId, permission: "builds:read" });
+
+  const build = await prisma.build.findFirst({
+    where: { id: buildId, workspaceId },
+    select: {
+      id: true,
+      targetQuantity: true,
+      state: true,
+      designRevision: {
+        select: {
+          revisionNumber: true,
+          design: { select: { name: true } }
+        }
+      },
+      lineItems: {
+        select: {
+          categoryName: true,
+          assignments: {
+            select: {
+              id: true,
+              designator: true,
+              unitIndex: true,
+              assembled: true,
+              part: {
+                select: {
+                  id: true,
+                  catalogNumber: true,
+                  manufacturer: { select: { name: true } }
+                }
+              },
+              sourceLocation: { select: { id: true, name: true } }
+            }
+          }
+        }
+      }
+    }
+  });
+
+  if (!build) return null;
+  if (build.state !== "STARTED" && build.state !== "IN_PROGRESS" && build.state !== "COMPLETED") {
+    return null;
+  }
+
+  const rawLocations = await getStorageLocations(workspaceId);
+  const locationPathsById = buildStorageLocationPaths(rawLocations);
+  const withPath = (location: { id: string; name: string } | null): BuildLocationRef | null =>
+    location ? { ...location, path: locationPathsById.get(location.id) ?? location.name } : null;
+
+  const entriesByUnit = new Map<number, BuildAssemblyListEntry[]>();
+  for (const line of build.lineItems) {
+    for (const assignment of line.assignments) {
+      const list = entriesByUnit.get(assignment.unitIndex) ?? [];
+      list.push({
+        assignmentId: assignment.id,
+        designator: assignment.designator,
+        categoryName: line.categoryName,
+        part: assignment.part
+          ? {
+              id: assignment.part.id,
+              catalogNumber: assignment.part.catalogNumber,
+              manufacturerName: assignment.part.manufacturer.name
+            }
+          : null,
+        sourceLocation: withPath(assignment.sourceLocation),
+        assembled: assignment.assembled
+      });
+      entriesByUnit.set(assignment.unitIndex, list);
+    }
+  }
+
+  const units: BuildAssemblyListUnit[] = [...entriesByUnit.entries()]
+    .sort(([a], [b]) => a - b)
+    .map(([unitIndex, entries]) => {
+      const sortedEntries = [...entries].sort((a, b) =>
+        a.designator.localeCompare(b.designator, "en", { numeric: true })
+      );
+      const assembledCount = sortedEntries.filter((e) => e.assembled).length;
+      const status: BuildUnitStatus =
+        assembledCount === 0
+          ? "not_started"
+          : assembledCount === sortedEntries.length
+            ? "complete"
+            : "in_progress";
+      return { unitIndex, status, entries: sortedEntries };
+    });
+
+  return {
+    id: build.id,
+    designName: build.designRevision.design.name,
+    revisionNumber: build.designRevision.revisionNumber,
+    targetQuantity: build.targetQuantity,
+    state: build.state as BuildState,
+    units
   };
 }
 

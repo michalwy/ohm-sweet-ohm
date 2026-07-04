@@ -116,6 +116,32 @@ same designator are unaffected. A unit is complete once every one of its designa
 the build completes automatically once every unit is complete, and the target quantity of the
 output part is received into the output location.
 
+## Printing a pick list
+
+From **Allocated**, **Started**, or **In progress**, choose **Print pick list** to open a
+printable document (in a new tab) listing every part to physically gather, grouped by **source
+location** to minimize walking back and forth, with a blank checkbox next to each line for
+tick-off while picking. Each line shows the part's catalog number, manufacturer, the BOM line's
+full category, and quantity needed at that location.
+
+- While **Allocated**, quantities come from the allocation plan.
+- While **Started**/**In progress**, quantities reflect the full original allocation, with a note
+  on any line where some units have already been assembled — the list does not shrink as you
+  assemble, so it always shows the complete picture for the build.
+
+The page reflects live data each time it is opened; nothing is saved when you tick a box or close
+the tab. Use your browser's print dialog (including "Print to PDF") to produce a physical copy.
+
+## Printing an assembly list
+
+From **Started**, **In progress**, or **Completed**, choose **Print assembly list** to open a
+printable document (in a new tab) for use while assembling. It mirrors the unit grid from the
+build detail view: grouped by **unit**, then by **designator** in order, each line showing the
+designator, the assigned part's catalog number, manufacturer, full category, and source location.
+Designators that are already assembled are shown checked and struck through — the list always
+shows every designator for every unit (it never shrinks), so it reflects current progress on
+re-print rather than only what remains.
+
 ## Cancelling
 
 Cancelling releases stock that has not yet been consumed:

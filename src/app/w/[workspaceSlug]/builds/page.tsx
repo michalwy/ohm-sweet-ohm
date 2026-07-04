@@ -65,6 +65,8 @@ const copy: BuildsCopy = {
   changePart: "Change part",
   confirm: "Confirm",
   markAllocated: "Allocate",
+  printPickList: "Print pick list",
+  printAssemblyList: "Print assembly list",
   reopen: "Reopen",
   start: "Start",
   cancelBuild: "Cancel build",

@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
 import {
   createColumnHelper,
   flexRender,
@@ -116,6 +117,8 @@ export type BuildsCopy = {
   changePart: string;
   confirm: string;
   markAllocated: string;
+  printPickList: string;
+  printAssemblyList: string;
   reopen: string;
   start: string;
   cancelBuild: string;
@@ -712,6 +715,7 @@ export function BuildsClient({
             detail={buildDetail ?? null}
             unitsAssembled={selectedBuild.unitsAssembled}
             unitsTotal={selectedBuild.unitsTotal}
+            workspaceSlug={workspaceSlug}
             onSetBuildAllocations={(input) => setAllocationsMutation.mutate(input)}
             onAssemble={(input) => assembleMutation.mutate(input)}
             onAssembleUnit={(input) => assembleUnitMutation.mutate(input)}
@@ -873,6 +877,7 @@ type BuildDetailContentProps = {
   detail: BuildDetail | null;
   unitsAssembled: number;
   unitsTotal: number;
+  workspaceSlug: string;
   onSetBuildAllocations: (input: BuildAllocationsInput) => void;
   onAssemble: (input: { assignmentId: string }) => void;
   onAssembleUnit: (input: { buildId: string; unitIndex: number }) => void;
@@ -895,6 +900,7 @@ function BuildDetailContent({
   detail,
   unitsAssembled,
   unitsTotal,
+  workspaceSlug,
   onSetBuildAllocations,
   onAssemble,
   onAssembleUnit,
@@ -1036,9 +1042,13 @@ function BuildDetailContent({
         </div>
       )}
 
-      {canWrite && (
+      {(canWrite ||
+        detail.state === "ALLOCATED" ||
+        detail.state === "STARTED" ||
+        detail.state === "IN_PROGRESS" ||
+        detail.state === "COMPLETED") && (
         <section className="flex flex-wrap gap-2">
-          {detail.state === "CREATED" && (
+          {canWrite && detail.state === "CREATED" && (
             <>
               <button
                 className={primaryActionClass}
@@ -1053,7 +1063,7 @@ function BuildDetailContent({
               </button>
             </>
           )}
-          {detail.state === "ALLOCATED" && (
+          {canWrite && detail.state === "ALLOCATED" && (
             <>
               <button className={primaryActionClass} type="button" onClick={() => onStart(detail.id)}>
                 {copy.start}
@@ -1066,10 +1076,30 @@ function BuildDetailContent({
               </button>
             </>
           )}
-          {(detail.state === "STARTED" || detail.state === "IN_PROGRESS") && (
+          {canWrite && (detail.state === "STARTED" || detail.state === "IN_PROGRESS") && (
             <button className={actionButtonClass} type="button" onClick={() => onCancel(detail.id)}>
               {copy.cancelBuild}
             </button>
+          )}
+          {(detail.state === "ALLOCATED" || detail.state === "STARTED" || detail.state === "IN_PROGRESS") && (
+            <Link
+              className={actionButtonClass}
+              href={`/w/${workspaceSlug}/builds/${detail.id}/pick-list`}
+              target="_blank"
+            >
+              {copy.printPickList}
+            </Link>
+          )}
+          {(detail.state === "STARTED" ||
+            detail.state === "IN_PROGRESS" ||
+            detail.state === "COMPLETED") && (
+            <Link
+              className={actionButtonClass}
+              href={`/w/${workspaceSlug}/builds/${detail.id}/assembly-list`}
+              target="_blank"
+            >
+              {copy.printAssemblyList}
+            </Link>
           )}
         </section>
       )}
