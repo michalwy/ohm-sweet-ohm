@@ -1311,7 +1311,7 @@ function StackedProgressBar({
       className={`relative h-1.5 shrink-0 overflow-hidden rounded-full bg-[var(--color-border)] ${className ?? ""}`}
     >
       <div
-        className="absolute inset-y-0 left-0 rounded-full bg-[var(--color-warning)]"
+        className="absolute inset-y-0 left-0 rounded-full bg-[var(--color-accent)]"
         style={{ width: `${clamp(basePercent)}%` }}
       />
       <div
