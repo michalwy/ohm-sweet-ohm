@@ -67,6 +67,7 @@ const copy: BuildsCopy = {
   start: "Start",
   cancelBuild: "Cancel build",
   deleteBuild: "Delete",
+  deleteBuildConfirmationBody: "This cannot be undone.",
   assembleOne: "Assemble one",
   assembleAll: "All",
   notFullyAllocated: "Every line needs a part and a source location.",

@@ -27,6 +27,7 @@ import type { ListPage } from "@/server/pagination";
 import type { StorageLocationListItem } from "@/server/inventory/locationMutations";
 import {
   closeDialog,
+  DeleteConfirmationDialog,
   DialogActions,
   DialogBody,
   DialogShell,
@@ -115,6 +116,7 @@ export type BuildsCopy = {
   start: string;
   cancelBuild: string;
   deleteBuild: string;
+  deleteBuildConfirmationBody: string;
   assembleOne: string;
   assembleAll: string;
   notFullyAllocated: string;
@@ -184,6 +186,7 @@ export function BuildsClient({ canWrite, copy, initialPage, workspaceSlug }: Bui
 
   const [selectedBuildId, setSelectedBuildId] = useState<string | null>(null);
   const [hoveredBuildId, setHoveredBuildId] = useState<string | null>(null);
+  const [buildPendingDeleteId, setBuildPendingDeleteId] = useState<string | null>(null);
   const [toastMessages, setToastMessages] = useState<ToastMessage[]>([]);
 
   // Create-dialog form state
@@ -356,9 +359,20 @@ export function BuildsClient({ canWrite, copy, initialPage, workspaceSlug }: Bui
     onSuccess: () => {
       invalidateBuilds();
       setSelectedBuildId(null);
+      setBuildPendingDeleteId(null);
     },
-    onError: (error) => showError((error as Error).message.replaceAll("_", "-"))
+    onError: (error) => {
+      setBuildPendingDeleteId(null);
+      showError((error as Error).message.replaceAll("_", "-"));
+    }
   });
+
+  function confirmDeleteBuild() {
+    if (!buildPendingDeleteId) {
+      return;
+    }
+    deleteMutation.mutate(buildPendingDeleteId);
+  }
 
   const assembleMutation = useMutation({
     mutationFn: async (input: { assignmentId: string; quantity: number }) => {
@@ -631,10 +645,27 @@ export function BuildsClient({ canWrite, copy, initialPage, workspaceSlug }: Bui
             onReopen={(buildId) => reopenMutation.mutate(buildId)}
             onStart={(buildId) => startMutation.mutate(buildId)}
             onCancel={(buildId) => cancelMutation.mutate(buildId)}
-            onDelete={(buildId) => deleteMutation.mutate(buildId)}
+            onDelete={(buildId) => setBuildPendingDeleteId(buildId)}
           />
         </DetailPanel>
       ) : null}
+
+      <DeleteConfirmationDialog
+        body={copy.deleteBuildConfirmationBody}
+        cancelLabel={copy.cancel}
+        closeLabel={copy.close}
+        confirmLabel={copy.deleteBuild}
+        deleteLabel={copy.deleteBuild}
+        isPending={deleteMutation.isPending}
+        itemName={
+          buildPendingDeleteId
+            ? (currentBuilds.find((b) => b.id === buildPendingDeleteId)?.designName ?? "")
+            : ""
+        }
+        open={Boolean(buildPendingDeleteId)}
+        onCancel={() => setBuildPendingDeleteId(null)}
+        onConfirm={confirmDeleteBuild}
+      />
 
       {/* Create build dialog */}
       <DialogShell
