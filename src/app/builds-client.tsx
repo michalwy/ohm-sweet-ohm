@@ -282,7 +282,9 @@ export function BuildsClient({ canWrite, copy, initialPage, workspaceSlug }: Bui
 
   function invalidateBuilds() {
     void queryClient.invalidateQueries({ queryKey: ["builds", workspaceSlug] });
-    void queryClient.invalidateQueries({ queryKey: ["build-detail", workspaceSlug, selectedBuildId] });
+    // Every build's detail (not just the selected one) can go stale from this: allocating/starting
+    // one build changes shared Part stock that other builds' allocation validity is checked against.
+    void queryClient.invalidateQueries({ queryKey: ["build-detail", workspaceSlug] });
     void queryClient.invalidateQueries({ queryKey: ["parts-list", workspaceSlug] });
   }
 
