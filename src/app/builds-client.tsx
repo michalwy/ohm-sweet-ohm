@@ -107,7 +107,6 @@ export type BuildsCopy = {
   addPartEntry: string;
   removeEntry: string;
   applyAllocation: string;
-  applyBeforeAllocate: string;
   allocatedOfRequired: string;
   assembledOfRequired: string;
   allocationTotalMismatch: string;
@@ -907,6 +906,7 @@ function BuildDetailContent({
   const applyStockOk = buildAllocationStockOk(build.lines, entriesFor);
   const applyEnabled = dirty && entriesComplete && applyStockOk;
   const fullyAllocated = build.lines.every((line) => isLineFullyAllocated(line));
+  const readyToAllocate = !dirty && fullyAllocated;
 
   function handleApply() {
     onSetBuildAllocations({
@@ -979,19 +979,10 @@ function BuildDetailContent({
               <button
                 className={primaryActionClass}
                 type="button"
-                disabled={!applyEnabled}
-                onClick={handleApply}
+                disabled={readyToAllocate ? false : !applyEnabled}
+                onClick={readyToAllocate ? () => onMarkAllocated(detail.id) : handleApply}
               >
-                {copy.applyAllocation}
-              </button>
-              <button
-                className={actionButtonClass}
-                type="button"
-                disabled={!fullyAllocated || dirty}
-                title={dirty ? copy.applyBeforeAllocate : undefined}
-                onClick={() => onMarkAllocated(detail.id)}
-              >
-                {copy.markAllocated}
+                {readyToAllocate ? copy.markAllocated : copy.applyAllocation}
               </button>
               <button className={actionButtonClass} type="button" onClick={() => onDelete(detail.id)}>
                 {copy.deleteBuild}

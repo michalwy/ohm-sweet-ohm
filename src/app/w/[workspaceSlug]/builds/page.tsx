@@ -57,7 +57,6 @@ const copy: BuildsCopy = {
   addPartEntry: "Add part",
   removeEntry: "Remove",
   applyAllocation: "Apply",
-  applyBeforeAllocate: "Apply your allocation changes first.",
   allocatedOfRequired: "Allocated",
   assembledOfRequired: "Assembled",
   allocationTotalMismatch: "Allocated quantity must equal the required quantity.",

@@ -68,8 +68,10 @@ one line and onto another) can never leave the build temporarily over-allocated.
 once your edits differ from what is saved, every entry is complete, and nothing exceeds available
 stock; partial lines are allowed while you work.
 
-When every line is fully allocated (and your changes are saved), choose **Allocate** to move the
-build to the **Allocated** state. To change an allocation afterwards, choose **Reopen** to return to
+The primary button reflects this progression: it reads **Apply** while there are unsaved changes
+(or the plan is still incomplete), then turns into **Allocate** once every line is fully allocated
+and your changes are saved. Choose **Allocate** to move the build to the **Allocated** state. To
+change an allocation afterwards, choose **Reopen** to return to
 **Created**.
 
 ## Starting a build
