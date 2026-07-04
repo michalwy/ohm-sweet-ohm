@@ -83,3 +83,17 @@ export function SlLink({
   const href = `/w/${encodeURIComponent(workspaceSlug)}/shopping-lists?selectedListId=${slId}&pinnedId=${slId}`;
   return <EntityLink label={name} href={href} onClick={onClick} />;
 }
+
+export function BuildLink({
+  buildId,
+  label,
+  onClick
+}: {
+  buildId: string;
+  label: string;
+  onClick?: (e: React.MouseEvent<HTMLButtonElement>) => void;
+}) {
+  const workspaceSlug = useWorkspaceSlug();
+  const href = `/w/${encodeURIComponent(workspaceSlug)}/builds?selectedBuildId=${buildId}&pinnedId=${buildId}`;
+  return <EntityLink label={label} href={href} onClick={onClick} />;
+}

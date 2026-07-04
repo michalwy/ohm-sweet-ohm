@@ -163,21 +163,86 @@ type BuildCursor = { key: string; id: string };
 
 // --- List query ---
 
+const buildSummarySelect = {
+  id: true,
+  targetQuantity: true,
+  state: true,
+  createdAt: true,
+  updatedAt: true,
+  designRevision: {
+    select: {
+      revisionNumber: true,
+      design: {
+        select: {
+          name: true,
+          outputPart: { select: { catalogNumber: true } }
+        }
+      }
+    }
+  },
+  lineItems: {
+    select: {
+      designatorCount: true,
+      assignments: { select: { assembled: true } }
+    }
+  }
+} satisfies Prisma.BuildSelect;
+
+function mapBuildSummary(row: Prisma.BuildGetPayload<{ select: typeof buildSummarySelect }>): BuildSummary {
+  let unitsTotal = 0;
+  let unitsAssembled = 0;
+  for (const line of row.lineItems) {
+    // Total is derived from the frozen BOM (designators × target qty) so it is known before the
+    // build is started and the per-designator assignment rows exist.
+    unitsTotal += line.designatorCount * row.targetQuantity;
+    for (const assignment of line.assignments) {
+      if (assignment.assembled) unitsAssembled += 1;
+    }
+  }
+  return {
+    id: row.id,
+    designName: row.designRevision.design.name,
+    revisionNumber: row.designRevision.revisionNumber,
+    outputPartCatalogNumber: row.designRevision.design.outputPart.catalogNumber,
+    targetQuantity: row.targetQuantity,
+    state: row.state as BuildState,
+    unitsTotal,
+    unitsAssembled,
+    createdAt: row.createdAt,
+    updatedAt: row.updatedAt
+  };
+}
+
 export async function getBuildsForWorkspace({
   userId,
   workspaceId,
   cursor,
-  pageSize
+  pageSize,
+  pinnedId
 }: {
   userId: string;
   workspaceId: string;
   cursor?: string | null;
   pageSize?: number | null;
+  /** When set, ignore cursor/pagination and return only this build (navigated here via an entity link). */
+  pinnedId?: string | null;
 }): Promise<ListPage<BuildSummary>> {
   await authorizeWorkspacePermission({ userId, workspaceId, permission: "builds:read" });
 
-  const limit = getListPageSize(pageSize);
   const totalCount = await prisma.build.count({ where: { workspaceId } });
+
+  if (pinnedId) {
+    const row = await prisma.build.findFirst({
+      where: { id: pinnedId, workspaceId },
+      select: buildSummarySelect
+    });
+    if (!row) {
+      return { items: [], nextCursor: null, totalCount, filteredCount: 0 };
+    }
+    return { items: [mapBuildSummary(row)], nextCursor: null, totalCount, filteredCount: 1 };
+  }
+
+  const limit = getListPageSize(pageSize);
 
   const decoded = decodeListCursor<BuildCursor>(cursor);
 
@@ -195,57 +260,11 @@ export async function getBuildsForWorkspace({
     },
     orderBy: [{ createdAt: "desc" }, { id: "desc" }],
     take: limit + 1,
-    select: {
-      id: true,
-      targetQuantity: true,
-      state: true,
-      createdAt: true,
-      updatedAt: true,
-      designRevision: {
-        select: {
-          revisionNumber: true,
-          design: {
-            select: {
-              name: true,
-              outputPart: { select: { catalogNumber: true } }
-            }
-          }
-        }
-      },
-      lineItems: {
-        select: {
-          designatorCount: true,
-          assignments: { select: { assembled: true } }
-        }
-      }
-    }
+    select: buildSummarySelect
   });
 
   const hasMore = rows.length > limit;
-  const items: BuildSummary[] = rows.slice(0, limit).map((row) => {
-    let unitsTotal = 0;
-    let unitsAssembled = 0;
-    for (const line of row.lineItems) {
-      // Total is derived from the frozen BOM (designators × target qty) so it is known before the
-      // build is started and the per-designator assignment rows exist.
-      unitsTotal += line.designatorCount * row.targetQuantity;
-      for (const assignment of line.assignments) {
-        if (assignment.assembled) unitsAssembled += 1;
-      }
-    }
-    return {
-      id: row.id,
-      designName: row.designRevision.design.name,
-      revisionNumber: row.designRevision.revisionNumber,
-      outputPartCatalogNumber: row.designRevision.design.outputPart.catalogNumber,
-      targetQuantity: row.targetQuantity,
-      state: row.state as BuildState,
-      unitsTotal,
-      unitsAssembled,
-      createdAt: row.createdAt,
-      updatedAt: row.updatedAt
-    };
-  });
+  const items: BuildSummary[] = rows.slice(0, limit).map(mapBuildSummary);
 
   const last = items[items.length - 1];
   const nextCursor =
@@ -254,6 +273,113 @@ export async function getBuildsForWorkspace({
       : null;
 
   return { items, nextCursor, totalCount, filteredCount: totalCount };
+}
+
+// --- Part detail: builds allocating/reserving a part ---
+
+export type PartBuildAllocationItem = {
+  buildId: string;
+  designName: string;
+  revisionNumber: number;
+  targetQuantity: number;
+  state: BuildState;
+  allocatedQty: number;
+  reservedQty: number;
+};
+
+const partBuildAllocationSelect = {
+  id: true,
+  targetQuantity: true,
+  state: true,
+  createdAt: true,
+  designRevision: {
+    select: {
+      revisionNumber: true,
+      design: { select: { name: true } }
+    }
+  }
+} satisfies Prisma.BuildSelect;
+
+/**
+ * Builds currently holding a live allocation or reservation for a part (ADR 0021/0023): a build in
+ * ALLOCATED state holds soft `allocatedQty` via BuildLineAllocation rows, while STARTED/IN_PROGRESS
+ * builds hold hard `reservedQty` via unassembled (not yet assembled) BuildDesignatorAssignment rows.
+ * A build is in exactly one state, so it can only ever contribute to one of the two buckets.
+ */
+export async function getPartBuildAllocations({
+  userId,
+  workspaceId,
+  partId
+}: {
+  userId: string;
+  workspaceId: string;
+  partId: string;
+}): Promise<PartBuildAllocationItem[]> {
+  await authorizeWorkspacePermission({ userId, workspaceId, permission: "builds:read" });
+
+  const [allocatedRows, reservedRows] = await Promise.all([
+    prisma.build.findMany({
+      where: {
+        workspaceId,
+        state: "ALLOCATED",
+        lineItems: { some: { allocations: { some: { partId } } } }
+      },
+      select: {
+        ...partBuildAllocationSelect,
+        lineItems: {
+          select: { allocations: { where: { partId }, select: { quantity: true } } }
+        }
+      },
+      orderBy: [{ createdAt: "desc" }, { id: "desc" }]
+    }),
+    prisma.build.findMany({
+      where: {
+        workspaceId,
+        state: { in: ["STARTED", "IN_PROGRESS"] },
+        lineItems: { some: { assignments: { some: { partId, assembled: false } } } }
+      },
+      select: {
+        ...partBuildAllocationSelect,
+        lineItems: {
+          select: { assignments: { where: { partId, assembled: false }, select: { id: true } } }
+        }
+      },
+      orderBy: [{ createdAt: "desc" }, { id: "desc" }]
+    })
+  ]);
+
+  const allocatedItems = allocatedRows.map((row) => ({
+    createdAt: row.createdAt,
+    item: {
+      buildId: row.id,
+      designName: row.designRevision.design.name,
+      revisionNumber: row.designRevision.revisionNumber,
+      targetQuantity: row.targetQuantity,
+      state: row.state as BuildState,
+      allocatedQty: row.lineItems.reduce(
+        (sum, line) => sum + line.allocations.reduce((s, a) => s + a.quantity, 0),
+        0
+      ),
+      reservedQty: 0
+    } satisfies PartBuildAllocationItem
+  }));
+
+  const reservedItems = reservedRows.map((row) => ({
+    createdAt: row.createdAt,
+    item: {
+      buildId: row.id,
+      designName: row.designRevision.design.name,
+      revisionNumber: row.designRevision.revisionNumber,
+      targetQuantity: row.targetQuantity,
+      state: row.state as BuildState,
+      allocatedQty: 0,
+      reservedQty: row.lineItems.reduce((sum, line) => sum + line.assignments.length, 0)
+    } satisfies PartBuildAllocationItem
+  }));
+
+  return [...allocatedItems, ...reservedItems]
+    .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+    .map((entry) => entry.item);
 }
 
 // --- Detail query ---

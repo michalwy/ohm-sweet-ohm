@@ -93,15 +93,19 @@ const copy: BuildsCopy = {
     IN_PROGRESS: "In progress",
     COMPLETED: "Completed",
     CANCELLED: "Cancelled"
-  }
+  },
+  pinnedFilterLabel: "Showing 1 pinned build",
+  clearPinnedFilter: "Show all builds"
 };
 
 type BuildsPageProps = {
   params: Promise<{ workspaceSlug: string }>;
+  searchParams?: Promise<{ selectedBuildId?: string; pinnedId?: string }>;
 };
 
-export default async function BuildsPage({ params }: BuildsPageProps) {
+export default async function BuildsPage({ params, searchParams }: BuildsPageProps) {
   const { workspaceSlug } = await params;
+  const resolvedSearchParams = await searchParams;
   const session = await getCurrentSession();
 
   if (!session) {
@@ -119,7 +123,8 @@ export default async function BuildsPage({ params }: BuildsPageProps) {
   const [initialPage, canWrite] = await Promise.all([
     getBuildsForWorkspace({
       userId: context.user.id,
-      workspaceId: context.workspace.id
+      workspaceId: context.workspace.id,
+      pinnedId: resolvedSearchParams?.pinnedId
     }).catch(() => emptyPage),
     hasWorkspacePermission({
       userId: context.user.id,
@@ -142,6 +147,8 @@ export default async function BuildsPage({ params }: BuildsPageProps) {
         copy={copy}
         initialPage={initialPage}
         workspaceSlug={workspaceSlug}
+        initialSelectedBuildId={resolvedSearchParams?.selectedBuildId}
+        initialPinnedBuildId={resolvedSearchParams?.pinnedId}
       />
     </WorkspaceShell>
   );

@@ -13,20 +13,27 @@ export type { BuildSummary };
 type UseBuildsQueryOpts = {
   workspaceSlug: string;
   initialPage?: ListPage<BuildSummary>;
+  /** Pre-filter the list to a single build (set when navigating here via an entity link). */
+  pinnedId?: string | null;
 };
 
-export function useBuildsQuery({ workspaceSlug, initialPage }: UseBuildsQueryOpts) {
+export function useBuildsQuery({ workspaceSlug, initialPage, pinnedId }: UseBuildsQueryOpts) {
   const query = useInfiniteQuery({
-    queryKey: ["builds", workspaceSlug] as const,
+    queryKey: ["builds", workspaceSlug, pinnedId] as const,
     initialPageParam: null as string | null,
     queryFn: async ({ pageParam }) => {
-      const result = await getBuildsPageForWorkspace({ workspaceSlug, cursor: pageParam });
+      const result = await getBuildsPageForWorkspace({
+        workspaceSlug,
+        cursor: pageParam,
+        pinnedId
+      });
       if (!result.ok) throw new Error(result.error);
       return result.data;
     },
     getNextPageParam: (lastPage) => lastPage.nextCursor,
     placeholderData: keepPreviousData,
-    initialData: initialPage ? { pages: [initialPage], pageParams: [null] } : undefined
+    initialData:
+      initialPage && !pinnedId ? { pages: [initialPage], pageParams: [null] } : undefined
   });
 
   const currentBuilds = useMemo(

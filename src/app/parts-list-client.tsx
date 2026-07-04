@@ -89,7 +89,10 @@ import { getPartPurchaseOrderHistoryForWorkspace } from "@/server/purchase-order
 import type { PartPurchaseOrderHistoryItem } from "@/server/purchase-orders/purchaseOrderMutations";
 import { getPartShoppingListMembershipForWorkspace } from "@/server/shopping-lists/shoppingListActions";
 import type { PartShoppingListMembershipItem } from "@/server/shopping-lists/shoppingListMutations";
-import { PoLink, SlLink } from "@/app/entity-links";
+import { getPartBuildAllocationsForWorkspace } from "@/server/builds/buildActions";
+import type { PartBuildAllocationItem } from "@/server/builds/builds";
+import { BUILD_STATE_BADGE_CLASS } from "@/app/builds-client";
+import { BuildLink, PoLink, SlLink } from "@/app/entity-links";
 import { PinnedFilterBanner } from "@/app/pinned-filter-banner";
 
 type Copy = {
@@ -267,6 +270,12 @@ type Copy = {
   slMembershipColList: string;
   slMembershipColQty: string;
   slMembershipColNotes: string;
+  buildAllocations: string;
+  buildAllocationsColBuild: string;
+  buildAllocationsColState: string;
+  buildAllocationsColAllocated: string;
+  buildAllocationsColReserved: string;
+  buildStates: Record<string, string>;
   addToPurchaseOrder: string;
   addToShoppingList: string;
   quickAddPOTitle: string;
@@ -343,6 +352,7 @@ type PartsListClientProps = {
   canReadPurchaseOrders: boolean;
   canWriteShoppingLists: boolean;
   canWritePurchaseOrders: boolean;
+  canReadBuilds: boolean;
   primaryCurrency: string;
   initialSelectedPartId?: string;
   initialPinnedId?: string;
@@ -368,6 +378,7 @@ export function PartsListClient({
   canReadPurchaseOrders,
   canWriteShoppingLists,
   canWritePurchaseOrders,
+  canReadBuilds,
   primaryCurrency,
   initialSelectedPartId,
   initialPinnedId
@@ -926,6 +937,19 @@ export function PartsListClient({
     enabled: Boolean(selectedPartId) && canReadShoppingLists,
     queryFn: async () => {
       const result = await getPartShoppingListMembershipForWorkspace({
+        workspaceSlug,
+        partId: selectedPartId as string
+      });
+      if (!result.ok) throw new Error(result.error);
+      return result.data;
+    }
+  });
+
+  const partBuildAllocationsQuery = useQuery({
+    queryKey: ["part-build-allocations", workspaceSlug, selectedPartId],
+    enabled: Boolean(selectedPartId) && canReadBuilds,
+    queryFn: async () => {
+      const result = await getPartBuildAllocationsForWorkspace({
         workspaceSlug,
         partId: selectedPartId as string
       });
@@ -1707,6 +1731,53 @@ export function PartsListClient({
                             </td>
                             <td className="px-3 py-2 align-middle text-[var(--color-text-muted)]">
                               {entry.notes ?? "—"}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </section>
+              ) : null}
+              {canReadBuilds &&
+               !partBuildAllocationsQuery.isLoading &&
+               !partBuildAllocationsQuery.isError &&
+               (partBuildAllocationsQuery.data ?? []).length > 0 ? (
+                <section className="grid gap-2">
+                  <h3 className="text-sm font-semibold text-[var(--color-text-primary)]">
+                    {copy.buildAllocations}
+                  </h3>
+                  <div className="max-h-64 overflow-y-auto rounded-md border border-[var(--color-border)]">
+                    <table className="w-full text-left text-sm">
+                      <thead className="sticky top-0 bg-[var(--color-bg-subtle)] text-[var(--color-text-secondary)]">
+                        <tr>
+                          <th className="px-3 py-2 font-semibold">{copy.buildAllocationsColBuild}</th>
+                          <th className="px-3 py-2 font-semibold">{copy.buildAllocationsColState}</th>
+                          <th className="px-3 py-2 text-right font-semibold">{copy.buildAllocationsColAllocated}</th>
+                          <th className="px-3 py-2 text-right font-semibold">{copy.buildAllocationsColReserved}</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {(partBuildAllocationsQuery.data ?? []).map((entry: PartBuildAllocationItem) => (
+                          <tr key={entry.buildId} className="group border-t border-[var(--color-border)] first:border-t-0">
+                            <td className="px-3 py-2 align-middle">
+                              <BuildLink
+                                buildId={entry.buildId}
+                                label={`${entry.designName} r${entry.revisionNumber} ×${entry.targetQuantity}`}
+                              />
+                            </td>
+                            <td className="px-3 py-2 align-middle">
+                              <span
+                                className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${BUILD_STATE_BADGE_CLASS[entry.state] ?? ""}`}
+                              >
+                                {copy.buildStates[entry.state] ?? entry.state}
+                              </span>
+                            </td>
+                            <td className="px-3 py-2 align-middle text-right tabular-nums text-[var(--color-text-primary)]">
+                              {entry.allocatedQty > 0 ? entry.allocatedQty : "—"}
+                            </td>
+                            <td className="px-3 py-2 align-middle text-right tabular-nums text-[var(--color-text-primary)]">
+                              {entry.reservedQty > 0 ? entry.reservedQty : "—"}
                             </td>
                           </tr>
                         ))}

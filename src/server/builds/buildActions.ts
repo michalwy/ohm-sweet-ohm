@@ -11,6 +11,7 @@ import {
   getBuildCreateOptions,
   getBuildDetail,
   getBuildsForWorkspace,
+  getPartBuildAllocations,
   markBuildAllocated,
   reassignDesignatorAssignment,
   reopenBuild,
@@ -19,7 +20,8 @@ import {
   startBuild,
   type BuildCreateOptions,
   type BuildDetail,
-  type BuildSummary
+  type BuildSummary,
+  type PartBuildAllocationItem
 } from "@/server/builds/builds";
 
 export type BuildActionResult<T> =
@@ -32,6 +34,7 @@ export async function getBuildsPageForWorkspace(input: {
   workspaceSlug: string;
   cursor?: string | null;
   pageSize?: number | null;
+  pinnedId?: string | null;
 }): Promise<BuildActionResult<ListPage<BuildSummary>>> {
   try {
     const context = await getContext(input.workspaceSlug);
@@ -39,9 +42,27 @@ export async function getBuildsPageForWorkspace(input: {
       userId: context.user.id,
       workspaceId: context.workspace.id,
       cursor: input.cursor,
-      pageSize: input.pageSize
+      pageSize: input.pageSize,
+      pinnedId: input.pinnedId
     });
     return success(page);
+  } catch (error) {
+    return failure(error);
+  }
+}
+
+export async function getPartBuildAllocationsForWorkspace(input: {
+  workspaceSlug: string;
+  partId: string;
+}): Promise<BuildActionResult<PartBuildAllocationItem[]>> {
+  try {
+    const context = await getContext(input.workspaceSlug);
+    const items = await getPartBuildAllocations({
+      userId: context.user.id,
+      workspaceId: context.workspace.id,
+      partId: input.partId
+    });
+    return success(items);
   } catch (error) {
     return failure(error);
   }

@@ -206,6 +206,19 @@ const copy = {
   slMembershipColList: "List",
   slMembershipColQty: "Qty",
   slMembershipColNotes: "Notes",
+  buildAllocations: "Builds",
+  buildAllocationsColBuild: "Build",
+  buildAllocationsColState: "State",
+  buildAllocationsColAllocated: "Allocated",
+  buildAllocationsColReserved: "Reserved",
+  buildStates: {
+    CREATED: "Created",
+    ALLOCATED: "Allocated",
+    STARTED: "Started",
+    IN_PROGRESS: "In progress",
+    COMPLETED: "Completed",
+    CANCELLED: "Cancelled"
+  },
   addToPurchaseOrder: "Add to PO",
   addToShoppingList: "Add to shopping list",
   quickAddPOTitle: "Add to Purchase Order",
@@ -321,41 +334,53 @@ export default async function PartsPage({
   const activeSupplierProvider = isDatabaseAvailable
     ? await getWorkspaceActiveSupplierProvider(context.workspace.id).catch(() => null)
     : null;
-  const [canReadInventory, canWriteInventory, canReadShoppingLists, canReadPurchaseOrders, canWriteShoppingLists, canWritePurchaseOrders] =
-    isDatabaseAvailable
-      ? await Promise.all([
-          hasWorkspacePermission({
-            userId: context.user.id,
-            workspaceId: context.workspace.id,
-            permission: "inventory:read"
-          }).catch(() => false),
-          hasWorkspacePermission({
-            userId: context.user.id,
-            workspaceId: context.workspace.id,
-            permission: "inventory:write"
-          }).catch(() => false),
-          hasWorkspacePermission({
-            userId: context.user.id,
-            workspaceId: context.workspace.id,
-            permission: "shopping-lists:read"
-          }).catch(() => false),
-          hasWorkspacePermission({
-            userId: context.user.id,
-            workspaceId: context.workspace.id,
-            permission: "purchase-orders:read"
-          }).catch(() => false),
-          hasWorkspacePermission({
-            userId: context.user.id,
-            workspaceId: context.workspace.id,
-            permission: "shopping-lists:write"
-          }).catch(() => false),
-          hasWorkspacePermission({
-            userId: context.user.id,
-            workspaceId: context.workspace.id,
-            permission: "purchase-orders:write"
-          }).catch(() => false)
-        ])
-      : [false, false, false, false, false, false];
+  const [
+    canReadInventory,
+    canWriteInventory,
+    canReadShoppingLists,
+    canReadPurchaseOrders,
+    canWriteShoppingLists,
+    canWritePurchaseOrders,
+    canReadBuilds
+  ] = isDatabaseAvailable
+    ? await Promise.all([
+        hasWorkspacePermission({
+          userId: context.user.id,
+          workspaceId: context.workspace.id,
+          permission: "inventory:read"
+        }).catch(() => false),
+        hasWorkspacePermission({
+          userId: context.user.id,
+          workspaceId: context.workspace.id,
+          permission: "inventory:write"
+        }).catch(() => false),
+        hasWorkspacePermission({
+          userId: context.user.id,
+          workspaceId: context.workspace.id,
+          permission: "shopping-lists:read"
+        }).catch(() => false),
+        hasWorkspacePermission({
+          userId: context.user.id,
+          workspaceId: context.workspace.id,
+          permission: "purchase-orders:read"
+        }).catch(() => false),
+        hasWorkspacePermission({
+          userId: context.user.id,
+          workspaceId: context.workspace.id,
+          permission: "shopping-lists:write"
+        }).catch(() => false),
+        hasWorkspacePermission({
+          userId: context.user.id,
+          workspaceId: context.workspace.id,
+          permission: "purchase-orders:write"
+        }).catch(() => false),
+        hasWorkspacePermission({
+          userId: context.user.id,
+          workspaceId: context.workspace.id,
+          permission: "builds:read"
+        }).catch(() => false)
+      ])
+    : [false, false, false, false, false, false, false];
 
   return (
     <WorkspaceShell
@@ -392,6 +417,7 @@ export default async function PartsPage({
         canReadPurchaseOrders={canReadPurchaseOrders}
         canWriteShoppingLists={canWriteShoppingLists}
         canWritePurchaseOrders={canWritePurchaseOrders}
+        canReadBuilds={canReadBuilds}
         primaryCurrency={context.workspace.primaryCurrency}
         initialSelectedPartId={initialSelectedPartId}
         initialPinnedId={initialPinnedId}

@@ -52,6 +52,7 @@ import { useBuildsQuery } from "@/app/use-builds-query";
 import { DetailPanel, useDetailsPanelWidth } from "@/app/detail-panel";
 import { buildTree } from "@/app/tree-picker-utils";
 import { PartLink } from "@/app/entity-links";
+import { PinnedFilterBanner } from "@/app/pinned-filter-banner";
 import { BuildPartSelect, type BuildPartOption } from "@/app/build-part-select";
 import { ShortageAnalysisModal, ShortageStatus } from "@/app/shortage-panel";
 import {
@@ -137,6 +138,8 @@ export type BuildsCopy = {
   expandLocation: string;
   collapseLocation: string;
   states: Record<string, string>;
+  pinnedFilterLabel: string;
+  clearPinnedFilter: string;
 };
 
 type BuildsClientProps = {
@@ -144,11 +147,13 @@ type BuildsClientProps = {
   copy: BuildsCopy;
   initialPage: ListPage<BuildSummary>;
   workspaceSlug: string;
+  initialSelectedBuildId?: string;
+  initialPinnedBuildId?: string;
 };
 
 const columnHelper = createColumnHelper<BuildSummary>();
 
-const STATE_BADGE_CLASS: Record<string, string> = {
+export const BUILD_STATE_BADGE_CLASS: Record<string, string> = {
   CREATED: "bg-[var(--color-bg-subtle)] text-[var(--color-text-secondary)]",
   ALLOCATED: "bg-[var(--color-accent-soft)] text-[var(--color-accent)]",
   STARTED: "bg-[var(--color-warning-soft)] text-[var(--color-warning)]",
@@ -187,12 +192,24 @@ const inputClass =
 const smallSelectClass =
   "h-10 w-full rounded-md border border-[var(--color-border-strong)] bg-[var(--color-bg-input)] px-2 py-1 text-sm text-[var(--color-text-primary)] focus:border-[var(--color-accent)] focus:outline-none focus:ring-1 focus:ring-[var(--color-accent)] disabled:opacity-60";
 
-export function BuildsClient({ canWrite, copy, initialPage, workspaceSlug }: BuildsClientProps) {
+export function BuildsClient({
+  canWrite,
+  copy,
+  initialPage,
+  workspaceSlug,
+  initialSelectedBuildId,
+  initialPinnedBuildId
+}: BuildsClientProps) {
   const queryClient = useQueryClient();
   const createDialogRef = useRef<HTMLDialogElement>(null);
   const nextToastIdRef = useRef(0);
 
-  const [selectedBuildId, setSelectedBuildId] = useState<string | null>(null);
+  const [selectedBuildId, setSelectedBuildId] = useState<string | null>(
+    initialSelectedBuildId ?? null
+  );
+  const [pinnedBuildId, setPinnedBuildId] = useState<string | null>(
+    initialPinnedBuildId ?? null
+  );
   const [hoveredBuildId, setHoveredBuildId] = useState<string | null>(null);
   const [buildPendingDeleteId, setBuildPendingDeleteId] = useState<string | null>(null);
   const [toastMessages, setToastMessages] = useState<ToastMessage[]>([]);
@@ -251,7 +268,7 @@ export function BuildsClient({ canWrite, copy, initialPage, workspaceSlug }: Bui
   const { draggedColumnId, onDragEnd, onStartDrag, onDropOnto } = useColumnDragReorder(setColumnOrder);
 
   const { currentBuilds, totalCount, isLoading, isError, isFetchingNextPage, hasNextPage, fetchNextPage } =
-    useBuildsQuery({ workspaceSlug, initialPage });
+    useBuildsQuery({ workspaceSlug, initialPage, pinnedId: pinnedBuildId });
 
   // --- Detail + create options ---
 
@@ -477,7 +494,7 @@ export function BuildsClient({ canWrite, copy, initialPage, workspaceSlug }: Bui
           const value = getValue();
           return (
             <span
-              className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${STATE_BADGE_CLASS[value] ?? ""}`}
+              className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${BUILD_STATE_BADGE_CLASS[value] ?? ""}`}
             >
               {copy.states[value] ?? value}
             </span>
@@ -566,6 +583,20 @@ export function BuildsClient({ canWrite, copy, initialPage, workspaceSlug }: Bui
             ) : null
           }
         />
+        {pinnedBuildId ? (
+          <PinnedFilterBanner
+            label={copy.pinnedFilterLabel}
+            clearLabel={copy.clearPinnedFilter}
+            onClear={() => {
+              setPinnedBuildId(null);
+              setSelectedBuildId(null);
+              const url = new URL(window.location.href);
+              url.searchParams.delete("selectedBuildId");
+              url.searchParams.delete("pinnedId");
+              window.history.replaceState(null, "", url.toString());
+            }}
+          />
+        ) : null}
 
         <InfiniteListViewport
           isEmpty={currentBuilds.length === 0}
@@ -665,7 +696,7 @@ export function BuildsClient({ canWrite, copy, initialPage, workspaceSlug }: Bui
             <div className="flex items-center gap-2">
               <span>{selectedBuild.designName}</span>
               <span
-                className={`inline-flex w-fit shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${STATE_BADGE_CLASS[selectedBuild.state] ?? ""}`}
+                className={`inline-flex w-fit shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${BUILD_STATE_BADGE_CLASS[selectedBuild.state] ?? ""}`}
               >
                 {copy.states[selectedBuild.state] ?? selectedBuild.state}
               </span>
