@@ -12,7 +12,6 @@ import {
   DialogActions,
   DialogBody,
   DialogShell,
-  ErrorBubble,
   closeDialog,
   openDialog
 } from "@/app/dialog-shell";
@@ -35,7 +34,31 @@ type Copy = {
   noLocations: string;
   stockSaved: string;
   stockActionInvalid: string;
+  stockInsufficientStock: string;
+  stockInvalidQuantity: string;
+  stockFractionalQuantityNotAllowed: string;
+  stockLocationArchived: string;
+  stockLocationNotAssignable: string;
 };
+
+function getStockActionErrorMessage(copy: Copy, error: string) {
+  if (error === "insufficient-stock") {
+    return copy.stockInsufficientStock;
+  }
+  if (error === "invalid-quantity") {
+    return copy.stockInvalidQuantity;
+  }
+  if (error === "fractional-quantity-not-allowed") {
+    return copy.stockFractionalQuantityNotAllowed;
+  }
+  if (error === "location-archived") {
+    return copy.stockLocationArchived;
+  }
+  if (error === "location-not-assignable") {
+    return copy.stockLocationNotAssignable;
+  }
+  return copy.stockActionInvalid;
+}
 
 type EntryType = "RECEIPT" | "ISSUE" | "TRANSFER" | "ADJUSTMENT";
 
@@ -45,6 +68,7 @@ export function PartStockDialog({
   copy,
   open,
   onClose,
+  onSuccess,
   part,
   workspaceSlug
 }: {
@@ -53,6 +77,7 @@ export function PartStockDialog({
   copy: Copy;
   open: boolean;
   onClose: () => void;
+  onSuccess: (msg: string) => void;
   part: PartsListItem | null;
   workspaceSlug: string;
 }) {
@@ -64,6 +89,19 @@ export function PartStockDialog({
   const [toLocationId, setToLocationId] = useState("");
   const [note, setNote] = useState("");
   const [submitError, setSubmitError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setEntryType("RECEIPT");
+    setQuantity("");
+    setFromLocationId("");
+    setToLocationId("");
+    setNote("");
+    setSubmitError(null);
+  }, [open, part?.id]);
 
   const locationsQuery = useQuery({
     queryKey: ["locations-assignable", workspaceSlug],
@@ -103,6 +141,7 @@ export function PartStockDialog({
           queryKey: ["part-inventory-history", workspaceSlug, part?.id]
         })
       ]);
+      onSuccess(copy.stockSaved);
     }
   });
 
@@ -226,12 +265,13 @@ export function PartStockDialog({
                 value={note}
               />
             </label>
-            {submitError ? <ErrorBubble>{copy.stockActionInvalid}</ErrorBubble> : null}
           </section>
         </DialogBody>
         <DialogActions
           actionLabel={copy.addMovement}
           disabled={!canWriteInventory || movementMutation.isPending || !part}
+          error={submitError ? getStockActionErrorMessage(copy, submitError) : undefined}
+          errorAlign="end"
           onAction={submit}
         />
       </div>

@@ -49,6 +49,7 @@ type DialogActionsProps = {
   variant?: "primary" | "destructive";
   disabled?: boolean;
   error?: ReactNode;
+  errorAlign?: "center" | "start" | "end";
 };
 
 type FieldErrorProps = {
@@ -221,7 +222,8 @@ export function DialogActions({
   onAction,
   variant = "primary",
   disabled,
-  error
+  error,
+  errorAlign = "center"
 }: DialogActionsProps) {
   const ctx = useContext(DialogContext);
   const handleCancel = () => {
@@ -235,7 +237,7 @@ export function DialogActions({
         {cancelLabel}
       </DialogSecondaryButton>
       <div className="relative">
-        <ErrorBubble>{error}</ErrorBubble>
+        <ErrorBubble align={errorAlign}>{error}</ErrorBubble>
         <ActionButton
           disabled={disabled}
           type={onAction ? "button" : "submit"}

@@ -208,6 +208,11 @@ type Copy = {
   currentStock: string;
   stockSaved: string;
   stockActionInvalid: string;
+  stockInsufficientStock: string;
+  stockInvalidQuantity: string;
+  stockFractionalQuantityNotAllowed: string;
+  stockLocationArchived: string;
+  stockLocationNotAssignable: string;
   cancel: string;
   cancelDelete: string;
   confirmDelete: string;
@@ -2109,6 +2114,10 @@ export function PartsListClient({
         part={partForStockDialog}
         workspaceSlug={workspaceSlug}
         onClose={() => setPartForStockDialog(null)}
+        onSuccess={(msg) => {
+          addToastMessage({ id: getNextToastId(nextToastIdRef), message: msg });
+          setPartForStockDialog(null);
+        }}
       />
       <QuickAddToPODialog
         copy={copy}
