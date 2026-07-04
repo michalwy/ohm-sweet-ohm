@@ -4,7 +4,8 @@ import { useMemo } from "react";
 
 import { keepPreviousData, useInfiniteQuery } from "@tanstack/react-query";
 
-import { getBuildsPageForWorkspace, type BuildSummary } from "@/server/builds/buildActions";
+import { getBuildsPageForWorkspace } from "@/server/builds/buildActions";
+import type { BuildSummary } from "@/server/builds/builds";
 import type { ListPage } from "@/server/pagination";
 
 export type { BuildSummary };

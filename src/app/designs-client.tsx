@@ -18,15 +18,14 @@ import {
   updateDesignAction,
   updateDesignRevisionAction
 } from "@/server/designs/designActions";
-import type { DesignSummary } from "@/server/designs/designActions";
+import type { DesignSummary } from "@/server/designs/designs";
 import {
   createBomLineItemAction,
   deleteBomLineItemAction,
   getBomLineItemsAction,
-  updateBomLineItemAction,
-  type BomLineItemInput,
-  type BomLineItemSummary
+  updateBomLineItemAction
 } from "@/server/designs/bomActions";
+import type { BomLineItemInput, BomLineItemSummary } from "@/server/designs/bomLineItems";
 import type { ListPage } from "@/server/pagination";
 import {
   closeDialog,

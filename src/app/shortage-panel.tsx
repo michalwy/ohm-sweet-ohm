@@ -3,7 +3,8 @@
 import { useEffect, useRef } from "react";
 import { useQuery, type UseQueryResult } from "@tanstack/react-query";
 
-import { analyzeShortageAction, type ShortageAnalysis } from "@/server/designs/bomActions";
+import { analyzeShortageAction } from "@/server/designs/bomActions";
+import type { ShortageAnalysis } from "@/server/designs/shortageAnalysis";
 import {
   DialogBody,
   DialogFooter,

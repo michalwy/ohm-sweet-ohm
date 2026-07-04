@@ -20,10 +20,9 @@ import {
   reassignDesignatorAssignmentAction,
   reopenBuildAction,
   setBuildAllocationsAction,
-  startBuildAction,
-  type BuildDetail,
-  type BuildSummary
+  startBuildAction
 } from "@/server/builds/buildActions";
+import type { BuildDetail, BuildSummary } from "@/server/builds/builds";
 import type { ListPage } from "@/server/pagination";
 import type { StorageLocationListItem } from "@/server/inventory/locationMutations";
 import {

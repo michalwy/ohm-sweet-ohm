@@ -21,7 +21,7 @@ import {
   getOrganizationsPageForWorkspace,
   updateOrganizationAction
 } from "@/server/organizations/organizationActions";
-import type { OrganizationSummary } from "@/server/organizations/organizationActions";
+import type { OrganizationSummary } from "@/server/organizations/organizations";
 
 const ORGANIZATION_ROLES = ["manufacturer", "supplier"] as const;
 import type { ListPage } from "@/server/pagination";

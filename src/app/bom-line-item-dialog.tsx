@@ -22,11 +22,9 @@ import {
 import {
   getBomCategoryAttributesAction,
   getBomDialogDataAction,
-  previewLineItemMatchesAction,
-  type BomDialogData,
-  type BomLineItemInput,
-  type BomLineItemSummary
+  previewLineItemMatchesAction
 } from "@/server/designs/bomActions";
+import type { BomDialogData, BomLineItemInput, BomLineItemSummary } from "@/server/designs/bomLineItems";
 import type { AttributeListItem } from "@/server/parts/attributeMutations";
 
 const inputClassName =

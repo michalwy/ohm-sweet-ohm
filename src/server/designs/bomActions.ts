@@ -18,9 +18,6 @@ import { analyzeShortage, type ShortageAnalysis } from "@/server/designs/shortag
 import type { AttributeListItem } from "@/server/parts/attributeMutations";
 import type { MatchingPart } from "@/server/designs/matching";
 
-export type { BomLineItemSummary, BomLineItemInput, BomMatcherInput, BomDialogData };
-export type { ShortageAnalysis } from "@/server/designs/shortageAnalysis";
-
 export type BomActionResult<T> =
   | { ok: true; data: T; submittedAt: number }
   | { ok: false; error: string; submittedAt: number };

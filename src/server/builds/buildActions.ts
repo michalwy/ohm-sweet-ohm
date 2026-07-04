@@ -21,8 +21,6 @@ import {
   type BuildSummary
 } from "@/server/builds/builds";
 
-export type { BuildSummary, BuildDetail, BuildCreateOptions };
-
 export type BuildActionResult<T> =
   | { ok: true; data: T; submittedAt: number }
   | { ok: false; error: string; submittedAt: number };

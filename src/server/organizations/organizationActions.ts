@@ -10,8 +10,6 @@ import {
   type OrganizationSummary
 } from "@/server/organizations/organizations";
 
-export type { OrganizationSummary };
-
 export type OrganizationActionResult<T> =
   | { ok: true; data: T; submittedAt: number }
   | { ok: false; error: string; submittedAt: number };

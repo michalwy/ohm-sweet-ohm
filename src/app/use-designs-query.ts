@@ -6,7 +6,7 @@ import { keepPreviousData, useInfiniteQuery } from "@tanstack/react-query";
 import type { SortingState } from "@tanstack/react-table";
 
 import { getDesignsPageForWorkspace } from "@/server/designs/designActions";
-import type { DesignSortBy, DesignSummary } from "@/server/designs/designActions";
+import type { DesignSortBy, DesignSummary } from "@/server/designs/designs";
 import type { ListPage } from "@/server/pagination";
 
 export type { DesignSummary };

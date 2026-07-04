@@ -18,8 +18,6 @@ import {
   type DesignSummary
 } from "@/server/designs/designs";
 
-export type { DesignSummary, DesignDetail, DesignSortBy };
-
 export type DesignActionResult<T> =
   | { ok: true; data: T; submittedAt: number }
   | { ok: false; error: string; submittedAt: number };
