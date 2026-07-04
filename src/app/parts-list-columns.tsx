@@ -198,6 +198,7 @@ export function buildPartsListColumnDefs({
             defaultVisible: false,
             defaultWidth: 120,
             minWidth: 72,
+            sortable: true,
             align: "right" as const
           },
           {
@@ -207,6 +208,7 @@ export function buildPartsListColumnDefs({
             defaultVisible: false,
             defaultWidth: 120,
             minWidth: 72,
+            sortable: true,
             align: "right" as const
           },
           {
@@ -216,6 +218,7 @@ export function buildPartsListColumnDefs({
             defaultVisible: false,
             defaultWidth: 120,
             minWidth: 72,
+            sortable: true,
             align: "right" as const
           }
         ]
@@ -472,7 +475,11 @@ export function buildPartsListColumns(
             ),
             size: 120,
             minSize: 72,
-            enableSorting: false,
+            sortingFn: (rowA, rowB) =>
+              compareNumericDisplayValues(
+                rowA.original.reservedQuantity ?? "",
+                rowB.original.reservedQuantity ?? ""
+              ),
             cell: ({ getValue }) => {
               const value = nonZeroQuantity(getValue());
 
@@ -489,7 +496,11 @@ export function buildPartsListColumns(
             ),
             size: 120,
             minSize: 72,
-            enableSorting: false,
+            sortingFn: (rowA, rowB) =>
+              compareNumericDisplayValues(
+                rowA.original.allocatedQuantity ?? "",
+                rowB.original.allocatedQuantity ?? ""
+              ),
             cell: ({ getValue }) => {
               const value = nonZeroQuantity(getValue());
 
@@ -506,7 +517,11 @@ export function buildPartsListColumns(
             ),
             size: 120,
             minSize: 72,
-            enableSorting: false,
+            sortingFn: (rowA, rowB) =>
+              compareNumericDisplayValues(
+                rowA.original.availableQuantity ?? "",
+                rowB.original.availableQuantity ?? ""
+              ),
             cell: ({ getValue }) => {
               const value = nonZeroQuantity(getValue());
 

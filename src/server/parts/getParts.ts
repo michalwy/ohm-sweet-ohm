@@ -189,6 +189,9 @@ export async function getPartsListPage(
   const requestedSortBy = input.sortBy?.trim() ?? "";
   const activeSortBy =
     (requestedSortBy === "currentStock" && !canReadInventory) ||
+    (requestedSortBy === "reservedQuantity" && !canReadInventory) ||
+    (requestedSortBy === "allocatedQuantity" && !canReadInventory) ||
+    (requestedSortBy === "availableQuantity" && !canReadInventory) ||
     (requestedSortBy === "plannedQuantity" && !canReadShoppingLists) ||
     (requestedSortBy === "onOrderQuantity" && !canReadPurchaseOrders) ||
     (requestedSortBy === "avgNetCost" && !canReadPurchaseOrders) ||
@@ -203,6 +206,48 @@ export async function getPartsListPage(
   if (activeSortBy === "currentStock" && canReadInventory) {
     page = await getDecimalFieldSortedPartsListPage({
       field: "currentStock",
+      baseWhere,
+      categoryPathsById,
+      cursor: input.cursor,
+      pageSize,
+      sortDirection: activeSortDirection,
+      totalCount,
+      workspaceId: context.workspace.id,
+      canReadInventory,
+      canReadShoppingLists,
+      canReadPurchaseOrders
+    });
+  } else if (activeSortBy === "reservedQuantity" && canReadInventory) {
+    page = await getDecimalFieldSortedPartsListPage({
+      field: "reservedQty",
+      baseWhere,
+      categoryPathsById,
+      cursor: input.cursor,
+      pageSize,
+      sortDirection: activeSortDirection,
+      totalCount,
+      workspaceId: context.workspace.id,
+      canReadInventory,
+      canReadShoppingLists,
+      canReadPurchaseOrders
+    });
+  } else if (activeSortBy === "allocatedQuantity" && canReadInventory) {
+    page = await getDecimalFieldSortedPartsListPage({
+      field: "allocatedQty",
+      baseWhere,
+      categoryPathsById,
+      cursor: input.cursor,
+      pageSize,
+      sortDirection: activeSortDirection,
+      totalCount,
+      workspaceId: context.workspace.id,
+      canReadInventory,
+      canReadShoppingLists,
+      canReadPurchaseOrders
+    });
+  } else if (activeSortBy === "availableQuantity" && canReadInventory) {
+    page = await getDecimalFieldSortedPartsListPage({
+      field: "availableQty",
       baseWhere,
       categoryPathsById,
       cursor: input.cursor,
@@ -363,6 +408,7 @@ const partListSelect = {
   currentStock: true,
   reservedQty: true,
   allocatedQty: true,
+  availableQty: true,
   plannedQty: true,
   onOrderQty: true,
   avgNetCostPrimary: true,
@@ -418,7 +464,15 @@ async function getDecimalFieldSortedPartsListPage({
   canReadShoppingLists,
   canReadPurchaseOrders
 }: {
-  field: "currentStock" | "plannedQty" | "onOrderQty" | "avgNetCostPrimary" | "avgGrossCostPrimary";
+  field:
+    | "currentStock"
+    | "reservedQty"
+    | "allocatedQty"
+    | "availableQty"
+    | "plannedQty"
+    | "onOrderQty"
+    | "avgNetCostPrimary"
+    | "avgGrossCostPrimary";
   baseWhere: Prisma.PartWhereInput;
   categoryPathsById: Map<string, string>;
   cursor?: string | null;
@@ -909,9 +963,7 @@ function mapPartListItem({
     currentStock: canReadInventory ? part.currentStock.toString() : null,
     reservedQuantity: canReadInventory ? part.reservedQty.toString() : null,
     allocatedQuantity: canReadInventory ? part.allocatedQty.toString() : null,
-    availableQuantity: canReadInventory
-      ? part.currentStock.minus(part.reservedQty).toString()
-      : null,
+    availableQuantity: canReadInventory ? part.availableQty.toString() : null,
     plannedQuantity: canReadShoppingLists ? part.plannedQty.toString() : null,
     onOrderQuantity: canReadPurchaseOrders ? part.onOrderQty.toString() : null,
     avgNetCost: canReadPurchaseOrders
@@ -1047,7 +1099,15 @@ function getDecimalFieldCursorWhere({
   cursor,
   sortDirection
 }: {
-  field: "currentStock" | "plannedQty" | "onOrderQty" | "avgNetCostPrimary" | "avgGrossCostPrimary";
+  field:
+    | "currentStock"
+    | "reservedQty"
+    | "allocatedQty"
+    | "availableQty"
+    | "plannedQty"
+    | "onOrderQty"
+    | "avgNetCostPrimary"
+    | "avgGrossCostPrimary";
   cursor: DecimalFieldCursor;
   sortDirection: PartsListSortDirection;
 }): Prisma.PartWhereInput {

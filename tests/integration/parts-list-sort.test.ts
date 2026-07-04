@@ -82,6 +82,9 @@ async function createPart(input: {
   manufacturerId: string;
   catalogNumber: string;
   description: string | null;
+  currentStock?: number;
+  reservedQty?: number;
+  allocatedQty?: number;
 }) {
   await prisma.part.create({
     data: {
@@ -90,7 +93,10 @@ async function createPart(input: {
       unitId: input.unitId,
       manufacturerId: input.manufacturerId,
       catalogNumber: input.catalogNumber,
-      description: input.description
+      description: input.description,
+      currentStock: input.currentStock ?? 0,
+      reservedQty: input.reservedQty ?? 0,
+      allocatedQty: input.allocatedQty ?? 0
     }
   });
 }
@@ -196,6 +202,120 @@ describe("parts list DB-level string sorting", () => {
     assert.deepEqual(asc, ["P01", "P02", "P03", "P04", "P05"]);
 
     const desc = await collectAllPages(context, "catalogNumber", "desc", 2);
+    assert.deepEqual(desc, ["P05", "P04", "P03", "P02", "P01"]);
+  });
+});
+
+describe("parts list DB-level reserved/allocated/available sorting", () => {
+  test("sorts by reservedQuantity at the database level across pages", async () => {
+    const suffix = uniqueSuffix();
+    const { workspaceId, userId, unitId, manufacturerId } =
+      await createTestWorkspace(suffix);
+    const context = {
+      user: { id: userId },
+      workspace: { id: workspaceId, primaryCurrency: "EUR" }
+    };
+
+    const rows: Array<{ catalogNumber: string; reservedQty: number }> = [
+      { catalogNumber: "P03", reservedQty: 30 },
+      { catalogNumber: "P01", reservedQty: 10 },
+      { catalogNumber: "P05", reservedQty: 50 },
+      { catalogNumber: "P02", reservedQty: 20 },
+      { catalogNumber: "P04", reservedQty: 40 }
+    ];
+    for (const row of rows) {
+      await createPart({
+        id: `${suffix}-${row.catalogNumber}`,
+        workspaceId,
+        unitId,
+        manufacturerId,
+        catalogNumber: row.catalogNumber,
+        description: null,
+        currentStock: row.reservedQty,
+        reservedQty: row.reservedQty
+      });
+    }
+
+    const asc = await collectAllPages(context, "reservedQuantity", "asc", 2);
+    assert.deepEqual(asc, ["P01", "P02", "P03", "P04", "P05"]);
+
+    const desc = await collectAllPages(context, "reservedQuantity", "desc", 2);
+    assert.deepEqual(desc, ["P05", "P04", "P03", "P02", "P01"]);
+  });
+
+  test("sorts by allocatedQuantity at the database level across pages", async () => {
+    const suffix = uniqueSuffix();
+    const { workspaceId, userId, unitId, manufacturerId } =
+      await createTestWorkspace(suffix);
+    const context = {
+      user: { id: userId },
+      workspace: { id: workspaceId, primaryCurrency: "EUR" }
+    };
+
+    const rows: Array<{ catalogNumber: string; allocatedQty: number }> = [
+      { catalogNumber: "P03", allocatedQty: 30 },
+      { catalogNumber: "P01", allocatedQty: 10 },
+      { catalogNumber: "P05", allocatedQty: 50 },
+      { catalogNumber: "P02", allocatedQty: 20 },
+      { catalogNumber: "P04", allocatedQty: 40 }
+    ];
+    for (const row of rows) {
+      await createPart({
+        id: `${suffix}-${row.catalogNumber}`,
+        workspaceId,
+        unitId,
+        manufacturerId,
+        catalogNumber: row.catalogNumber,
+        description: null,
+        allocatedQty: row.allocatedQty
+      });
+    }
+
+    const asc = await collectAllPages(context, "allocatedQuantity", "asc", 2);
+    assert.deepEqual(asc, ["P01", "P02", "P03", "P04", "P05"]);
+
+    const desc = await collectAllPages(context, "allocatedQuantity", "desc", 2);
+    assert.deepEqual(desc, ["P05", "P04", "P03", "P02", "P01"]);
+  });
+
+  test("sorts by availableQuantity (a generated currentStock - reservedQty column) across pages", async () => {
+    const suffix = uniqueSuffix();
+    const { workspaceId, userId, unitId, manufacturerId } =
+      await createTestWorkspace(suffix);
+    const context = {
+      user: { id: userId },
+      workspace: { id: workspaceId, primaryCurrency: "EUR" }
+    };
+
+    // availableQty = currentStock - reservedQty: P01..P05 → 10, 20, 30, 40, 50.
+    const rows: Array<{
+      catalogNumber: string;
+      currentStock: number;
+      reservedQty: number;
+    }> = [
+      { catalogNumber: "P03", currentStock: 100, reservedQty: 70 },
+      { catalogNumber: "P01", currentStock: 100, reservedQty: 90 },
+      { catalogNumber: "P05", currentStock: 100, reservedQty: 50 },
+      { catalogNumber: "P02", currentStock: 100, reservedQty: 80 },
+      { catalogNumber: "P04", currentStock: 100, reservedQty: 60 }
+    ];
+    for (const row of rows) {
+      await createPart({
+        id: `${suffix}-${row.catalogNumber}`,
+        workspaceId,
+        unitId,
+        manufacturerId,
+        catalogNumber: row.catalogNumber,
+        description: null,
+        currentStock: row.currentStock,
+        reservedQty: row.reservedQty
+      });
+    }
+
+    const asc = await collectAllPages(context, "availableQuantity", "asc", 2);
+    assert.deepEqual(asc, ["P01", "P02", "P03", "P04", "P05"]);
+
+    const desc = await collectAllPages(context, "availableQuantity", "desc", 2);
     assert.deepEqual(desc, ["P05", "P04", "P03", "P02", "P01"]);
   });
 });
