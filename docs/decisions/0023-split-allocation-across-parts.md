@@ -143,3 +143,11 @@ that covers that pair's aggregated requirement.
   read-only for an `ALLOCATED` build and returns any failing entries as `allocationWarnings`, so the
   build detail view can surface the mismatch before the user hits it at `startBuild` (#171). This is
   informational only — `startBuild`'s guards remain the actual enforcement point.
+- Per-location stock shown while allocating (source-location picker, greedy pre-fill) is
+  reservation-aware (#172): `getPartLocationAvailableBalances` nets a location's raw balance
+  against the hard reservation any `STARTED`/`IN_PROGRESS` build currently holds there, by summing
+  the not-yet-assembled `BuildDesignatorAssignment` rows for that part grouped by
+  `sourceLocationId` — the only place a part-level `reservedQty` can be traced back to a location.
+  This only changes what is displayed/suggested; the write-path guards (`setBuildLineAllocations`,
+  `setBuildAllocations`, `startBuild`) still check the raw physical balance, per line's own siblings
+  netted out, unchanged.

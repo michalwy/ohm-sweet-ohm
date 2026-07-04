@@ -59,8 +59,10 @@ location, and quantity to cover what is still unallocated (the same greedy sugge
 makes when it is created); adjust it as needed. The remove button drops an entry.
 
 Each line shows its running **Allocated** total against the required quantity. You cannot allocate
-more of a part than is **available**, nor more from a location than that location holds — an entry
-that exceeds either is highlighted.
+more of a part than is **available**, nor more from a location than that location has **available**
+there — the source-location picker and its per-location figures already net out any hard
+reservation another started build holds at that location, so an entry that exceeds either is
+highlighted.
 
 **Apply** saves the allocation of **all lines at once**, in a single step. This is deliberate: it
 keeps the whole build consistent, so rearranging parts between lines (for example moving a part off

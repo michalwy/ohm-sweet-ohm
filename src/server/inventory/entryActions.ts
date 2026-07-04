@@ -6,6 +6,7 @@ import { getCurrentWorkspaceContextBySlug } from "@/server/auth/currentContext";
 import {
   createInventoryEntry,
   getPartInventoryHistory,
+  getPartLocationAvailableBalances,
   getPartLocationBalances,
   type InventoryHistoryItem
 } from "@/server/inventory/entryMutations";
@@ -56,22 +57,31 @@ export async function createInventoryEntryForWorkspace(input: {
 export async function getPartBalancesForWorkspace(input: {
   workspaceSlug: string;
   partId: string;
-}): Promise<InventoryActionResult<Array<{ locationId: string; quantity: string }>>> {
+}): Promise<
+  InventoryActionResult<Array<{ locationId: string; quantity: string; availableQuantity: string }>>
+> {
   try {
     const context = await getAuthorizedInventoryContext({
       workspaceSlug: input.workspaceSlug,
       permission: "inventory:read"
     });
 
-    const balances = await getPartLocationBalances({
-      workspaceId: context.workspace.id,
-      partId: input.partId
-    });
+    const [balances, availableBalances] = await Promise.all([
+      getPartLocationBalances({
+        workspaceId: context.workspace.id,
+        partId: input.partId
+      }),
+      getPartLocationAvailableBalances({
+        workspaceId: context.workspace.id,
+        partId: input.partId
+      })
+    ]);
 
     return getSuccessState(
       [...balances.entries()].map(([locationId, quantity]) => ({
         locationId,
-        quantity: quantity.toString()
+        quantity: quantity.toString(),
+        availableQuantity: (availableBalances.get(locationId) ?? quantity).toString()
       }))
     );
   } catch (error) {

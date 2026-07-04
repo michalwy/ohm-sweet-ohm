@@ -21,6 +21,7 @@ import {
 import { findMatchingParts, type MatchSpec } from "@/server/designs/matching";
 import {
   createInventoryEntryWithinTx,
+  getPartLocationAvailableBalances,
   getPartLocationBalances,
   getPartLocationBalancesWithDb
 } from "@/server/inventory/entryMutations";
@@ -340,7 +341,9 @@ export async function getBuildDetail({
     : new Map<string, BuildMatchCandidate[]>();
 
   // Per-part non-zero location balances, so a source-location picker can be narrowed to locations
-  // that actually hold the chosen part.
+  // that actually hold usable stock of the chosen part. Reservation-aware (refs #172): a location
+  // another build already holds a hard reservation against at is excluded, since it isn't really
+  // available for this build to plan against.
   const balancesByPart = new Map<string, BuildSourceLocationBalance[]>();
   if (showPickers) {
     const partIds = new Set<string>();
@@ -351,7 +354,7 @@ export async function getBuildDetail({
       }
     }
     for (const partId of partIds) {
-      const balances = await getPartLocationBalances({ workspaceId, partId });
+      const balances = await getPartLocationAvailableBalances({ workspaceId, partId });
       balancesByPart.set(
         partId,
         [...balances.entries()]
@@ -656,7 +659,7 @@ async function suggestLineAllocations(
     Math.floor(Number(balance)) - (used.byLocation.get(partLocationKey(partId, locationId)) ?? 0);
 
   if (spec.pinnedPartId) {
-    const balances = await getPartLocationBalances({ workspaceId, partId: spec.pinnedPartId });
+    const balances = await getPartLocationAvailableBalances({ workspaceId, partId: spec.pinnedPartId });
     const best = [...balances.entries()]
       .map(([locationId, balance]) => ({
         locationId,
@@ -670,7 +673,7 @@ async function suggestLineAllocations(
   const matches = await findMatchingParts({ workspaceId, spec });
   const candidates: AllocationCandidate[] = [];
   for (const match of matches) {
-    const balances = await getPartLocationBalances({ workspaceId, partId: match.id });
+    const balances = await getPartLocationAvailableBalances({ workspaceId, partId: match.id });
     const locations = [...balances.entries()]
       .map(([locationId, balance]) => ({ locationId, remaining: remainingAt(match.id, locationId, balance) }))
       .filter((l) => l.remaining > 0)

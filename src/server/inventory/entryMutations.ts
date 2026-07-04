@@ -395,6 +395,68 @@ export async function getPartLocationBalancesWithDb(
   return balances;
 }
 
+export async function getPartLocationAvailableBalances(input: {
+  workspaceId: string;
+  partId: string;
+}) {
+  return getPartLocationAvailableBalancesWithDb(prisma, input);
+}
+
+/**
+ * Per-location balance minus the hard reservation currently held at that specific location, so
+ * pickers can show what is truly still usable there (ADR 0021/0023, refs #172). A build's
+ * `reservedQty` is a part-level aggregate, but each unit of it traces back to the source location
+ * on its (not-yet-assembled) `BuildDesignatorAssignment` row once the build is `STARTED`/
+ * `IN_PROGRESS` — that link is what lets the aggregate be attributed back to a location.
+ */
+export async function getPartLocationAvailableBalancesWithDb(
+  db: Prisma.TransactionClient | typeof prisma,
+  input: {
+    workspaceId: string;
+    partId: string;
+  }
+) {
+  const [balances, reservedByLocation] = await Promise.all([
+    getPartLocationBalancesWithDb(db, input),
+    getReservedQuantitiesByLocationWithDb(db, input)
+  ]);
+
+  const available = new Map<string, Prisma.Decimal>();
+  for (const [locationId, balance] of balances) {
+    const reserved = reservedByLocation.get(locationId) ?? new Prisma.Decimal(0);
+    available.set(locationId, balance.minus(reserved));
+  }
+  return available;
+}
+
+async function getReservedQuantitiesByLocationWithDb(
+  db: Prisma.TransactionClient | typeof prisma,
+  input: {
+    workspaceId: string;
+    partId: string;
+  }
+) {
+  const rows = await db.buildDesignatorAssignment.groupBy({
+    by: ["sourceLocationId"],
+    where: {
+      workspaceId: input.workspaceId,
+      partId: input.partId,
+      assembled: false,
+      sourceLocationId: { not: null },
+      buildLineItem: { build: { state: { in: ["STARTED", "IN_PROGRESS"] } } }
+    },
+    _count: { _all: true }
+  });
+
+  const reserved = new Map<string, Prisma.Decimal>();
+  for (const row of rows) {
+    if (row.sourceLocationId) {
+      reserved.set(row.sourceLocationId, new Prisma.Decimal(row._count._all));
+    }
+  }
+  return reserved;
+}
+
 function addBalance(
   balances: Map<string, Prisma.Decimal>,
   locationId: string,

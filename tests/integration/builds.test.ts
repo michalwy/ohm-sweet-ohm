@@ -11,7 +11,11 @@ import {
 import { createDesign } from "../../src/server/designs/designs";
 import { createBomLineItem } from "../../src/server/designs/bomLineItems";
 import { createPartCategory } from "../../src/server/parts/categories";
-import { createInventoryEntry } from "../../src/server/inventory/entryMutations";
+import {
+  createInventoryEntry,
+  getPartLocationAvailableBalances,
+  getPartLocationBalances
+} from "../../src/server/inventory/entryMutations";
 import {
   assembleBuildUnit,
   assembleDesignator,
@@ -1038,5 +1042,41 @@ describe("build flow", () => {
     const component = await partStock(scenario.workspaceId, scenario.buildLinePartId);
     assert.equal(component.allocatedQty, "0", "soft allocation released");
     assert.equal(component.reservedQty, "0");
+  });
+
+  test("per-location available balance nets out another build's hard reservation at that location (refs #172)", async () => {
+    const scenario = await createScenario(uniqueSuffix(), { stockAtSource: "10" });
+
+    // Build A reserves 6 units of the component at the source location (STARTED).
+    const { buildId: buildAId } = await createAndAllocateBuild(scenario, 2); // 3 designators × 2
+    await markBuildAllocated({ userId: scenario.userId, workspaceId: scenario.workspaceId, buildId: buildAId });
+    const startedA = await startBuild({ userId: scenario.userId, workspaceId: scenario.workspaceId, buildId: buildAId });
+    assert.ok(startedA.ok, JSON.stringify(startedA));
+
+    // Raw physical stock at the location is untouched by reservation; only what's usable shrinks.
+    const rawBalances = await getPartLocationBalances({
+      workspaceId: scenario.workspaceId,
+      partId: scenario.buildLinePartId
+    });
+    assert.equal(rawBalances.get(scenario.sourceLocationId)?.toString(), "10");
+
+    const availableBalances = await getPartLocationAvailableBalances({
+      workspaceId: scenario.workspaceId,
+      partId: scenario.buildLinePartId
+    });
+    assert.equal(availableBalances.get(scenario.sourceLocationId)?.toString(), "4");
+
+    // A second, still-CREATED build's allocation picker must offer the reservation-aware figure,
+    // not the raw physical balance, for the same source location.
+    const buildBId = await createBuildFor(scenario, 1); // 3 designators × 1
+    const detail = await getBuildDetail({
+      userId: scenario.userId,
+      workspaceId: scenario.workspaceId,
+      buildId: buildBId
+    });
+    const line = detail?.lines[0];
+    const partBalances = line?.partBalances.find((pb) => pb.partId === scenario.buildLinePartId);
+    const sourceBalance = partBalances?.balances.find((b) => b.locationId === scenario.sourceLocationId);
+    assert.equal(sourceBalance?.balance, "4");
   });
 });

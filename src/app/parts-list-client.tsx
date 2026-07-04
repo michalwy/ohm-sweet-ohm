@@ -972,7 +972,8 @@ export function PartsListClient({
       .map((row) => ({
         locationId: row.locationId,
         locationName: locationNameById.get(row.locationId) ?? row.locationId,
-        quantity: row.quantity
+        quantity: row.quantity,
+        availableQuantity: row.availableQuantity
       }))
       .sort((left, right) =>
         left.locationName.localeCompare(right.locationName, "en")
@@ -1568,6 +1569,7 @@ export function PartsListClient({
                           <tr>
                             <th className="px-3 py-2 font-semibold">Location</th>
                             <th className="px-3 py-2 font-semibold">Stock</th>
+                            <th className="px-3 py-2 font-semibold">{copy.available}</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -1581,6 +1583,9 @@ export function PartsListClient({
                               </td>
                               <td className="px-3 py-2 font-semibold text-[var(--color-text-primary)]">
                                 {row.quantity}
+                              </td>
+                              <td className="px-3 py-2 font-semibold text-[var(--color-text-primary)]">
+                                {row.availableQuantity}
                               </td>
                             </tr>
                           ))}
