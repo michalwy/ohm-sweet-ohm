@@ -1237,12 +1237,25 @@ function BuildLineRow({
     : line.allocations.reduce((sum, a) => sum + a.quantity, 0);
   const assembledTotal = line.assignments.filter((a) => a.assembled).length;
   const started = line.assignments.length > 0;
+  // Mirrors the progress bar's own ratio, so the header accent and the bar always agree.
+  const completionRatio = line.requiredUnits === 0 ? 1 : (started ? assembledTotal : allocatedTotal) / line.requiredUnits;
+  const statusBorderColor =
+    completionRatio >= 1
+      ? "var(--color-success-border)"
+      : completionRatio > 0
+        ? "var(--color-warning-border)"
+        : "var(--color-border)";
 
   return (
-    <div className="grid gap-1.5 rounded-md border border-[var(--color-border)] px-2.5 py-2">
+    <div
+      className="grid gap-1.5 rounded-md border border-l-4 border-[var(--color-border)] px-2.5 py-2"
+      style={{ borderLeftColor: statusBorderColor }}
+    >
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-2">
-          <span className="font-mono text-sm text-[var(--color-text-primary)]">{line.designators}</span>
+          <span className="font-mono text-sm font-semibold text-[var(--color-text-primary)]">
+            {line.designators}
+          </span>
           {line.categoryName && (
             <span className="rounded bg-[var(--color-bg-subtle)] px-1.5 py-0.5 text-xs text-[var(--color-text-secondary)]">
               {line.categoryName}
@@ -1655,11 +1668,11 @@ function BomLineBreakdown({
     return <p className="text-sm text-[var(--color-text-muted)]">{copy.unassigned}</p>;
   }
   return (
-    <div className="grid gap-1.5 text-sm">
+    <div className="grid gap-1.5 border-l-2 border-[var(--color-border)] pl-2.5 text-sm">
       {rows.map((row) => (
         <div key={row.key} className="grid grid-cols-[1fr_auto] items-start gap-x-2">
           <div className="grid min-w-0 gap-0.5">
-            <span className="truncate font-mono text-[var(--color-text-primary)]">
+            <span className="truncate font-mono text-xs text-[var(--color-text-secondary)]">
               <PartLink partId={row.partId} name={row.catalogNumber} />
             </span>
             <span className="truncate text-xs text-[var(--color-text-muted)]">
