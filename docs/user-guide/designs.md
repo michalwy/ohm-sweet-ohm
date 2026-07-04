@@ -102,6 +102,30 @@ table also shows a live match count per line item.
 > Building and allocating concrete parts to designators is handled by the build flow.
 > See [Builds](builds.md) to turn a revision's bill of materials into a production run.
 
+## Shortage Analysis
+
+Below the bill of materials, the details panel shows a **Shortage analysis** for the
+selected revision. Enter a **target quantity** (how many units you intend to build) and the
+analysis reports what cannot be fulfilled from current stock.
+
+- **Availability** of a part is its current stock minus reserved quantity. Quantities that
+  are only allocated or on order do not count as available.
+- **Line shortages** lists each BOM line with its required, available, and gap quantities.
+  The required quantity is `designators × target quantity`. Available stock is **combined
+  across all parts that match the line's spec**, so a line is short only when the matching
+  parts together cannot cover it. Lines with no matching part are flagged.
+- **To acquire** is the exploded list of purchasable parts you need to obtain, with the
+  total shortage quantity for each.
+
+If a matching part is itself the output of another Design, the analysis nets that
+sub-assembly's own stock first and then recurses into that Design's latest revision, so the
+**To acquire** list contains only leaf (purchasable) parts. Stock shared between several
+lines or sub-assemblies is counted once. If Designs reference each other in a loop, the
+cycle is reported instead of analyzed.
+
+The same shortage preview appears in the **build create dialog** once you pick a revision
+and target quantity, so you can spot missing parts before creating the build.
+
 ### Deleting a Design
 
 Click **Delete** on a design and confirm.

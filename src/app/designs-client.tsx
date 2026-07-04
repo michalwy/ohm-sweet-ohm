@@ -54,6 +54,7 @@ import {
 import { useDesignsQuery } from "@/app/use-designs-query";
 import { DetailPanel, useDetailsPanelWidth } from "@/app/detail-panel";
 import { BomLineItemDialog } from "@/app/bom-line-item-dialog";
+import { ShortagePanel } from "@/app/shortage-panel";
 
 type Copy = {
   title: string;
@@ -186,6 +187,7 @@ export function DesignsClient({ canWrite, copy, initialPage, workspaceSlug }: De
 
   // BOM state
   const [selectedRevisionId, setSelectedRevisionId] = useState<string | null>(null);
+  const [shortageTargetQty, setShortageTargetQty] = useState(1);
   const [bomDialogOpen, setBomDialogOpen] = useState(false);
   const [bomDialogKey, setBomDialogKey] = useState(0);
   const [editingLineItem, setEditingLineItem] = useState<BomLineItemSummary | null>(null);
@@ -980,6 +982,14 @@ export function DesignsClient({ canWrite, copy, initialPage, workspaceSlug }: De
               </table>
             )}
           </section>
+
+          {/* Shortage analysis for the selected revision */}
+          <ShortagePanel
+            workspaceSlug={workspaceSlug}
+            revisionId={selectedRevisionId}
+            targetQuantity={shortageTargetQty}
+            onTargetQuantityChange={setShortageTargetQty}
+          />
         </DetailPanel>
       ) : null}
 

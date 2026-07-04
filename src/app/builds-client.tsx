@@ -52,6 +52,7 @@ import { DetailPanel, useDetailsPanelWidth } from "@/app/detail-panel";
 import { buildTree } from "@/app/tree-picker-utils";
 import { PartLink } from "@/app/entity-links";
 import { BuildPartSelect, type BuildPartOption } from "@/app/build-part-select";
+import { ShortageAnalysisModal, ShortageStatus } from "@/app/shortage-panel";
 import {
   LocationTreeSelect,
   formLocationSelectButtonClassName,
@@ -193,6 +194,7 @@ export function BuildsClient({ canWrite, copy, initialPage, workspaceSlug }: Bui
   const [formTargetQuantity, setFormTargetQuantity] = useState("1");
   const [formOutputLocationId, setFormOutputLocationId] = useState("");
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+  const [shortageModalOpen, setShortageModalOpen] = useState(false);
 
   function pushToast(message: string, variant: "success" | "error" = "success") {
     setToastMessages((prev) => [...prev, { id: getNextToastId(nextToastIdRef), message, variant }]);
@@ -721,10 +723,26 @@ export function BuildsClient({ canWrite, copy, initialPage, workspaceSlug }: Bui
                 />
               </div>
             </div>
+            <div className="mt-4 border-t border-[var(--color-border)] pt-4">
+              <ShortageStatus
+                workspaceSlug={workspaceSlug}
+                revisionId={formRevisionId || null}
+                targetQuantity={Math.max(1, Number.parseInt(formTargetQuantity, 10) || 1)}
+                onOpen={() => setShortageModalOpen(true)}
+              />
+            </div>
           </DialogBody>
           <DialogActions actionLabel={copy.createBuild} disabled={createMutation.isPending} />
         </form>
       </DialogShell>
+
+      <ShortageAnalysisModal
+        open={shortageModalOpen}
+        onClose={() => setShortageModalOpen(false)}
+        workspaceSlug={workspaceSlug}
+        revisionId={formRevisionId || null}
+        targetQuantity={Math.max(1, Number.parseInt(formTargetQuantity, 10) || 1)}
+      />
 
       <ToastNotice
         messages={toastMessages}

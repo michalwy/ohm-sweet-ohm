@@ -25,6 +25,11 @@ Builds live under **Builds** in the workspace navigation. Reading builds require
 3. Enter the **target quantity** — how many units of the design you intend to produce.
 4. Choose an **output location** — where the finished output part will be received on completion.
 
+Once a revision and target quantity are set, the dialog shows a **shortage preview** — which
+BOM lines cannot be fulfilled from available stock and which parts you would need to acquire or
+sub-build. This is informational and does not block creating the build. See
+[Shortage Analysis](designs.md#shortage-analysis) for how it is calculated.
+
 When the build is created, the chosen revision's bill of materials is **frozen** into the build:
 each BOM line becomes a build line. Each designator needs `target quantity` parts, so a line with
 designators `R1, R2, R3` and a target quantity of 2 requires 6 parts in total. The build also

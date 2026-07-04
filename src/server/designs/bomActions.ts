@@ -14,10 +14,12 @@ import {
   type BomLineItemSummary,
   type BomMatcherInput
 } from "@/server/designs/bomLineItems";
+import { analyzeShortage, type ShortageAnalysis } from "@/server/designs/shortageAnalysis";
 import type { AttributeListItem } from "@/server/parts/attributeMutations";
 import type { MatchingPart } from "@/server/designs/matching";
 
 export type { BomLineItemSummary, BomLineItemInput, BomMatcherInput, BomDialogData };
+export type { ShortageAnalysis } from "@/server/designs/shortageAnalysis";
 
 export type BomActionResult<T> =
   | { ok: true; data: T; submittedAt: number }
@@ -93,6 +95,25 @@ export async function previewLineItemMatchesAction(input: {
     });
     if (!result.ok) throw new Error(result.error);
     return success(result.data);
+  } catch (error) {
+    return failure(error);
+  }
+}
+
+export async function analyzeShortageAction(input: {
+  workspaceSlug: string;
+  revisionId: string;
+  targetQuantity: number;
+}): Promise<BomActionResult<ShortageAnalysis>> {
+  try {
+    const context = await getContext(input.workspaceSlug);
+    const analysis = await analyzeShortage({
+      userId: context.user.id,
+      workspaceId: context.workspace.id,
+      revisionId: input.revisionId,
+      targetQuantity: input.targetQuantity
+    });
+    return success(analysis);
   } catch (error) {
     return failure(error);
   }
