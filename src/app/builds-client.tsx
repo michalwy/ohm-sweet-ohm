@@ -628,8 +628,17 @@ export function BuildsClient({ canWrite, copy, initialPage, workspaceSlug }: Bui
       {selectedBuild && hasLoadedDetailsPanelWidth ? (
         <DetailPanel
           closeLabel={copy.close}
-          subtitle={`v${selectedBuild.revisionNumber} · ${copy.targetQuantity} ${selectedBuild.targetQuantity}`}
-          title={selectedBuild.designName}
+          subtitle={`v${selectedBuild.revisionNumber}`}
+          title={
+            <div className="flex items-center gap-2">
+              <span>{selectedBuild.designName}</span>
+              <span
+                className={`inline-flex w-fit shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${STATE_BADGE_CLASS[selectedBuild.state] ?? ""}`}
+              >
+                {copy.states[selectedBuild.state] ?? selectedBuild.state}
+              </span>
+            </div>
+          }
           width={detailsPanelWidth}
           onClose={() => setSelectedBuildId(null)}
           onStartResize={startResizingDetailsPanel}
@@ -638,6 +647,8 @@ export function BuildsClient({ canWrite, copy, initialPage, workspaceSlug }: Bui
             canWrite={canWrite}
             copy={copy}
             detail={buildDetail ?? null}
+            unitsAssembled={selectedBuild.unitsAssembled}
+            unitsTotal={selectedBuild.unitsTotal}
             onSetBuildAllocations={(input) => setAllocationsMutation.mutate(input)}
             onAssemble={(input) => assembleMutation.mutate(input)}
             onReassign={(input) => reassignMutation.mutate(input)}
@@ -793,6 +804,8 @@ type BuildDetailContentProps = {
   canWrite: boolean;
   copy: BuildsCopy;
   detail: BuildDetail | null;
+  unitsAssembled: number;
+  unitsTotal: number;
   onSetBuildAllocations: (input: BuildAllocationsInput) => void;
   onAssemble: (input: { assignmentId: string; quantity: number }) => void;
   onReassign: (input: { assignmentId: string; partId: string; sourceLocationId: string | null }) => void;
@@ -812,6 +825,8 @@ function BuildDetailContent({
   canWrite,
   copy,
   detail,
+  unitsAssembled,
+  unitsTotal,
   onSetBuildAllocations,
   onAssemble,
   onReassign,
@@ -888,29 +903,46 @@ function BuildDetailContent({
 
   return (
     <>
-      <section className="grid gap-1">
-        <p className="text-xs font-semibold uppercase tracking-wide text-[var(--color-text-muted)]">
-          {copy.state}
-        </p>
-        <span
-          className={`inline-flex w-fit rounded-full px-2 py-0.5 text-xs font-medium ${STATE_BADGE_CLASS[detail.state] ?? ""}`}
-        >
-          {copy.states[detail.state] ?? detail.state}
-        </span>
-      </section>
-
-      <section className="grid gap-1 text-sm">
-        <div className="group flex justify-between">
-          <span className="text-[var(--color-text-muted)]">{copy.outputPart}</span>
-          <span className="font-mono text-[var(--color-text-primary)]">
+      <section className="grid grid-cols-4 divide-x divide-[var(--color-border)] overflow-hidden rounded-lg border border-[var(--color-border)]">
+        <div className="grid gap-1 px-3 py-2.5">
+          <p className="text-xs uppercase tracking-wide text-[var(--color-text-muted)]">
+            {copy.outputPart}
+          </p>
+          <p className="truncate font-mono text-sm font-medium text-[var(--color-text-primary)]">
             <PartLink partId={detail.outputPart.id} name={detail.outputPart.catalogNumber} />
-          </span>
+          </p>
         </div>
-        <div className="flex justify-between">
-          <span className="text-[var(--color-text-muted)]">{copy.outputLocation}</span>
-          <span className="text-[var(--color-text-primary)]">
+        <div className="grid gap-1 px-3 py-2.5">
+          <p className="text-xs uppercase tracking-wide text-[var(--color-text-muted)]">
+            {copy.outputLocation}
+          </p>
+          <p className="truncate text-sm font-medium text-[var(--color-text-primary)]">
             {detail.outputLocation?.name ?? <EmptyCell />}
-          </span>
+          </p>
+        </div>
+        <div className="grid gap-1 px-3 py-2.5">
+          <p className="text-xs uppercase tracking-wide text-[var(--color-text-muted)]">
+            {copy.targetQuantity}
+          </p>
+          <p className="text-sm font-medium text-[var(--color-text-primary)]">
+            {detail.targetQuantity}
+          </p>
+        </div>
+        <div className="grid gap-1 px-3 py-2.5">
+          <p className="text-xs uppercase tracking-wide text-[var(--color-text-muted)]">
+            {copy.progress}
+          </p>
+          <p className="text-sm font-medium text-[var(--color-text-primary)]">
+            {unitsAssembled} / {unitsTotal}
+          </p>
+          <div className="h-1 overflow-hidden rounded-full bg-[var(--color-border)]">
+            <div
+              className="h-full rounded-full bg-[var(--color-accent)]"
+              style={{
+                width: `${unitsTotal > 0 ? Math.min(100, (unitsAssembled / unitsTotal) * 100) : 0}%`
+              }}
+            />
+          </div>
         </div>
       </section>
 
