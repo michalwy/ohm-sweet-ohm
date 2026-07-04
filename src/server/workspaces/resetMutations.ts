@@ -14,8 +14,14 @@ export async function wipeDomainData(workspaceId: string): Promise<void> {
     // InventoryEntry RESTRICT-references StorageLocation
     await tx.inventoryEntry.deleteMany({ where: { workspaceId } });
 
+    // Build.designRevision RESTRICT-references DesignRevision, and BuildLineAllocation/
+    // BuildDesignatorAssignment RESTRICT-reference Part and StorageLocation, so builds must
+    // go before designs, parts, and locations. Deleting a Build cascades its BuildLineItem,
+    // BuildLineAllocation, and BuildDesignatorAssignment rows.
+    await tx.build.deleteMany({ where: { workspaceId } });
+
     // Design.outputPart RESTRICT-references Part, so designs must go before parts.
-    // Deleting a Design cascades its DesignRevision rows.
+    // Deleting a Design cascades its DesignRevision (and further BomLineItem/BomMatcher) rows.
     await tx.design.deleteMany({ where: { workspaceId } });
 
     // Attribute/AttributeChoiceOption are RESTRICT-referenced by these tables

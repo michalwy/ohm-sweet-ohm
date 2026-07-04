@@ -131,6 +131,79 @@ async function addDesignData(workspaceId: string, unitId: string) {
   });
 }
 
+async function addBuildData(workspaceId: string, unitId: string) {
+  const internalOrg = await prisma.organization.create({
+    data: {
+      workspaceId,
+      name: "Internal",
+      normalizedName: "__internal__internal2",
+      isInternal: true,
+      roles: { create: [{ role: "manufacturer" }] }
+    },
+    select: { id: true }
+  });
+
+  const outputPart = await prisma.part.create({
+    data: { workspaceId, catalogNumber: "DESIGN-0002", unitId, manufacturerId: internalOrg.id },
+    select: { id: true }
+  });
+
+  const componentPart = await prisma.part.create({
+    data: { workspaceId, catalogNumber: "COMPONENT-0001", unitId, manufacturerId: internalOrg.id },
+    select: { id: true }
+  });
+
+  const location = await prisma.storageLocation.create({
+    data: { workspaceId, name: "Build Shelf", normalizedName: "build shelf" },
+    select: { id: true }
+  });
+
+  const design = await prisma.design.create({
+    data: {
+      workspaceId,
+      name: "Buildable Assembly",
+      outputPartId: outputPart.id,
+      revisions: { create: [{ workspaceId, revisionNumber: 1 }] }
+    },
+    include: { revisions: true }
+  });
+
+  const build = await prisma.build.create({
+    data: {
+      workspaceId,
+      designRevisionId: design.revisions[0].id,
+      outputLocationId: location.id,
+      targetQuantity: 1,
+      state: "CREATED"
+    }
+  });
+
+  const lineItem = await prisma.buildLineItem.create({
+    data: { workspaceId, buildId: build.id, designators: "R1", designatorCount: 1 }
+  });
+
+  await prisma.buildLineAllocation.create({
+    data: {
+      workspaceId,
+      buildLineItemId: lineItem.id,
+      partId: componentPart.id,
+      sourceLocationId: location.id,
+      quantity: 1
+    }
+  });
+
+  await prisma.buildDesignatorAssignment.create({
+    data: {
+      workspaceId,
+      buildLineItemId: lineItem.id,
+      designator: "R1",
+      unitIndex: 0,
+      partId: componentPart.id,
+      sourceLocationId: location.id
+    }
+  });
+}
+
 describe("wipeDomainData", () => {
   test("leaves workspace, members, and roles intact while removing all domain data", async () => {
     const suffix = uniqueSuffix();
@@ -190,6 +263,47 @@ describe("wipeDomainData", () => {
     );
     assert.equal(await prisma.part.count({ where: { workspaceId } }), 0, "output part should be gone");
     assert.equal(await prisma.organization.count({ where: { workspaceId } }), 0, "internal org should be gone");
+  });
+
+  test("removes builds and their allocations/assignments (Build RESTRICTs DesignRevision/Part/StorageLocation)", async () => {
+    const suffix = uniqueSuffix();
+    const { workspaceId, unitId } = await createTestWorkspaceWithMember(suffix);
+    await addBuildData(workspaceId, unitId);
+
+    assert.ok((await prisma.build.count({ where: { workspaceId } })) > 0, "build should exist before wipe");
+    assert.ok(
+      (await prisma.buildLineAllocation.count({ where: { workspaceId } })) > 0,
+      "allocations should exist before wipe"
+    );
+    assert.ok(
+      (await prisma.buildDesignatorAssignment.count({ where: { workspaceId } })) > 0,
+      "designator assignments should exist before wipe"
+    );
+
+    await assert.doesNotReject(
+      () => wipeDomainData(workspaceId),
+      "wipe must not throw when a build exists"
+    );
+
+    assert.equal(await prisma.build.count({ where: { workspaceId } }), 0, "builds should be gone");
+    assert.equal(
+      await prisma.buildLineItem.count({ where: { workspaceId } }),
+      0,
+      "build line items should be gone"
+    );
+    assert.equal(
+      await prisma.buildLineAllocation.count({ where: { workspaceId } }),
+      0,
+      "build line allocations should be gone"
+    );
+    assert.equal(
+      await prisma.buildDesignatorAssignment.count({ where: { workspaceId } }),
+      0,
+      "build designator assignments should be gone"
+    );
+    assert.equal(await prisma.design.count({ where: { workspaceId } }), 0, "designs should be gone");
+    assert.equal(await prisma.part.count({ where: { workspaceId } }), 0, "parts should be gone");
+    assert.equal(await prisma.storageLocation.count({ where: { workspaceId } }), 0, "locations should be gone");
   });
 
   test("wipe on empty workspace is a no-op (no throw, workspace intact)", async () => {
