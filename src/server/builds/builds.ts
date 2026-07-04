@@ -123,6 +123,19 @@ export type BuildUnitDetail = {
   designators: BuildUnitDesignatorDetail[];
 };
 
+/**
+ * One allocation entry that no longer clears the stock guards `startBuild` will enforce, because
+ * stock moved after the build was allocated (e.g. another build reserved the same part/location).
+ */
+export type BuildAllocationWarning = {
+  lineItemId: string;
+  partId: string;
+  partCatalogNumber: string;
+  sourceLocation: BuildLocationRef | null;
+  requiredQuantity: number;
+  reason: "insufficient-available-stock" | "insufficient-location-stock";
+};
+
 export type BuildDetail = {
   id: string;
   designName: string;
@@ -139,6 +152,8 @@ export type BuildDetail = {
   locations: StorageLocationListItem[];
   lines: BuildLineDetail[];
   units: BuildUnitDetail[];
+  /** Only populated while `state === "ALLOCATED"`; see {@link getAllocationWarnings}. */
+  allocationWarnings: BuildAllocationWarning[];
 };
 
 type ActionResult<T> = { ok: true; data: T } | { ok: false; error: string };
@@ -384,6 +399,11 @@ export async function getBuildDetail({
       return { unitIndex, status, designators };
     });
 
+  const allocationWarnings =
+    build.state === "ALLOCATED"
+      ? await getAllocationWarnings(workspaceId, build.lineItems, withPath)
+      : [];
+
   return {
     id: build.id,
     designName: build.designRevision.design.name,
@@ -439,8 +459,90 @@ export async function getBuildDetail({
           balances: balancesByPart.get(partId) ?? []
         }))
       };
-    })
+    }),
+    allocationWarnings
   };
+}
+
+/**
+ * Re-check an `ALLOCATED` build's allocation entries against *current* stock, mirroring
+ * `startBuild`'s hard guards (ADR 0021/0023) but read-only: part-level availability
+ * (`currentStock − reservedQty`, aggregated across the build's own entries for that part) and
+ * per-(part, source location) physical balance. Stock can move between allocation and start (e.g.
+ * another build reserves the same part), so this surfaces the mismatch on the detail view instead
+ * of only failing at `startBuild`.
+ */
+async function getAllocationWarnings(
+  workspaceId: string,
+  lineItems: {
+    id: string;
+    allocations: {
+      quantity: number;
+      part: { id: string; catalogNumber: string; currentStock: Prisma.Decimal; reservedQty: Prisma.Decimal };
+      sourceLocation: { id: string; name: string } | null;
+    }[];
+  }[],
+  withPath: (location: { id: string; name: string } | null) => BuildLocationRef | null
+): Promise<BuildAllocationWarning[]> {
+  const transitionLines = lineItems.map((line) => ({
+    id: line.id,
+    designators: "",
+    designatorCount: 0,
+    allocations: line.allocations.map((a) => ({
+      partId: a.part.id,
+      sourceLocationId: a.sourceLocation?.id ?? null,
+      quantity: a.quantity
+    }))
+  }));
+  const requiredByPart = buildRequirements({ state: "ALLOCATED", targetQuantity: 0, lines: transitionLines });
+  const requiredByPartLocation = requirementsByPartLocation({
+    state: "ALLOCATED",
+    targetQuantity: 0,
+    lines: transitionLines
+  });
+
+  const partById = new Map(lineItems.flatMap((line) => line.allocations.map((a) => [a.part.id, a.part])));
+
+  const shortPartIds = new Set<string>();
+  for (const [partId, required] of requiredByPart) {
+    const part = partById.get(partId);
+    if (!part) continue;
+    const available = new Prisma.Decimal(part.currentStock).minus(part.reservedQty);
+    if (available.lessThan(required)) shortPartIds.add(partId);
+  }
+
+  const shortLocationKeys = new Set<string>();
+  const balancesByPart = new Map<string, Awaited<ReturnType<typeof getPartLocationBalances>>>();
+  for (const [key, required] of requiredByPartLocation) {
+    const { partId, locationId } = splitPartLocationKey(key);
+    let balances = balancesByPart.get(partId);
+    if (!balances) {
+      balances = await getPartLocationBalances({ workspaceId, partId });
+      balancesByPart.set(partId, balances);
+    }
+    const balance = balances.get(locationId) ?? new Prisma.Decimal(0);
+    if (balance.lessThan(required)) shortLocationKeys.add(key);
+  }
+
+  const warnings: BuildAllocationWarning[] = [];
+  for (const line of lineItems) {
+    for (const allocation of line.allocations) {
+      const insufficientPart = shortPartIds.has(allocation.part.id);
+      const insufficientLocation = allocation.sourceLocation
+        ? shortLocationKeys.has(partLocationKey(allocation.part.id, allocation.sourceLocation.id))
+        : false;
+      if (!insufficientPart && !insufficientLocation) continue;
+      warnings.push({
+        lineItemId: line.id,
+        partId: allocation.part.id,
+        partCatalogNumber: allocation.part.catalogNumber,
+        sourceLocation: withPath(allocation.sourceLocation),
+        requiredQuantity: allocation.quantity,
+        reason: insufficientPart ? "insufficient-available-stock" : "insufficient-location-stock"
+      });
+    }
+  }
+  return warnings;
 }
 
 /**

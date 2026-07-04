@@ -74,6 +74,14 @@ and your changes are saved. Choose **Allocate** to move the build to the **Alloc
 change an allocation afterwards, choose **Reopen** to return to
 **Created**.
 
+Because allocation is a soft, informational hold, stock can still move after a build is
+**Allocated** — for example another build reserves the same part, or someone transfers stock out
+of the chosen source location. Opening an **Allocated** build re-checks its allocation against
+current stock and shows a warning banner naming the affected part(s)/location(s) when the plan no
+longer holds. The warning is informational only; it does not block **Start**, but starting will
+still fail with the same guard described below until the allocation is fixed (via **Reopen**) or
+stock is restored.
+
 ## Starting a build
 
 From **Allocated**, choose **Start**. A build can only start when:

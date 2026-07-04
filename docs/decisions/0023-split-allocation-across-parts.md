@@ -138,3 +138,8 @@ that covers that pair's aggregated requirement.
   end-to-end split, per-unit split, and reassignment behavior are covered in
   `tests/integration/builds.test.ts`.
 - Shortage analysis remains out of scope (refs #9).
+- Because allocation is soft, stock can still move between `markBuildAllocated` and `startBuild`
+  (e.g. another build reserves the same part). `getBuildDetail` re-runs `startBuild`'s two guards
+  read-only for an `ALLOCATED` build and returns any failing entries as `allocationWarnings`, so the
+  build detail view can surface the mismatch before the user hits it at `startBuild` (#171). This is
+  informational only — `startBuild`'s guards remain the actual enforcement point.

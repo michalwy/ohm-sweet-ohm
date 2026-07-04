@@ -17,6 +17,7 @@ import {
   assembleDesignator,
   cancelBuild,
   createBuild,
+  getBuildDetail,
   markBuildAllocated,
   reassignDesignatorAssignment,
   setBuildAllocations,
@@ -919,6 +920,64 @@ describe("build flow", () => {
     });
     assert.equal(started.ok, false);
     if (!started.ok) assert.equal(started.error, "insufficient-location-stock");
+  });
+
+  test("getBuildDetail flags an ALLOCATED build whose available stock dropped since allocation", async () => {
+    const scenario = await createScenario(uniqueSuffix(), { stockAtSource: "6" });
+    const { buildId, lineId } = await createAndAllocateBuild(scenario, 2); // requires 6
+    await markBuildAllocated({ userId: scenario.userId, workspaceId: scenario.workspaceId, buildId });
+
+    const beforeDetail = await getBuildDetail({
+      userId: scenario.userId,
+      workspaceId: scenario.workspaceId,
+      buildId
+    });
+    assert.equal(beforeDetail?.allocationWarnings.length, 0);
+
+    await createInventoryEntry({
+      workspaceId: scenario.workspaceId,
+      partId: scenario.buildLinePartId,
+      entryType: "ISSUE",
+      quantity: "3",
+      fromLocationId: scenario.sourceLocationId
+    });
+
+    const detail = await getBuildDetail({
+      userId: scenario.userId,
+      workspaceId: scenario.workspaceId,
+      buildId
+    });
+    assert.equal(detail?.allocationWarnings.length, 1);
+    assert.equal(detail?.allocationWarnings[0]?.lineItemId, lineId);
+    assert.equal(detail?.allocationWarnings[0]?.partId, scenario.buildLinePartId);
+    assert.equal(detail?.allocationWarnings[0]?.reason, "insufficient-available-stock");
+
+    // The build is still allocated, not reserved — the warning does not itself change stock.
+    const component = await partStock(scenario.workspaceId, scenario.buildLinePartId);
+    assert.equal(component.reservedQty, "0");
+  });
+
+  test("getBuildDetail flags an ALLOCATED build whose source-location balance dropped since allocation", async () => {
+    const scenario = await createScenario(uniqueSuffix(), { stockAtSource: "6" });
+    const { buildId } = await createAndAllocateBuild(scenario, 2); // requires 6 at source
+    await markBuildAllocated({ userId: scenario.userId, workspaceId: scenario.workspaceId, buildId });
+
+    await createInventoryEntry({
+      workspaceId: scenario.workspaceId,
+      partId: scenario.buildLinePartId,
+      entryType: "TRANSFER",
+      quantity: "3",
+      fromLocationId: scenario.sourceLocationId,
+      toLocationId: scenario.secondLocationId
+    });
+
+    const detail = await getBuildDetail({
+      userId: scenario.userId,
+      workspaceId: scenario.workspaceId,
+      buildId
+    });
+    assert.equal(detail?.allocationWarnings.length, 1);
+    assert.equal(detail?.allocationWarnings[0]?.reason, "insufficient-location-stock");
   });
 
   test("cancel from started releases reservation without reversing assembled parts", async () => {

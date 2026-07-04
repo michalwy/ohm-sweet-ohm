@@ -127,6 +127,9 @@ export type BuildsCopy = {
   notFullyAllocated: string;
   insufficientAvailableStock: string;
   insufficientLocationStock: string;
+  allocationWarningHeading: string;
+  allocationWarningPart: string;
+  allocationWarningPartLocation: string;
   outputLocationRequired: string;
   chooseLocation: string;
   searchLocations: string;
@@ -971,6 +974,26 @@ function BuildDetailContent({
           </div>
         </div>
       </section>
+
+      {detail.state === "ALLOCATED" && detail.allocationWarnings.length > 0 && (
+        <div className="rounded-md border border-[var(--color-warning)] bg-[var(--color-warning-soft)] px-3 py-2 text-sm text-[var(--color-warning)]">
+          <p className="font-semibold">{copy.allocationWarningHeading}</p>
+          <ul className="mt-1 list-disc pl-5">
+            {detail.allocationWarnings.map((warning, index) => (
+              <li key={`${warning.lineItemId}-${warning.partId}-${index}`}>
+                {warning.reason === "insufficient-available-stock"
+                  ? copy.allocationWarningPart
+                      .replace("{part}", warning.partCatalogNumber)
+                      .replace("{quantity}", String(warning.requiredQuantity))
+                  : copy.allocationWarningPartLocation
+                      .replace("{part}", warning.partCatalogNumber)
+                      .replace("{location}", warning.sourceLocation?.path ?? "")
+                      .replace("{quantity}", String(warning.requiredQuantity))}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       {canWrite && (
         <section className="flex flex-wrap gap-2">
