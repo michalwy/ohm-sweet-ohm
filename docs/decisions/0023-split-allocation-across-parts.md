@@ -151,3 +151,11 @@ that covers that pair's aggregated requirement.
   This only changes what is displayed/suggested; the write-path guards (`setBuildLineAllocations`,
   `setBuildAllocations`, `startBuild`) still check the raw physical balance, per line's own siblings
   netted out, unchanged.
+- A `TRANSFER` inventory entry is the one write path that moves physical stock without going
+  through those build guards, so it could previously drain a location below its held reservation
+  (#178): the reservation's `sourceLocationId` stayed at the now-empty source, making that
+  location's available quantity go negative. `createInventoryEntry` now computes, for a transfer,
+  how much of the moved quantity dips into the source location's reservation and relocates that
+  many of the oldest not-yet-assembled `BuildDesignatorAssignment` rows to the destination location
+  in the same transaction — the reservation follows the stock it was holding, and the source's
+  available quantity never drops below zero.

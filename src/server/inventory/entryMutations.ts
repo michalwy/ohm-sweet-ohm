@@ -89,6 +89,16 @@ export async function createInventoryEntryWithinTx(
       toLocationId: locations.toLocationId
     });
 
+    const reservationUnitsToRelocate =
+      input.entryType === "TRANSFER" && locations.fromLocationId
+        ? await computeReservationUnitsToRelocate(tx, {
+            workspaceId: input.workspaceId,
+            partId: input.partId,
+            locationId: locations.fromLocationId,
+            transferQuantity: quantity
+          })
+        : 0;
+
     const entry = await tx.inventoryEntry.create({
       data: {
         workspaceId: input.workspaceId,
@@ -105,6 +115,16 @@ export async function createInventoryEntryWithinTx(
         unitGrossCostPrimary: input.unitGrossCostPrimary ?? null
       }
     });
+
+    if (reservationUnitsToRelocate > 0 && locations.fromLocationId && locations.toLocationId) {
+      await relocateReservationsForTransfer(tx, {
+        workspaceId: input.workspaceId,
+        partId: input.partId,
+        fromLocationId: locations.fromLocationId,
+        toLocationId: locations.toLocationId,
+        unitsToRelocate: reservationUnitsToRelocate
+      });
+    }
 
     const isReceipt = input.entryType === "RECEIPT";
     const stockBefore = new Prisma.Decimal(part.currentStock);
@@ -455,6 +475,77 @@ async function getReservedQuantitiesByLocationWithDb(
     }
   }
   return reserved;
+}
+
+/**
+ * A transfer that dips into stock already held by a hard reservation (a started build's
+ * not-yet-assembled `BuildDesignatorAssignment` rows) would otherwise leave that reservation
+ * pointing at a location with no physical stock left to cover it, producing negative available
+ * quantity there. Compute how many reserved units the transfer must carry along with it so the
+ * source location's available quantity never drops below zero.
+ */
+async function computeReservationUnitsToRelocate(
+  db: Prisma.TransactionClient,
+  input: {
+    workspaceId: string;
+    partId: string;
+    locationId: string;
+    transferQuantity: Prisma.Decimal;
+  }
+) {
+  const [balances, reservedByLocation] = await Promise.all([
+    getPartLocationBalancesWithDb(db, input),
+    getReservedQuantitiesByLocationWithDb(db, input)
+  ]);
+
+  const balance = balances.get(input.locationId) ?? new Prisma.Decimal(0);
+  const reserved = reservedByLocation.get(input.locationId) ?? new Prisma.Decimal(0);
+  const available = balance.minus(reserved);
+  const deficit = input.transferQuantity.minus(available);
+
+  if (deficit.lessThanOrEqualTo(0)) {
+    return 0;
+  }
+
+  const unitsToRelocate = deficit.greaterThan(reserved) ? reserved : deficit;
+  return unitsToRelocate.ceil().toNumber();
+}
+
+/**
+ * Moves the oldest not-yet-assembled reservations at `fromLocationId` onto `toLocationId` so a
+ * transfer that consumed reserved stock keeps the build's future assembly sourcing correct.
+ */
+async function relocateReservationsForTransfer(
+  db: Prisma.TransactionClient,
+  input: {
+    workspaceId: string;
+    partId: string;
+    fromLocationId: string;
+    toLocationId: string;
+    unitsToRelocate: number;
+  }
+) {
+  const assignments = await db.buildDesignatorAssignment.findMany({
+    where: {
+      workspaceId: input.workspaceId,
+      partId: input.partId,
+      sourceLocationId: input.fromLocationId,
+      assembled: false,
+      buildLineItem: { build: { state: { in: ["STARTED", "IN_PROGRESS"] } } }
+    },
+    select: { id: true },
+    orderBy: { createdAt: "asc" },
+    take: input.unitsToRelocate
+  });
+
+  if (assignments.length === 0) {
+    return;
+  }
+
+  await db.buildDesignatorAssignment.updateMany({
+    where: { id: { in: assignments.map((assignment) => assignment.id) } },
+    data: { sourceLocationId: input.toLocationId }
+  });
 }
 
 function addBalance(

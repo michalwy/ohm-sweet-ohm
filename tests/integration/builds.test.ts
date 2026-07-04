@@ -926,6 +926,55 @@ describe("build flow", () => {
     if (!started.ok) assert.equal(started.error, "insufficient-location-stock");
   });
 
+  test("transfer after start carries reserved units along so source available never goes negative", async () => {
+    // Start reserves 3 of the 6 units at the source (targetQuantity 1 × 3 designators). Transferring
+    // 5 of the 6 units away dips 2 units into the reservation, so 2 of the 3 reserved designator
+    // assignments must relocate to the destination, leaving the source with 1 unreserved unit.
+    const scenario = await createScenario(uniqueSuffix(), { stockAtSource: "6" });
+    const { buildId } = await createAndAllocateBuild(scenario, 1); // requires 3 at source
+    await markBuildAllocated({ userId: scenario.userId, workspaceId: scenario.workspaceId, buildId });
+    const started = await startBuild({
+      userId: scenario.userId,
+      workspaceId: scenario.workspaceId,
+      buildId
+    });
+    assert.ok(started.ok, JSON.stringify(started));
+
+    await createInventoryEntry({
+      workspaceId: scenario.workspaceId,
+      partId: scenario.buildLinePartId,
+      entryType: "TRANSFER",
+      quantity: "5",
+      fromLocationId: scenario.sourceLocationId,
+      toLocationId: scenario.secondLocationId
+    });
+
+    const available = await getPartLocationAvailableBalances({
+      workspaceId: scenario.workspaceId,
+      partId: scenario.buildLinePartId
+    });
+    assert.equal(available.get(scenario.sourceLocationId)?.toString(), "0", "source available never negative");
+    assert.equal(available.get(scenario.secondLocationId)?.toString(), "3");
+
+    const balances = await getPartLocationBalances({
+      workspaceId: scenario.workspaceId,
+      partId: scenario.buildLinePartId
+    });
+    assert.equal(balances.get(scenario.sourceLocationId)?.toString(), "1");
+    assert.equal(balances.get(scenario.secondLocationId)?.toString(), "5");
+
+    const assignmentsBySource = await prisma.buildDesignatorAssignment.groupBy({
+      by: ["sourceLocationId"],
+      where: { buildLineItem: { buildId }, assembled: false },
+      _count: { _all: true }
+    });
+    const countByLocation = new Map(
+      assignmentsBySource.map((row) => [row.sourceLocationId, row._count._all])
+    );
+    assert.equal(countByLocation.get(scenario.sourceLocationId), 1, "one reservation stays at source");
+    assert.equal(countByLocation.get(scenario.secondLocationId), 2, "two reservations relocate with the transfer");
+  });
+
   test("getBuildDetail flags an ALLOCATED build whose available stock dropped since allocation", async () => {
     const scenario = await createScenario(uniqueSuffix(), { stockAtSource: "6" });
     const { buildId, lineId } = await createAndAllocateBuild(scenario, 2); // requires 6
