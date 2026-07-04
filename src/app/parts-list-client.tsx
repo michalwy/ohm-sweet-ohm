@@ -205,6 +205,7 @@ type Copy = {
   transfer: string;
   adjustment: string;
   noLocations: string;
+  noStock: string;
   noBalances: string;
   currentStock: string;
   stockSaved: string;
@@ -970,6 +971,7 @@ export function PartsListClient({
     );
 
     return (selectedPartBalancesQuery.data ?? [])
+      .filter((row) => Number(row.quantity) !== 0)
       .map((row) => ({
         locationId: row.locationId,
         locationName: locationNameById.get(row.locationId) ?? row.locationId,
@@ -1561,7 +1563,7 @@ export function PartsListClient({
                     </p>
                   ) : selectedPartLocationRows.length === 0 ? (
                     <p className="rounded-md border border-[var(--color-border)] bg-[var(--color-bg-subtle)] px-3 py-2 text-sm text-[var(--color-text-secondary)]">
-                      {copy.noLocations}
+                      {copy.noStock}
                     </p>
                   ) : (
                     <div className="overflow-hidden rounded-md border border-[var(--color-border)]">

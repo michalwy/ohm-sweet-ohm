@@ -146,6 +146,7 @@ const copy = {
   transfer: "Transfer",
   adjustment: "Adjustment",
   noLocations: "No assignable locations available.",
+  noStock: "This part has no stock at any location.",
   noBalances: "No stock recorded yet.",
   currentStock: "Current stock by location",
   stockSaved: "Stock movement saved",
