@@ -1479,6 +1479,32 @@ function AllocationEditor({
     return blank;
   }
 
+  // When the user repicks a part on an existing entry, suggest the best-stocked location for that
+  // part (same "most remaining stock" rule as suggestNextEntry) instead of leaving it unassigned,
+  // net of what this line's other entries already draw from each location.
+  function suggestLocationForPart(partId: string, index: number): string | null {
+    const usedByPartLocation = new Map<string, number>();
+    entries.forEach((e, i) => {
+      if (i === index || e.partId !== partId || !e.sourceLocationId) return;
+      const qty = Number.parseInt(e.quantity, 10) || 0;
+      const key = `${e.partId}::${e.sourceLocationId}`;
+      usedByPartLocation.set(key, (usedByPartLocation.get(key) ?? 0) + qty);
+    });
+
+    const best = (balancesByPart.get(partId) ?? [])
+      .map((balance) => {
+        const key = `${partId}::${balance.locationId}`;
+        return {
+          locationId: balance.locationId,
+          remaining: (balanceByPartLocation.get(key) ?? 0) - (usedByPartLocation.get(key) ?? 0)
+        };
+      })
+      .sort((a, b) => b.remaining - a.remaining)
+      .find((location) => location.remaining > 0);
+
+    return best?.locationId ?? null;
+  }
+
   return (
     <div className="grid gap-2">
       {entries.length > 0 && (
@@ -1503,7 +1529,9 @@ function AllocationEditor({
               availableLabel={copy.available}
               noOptionsLabel={copy.noAvailableParts}
               invalid={overPart}
-              onChange={(partId) => update(index, { partId, sourceLocationId: null })}
+              onChange={(partId) =>
+                update(index, { partId, sourceLocationId: partId ? suggestLocationForPart(partId, index) : null })
+              }
             />
             <LocationTreeSelect
               locations={narrowed.items}
