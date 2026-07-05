@@ -165,7 +165,7 @@ jobs:
 
       - name: Compute image tags and labels
         id: meta
-        uses: docker/metadata-action@v6.1.0
+        uses: docker/metadata-action@v6.2.0
         with:
           images: ${{ env.IMAGE_NAME }}
           # latest=true tags the release as :latest (deployments track :latest).
