@@ -73,6 +73,21 @@ function roundDisplay(n: number): string {
   return n.toFixed(2);
 }
 
+function getEffectiveTaxRate(
+  itemTaxRate: string | null | undefined,
+  orderTaxRate: string | null | undefined,
+  orderSupplierDefaultTaxRate: string | null | undefined,
+  workspaceDefaultTaxRate: string | null | undefined
+): number {
+  return (
+    parseFloat(itemTaxRate ?? "") ||
+    parseFloat(orderTaxRate ?? "") ||
+    parseFloat(orderSupplierDefaultTaxRate ?? "") ||
+    parseFloat(workspaceDefaultTaxRate ?? "") ||
+    0
+  );
+}
+
 type InlinePriceSaveVars = {
   workspaceSlug: string;
   orderId: string;
@@ -117,12 +132,12 @@ function InlinePriceCell({
   const inputRef = useRef<HTMLInputElement>(null);
   const cancelledRef = useRef(false);
 
-  const effectiveTaxRate =
-    parseFloat(item.taxRate ?? "") ||
-    parseFloat(orderTaxRate ?? "") ||
-    parseFloat(orderSupplierDefaultTaxRate ?? "") ||
-    parseFloat(workspaceDefaultTaxRate ?? "") ||
-    0;
+  const effectiveTaxRate = getEffectiveTaxRate(
+    item.taxRate,
+    orderTaxRate,
+    orderSupplierDefaultTaxRate,
+    workspaceDefaultTaxRate
+  );
 
   const displayPrice =
     item.unitPrice != null
@@ -1475,9 +1490,18 @@ export function PurchaseOrdersClient({
                               noAttributeLabel={copy.noAttribute}
                             />
                             <td className="px-3 py-2 text-right text-[var(--color-text-muted)] whitespace-nowrap">
-                              {item.taxRate != null && item.taxRate !== ""
-                                ? `${item.taxRate}%`
-                                : copy.noAttribute}
+                              {(() => {
+                                const isExplicit = item.taxRate != null && item.taxRate !== "";
+                                const rate = isExplicit
+                                  ? item.taxRate
+                                  : getEffectiveTaxRate(
+                                      item.taxRate,
+                                      detail?.taxRate,
+                                      detail?.supplierDefaultTaxRate,
+                                      workspaceDefaultTaxRate
+                                    );
+                                return `${rate}%`;
+                              })()}
                             </td>
                             <td className="px-3 py-2 text-right font-mono text-[var(--color-text-secondary)] whitespace-nowrap">
                               {(() => {
