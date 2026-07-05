@@ -166,6 +166,9 @@ type ShoppingListsClientProps = {
   initialSelectedListId?: string;
   initialPinnedListId?: string;
   workspaceSlug: string;
+  primaryCurrency: string;
+  workspaceDefaultPriceEntryMode?: "net" | "gross";
+  workspaceDefaultTaxRate?: string | null;
 };
 
 const columnHelper = createColumnHelper<ShoppingListSummary>();
@@ -178,7 +181,10 @@ export function ShoppingListsClient({
   initialPage,
   initialSelectedListId,
   initialPinnedListId,
-  workspaceSlug
+  workspaceSlug,
+  primaryCurrency,
+  workspaceDefaultPriceEntryMode = "net",
+  workspaceDefaultTaxRate = null
 }: ShoppingListsClientProps) {
   const queryClient = useQueryClient();
 
@@ -1249,6 +1255,9 @@ export function ShoppingListsClient({
         dialogRef={createPODialogRef}
         isOpen={createPODialogOpen}
         workspaceSlug={workspaceSlug}
+        primaryCurrency={primaryCurrency}
+        workspaceDefaultPriceEntryMode={workspaceDefaultPriceEntryMode}
+        workspaceDefaultTaxRate={workspaceDefaultTaxRate}
         copy={{
           title: copy.newOrderTitle,
           supplier: copy.supplier,

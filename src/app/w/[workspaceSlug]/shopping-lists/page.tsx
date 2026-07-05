@@ -223,6 +223,11 @@ export default async function ShoppingListsPage({
         initialSelectedListId={resolvedSearchParams?.selectedListId}
         initialPinnedListId={resolvedSearchParams?.pinnedId}
         workspaceSlug={workspaceSlug}
+        primaryCurrency={context.workspace.primaryCurrency}
+        workspaceDefaultPriceEntryMode={
+          (context.workspace.defaultPriceEntryMode as "net" | "gross") ?? "net"
+        }
+        workspaceDefaultTaxRate={context.workspace.defaultTaxRate?.toString() ?? null}
       />
     </WorkspaceShell>
   );
