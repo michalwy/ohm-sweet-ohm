@@ -99,6 +99,32 @@ describe("demo preset seeding", () => {
     assert.ok(partCount >= 200, `Expected ≥200 parts, got ${partCount}`);
   });
 
+  test("purchase order items contribute to plannedQty/onOrderQty like the app flow does", async () => {
+    const suffix = uniqueSuffix();
+    const { workspace, unitId } = await createTestWorkspace(suffix);
+    const wid = workspace.id;
+
+    await applyDemoPreset(prisma, wid, unitId, "parts-and-orders", DEMO_PRESET_FIXTURE);
+
+    // SRR1005-101Y (qty 20) is only referenced by the DRAFT "tme" order in the fixture.
+    const draftPart = await prisma.part.findFirst({
+      where: { workspaceId: wid, catalogNumber: "SRR1005-101Y" },
+      select: { plannedQty: true, onOrderQty: true }
+    });
+    assert.ok(draftPart, "Expected to find SRR1005-101Y");
+    assert.equal(Number(draftPart.plannedQty), 20, "Expected DRAFT item quantity reflected in plannedQty");
+    assert.equal(Number(draftPart.onOrderQty), 0, "DRAFT item should not affect onOrderQty");
+
+    // ATMEGA328P-AU (qty 10) is only referenced by the ORDERED "digikey" order in the fixture.
+    const orderedPart = await prisma.part.findFirst({
+      where: { workspaceId: wid, catalogNumber: "ATMEGA328P-AU" },
+      select: { plannedQty: true, onOrderQty: true }
+    });
+    assert.ok(orderedPart, "Expected to find ATMEGA328P-AU");
+    assert.equal(Number(orderedPart.onOrderQty), 10, "Expected ORDERED item quantity reflected in onOrderQty");
+    assert.equal(Number(orderedPart.plannedQty), 0, "ORDERED item should not affect plannedQty");
+  });
+
   test("parts-only preset creates designs with BOM line items", async () => {
     const suffix = uniqueSuffix();
     const { workspace, unitId } = await createTestWorkspace(suffix);

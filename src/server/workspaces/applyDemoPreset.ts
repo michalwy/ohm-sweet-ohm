@@ -474,6 +474,20 @@ export async function applyDemoPreset(
           }
         });
 
+        // Mirror the plannedQty/onOrderQty side effects that createPurchaseOrderItem/markOrdered
+        // apply on the normal creation path, since the fixture bulk-inserts items directly.
+        if (po.status === "DRAFT") {
+          await prisma.part.update({
+            where: { id: partId },
+            data: { plannedQty: { increment: item.quantity } }
+          });
+        } else if (po.status === "ORDERED") {
+          await prisma.part.update({
+            where: { id: partId },
+            data: { onOrderQty: { increment: item.quantity } }
+          });
+        }
+
         // For received POs, create inventory entries and update stock + avg cost
         if (po.status === "RECEIVED" && item.locationKey) {
           const locationId = locationIdByKey.get(item.locationKey);
