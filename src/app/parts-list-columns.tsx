@@ -43,6 +43,7 @@ export type PartsListColumnsCopy = PartsListCategoriesCopy & {
   available: string;
   planned: string;
   onOrder: string;
+  inProduction: string;
   avgNetCost: string;
   avgGrossCost: string;
   defaultLocation: string;
@@ -100,6 +101,7 @@ type BuildColumnDefsOpts = {
     | "available"
     | "planned"
     | "onOrder"
+    | "inProduction"
     | "avgNetCost"
     | "avgGrossCost"
     | "defaultLocation"
@@ -107,6 +109,7 @@ type BuildColumnDefsOpts = {
   canReadInventory: boolean;
   canReadShoppingLists: boolean;
   canReadPurchaseOrders: boolean;
+  canReadBuilds: boolean;
   workspaceAttributes: AttributeListItem[];
 };
 
@@ -115,6 +118,7 @@ export function buildPartsListColumnDefs({
   canReadInventory,
   canReadShoppingLists,
   canReadPurchaseOrders,
+  canReadBuilds,
   workspaceAttributes
 }: BuildColumnDefsOpts): ListColumnDefinition[] {
   const attributeColumnDefs: ListColumnDefinition[] = workspaceAttributes.map(
@@ -271,6 +275,20 @@ export function buildPartsListColumnDefs({
           }
         ]
       : []),
+    ...(canReadBuilds
+      ? [
+          {
+            id: "inProductionQuantity",
+            label: copy.inProduction,
+            group: "base" as const,
+            defaultVisible: false,
+            defaultWidth: 120,
+            minWidth: 72,
+            sortable: true,
+            align: "right" as const
+          }
+        ]
+      : []),
     {
       id: "defaultLocationName",
       label: copy.defaultLocation,
@@ -292,6 +310,7 @@ type CommonOpts = {
   canReadInventory: boolean;
   canReadShoppingLists: boolean;
   canReadPurchaseOrders: boolean;
+  canReadBuilds: boolean;
   workspaceAttributes: AttributeListItem[];
 };
 
@@ -322,6 +341,7 @@ export function buildPartsListColumns(
     canReadInventory,
     canReadShoppingLists,
     canReadPurchaseOrders,
+    canReadBuilds,
     workspaceAttributes
   } = opts;
 
@@ -615,6 +635,31 @@ export function buildPartsListColumns(
                 <span className="block text-right font-mono text-[var(--color-text-secondary)]">
                   {value}
                 </span>
+              ) : (
+                <span className="block text-right"><EmptyCell /></span>
+              );
+            }
+          })
+        ]
+      : []),
+    ...(canReadBuilds
+      ? [
+          columnHelper.accessor("inProductionQuantity", {
+            header: () => (
+              <span className="block w-full text-right">{copy.inProduction}</span>
+            ),
+            size: 120,
+            minSize: 72,
+            sortingFn: (rowA, rowB) =>
+              compareNumericDisplayValues(
+                rowA.original.inProductionQuantity ?? "",
+                rowB.original.inProductionQuantity ?? ""
+              ),
+            cell: ({ getValue }) => {
+              const value = nonZeroQuantity(getValue());
+
+              return value ? (
+                <span className="block text-right text-[var(--color-text-primary)]">{value}</span>
               ) : (
                 <span className="block text-right"><EmptyCell /></span>
               );

@@ -14,10 +14,11 @@ You can also:
 - configure visible columns in the list
 - scroll through large datasets with endless loading
 
-Two optional columns can be enabled via **Configure list**:
+Several optional columns can be enabled via **Configure list**:
 
-- **Planned** — total quantity of this part currently on shopping lists (items not yet linked to a purchase order) plus any direct draft purchase order line items (added to a PO without originating from a shopping list). Requires Shopping Lists read access. Hidden by default.
+- **Planned** — total quantity of this part currently on shopping lists (items not yet linked to a purchase order), any direct draft purchase order line items (added to a PO without originating from a shopping list), and — for a Design's output part — the target quantity of any builds in the Allocated state (planned to be produced but not yet started). Requires Shopping Lists read access. Hidden by default.
 - **On order** — total quantity in purchase orders that have been submitted to a supplier and are awaiting receipt. Requires Purchase Orders read access. Hidden by default.
+- **In production** — for a Design's output part, the total quantity currently being assembled across active builds (builds in Started or In Progress state). Requires Builds read access. Hidden by default.
 
 Both columns support sorting with cursor-based pagination so they work efficiently across large datasets.
 

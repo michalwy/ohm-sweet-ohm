@@ -56,6 +56,31 @@ mirroring the existing `plannedQty`/`onOrderQty` pattern, with matching descendi
 indexes. They are maintained transactionally by build transitions under the existing
 `SELECT … FOR UPDATE` part-row lock.
 
+### Planned and in-production quantity (output part)
+
+> **Extended by #184.** A Design's output part carries its own denormalized `inProductionQty`,
+> analogous to `onOrderQty` but for stock currently being produced in-house rather than
+> incoming from a supplier. `allocated` builds additionally feed the existing `plannedQty`.
+
+`Part.inProductionQty` = sum of `targetQuantity` across all builds where that part is the
+output (`build.designRevision.design.outputPartId`) and `build.state` is `started` or
+`in_progress` — the hard-reservation window, when stock has actually started being consumed.
+Since a build's output is received in one shot at `completed` (no partial receipt as designators
+are assembled), `inProductionQty` for an active build is always its full `targetQuantity`, never
+partially reduced.
+
+An `allocated` build is a softer commitment: it doesn't yet hold a hard reservation, but it is
+still a plan to produce the output part, so its `targetQuantity` counts toward the output part's
+existing `plannedQty` instead (the same field shopping lists and draft PO items feed). Moving
+`allocated → started` shifts the quantity from `plannedQty` to `inProductionQty`; reopening back
+to `created`, or cancelling from `allocated`, releases `plannedQty`; cancelling from
+`started`/`in_progress` releases `inProductionQty`.
+
+It is maintained the same way as `allocatedQty`/`reservedQty`: incremented on `started`,
+decremented on `completed` (alongside the `RECEIPT` of the output part) and on `cancelled` from
+`started`/`in_progress`. Like `onOrderQty` and `plannedQty`, it is purely informational and does
+**not** reduce `availableQty`.
+
 ### Data model
 
 ```prisma

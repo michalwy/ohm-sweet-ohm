@@ -32,6 +32,7 @@ export type PartPickerCopy = PartsListFiltersCopy &
     | "available"
     | "planned"
     | "onOrder"
+    | "inProduction"
     | "avgNetCost"
     | "avgGrossCost"
     | "defaultLocation"
@@ -122,6 +123,7 @@ export function PartPickerListModal({
         canReadInventory,
         canReadShoppingLists,
         canReadPurchaseOrders,
+        canReadBuilds: false,
         workspaceAttributes: []
       }),
     [canReadInventory, canReadShoppingLists, canReadPurchaseOrders, copy]
@@ -189,6 +191,7 @@ export function PartPickerListModal({
         canReadInventory,
         canReadShoppingLists,
         canReadPurchaseOrders,
+        canReadBuilds: false,
         workspaceAttributes: [],
         selectedPartIds,
         alreadyAddedPartIds,

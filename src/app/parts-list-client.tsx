@@ -170,6 +170,7 @@ type Copy = {
   available: string;
   planned: string;
   onOrder: string;
+  inProduction: string;
   avgNetCost: string;
   avgGrossCost: string;
   newPartTitle: string;
@@ -455,6 +456,7 @@ export function PartsListClient({
           available: copy.available,
           planned: copy.planned,
           onOrder: copy.onOrder,
+          inProduction: copy.inProduction,
           avgNetCost: copy.avgNetCost,
           avgGrossCost: copy.avgGrossCost,
           defaultLocation: copy.defaultLocation
@@ -462,9 +464,10 @@ export function PartsListClient({
         canReadInventory,
         canReadShoppingLists,
         canReadPurchaseOrders,
+        canReadBuilds,
         workspaceAttributes
       }),
-    [canReadInventory, canReadShoppingLists, canReadPurchaseOrders, copy, workspaceAttributes]
+    [canReadInventory, canReadShoppingLists, canReadPurchaseOrders, canReadBuilds, copy, workspaceAttributes]
   );
   const fixedListColumnIds = useMemo(() => ["actions"], []);
   const {
@@ -740,6 +743,7 @@ export function PartsListClient({
       available: copy.available,
       planned: copy.planned,
       onOrder: copy.onOrder,
+      inProduction: copy.inProduction,
       avgNetCost: copy.avgNetCost,
       avgGrossCost: copy.avgGrossCost,
       defaultLocation: copy.defaultLocation,
@@ -751,6 +755,7 @@ export function PartsListClient({
     canReadInventory,
     canReadShoppingLists,
     canReadPurchaseOrders,
+    canReadBuilds,
     workspaceAttributes,
     isDatabaseAvailable,
     isDeletePending: deletePartMutation.isPending,
@@ -764,6 +769,7 @@ export function PartsListClient({
     canReadInventory,
     canReadShoppingLists,
     canReadPurchaseOrders,
+    canReadBuilds,
     canWriteShoppingLists,
     canWritePurchaseOrders,
     copy,

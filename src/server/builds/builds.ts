@@ -957,12 +957,8 @@ async function getAllocationWarnings(
       quantity: a.quantity
     }))
   }));
-  const requiredByPart = buildRequirements({ state: "ALLOCATED", targetQuantity: 0, lines: transitionLines });
-  const requiredByPartLocation = requirementsByPartLocation({
-    state: "ALLOCATED",
-    targetQuantity: 0,
-    lines: transitionLines
-  });
+  const requiredByPart = buildRequirements({ lines: transitionLines });
+  const requiredByPartLocation = requirementsByPartLocation({ lines: transitionLines });
 
   const partById = new Map(lineItems.flatMap((line) => line.allocations.map((a) => [a.part.id, a.part])));
 
@@ -1603,6 +1599,13 @@ export async function markBuildAllocated({
         data: { allocatedQty: { increment: required } }
       });
     }
+    // The output part isn't necessarily among the consumed parts above: an ALLOCATED build is a
+    // soft commitment to produce it, so it now counts toward the output part's plannedQty too.
+    await lockParts(tx, workspaceId, [build.outputPartId]);
+    await tx.part.update({
+      where: { id: build.outputPartId },
+      data: { plannedQty: { increment: build.targetQuantity } }
+    });
     await tx.build.update({ where: { id: buildId }, data: { state: "ALLOCATED" } });
   });
 
@@ -1635,6 +1638,11 @@ export async function reopenBuild({
         data: { allocatedQty: { decrement: required } }
       });
     }
+    await lockParts(tx, workspaceId, [build.outputPartId]);
+    await tx.part.update({
+      where: { id: build.outputPartId },
+      data: { plannedQty: { decrement: build.targetQuantity } }
+    });
     await tx.build.update({ where: { id: buildId }, data: { state: "CREATED" } });
   });
 
@@ -1706,6 +1714,17 @@ export async function startBuild({
           }
         });
       }
+
+      // The output part isn't necessarily among the consumed parts above, so lock/update it
+      // separately: its targetQuantity moves from planned (soft, since ALLOCATED) to in-production.
+      await lockParts(tx, workspaceId, [build.outputPartId]);
+      await tx.part.update({
+        where: { id: build.outputPartId },
+        data: {
+          plannedQty: { decrement: build.targetQuantity },
+          inProductionQty: { increment: build.targetQuantity }
+        }
+      });
 
       // Distribute each line's allocation into per-designator, per-part assignment rows.
       for (const line of build.lines) {
@@ -1834,6 +1853,12 @@ async function checkBuildCompletionWithinTx(
     toLocationId: build.outputLocationId as string,
     note: `Build ${build.id} — output`,
     createdByUserId: userId
+  });
+  // Output part row is already locked by createInventoryEntryWithinTx above; this build no longer
+  // counts toward "in production" now that its full targetQuantity has been received.
+  await tx.part.update({
+    where: { id: build.designRevision.design.outputPartId },
+    data: { inProductionQty: { decrement: build.targetQuantity } }
   });
   await tx.build.update({
     where: { id: build.id },
@@ -2118,6 +2143,8 @@ export async function cancelBuild({
     select: {
       id: true,
       state: true,
+      targetQuantity: true,
+      designRevision: { select: { design: { select: { outputPartId: true } } } },
       lineItems: {
         select: {
           allocations: { select: { partId: true, quantity: true } },
@@ -2130,6 +2157,9 @@ export async function cancelBuild({
   if (!isCancellable(build.state as BuildState)) {
     return { ok: false, error: "invalid-build-transition" };
   }
+
+  const releasesInProduction = build.state === "STARTED" || build.state === "IN_PROGRESS";
+  const releasesPlanned = build.state === "ALLOCATED";
 
   // What remains reserved/allocated depends on the phase: before start the hold lives on the
   // allocation entries (`allocatedQty`); once started it lives on the un-assembled portion of the
@@ -2164,6 +2194,16 @@ export async function cancelBuild({
         });
       }
     }
+    if (releasesInProduction || releasesPlanned) {
+      // The output part may not be among the consumed parts above, so lock/update it separately.
+      await lockParts(tx, workspaceId, [build.designRevision.design.outputPartId]);
+      await tx.part.update({
+        where: { id: build.designRevision.design.outputPartId },
+        data: releasesInProduction
+          ? { inProductionQty: { decrement: build.targetQuantity } }
+          : { plannedQty: { decrement: build.targetQuantity } }
+      });
+    }
     await tx.build.update({
       where: { id: buildId },
       data: { state: "CANCELLED", cancelledAt: new Date() }
@@ -2180,6 +2220,7 @@ type TransitionAllocation = { partId: string; sourceLocationId: string | null; q
 type BuildForTransition = {
   state: BuildState;
   targetQuantity: number;
+  outputPartId: string;
   lines: { id: string; designators: string; designatorCount: number; allocations: TransitionAllocation[] }[];
 };
 
@@ -2192,6 +2233,7 @@ async function loadBuildForTransition(
     select: {
       state: true,
       targetQuantity: true,
+      designRevision: { select: { design: { select: { outputPartId: true } } } },
       lineItems: {
         select: {
           id: true,
@@ -2206,12 +2248,13 @@ async function loadBuildForTransition(
   return {
     state: build.state as BuildState,
     targetQuantity: build.targetQuantity,
+    outputPartId: build.designRevision.design.outputPartId,
     lines: build.lineItems
   };
 }
 
 /** A line is fully allocated when its entries cover the requirement and each has a source location. */
-function isFullyAllocated(build: BuildForTransition): boolean {
+function isFullyAllocated(build: Pick<BuildForTransition, "targetQuantity" | "lines">): boolean {
   return build.lines.every((line) => {
     const required = requiredUnits(line.designatorCount, build.targetQuantity);
     if (required === 0) return true;
@@ -2222,7 +2265,7 @@ function isFullyAllocated(build: BuildForTransition): boolean {
 }
 
 /** Per-part required quantity across all allocation entries. */
-function buildRequirements(build: BuildForTransition): Map<string, number> {
+function buildRequirements(build: Pick<BuildForTransition, "lines">): Map<string, number> {
   return aggregateRequirementsByPart(
     build.lines.flatMap((line) =>
       line.allocations.map((a) => ({ partId: a.partId, required: a.quantity }))
@@ -2231,7 +2274,7 @@ function buildRequirements(build: BuildForTransition): Map<string, number> {
 }
 
 /** Per-(part, location) required quantity across all allocation entries with a source location. */
-function requirementsByPartLocation(build: BuildForTransition): Map<string, number> {
+function requirementsByPartLocation(build: Pick<BuildForTransition, "lines">): Map<string, number> {
   const byKey = new Map<string, number>();
   for (const line of build.lines) {
     for (const allocation of line.allocations) {

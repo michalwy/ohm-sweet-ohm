@@ -35,6 +35,7 @@ export type PartsListItem = {
   availableQuantity: string | null;
   plannedQuantity: string | null;
   onOrderQuantity: string | null;
+  inProductionQuantity: string | null;
   avgNetCost: string | null;
   avgGrossCost: string | null;
   attributeValues: PartAttributeValueListItem[];
@@ -123,7 +124,7 @@ export async function getPartsListPage(
   });
 
   const pageSize = getListPageSize(input.pageSize);
-  const [canReadInventory, canReadShoppingLists, canReadPurchaseOrders] = await Promise.all([
+  const [canReadInventory, canReadShoppingLists, canReadPurchaseOrders, canReadBuilds] = await Promise.all([
     hasWorkspacePermission({
       userId: context.user.id,
       workspaceId: context.workspace.id,
@@ -138,6 +139,11 @@ export async function getPartsListPage(
       userId: context.user.id,
       workspaceId: context.workspace.id,
       permission: "purchase-orders:read"
+    }),
+    hasWorkspacePermission({
+      userId: context.user.id,
+      workspaceId: context.workspace.id,
+      permission: "builds:read"
     })
   ]);
   const [categories, totalCount] = await Promise.all([
@@ -165,7 +171,7 @@ export async function getPartsListPage(
       categoryIds: part.primaryCategoryId ? [part.primaryCategoryId] : []
     });
     return {
-      items: [mapPartListItem({ part, categoryPathsById, valueAttributeIdsByCategoryId, canReadInventory, canReadShoppingLists, canReadPurchaseOrders })],
+      items: [mapPartListItem({ part, categoryPathsById, valueAttributeIdsByCategoryId, canReadInventory, canReadShoppingLists, canReadPurchaseOrders, canReadBuilds })],
       nextCursor: null,
       totalCount,
       filteredCount: 1
@@ -195,7 +201,8 @@ export async function getPartsListPage(
     (requestedSortBy === "plannedQuantity" && !canReadShoppingLists) ||
     (requestedSortBy === "onOrderQuantity" && !canReadPurchaseOrders) ||
     (requestedSortBy === "avgNetCost" && !canReadPurchaseOrders) ||
-    (requestedSortBy === "avgGrossCost" && !canReadPurchaseOrders)
+    (requestedSortBy === "avgGrossCost" && !canReadPurchaseOrders) ||
+    (requestedSortBy === "inProductionQuantity" && !canReadBuilds)
       ? ""
       : requestedSortBy;
   const activeSortDirection: PartsListSortDirection =
@@ -215,7 +222,8 @@ export async function getPartsListPage(
       workspaceId: context.workspace.id,
       canReadInventory,
       canReadShoppingLists,
-      canReadPurchaseOrders
+      canReadPurchaseOrders,
+      canReadBuilds
     });
   } else if (activeSortBy === "reservedQuantity" && canReadInventory) {
     page = await getDecimalFieldSortedPartsListPage({
@@ -229,7 +237,8 @@ export async function getPartsListPage(
       workspaceId: context.workspace.id,
       canReadInventory,
       canReadShoppingLists,
-      canReadPurchaseOrders
+      canReadPurchaseOrders,
+      canReadBuilds
     });
   } else if (activeSortBy === "allocatedQuantity" && canReadInventory) {
     page = await getDecimalFieldSortedPartsListPage({
@@ -243,7 +252,8 @@ export async function getPartsListPage(
       workspaceId: context.workspace.id,
       canReadInventory,
       canReadShoppingLists,
-      canReadPurchaseOrders
+      canReadPurchaseOrders,
+      canReadBuilds
     });
   } else if (activeSortBy === "availableQuantity" && canReadInventory) {
     page = await getDecimalFieldSortedPartsListPage({
@@ -257,7 +267,8 @@ export async function getPartsListPage(
       workspaceId: context.workspace.id,
       canReadInventory,
       canReadShoppingLists,
-      canReadPurchaseOrders
+      canReadPurchaseOrders,
+      canReadBuilds
     });
   } else if (activeSortBy === "plannedQuantity" && canReadShoppingLists) {
     page = await getDecimalFieldSortedPartsListPage({
@@ -271,7 +282,8 @@ export async function getPartsListPage(
       workspaceId: context.workspace.id,
       canReadInventory,
       canReadShoppingLists,
-      canReadPurchaseOrders
+      canReadPurchaseOrders,
+      canReadBuilds
     });
   } else if (activeSortBy === "onOrderQuantity" && canReadPurchaseOrders) {
     page = await getDecimalFieldSortedPartsListPage({
@@ -285,7 +297,23 @@ export async function getPartsListPage(
       workspaceId: context.workspace.id,
       canReadInventory,
       canReadShoppingLists,
-      canReadPurchaseOrders
+      canReadPurchaseOrders,
+      canReadBuilds
+    });
+  } else if (activeSortBy === "inProductionQuantity" && canReadBuilds) {
+    page = await getDecimalFieldSortedPartsListPage({
+      field: "inProductionQty",
+      baseWhere,
+      categoryPathsById,
+      cursor: input.cursor,
+      pageSize,
+      sortDirection: activeSortDirection,
+      totalCount,
+      workspaceId: context.workspace.id,
+      canReadInventory,
+      canReadShoppingLists,
+      canReadPurchaseOrders,
+      canReadBuilds
     });
   } else if (activeSortBy === "avgNetCost" && canReadPurchaseOrders) {
     page = await getDecimalFieldSortedPartsListPage({
@@ -299,7 +327,8 @@ export async function getPartsListPage(
       workspaceId: context.workspace.id,
       canReadInventory,
       canReadShoppingLists,
-      canReadPurchaseOrders
+      canReadPurchaseOrders,
+      canReadBuilds
     });
   } else if (activeSortBy === "avgGrossCost" && canReadPurchaseOrders) {
     page = await getDecimalFieldSortedPartsListPage({
@@ -313,7 +342,8 @@ export async function getPartsListPage(
       workspaceId: context.workspace.id,
       canReadInventory,
       canReadShoppingLists,
-      canReadPurchaseOrders
+      canReadPurchaseOrders,
+      canReadBuilds
     });
   } else if (
     activeSortBy === "manufacturerName" ||
@@ -331,7 +361,8 @@ export async function getPartsListPage(
       workspaceId: context.workspace.id,
       canReadInventory,
       canReadShoppingLists,
-      canReadPurchaseOrders
+      canReadPurchaseOrders,
+      canReadBuilds
     });
   } else if (activeSortBy) {
     page = await getSortedPartsListPage({
@@ -345,7 +376,8 @@ export async function getPartsListPage(
       cursor: input.cursor,
       canReadInventory,
       canReadShoppingLists,
-      canReadPurchaseOrders
+      canReadPurchaseOrders,
+      canReadBuilds
     });
   } else {
     const cursor = decodeListCursor<PartListCursor>(input.cursor);
@@ -381,7 +413,8 @@ export async function getPartsListPage(
           valueAttributeIdsByCategoryId,
           canReadInventory,
           canReadShoppingLists,
-          canReadPurchaseOrders
+          canReadPurchaseOrders,
+          canReadBuilds
         })
       ),
       nextCursor:
@@ -411,6 +444,7 @@ const partListSelect = {
   availableQty: true,
   plannedQty: true,
   onOrderQty: true,
+  inProductionQty: true,
   avgNetCostPrimary: true,
   avgGrossCostPrimary: true,
   manufacturer: {
@@ -462,7 +496,8 @@ async function getDecimalFieldSortedPartsListPage({
   workspaceId,
   canReadInventory,
   canReadShoppingLists,
-  canReadPurchaseOrders
+  canReadPurchaseOrders,
+  canReadBuilds
 }: {
   field:
     | "currentStock"
@@ -471,6 +506,7 @@ async function getDecimalFieldSortedPartsListPage({
     | "availableQty"
     | "plannedQty"
     | "onOrderQty"
+    | "inProductionQty"
     | "avgNetCostPrimary"
     | "avgGrossCostPrimary";
   baseWhere: Prisma.PartWhereInput;
@@ -483,6 +519,7 @@ async function getDecimalFieldSortedPartsListPage({
   canReadInventory: boolean;
   canReadShoppingLists: boolean;
   canReadPurchaseOrders: boolean;
+  canReadBuilds: boolean;
 }): Promise<ListPage<PartsListItem>> {
   const decodedCursor = decodeListCursor<DecimalFieldCursor>(cursor);
   const cursorWhere = decodedCursor
@@ -515,7 +552,8 @@ async function getDecimalFieldSortedPartsListPage({
         valueAttributeIdsByCategoryId,
         canReadInventory,
         canReadShoppingLists,
-        canReadPurchaseOrders
+        canReadPurchaseOrders,
+        canReadBuilds
       })
     ),
     nextCursor:
@@ -552,7 +590,8 @@ async function getStringFieldSortedPartsListPage({
   workspaceId,
   canReadInventory,
   canReadShoppingLists,
-  canReadPurchaseOrders
+  canReadPurchaseOrders,
+  canReadBuilds
 }: {
   field: StringSortField;
   baseWhere: Prisma.PartWhereInput;
@@ -565,6 +604,7 @@ async function getStringFieldSortedPartsListPage({
   canReadInventory: boolean;
   canReadShoppingLists: boolean;
   canReadPurchaseOrders: boolean;
+  canReadBuilds: boolean;
 }): Promise<ListPage<PartsListItem>> {
   const decodedCursor = decodeListCursor<StringFieldCursor>(cursor);
   const cursorWhere = decodedCursor
@@ -597,7 +637,8 @@ async function getStringFieldSortedPartsListPage({
         valueAttributeIdsByCategoryId,
         canReadInventory,
         canReadShoppingLists,
-        canReadPurchaseOrders
+        canReadPurchaseOrders,
+        canReadBuilds
       })
     ),
     nextCursor:
@@ -702,7 +743,8 @@ async function getSortedPartsListPage({
   workspaceId,
   canReadInventory,
   canReadShoppingLists,
-  canReadPurchaseOrders
+  canReadPurchaseOrders,
+  canReadBuilds
 }: {
   baseWhere: Prisma.PartWhereInput;
   categoryPathsById: Map<string, string>;
@@ -715,6 +757,7 @@ async function getSortedPartsListPage({
   canReadInventory: boolean;
   canReadShoppingLists: boolean;
   canReadPurchaseOrders: boolean;
+  canReadBuilds: boolean;
 }): Promise<ListPage<PartsListItem>> {
   const [filteredParts, filteredCount] = await Promise.all([
     prisma.part.findMany({
@@ -737,7 +780,8 @@ async function getSortedPartsListPage({
       valueAttributeIdsByCategoryId,
       canReadInventory,
       canReadShoppingLists,
-      canReadPurchaseOrders
+      canReadPurchaseOrders,
+      canReadBuilds
     });
     const valueAttributeId = part.primaryCategoryId
       ? valueAttributeIdsByCategoryId.get(part.primaryCategoryId) ?? null
@@ -820,6 +864,12 @@ function comparePartsBySort({
   if (sortBy === "onOrderQuantity") {
     const leftValue = Number(left.part.onOrderQty);
     const rightValue = Number(right.part.onOrderQty);
+    return leftValue === rightValue ? 0 : leftValue < rightValue ? -1 : 1;
+  }
+
+  if (sortBy === "inProductionQuantity") {
+    const leftValue = Number(left.part.inProductionQty);
+    const rightValue = Number(right.part.inProductionQty);
     return leftValue === rightValue ? 0 : leftValue < rightValue ? -1 : 1;
   }
 
@@ -919,7 +969,8 @@ function mapPartListItem({
   valueAttributeIdsByCategoryId,
   canReadInventory,
   canReadShoppingLists,
-  canReadPurchaseOrders
+  canReadPurchaseOrders,
+  canReadBuilds
 }: {
   part: SelectedPartListItem;
   categoryPathsById: Map<string, string>;
@@ -927,6 +978,7 @@ function mapPartListItem({
   canReadInventory: boolean;
   canReadShoppingLists: boolean;
   canReadPurchaseOrders: boolean;
+  canReadBuilds: boolean;
 }): PartsListItem {
   const attributeValues = part.attributeValues
     .filter((attributeValue) => attributeValue.displayValue !== null)
@@ -966,6 +1018,7 @@ function mapPartListItem({
     availableQuantity: canReadInventory ? part.availableQty.toString() : null,
     plannedQuantity: canReadShoppingLists ? part.plannedQty.toString() : null,
     onOrderQuantity: canReadPurchaseOrders ? part.onOrderQty.toString() : null,
+    inProductionQuantity: canReadBuilds ? part.inProductionQty.toString() : null,
     avgNetCost: canReadPurchaseOrders
       ? (part.avgNetCostPrimary?.toDecimalPlaces(2).toFixed(2) ?? null)
       : null,
@@ -1106,6 +1159,7 @@ function getDecimalFieldCursorWhere({
     | "availableQty"
     | "plannedQty"
     | "onOrderQty"
+    | "inProductionQty"
     | "avgNetCostPrimary"
     | "avgGrossCostPrimary";
   cursor: DecimalFieldCursor;

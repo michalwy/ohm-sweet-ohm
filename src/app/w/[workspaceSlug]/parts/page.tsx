@@ -82,6 +82,7 @@ const copy = {
   available: "Available",
   planned: "Planned",
   onOrder: "On order",
+  inProduction: "In production",
   avgNetCost: "Avg. net cost",
   avgGrossCost: "Avg. gross cost",
   newPartTitle: "Add part",

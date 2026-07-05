@@ -780,6 +780,7 @@ async function getPartListItem({
         allocatedQty: true,
         plannedQty: true,
         onOrderQty: true,
+        inProductionQty: true,
         catalogNumber: true,
         description: true,
         manufacturer: {
@@ -862,6 +863,7 @@ async function getPartListItem({
     availableQuantity: part.currentStock.minus(part.reservedQty).toString(),
     plannedQuantity: part.plannedQty.toString(),
     onOrderQuantity: part.onOrderQty.toString(),
+    inProductionQuantity: part.inProductionQty.toString(),
     avgNetCost: null,
     avgGrossCost: null,
     attributeValues

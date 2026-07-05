@@ -313,12 +313,20 @@ async function createDesignWithLine(
 async function partStock(workspaceId: string, partId: string) {
   const part = await prisma.part.findFirstOrThrow({
     where: { id: partId, workspaceId },
-    select: { currentStock: true, reservedQty: true, allocatedQty: true }
+    select: {
+      currentStock: true,
+      reservedQty: true,
+      allocatedQty: true,
+      inProductionQty: true,
+      plannedQty: true
+    }
   });
   return {
     currentStock: part.currentStock.toString(),
     reservedQty: part.reservedQty.toString(),
-    allocatedQty: part.allocatedQty.toString()
+    allocatedQty: part.allocatedQty.toString(),
+    inProductionQty: part.inProductionQty.toString(),
+    plannedQty: part.plannedQty.toString()
   };
 }
 
@@ -1091,6 +1099,86 @@ describe("build flow", () => {
     const component = await partStock(scenario.workspaceId, scenario.buildLinePartId);
     assert.equal(component.allocatedQty, "0", "soft allocation released");
     assert.equal(component.reservedQty, "0");
+  });
+
+  test("output part's plannedQty/inProductionQty (issue #184): planned while allocated, moves to in-production on start, cleared on completion", async () => {
+    const scenario = await createScenario(uniqueSuffix(), { stockAtSource: "6" });
+    const { buildId } = await createAndAllocateBuild(scenario, 2);
+
+    await markBuildAllocated({ userId: scenario.userId, workspaceId: scenario.workspaceId, buildId });
+    let outputStock = await partStock(scenario.workspaceId, scenario.outputPartId);
+    assert.equal(outputStock.plannedQty, "2", "ALLOCATED is a soft commitment counted as planned");
+    assert.equal(outputStock.inProductionQty, "0", "ALLOCATED does not count toward in-production");
+
+    const started = await startBuild({ userId: scenario.userId, workspaceId: scenario.workspaceId, buildId });
+    assert.ok(started.ok, JSON.stringify(started));
+    outputStock = await partStock(scenario.workspaceId, scenario.outputPartId);
+    assert.equal(outputStock.plannedQty, "0", "STARTED moves the quantity out of planned");
+    assert.equal(outputStock.inProductionQty, "2", "STARTED holds the full targetQuantity as in-production");
+
+    const assignments = await prisma.buildDesignatorAssignment.findMany({
+      where: { buildLineItem: { buildId } },
+      orderBy: [{ designator: "asc" }, { unitIndex: "asc" }],
+      select: { id: true }
+    });
+    for (const assignment of assignments.slice(0, assignments.length - 1)) {
+      await assembleDesignator({
+        userId: scenario.userId,
+        workspaceId: scenario.workspaceId,
+        assignmentId: assignment.id
+      });
+    }
+    assert.equal(
+      (await partStock(scenario.workspaceId, scenario.outputPartId)).inProductionQty,
+      "2",
+      "no partial receipt: still the full targetQuantity while IN_PROGRESS"
+    );
+
+    const last = assignments[assignments.length - 1]!;
+    const completedAssembly = await assembleDesignator({
+      userId: scenario.userId,
+      workspaceId: scenario.workspaceId,
+      assignmentId: last.id
+    });
+    assert.ok(completedAssembly.ok && completedAssembly.data.completed);
+    outputStock = await partStock(scenario.workspaceId, scenario.outputPartId);
+    assert.equal(outputStock.inProductionQty, "0", "cleared once the build completes and the output is received");
+    assert.equal(outputStock.plannedQty, "0");
+  });
+
+  test("output part's plannedQty/inProductionQty (issue #184): released on cancel from STARTED and from ALLOCATED", async () => {
+    const scenario = await createScenario(uniqueSuffix(), { stockAtSource: "6" });
+    const { buildId: startedBuildId } = await createAndAllocateBuild(scenario, 2);
+    await markBuildAllocated({ userId: scenario.userId, workspaceId: scenario.workspaceId, buildId: startedBuildId });
+    await startBuild({ userId: scenario.userId, workspaceId: scenario.workspaceId, buildId: startedBuildId });
+    assert.equal(
+      (await partStock(scenario.workspaceId, scenario.outputPartId)).inProductionQty,
+      "2"
+    );
+
+    const cancelledStarted = await cancelBuild({
+      userId: scenario.userId,
+      workspaceId: scenario.workspaceId,
+      buildId: startedBuildId
+    });
+    assert.ok(cancelledStarted.ok, JSON.stringify(cancelledStarted));
+    let outputStock = await partStock(scenario.workspaceId, scenario.outputPartId);
+    assert.equal(outputStock.inProductionQty, "0", "cancelling a STARTED build releases its in-production hold");
+    assert.equal(outputStock.plannedQty, "0", "STARTED had already moved it out of planned before cancel");
+
+    const { buildId: allocatedBuildId } = await createAndAllocateBuild(scenario, 1);
+    await markBuildAllocated({ userId: scenario.userId, workspaceId: scenario.workspaceId, buildId: allocatedBuildId });
+    assert.equal((await partStock(scenario.workspaceId, scenario.outputPartId)).plannedQty, "1");
+
+    const cancelledAllocated = await cancelBuild({
+      userId: scenario.userId,
+      workspaceId: scenario.workspaceId,
+      buildId: allocatedBuildId
+    });
+    assert.ok(cancelledAllocated.ok, JSON.stringify(cancelledAllocated));
+    outputStock = await partStock(scenario.workspaceId, scenario.outputPartId);
+    assert.equal(outputStock.inProductionQty, "0", "cancelling an ALLOCATED build never touched in-production");
+    assert.equal(outputStock.plannedQty, "0", "cancelling an ALLOCATED build releases its planned hold");
   });
 
   test("per-location available balance nets out another build's hard reservation at that location (refs #172)", async () => {
