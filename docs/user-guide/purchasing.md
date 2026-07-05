@@ -66,6 +66,8 @@ OSO tracks net prices and computes gross amounts on the fly.
 
 **Dual-entry pricing** — in the item dialog, enter either the unit price (or gross unit price) or the line total; the other field updates automatically.
 
+**Inline price editing** — on the line items list, click the unit price or line total cell to edit it directly. Editing either field recalculates the other (`unitPrice = lineTotal / quantity` or `lineTotal = unitPrice * quantity`), respecting the order's price entry mode. Press Enter or click away to save, Escape to cancel. Not available once the order is fully received.
+
 **Order totals** — the detail panel shows a totals footer (net and gross) whenever at least one item has a price. If the order currency differs from your primary currency and the order has been marked as ordered, primary-currency equivalents are shown alongside.
 
 **Average cost column** — the parts list has an **Avg. cost** column (hidden by default). It shows the weighted-average net receipt cost in your workspace primary currency, calculated from all received purchase order items that had a price at receive time.

@@ -243,6 +243,39 @@ describe("purchase orders — items", () => {
     assert.equal(detailAfterRemove.items.length, 0);
   });
 
+  test("back-calculates unit price when line total is edited directly", async () => {
+    const suffix = uniqueSuffix("items-line-total");
+    const { workspaceId, supplierId, partId } = await createFixture(suffix);
+
+    const order = await createPurchaseOrder({ workspaceId, supplierId });
+    const item = await addOrderItem({
+      workspaceId,
+      orderId: order.id,
+      partId,
+      quantity: "10",
+      unitPrice: "1.50",
+      currency: "EUR",
+      notes: null
+    });
+
+    // Editing the line total to 100 for a quantity of 10 should back-calculate unitPrice to 10.
+    await updateOrderItem({
+      workspaceId,
+      orderId: order.id,
+      itemId: item.id,
+      quantity: "10",
+      unitPrice: "10.0000000000",
+      lineNetTotal: "100",
+      currency: "EUR",
+      notes: null
+    });
+
+    const detail = await getPurchaseOrderDetail(workspaceId, order.id);
+    assert.ok(detail);
+    assert.equal(detail.items[0].unitPrice, "10");
+    assert.equal(detail.items[0].lineNetValue, "100.00");
+  });
+
   test("rejects adding item to received order", async () => {
     const suffix = uniqueSuffix("item-received");
     const { workspaceId, supplierId, partId, locationId, userId } = await createFixture(suffix);

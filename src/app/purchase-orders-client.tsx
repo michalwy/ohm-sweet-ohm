@@ -95,6 +95,7 @@ type InlinePriceSaveVars = {
   quantity: string;
   supplierSku?: string | null;
   unitPrice?: string | null;
+  lineNetTotal?: string | null;
   currency?: string | null;
   taxRate?: string | null;
   notes?: string | null;
@@ -208,6 +209,132 @@ function InlinePriceCell({
         aria-hidden={editing || undefined}
         className={editing ? "invisible pointer-events-none" : (editable ? "hover:underline decoration-dotted underline-offset-2" : undefined)}
         title={!editing && displayPrice != null ? `${item.unitPrice}${item.currency ? ` ${item.currency}` : ""}` : undefined}
+      >
+        {displayText}
+      </span>
+      {editing && (
+        <input
+          ref={inputRef}
+          autoFocus
+          type="text"
+          inputMode="decimal"
+          value={inputValue}
+          onChange={(e) => setInputValue(e.target.value)}
+          onKeyDown={handleKeyDown}
+          onBlur={commit}
+          className="absolute left-3 right-3 top-1/2 -translate-y-1/2 rounded border border-[var(--color-border-hover)] bg-[var(--color-bg-elevated)] px-1.5 py-0.5 text-sm text-right font-mono text-[var(--color-text-primary)] outline-none focus:border-[var(--color-border-hover)] focus:ring-1 focus:ring-[var(--color-ring)]"
+        />
+      )}
+    </td>
+  );
+}
+
+function InlineLineTotalCell({
+  item,
+  isGrossMode,
+  orderTaxRate,
+  orderSupplierDefaultTaxRate,
+  workspaceDefaultTaxRate,
+  orderId,
+  workspaceSlug,
+  canWrite,
+  isReceived,
+  isPending,
+  onSave,
+  noAttributeLabel,
+}: {
+  item: PurchaseOrderItem;
+  isGrossMode: boolean;
+  orderTaxRate: string | null | undefined;
+  orderSupplierDefaultTaxRate: string | null | undefined;
+  workspaceDefaultTaxRate: string | null | undefined;
+  orderId: string;
+  workspaceSlug: string;
+  canWrite: boolean;
+  isReceived: boolean;
+  isPending: boolean;
+  onSave: (vars: InlinePriceSaveVars) => void;
+  noAttributeLabel: string;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [inputValue, setInputValue] = useState("");
+  const inputRef = useRef<HTMLInputElement>(null);
+  const cancelledRef = useRef(false);
+
+  const effectiveTaxRate = getEffectiveTaxRate(
+    item.taxRate,
+    orderTaxRate,
+    orderSupplierDefaultTaxRate,
+    workspaceDefaultTaxRate
+  );
+
+  const displayTotal = isGrossMode ? item.lineGrossValue : item.lineNetValue;
+
+  function startEditing() {
+    if (!canWrite || isReceived || isPending) return;
+    setInputValue(displayTotal ?? "");
+    setEditing(true);
+    cancelledRef.current = false;
+    requestAnimationFrame(() => {
+      inputRef.current?.select();
+    });
+  }
+
+  function commit() {
+    if (cancelledRef.current) {
+      cancelledRef.current = false;
+      setEditing(false);
+      return;
+    }
+    const val = inputValue.trim().replace(",", ".");
+    const num = parseFloat(val);
+    if (isNaN(num) || num < 0) {
+      setEditing(false);
+      return;
+    }
+    const netTotal = isGrossMode ? num / (1 + effectiveTaxRate / 100) : num;
+    const quantity = parseFloat(item.quantity);
+    const unitPrice = quantity > 0 ? netTotal / quantity : 0;
+    onSave({
+      workspaceSlug,
+      orderId,
+      itemId: item.id,
+      quantity: item.quantity,
+      supplierSku: item.supplierSku,
+      unitPrice: unitPrice.toFixed(10),
+      lineNetTotal: netTotal.toFixed(2),
+      currency: item.currency ?? null,
+      taxRate: item.taxRate ?? null,
+      notes: item.notes ?? null,
+    });
+    setEditing(false);
+  }
+
+  function handleKeyDown(e: ReactKeyboardEvent<HTMLInputElement>) {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      inputRef.current?.blur();
+    } else if (e.key === "Escape") {
+      cancelledRef.current = true;
+      inputRef.current?.blur();
+    }
+  }
+
+  const editable = canWrite && !isReceived;
+  const displayText = displayTotal != null
+    ? `${displayTotal}${item.currency ? ` ${item.currency}` : ""}`
+    : noAttributeLabel;
+
+  return (
+    <td
+      className={`relative px-3 py-2 text-right font-mono text-[var(--color-text-secondary)] whitespace-nowrap${editable && !editing ? " cursor-pointer" : ""}${isPending ? " opacity-60" : ""}`}
+      onClick={!editing && editable ? startEditing : undefined}
+    >
+      {/* Invisible anchor — always reserves the column width */}
+      <span
+        aria-hidden={editing || undefined}
+        className={editing ? "invisible pointer-events-none" : (editable ? "hover:underline decoration-dotted underline-offset-2" : undefined)}
+        title={!editing && item.lineNetValue != null ? `${item.lineNetValue}${item.currency ? ` ${item.currency}` : ""}` : undefined}
       >
         {displayText}
       </span>
@@ -1503,13 +1630,20 @@ export function PurchaseOrdersClient({
                                 return `${rate}%`;
                               })()}
                             </td>
-                            <td className="px-3 py-2 text-right font-mono text-[var(--color-text-secondary)] whitespace-nowrap">
-                              {(() => {
-                                const val = isGrossMode ? item.lineGrossValue : item.lineNetValue;
-                                if (val == null) return copy.noAttribute;
-                                return `${val}${item.currency ? ` ${item.currency}` : ""}`;
-                              })()}
-                            </td>
+                            <InlineLineTotalCell
+                              item={item}
+                              isGrossMode={isGrossMode}
+                              orderTaxRate={detail?.taxRate}
+                              orderSupplierDefaultTaxRate={detail?.supplierDefaultTaxRate}
+                              workspaceDefaultTaxRate={workspaceDefaultTaxRate}
+                              orderId={detail?.id ?? ""}
+                              workspaceSlug={workspaceSlug}
+                              canWrite={canWrite}
+                              isReceived={detail?.status === "RECEIVED"}
+                              isPending={updateItemPriceMutation.isPending}
+                              onSave={updateItemPriceMutation.mutate}
+                              noAttributeLabel={copy.noAttribute}
+                            />
                             <td className="px-3 py-2 text-right text-[var(--color-text-secondary)] whitespace-nowrap">{item.quantity}</td>
                             <td className="px-3 py-2 text-right text-[var(--color-text-secondary)] whitespace-nowrap">
                               {item.receivedQuantity}
