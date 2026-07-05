@@ -123,6 +123,13 @@ sub-assembly's own stock first and then recurses into that Design's latest revis
 lines or sub-assemblies is counted once. If Designs reference each other in a loop, the
 cycle is reported instead of analyzed.
 
+Next to **To acquire**, click **Create shopping list** to add these items to a new or
+existing shopping list. If a line's shortage could be filled by more than one matching
+part, choose which part to add from a dropdown; only genuinely purchasable parts are
+offered, not sub-assemblies the analysis would otherwise build. Quantities default to the
+computed shortage and can be edited before adding, and remain editable afterward like any
+shopping list item. This action requires permission to write shopping lists.
+
 The same shortage preview appears in the **build create dialog** once you pick a revision
 and target quantity, so you can spot missing parts before creating the build.
 

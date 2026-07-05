@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useQuery, type UseQueryResult } from "@tanstack/react-query";
 
 import { analyzeShortageAction } from "@/server/designs/bomActions";
@@ -13,6 +13,7 @@ import {
   closeDialog,
   openDialog
 } from "@/app/dialog-shell";
+import { ShortageToShoppingListDialog } from "@/app/shortage-to-sl-dialog";
 
 export type ShortagePanelCopy = {
   heading: string;
@@ -32,6 +33,7 @@ export type ShortagePanelCopy = {
   manufacturer: string;
   shortageQty: string;
   cyclesHeading: string;
+  createShoppingListFromShortage: string;
   // Compact status + modal
   statusSelectDesign: string;
   statusFulfillable: string;
@@ -60,6 +62,7 @@ export const DEFAULT_SHORTAGE_COPY: ShortagePanelCopy = {
   manufacturer: "Manufacturer",
   shortageQty: "Shortage",
   cyclesHeading: "Design cycles detected",
+  createShoppingListFromShortage: "Create shopping list",
   statusSelectDesign: "Select a design and revision to check stock.",
   statusFulfillable: "This build can be made from available stock.",
   statusShortage: "This build cannot be fully made from available stock.",
@@ -104,7 +107,21 @@ function useShortageAnalysis(
 
 // --- Result tables (shared by the inline design panel and the modal) ---
 
-function ShortageResults({ data, copy }: { data: ShortageAnalysis; copy: ShortagePanelCopy }) {
+function ShortageResults({
+  data,
+  copy,
+  workspaceSlug,
+  canWriteShoppingLists,
+  onToast
+}: {
+  data: ShortageAnalysis;
+  copy: ShortagePanelCopy;
+  workspaceSlug: string;
+  canWriteShoppingLists: boolean;
+  onToast: (msg: string) => void;
+}) {
+  const [createSlDialogOpen, setCreateSlDialogOpen] = useState(false);
+
   return (
     <div className="grid gap-4">
       {data.cycles.length > 0 && (
@@ -169,9 +186,16 @@ function ShortageResults({ data, copy }: { data: ShortageAnalysis; copy: Shortag
 
       {data.procurement.length > 0 && (
         <div className="grid gap-1.5">
-          <p className="text-xs font-semibold uppercase tracking-wide text-[var(--color-text-muted)]">
-            {copy.procurementHeading}
-          </p>
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-xs font-semibold uppercase tracking-wide text-[var(--color-text-muted)]">
+              {copy.procurementHeading}
+            </p>
+            {canWriteShoppingLists && (
+              <DialogSecondaryButton type="button" onClick={() => setCreateSlDialogOpen(true)}>
+                {copy.createShoppingListFromShortage}
+              </DialogSecondaryButton>
+            )}
+          </div>
           <table className="w-full border-collapse text-sm">
             <thead>
               <tr className="border-b border-[var(--color-border)] text-xs font-semibold uppercase tracking-wide text-[var(--color-text-muted)]">
@@ -198,6 +222,16 @@ function ShortageResults({ data, copy }: { data: ShortageAnalysis; copy: Shortag
           </table>
         </div>
       )}
+
+      {canWriteShoppingLists && (
+        <ShortageToShoppingListDialog
+          open={createSlDialogOpen}
+          onClose={() => setCreateSlDialogOpen(false)}
+          workspaceSlug={workspaceSlug}
+          procurement={data.procurement}
+          onSuccess={onToast}
+        />
+      )}
     </div>
   );
 }
@@ -205,11 +239,17 @@ function ShortageResults({ data, copy }: { data: ShortageAnalysis; copy: Shortag
 function ShortageBody({
   query,
   revisionId,
-  copy
+  copy,
+  workspaceSlug,
+  canWriteShoppingLists,
+  onToast
 }: {
   query: UseQueryResult<ShortageAnalysis | null>;
   revisionId: string | null;
   copy: ShortagePanelCopy;
+  workspaceSlug: string;
+  canWriteShoppingLists: boolean;
+  onToast: (msg: string) => void;
 }) {
   const { data, isFetching, isError } = query;
   if (!revisionId) {
@@ -225,7 +265,15 @@ function ShortageBody({
   if (isFulfillable(data)) {
     return <p className="text-sm text-[var(--color-success)]">{copy.allInStock}</p>;
   }
-  return <ShortageResults data={data} copy={copy} />;
+  return (
+    <ShortageResults
+      data={data}
+      copy={copy}
+      workspaceSlug={workspaceSlug}
+      canWriteShoppingLists={canWriteShoppingLists}
+      onToast={onToast}
+    />
+  );
 }
 
 // --- Inline panel (Design revision details) ---
@@ -235,6 +283,8 @@ type ShortagePanelProps = {
   revisionId: string | null;
   targetQuantity: number;
   onTargetQuantityChange?: (value: number) => void;
+  canWriteShoppingLists: boolean;
+  onToast: (msg: string) => void;
   copy?: ShortagePanelCopy;
 };
 
@@ -243,6 +293,8 @@ export function ShortagePanel({
   revisionId,
   targetQuantity,
   onTargetQuantityChange,
+  canWriteShoppingLists,
+  onToast,
   copy = DEFAULT_SHORTAGE_COPY
 }: ShortagePanelProps) {
   const query = useShortageAnalysis(workspaceSlug, revisionId, targetQuantity);
@@ -270,7 +322,14 @@ export function ShortagePanel({
           </label>
         )}
       </div>
-      <ShortageBody query={query} revisionId={revisionId} copy={copy} />
+      <ShortageBody
+        query={query}
+        revisionId={revisionId}
+        copy={copy}
+        workspaceSlug={workspaceSlug}
+        canWriteShoppingLists={canWriteShoppingLists}
+        onToast={onToast}
+      />
     </section>
   );
 }
@@ -343,6 +402,8 @@ type ShortageAnalysisModalProps = {
   workspaceSlug: string;
   revisionId: string | null;
   targetQuantity: number;
+  canWriteShoppingLists: boolean;
+  onToast: (msg: string) => void;
   copy?: ShortagePanelCopy;
 };
 
@@ -352,6 +413,8 @@ export function ShortageAnalysisModal({
   workspaceSlug,
   revisionId,
   targetQuantity,
+  canWriteShoppingLists,
+  onToast,
   copy = DEFAULT_SHORTAGE_COPY
 }: ShortageAnalysisModalProps) {
   const dialogRef = useRef<HTMLDialogElement>(null);
@@ -378,7 +441,14 @@ export function ShortageAnalysisModal({
       onCloseClick={onClose}
     >
       <DialogBody className="grow">
-        <ShortageBody query={query} revisionId={revisionId} copy={copy} />
+        <ShortageBody
+          query={query}
+          revisionId={revisionId}
+          copy={copy}
+          workspaceSlug={workspaceSlug}
+          canWriteShoppingLists={canWriteShoppingLists}
+          onToast={onToast}
+        />
       </DialogBody>
       <DialogFooter>
         <DialogSecondaryButton type="button" onClick={onClose}>

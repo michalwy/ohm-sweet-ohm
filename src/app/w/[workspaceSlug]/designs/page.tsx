@@ -104,7 +104,7 @@ export default async function DesignsPage({ params }: DesignsPageProps) {
 
   const emptyPage = { items: [], nextCursor: null, totalCount: 0, filteredCount: 0 };
 
-  const [initialPage, canWrite] = await Promise.all([
+  const [initialPage, canWrite, canWriteShoppingLists] = await Promise.all([
     getDesignsForWorkspace({
       userId: context.user.id,
       workspaceId: context.workspace.id
@@ -113,6 +113,11 @@ export default async function DesignsPage({ params }: DesignsPageProps) {
       userId: context.user.id,
       workspaceId: context.workspace.id,
       permission: "designs:write"
+    }).catch(() => false),
+    hasWorkspacePermission({
+      userId: context.user.id,
+      workspaceId: context.workspace.id,
+      permission: "shopping-lists:write"
     }).catch(() => false)
   ]);
 
@@ -127,6 +132,7 @@ export default async function DesignsPage({ params }: DesignsPageProps) {
     >
       <DesignsClient
         canWrite={canWrite}
+        canWriteShoppingLists={canWriteShoppingLists}
         copy={copy}
         initialPage={initialPage}
         workspaceSlug={workspaceSlug}

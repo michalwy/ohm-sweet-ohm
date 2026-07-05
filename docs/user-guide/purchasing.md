@@ -6,6 +6,9 @@ Use **Shopping Lists** to keep an informal running list of parts you want to buy
 
 A shopping list has no supplier and no formal status — it is a flexible scratchpad.
 
+Shopping list items can also be added directly from a Design's **Shortage analysis** — see
+[Designs](designs.md#shortage-analysis).
+
 ### Creating And Managing Lists
 
 1. Open **Shopping Lists** from the sidebar.

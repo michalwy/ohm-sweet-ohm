@@ -3,6 +3,9 @@
 **Status:** Accepted  
 **Date:** 2026-07-03
 
+> **Extended by [ADR 0025](0025-shortage-to-shopping-list.md).** `ProcurementItem` gained a
+> `candidates` field for shopping-list substitution (issue #166).
+
 ## Context
 
 A Design revision has a bill of materials (ADR 0020, issue #62) and an output part

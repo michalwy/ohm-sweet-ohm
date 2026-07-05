@@ -30,11 +30,25 @@ export type LineShortage = {
   matchCount: number;
 };
 
+export type ProcurementCandidate = {
+  partId: string;
+  catalogNumber: string;
+  manufacturerName: string;
+};
+
 export type ProcurementItem = {
   partId: string;
   catalogNumber: string;
   manufacturerName: string;
   shortageQty: number;
+  /**
+   * Other leaf (purchasable) parts that also matched the spec(s) sourcing this shortage,
+   * unioned across every BOM line/recursion that contributed to it. Sub-assembly output
+   * parts are excluded — substitution is offered only among parts that can actually be
+   * bought, not built. Always includes `partId` itself. Used only for shopping-list
+   * substitution at read time; never affects `partId`/`shortageQty` above.
+   */
+  candidates: ProcurementCandidate[];
 };
 
 export type CycleReport = {
@@ -253,15 +267,29 @@ export async function analyzeShortage({
         continue;
       }
 
+      const leafCandidates: ProcurementCandidate[] = candidates
+        .filter((candidate) => !outputDesignByPartId.has(candidate.id))
+        .map((candidate) => ({
+          partId: candidate.id,
+          catalogNumber: candidate.catalogNumber,
+          manufacturerName: candidate.manufacturerName
+        }));
+
       const existing = procurement.get(sourcing.id);
       if (existing) {
         existing.shortageQty += remaining;
+        for (const candidate of leafCandidates) {
+          if (!existing.candidates.some((c) => c.partId === candidate.partId)) {
+            existing.candidates.push(candidate);
+          }
+        }
       } else {
         procurement.set(sourcing.id, {
           partId: sourcing.id,
           catalogNumber: sourcing.catalogNumber,
           manufacturerName: sourcing.manufacturerName,
-          shortageQty: remaining
+          shortageQty: remaining,
+          candidates: leafCandidates
         });
       }
     }
@@ -277,9 +305,14 @@ export async function analyzeShortage({
 
   return {
     lines,
-    procurement: [...procurement.values()].sort((a, b) =>
-      a.catalogNumber.localeCompare(b.catalogNumber)
-    ),
+    procurement: [...procurement.values()]
+      .map((item) => ({
+        ...item,
+        candidates: [...item.candidates].sort((a, b) =>
+          a.catalogNumber.localeCompare(b.catalogNumber)
+        )
+      }))
+      .sort((a, b) => a.catalogNumber.localeCompare(b.catalogNumber)),
     cycles
   };
 }

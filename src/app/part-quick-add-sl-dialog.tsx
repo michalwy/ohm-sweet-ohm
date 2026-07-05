@@ -1,12 +1,10 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation } from "@tanstack/react-query";
 
 import {
   addShoppingListItemForWorkspace,
-  createShoppingListForWorkspace,
-  getAllShoppingListsForWorkspace,
   getShoppingListDetailForWorkspace,
   updateShoppingListItemForWorkspace,
 } from "@/server/shopping-lists/shoppingListActions";
@@ -19,6 +17,7 @@ import {
   closeDialog,
   openDialog
 } from "@/app/dialog-shell";
+import { ShoppingListTargetFields, useShoppingListTarget } from "@/app/use-shopping-list-target";
 
 type Copy = {
   cancel: string;
@@ -40,8 +39,6 @@ type Copy = {
   missingSLName: string;
 };
 
-type Mode = "existing" | "create-new";
-
 export function QuickAddToSLDialog({
   copy,
   open,
@@ -58,48 +55,23 @@ export function QuickAddToSLDialog({
   onSuccess: (msg: string) => void;
 }) {
   const dialogRef = useRef<HTMLDialogElement>(null);
-  const [mode, setMode] = useState<Mode>("existing");
-  const [selectedSLId, setSelectedSLId] = useState("");
+  const target = useShoppingListTarget({ workspaceSlug, open });
+  const { mode, newSLName } = target;
   const [quantity, setQuantity] = useState("1");
-  const [newSLName, setNewSLName] = useState("");
   const [itemNotes, setItemNotes] = useState("");
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<{ quantity?: string; slName?: string }>({});
-
-  const allSLsQuery = useQuery({
-    queryKey: ["all-sls", workspaceSlug],
-    enabled: open,
-    queryFn: async () => {
-      const result = await getAllShoppingListsForWorkspace({ workspaceSlug });
-      if (!result.ok) throw new Error(result.error);
-      return result.data;
-    }
-  });
-
-  const allSLs = allSLsQuery.data ?? [];
 
   useEffect(() => {
     if (!open) return;
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setQuantity("1");
-    setNewSLName("");
+    target.setNewSLName("");
     setItemNotes("");
     setSubmitError(null);
     setFieldErrors({});
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- target.setNewSLName is stable; only reset on open/part change
   }, [open, part?.id]);
-
-  useEffect(() => {
-    if (allSLs.length === 0) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setMode("create-new");
-    } else {
-      setMode("existing");
-      if (!selectedSLId || !allSLs.find((sl) => sl.id === selectedSLId)) {
-        setSelectedSLId(allSLs[0]?.id ?? "");
-      }
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- selectedSLId intentionally omitted: effect only syncs mode/selection when the SL list changes, not on every selection change
-  }, [allSLs, allSLs.length]);
 
   useEffect(() => {
     if (!dialogRef.current) return;
@@ -124,16 +96,11 @@ export function QuickAddToSLDialog({
       }
       setFieldErrors({});
 
-      let listId = selectedSLId;
+      const resolved = await target.resolveListId();
+      if (!resolved.ok) return resolved;
+      const listId = resolved.listId;
 
-      if (mode === "create-new") {
-        const createResult = await createShoppingListForWorkspace({
-          workspaceSlug,
-          name: newSLName.trim()
-        });
-        if (!createResult.ok) return createResult;
-        listId = createResult.data.listId;
-      } else {
+      if (mode !== "create-new") {
         const detailResult = await getShoppingListDetailForWorkspace({
           workspaceSlug,
           listId
@@ -206,57 +173,11 @@ export function QuickAddToSLDialog({
         onSubmit={(e) => { e.preventDefault(); mutation.mutate(); }}
       >
         <DialogBody className="grid gap-4">
-          {allSLsQuery.isLoading ? (
+          {target.isLoading ? (
             <p className="text-sm text-[var(--color-text-muted)]">{copy.loadingLabel}</p>
           ) : (
             <>
-              {allSLs.length > 0 && mode === "existing" ? (
-                <label className="grid gap-1 text-sm">
-                  <span className="font-medium text-[var(--color-text-secondary)]">{copy.chooseSL}</span>
-                  <select
-                    className="min-h-10 rounded-md border border-[var(--color-border-strong)] bg-[var(--color-bg-elevated)] px-3 py-1.5 text-sm text-[var(--color-text-primary)] outline-none"
-                    value={selectedSLId}
-                    onChange={(e) => setSelectedSLId(e.currentTarget.value)}
-                  >
-                    {allSLs.map((sl) => (
-                      <option key={sl.id} value={sl.id}>
-                        {sl.name}
-                        {sl.itemCount > 0 ? ` (${sl.itemCount})` : ""}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-              ) : null}
-
-              {mode === "create-new" ? (
-                <section className="grid gap-3 rounded-md border border-[var(--color-border)] bg-[var(--color-bg-subtle)] p-3">
-                  <p className="text-sm font-medium text-[var(--color-text-secondary)]">{copy.createNewSL}</p>
-                  <label className="grid gap-1 text-sm">
-                    <span className="font-medium text-[var(--color-text-secondary)]">{copy.slName}</span>
-                    <input
-                      className="min-h-10 rounded-md border border-[var(--color-border-strong)] bg-[var(--color-bg-elevated)] px-3 py-1.5 text-sm text-[var(--color-text-primary)] outline-none"
-                      placeholder={copy.slNamePlaceholder}
-                      value={newSLName}
-                      onChange={(e) => setNewSLName(e.currentTarget.value)}
-                    />
-                    {fieldErrors.slName ? (
-                      <p className="text-xs text-[var(--color-error)]">{fieldErrors.slName}</p>
-                    ) : null}
-                  </label>
-                </section>
-              ) : null}
-
-              {allSLs.length > 0 ? (
-                <div>
-                  <button
-                    className="text-sm text-[var(--color-accent)] hover:underline"
-                    type="button"
-                    onClick={() => setMode(mode === "existing" ? "create-new" : "existing")}
-                  >
-                    {mode === "existing" ? copy.createNewSL : copy.chooseSL}
-                  </button>
-                </div>
-              ) : null}
+              <ShoppingListTargetFields state={target} copy={copy} slNameError={fieldErrors.slName} />
 
               <label className="grid gap-1 text-sm">
                 <span className="font-medium text-[var(--color-text-secondary)]">{copy.quantity}</span>
@@ -288,7 +209,7 @@ export function QuickAddToSLDialog({
         </DialogBody>
         <DialogActions
           actionLabel={copy.addToShoppingList}
-          disabled={isPending || !part || allSLsQuery.isLoading}
+          disabled={isPending || !part || target.isLoading}
         />
       </form>
     </DialogShell>

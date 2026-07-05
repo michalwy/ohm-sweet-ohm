@@ -130,6 +130,7 @@ type Copy = {
 
 type DesignsClientProps = {
   canWrite: boolean;
+  canWriteShoppingLists: boolean;
   copy: Copy;
   initialPage: ListPage<DesignSummary>;
   workspaceSlug: string;
@@ -160,7 +161,13 @@ function getErrorMsg(copy: Copy, error: string): string {
   }
 }
 
-export function DesignsClient({ canWrite, copy, initialPage, workspaceSlug }: DesignsClientProps) {
+export function DesignsClient({
+  canWrite,
+  canWriteShoppingLists,
+  copy,
+  initialPage,
+  workspaceSlug
+}: DesignsClientProps) {
   const queryClient = useQueryClient();
   const designDialogRef = useRef<HTMLDialogElement>(null);
   const revisionDialogRef = useRef<HTMLDialogElement>(null);
@@ -988,6 +995,8 @@ export function DesignsClient({ canWrite, copy, initialPage, workspaceSlug }: De
             revisionId={selectedRevisionId}
             targetQuantity={shortageTargetQty}
             onTargetQuantityChange={setShortageTargetQty}
+            canWriteShoppingLists={canWriteShoppingLists}
+            onToast={pushToast}
           />
         </DetailPanel>
       ) : null}

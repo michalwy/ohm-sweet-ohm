@@ -147,6 +147,7 @@ export type BuildsCopy = {
 
 type BuildsClientProps = {
   canWrite: boolean;
+  canWriteShoppingLists: boolean;
   copy: BuildsCopy;
   initialPage: ListPage<BuildSummary>;
   workspaceSlug: string;
@@ -197,6 +198,7 @@ const smallSelectClass =
 
 export function BuildsClient({
   canWrite,
+  canWriteShoppingLists,
   copy,
   initialPage,
   workspaceSlug,
@@ -854,6 +856,8 @@ export function BuildsClient({
         workspaceSlug={workspaceSlug}
         revisionId={formRevisionId || null}
         targetQuantity={Math.max(1, Number.parseInt(formTargetQuantity, 10) || 1)}
+        canWriteShoppingLists={canWriteShoppingLists}
+        onToast={(msg) => pushToast(msg)}
       />
 
       <ToastNotice

@@ -199,6 +199,8 @@ describe("shortage analysis", () => {
     assert.equal(result.procurement.length, 1);
     assert.equal(result.procurement[0]!.partId, partA.id);
     assert.equal(result.procurement[0]!.shortageQty, 3);
+    assert.equal(result.procurement[0]!.candidates.length, 1);
+    assert.equal(result.procurement[0]!.candidates[0]!.partId, partA.id);
   });
 
   test("reserved stock reduces availability", async () => {
@@ -374,6 +376,234 @@ describe("shortage analysis", () => {
 
     // The sub-assembly output part must NOT appear in the leaf procurement list.
     assert.ok(!result.procurement.some((p) => p.partId === sub.outputPartId));
+  });
+
+  test("procurement candidates include all matching leaf parts, sorted by catalog number", async () => {
+    const ws = await createTestWorkspace(uniqueSuffix());
+    const design = await createDesignWithRevision(ws, "Widget", "WIDGET-1");
+
+    const resistance = await prisma.attribute.create({
+      data: {
+        workspaceId: ws.workspaceId,
+        name: "Resistance",
+        normalizedName: "resistance",
+        type: "QUANTITY",
+        baseUnitSymbol: "Ω"
+      },
+      select: { id: true }
+    });
+    const category = await prisma.partCategory.create({
+      data: { workspaceId: ws.workspaceId, name: "Resistors" },
+      select: { id: true }
+    });
+    await prisma.partCategoryClosure.create({
+      data: { workspaceId: ws.workspaceId, ancestorId: category.id, descendantId: category.id, depth: 0 }
+    });
+
+    // Both parts match but neither has stock, so the line is fully short.
+    const partB = await createLeafPart(ws, "R-1k-B", 0, 0, {
+      categoryId: category.id,
+      attributeId: resistance.id,
+      quantityBaseValue: "1000"
+    });
+    const partA = await createLeafPart(ws, "R-1k-A", 0, 0, {
+      categoryId: category.id,
+      attributeId: resistance.id,
+      quantityBaseValue: "1000"
+    });
+
+    await prisma.bomLineItem.create({
+      data: {
+        workspaceId: ws.workspaceId,
+        revisionId: design.revisionId,
+        designators: "R1-R5",
+        quantity: 5,
+        categoryId: category.id,
+        matchers: {
+          create: [
+            {
+              workspaceId: ws.workspaceId,
+              attributeId: resistance.id,
+              operator: "GTE",
+              quantityBaseValue: "1000",
+              displayValue: "1000 Ω"
+            }
+          ]
+        }
+      }
+    });
+
+    const result = await analyzeShortage({
+      userId: ws.userId,
+      workspaceId: ws.workspaceId,
+      revisionId: design.revisionId,
+      targetQuantity: 1
+    });
+
+    assert.equal(result.procurement.length, 1);
+    // Sourced deterministically from the first candidate by catalog number ascending.
+    assert.equal(result.procurement[0]!.partId, partA.id);
+    assert.equal(result.procurement[0]!.shortageQty, 5);
+    assert.deepEqual(
+      result.procurement[0]!.candidates.map((c) => c.partId),
+      [partA.id, partB.id]
+    );
+  });
+
+  test("candidates are unioned across different lines/specs sourcing the same part", async () => {
+    const ws = await createTestWorkspace(uniqueSuffix());
+    const design = await createDesignWithRevision(ws, "Widget", "WIDGET-1");
+
+    const resistance = await prisma.attribute.create({
+      data: {
+        workspaceId: ws.workspaceId,
+        name: "Resistance",
+        normalizedName: "resistance",
+        type: "QUANTITY",
+        baseUnitSymbol: "Ω"
+      },
+      select: { id: true }
+    });
+    const category = await prisma.partCategory.create({
+      data: { workspaceId: ws.workspaceId, name: "Resistors" },
+      select: { id: true }
+    });
+    await prisma.partCategoryClosure.create({
+      data: { workspaceId: ws.workspaceId, ancestorId: category.id, descendantId: category.id, depth: 0 }
+    });
+
+    const partA = await createLeafPart(ws, "R-1k-A", 0, 0, {
+      categoryId: category.id,
+      attributeId: resistance.id,
+      quantityBaseValue: "1000"
+    });
+    const partB = await createLeafPart(ws, "R-1k-B", 0, 0, {
+      categoryId: category.id,
+      attributeId: resistance.id,
+      quantityBaseValue: "1000"
+    });
+
+    // Line 1 matches both A and B via the attribute spec; sources from A (catalog asc).
+    await prisma.bomLineItem.create({
+      data: {
+        workspaceId: ws.workspaceId,
+        revisionId: design.revisionId,
+        designators: "R1-R2",
+        quantity: 2,
+        categoryId: category.id,
+        matchers: {
+          create: [
+            {
+              workspaceId: ws.workspaceId,
+              attributeId: resistance.id,
+              operator: "GTE",
+              quantityBaseValue: "1000",
+              displayValue: "1000 Ω"
+            }
+          ]
+        }
+      }
+    });
+    // Line 2 is pinned directly to A — a narrower spec with only one candidate.
+    await addPinnedLine(ws, design.revisionId, "R3", 1, partA.id);
+
+    const result = await analyzeShortage({
+      userId: ws.userId,
+      workspaceId: ws.workspaceId,
+      revisionId: design.revisionId,
+      targetQuantity: 1
+    });
+
+    assert.equal(result.procurement.length, 1);
+    assert.equal(result.procurement[0]!.partId, partA.id);
+    assert.equal(result.procurement[0]!.shortageQty, 3);
+    // Union of line 1's {A, B} and line 2's {A}, deduped.
+    assert.deepEqual(
+      result.procurement[0]!.candidates.map((c) => c.partId),
+      [partA.id, partB.id]
+    );
+  });
+
+  test("sub-assembly output parts are excluded from procurement candidates", async () => {
+    const ws = await createTestWorkspace(uniqueSuffix());
+    const sub = await createDesignWithRevision(ws, "Sub", "SUB-1");
+    const main = await createDesignWithRevision(ws, "Main", "MAIN-1");
+
+    const resistance = await prisma.attribute.create({
+      data: {
+        workspaceId: ws.workspaceId,
+        name: "Resistance",
+        normalizedName: "resistance",
+        type: "QUANTITY",
+        baseUnitSymbol: "Ω"
+      },
+      select: { id: true }
+    });
+    const category = await prisma.partCategory.create({
+      data: { workspaceId: ws.workspaceId, name: "Resistors" },
+      select: { id: true }
+    });
+    await prisma.partCategoryClosure.create({
+      data: { workspaceId: ws.workspaceId, ancestorId: category.id, descendantId: category.id, depth: 0 }
+    });
+
+    // A leaf part that sorts first by catalog number, so it is the deterministic sourcing choice.
+    const leafFirst = await createLeafPart(ws, "A-LEAF", 0, 0, {
+      categoryId: category.id,
+      attributeId: resistance.id,
+      quantityBaseValue: "1000"
+    });
+
+    // The sub-assembly's output part also matches the spec, but sorts after the leaf part.
+    await prisma.part.update({
+      where: { id: sub.outputPartId },
+      data: { primaryCategoryId: category.id, catalogNumber: "B-SUB" }
+    });
+    await prisma.partAttributeValue.create({
+      data: {
+        workspaceId: ws.workspaceId,
+        partId: sub.outputPartId,
+        attributeId: resistance.id,
+        quantityBaseValue: "1000",
+        displayValue: "1000 Ω"
+      }
+    });
+
+    await prisma.bomLineItem.create({
+      data: {
+        workspaceId: ws.workspaceId,
+        revisionId: main.revisionId,
+        designators: "R1-R3",
+        quantity: 3,
+        categoryId: category.id,
+        matchers: {
+          create: [
+            {
+              workspaceId: ws.workspaceId,
+              attributeId: resistance.id,
+              operator: "GTE",
+              quantityBaseValue: "1000",
+              displayValue: "1000 Ω"
+            }
+          ]
+        }
+      }
+    });
+
+    const result = await analyzeShortage({
+      userId: ws.userId,
+      workspaceId: ws.workspaceId,
+      revisionId: main.revisionId,
+      targetQuantity: 1
+    });
+
+    assert.equal(result.procurement.length, 1);
+    assert.equal(result.procurement[0]!.partId, leafFirst.id);
+    assert.deepEqual(
+      result.procurement[0]!.candidates.map((c) => c.partId),
+      [leafFirst.id]
+    );
+    assert.ok(!result.procurement[0]!.candidates.some((c) => c.partId === sub.outputPartId));
   });
 
   test("detects and reports design cycles without looping", async () => {

@@ -122,7 +122,7 @@ export default async function BuildsPage({ params, searchParams }: BuildsPagePro
 
   const emptyPage = { items: [], nextCursor: null, totalCount: 0, filteredCount: 0 };
 
-  const [initialPage, canWrite] = await Promise.all([
+  const [initialPage, canWrite, canWriteShoppingLists] = await Promise.all([
     getBuildsForWorkspace({
       userId: context.user.id,
       workspaceId: context.workspace.id,
@@ -132,6 +132,11 @@ export default async function BuildsPage({ params, searchParams }: BuildsPagePro
       userId: context.user.id,
       workspaceId: context.workspace.id,
       permission: "builds:write"
+    }).catch(() => false),
+    hasWorkspacePermission({
+      userId: context.user.id,
+      workspaceId: context.workspace.id,
+      permission: "shopping-lists:write"
     }).catch(() => false)
   ]);
 
@@ -146,6 +151,7 @@ export default async function BuildsPage({ params, searchParams }: BuildsPagePro
     >
       <BuildsClient
         canWrite={canWrite}
+        canWriteShoppingLists={canWriteShoppingLists}
         copy={copy}
         initialPage={initialPage}
         workspaceSlug={workspaceSlug}
