@@ -30,6 +30,7 @@ export type PartPickerCopy = PartsListFiltersCopy &
     | "reserved"
     | "allocated"
     | "available"
+    | "balance"
     | "planned"
     | "onOrder"
     | "inProduction"

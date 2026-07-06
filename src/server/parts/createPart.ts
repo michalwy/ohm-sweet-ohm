@@ -861,6 +861,12 @@ async function getPartListItem({
     reservedQuantity: part.reservedQty.toString(),
     allocatedQuantity: part.allocatedQty.toString(),
     availableQuantity: part.currentStock.minus(part.reservedQty).toString(),
+    balanceQuantity: part.currentStock
+      .minus(part.reservedQty)
+      .plus(part.onOrderQty)
+      .plus(part.inProductionQty)
+      .minus(part.allocatedQty)
+      .toString(),
     plannedQuantity: part.plannedQty.toString(),
     onOrderQuantity: part.onOrderQty.toString(),
     inProductionQuantity: part.inProductionQty.toString(),

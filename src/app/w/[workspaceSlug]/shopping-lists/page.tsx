@@ -143,6 +143,7 @@ const copy = {
     reserved: "Reserved",
     allocated: "Allocated",
     available: "Available",
+    balance: "Balance",
     planned: "Planned",
     onOrder: "On order",
     inProduction: "In production",

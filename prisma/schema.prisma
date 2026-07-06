@@ -19,6 +19,7 @@ model Part {
   allocatedQty        Decimal  @default(0)
   inProductionQty     Decimal  @default(0)
   availableQty        Decimal  @default(dbgenerated())
+  balanceQty          Decimal  @default(dbgenerated())
   avgNetCostPrimary   Decimal?
   avgGrossCostPrimary Decimal?
   catalogNumber       String
@@ -55,6 +56,7 @@ model Part {
   @@index([workspaceId, allocatedQty, id])
   @@index([workspaceId, inProductionQty, id])
   @@index([workspaceId, availableQty, id])
+  @@index([workspaceId, balanceQty, id])
   @@index([workspaceId, avgNetCostPrimary, id])
   @@index([workspaceId, avgGrossCostPrimary, id])
   @@index([workspaceId, manufacturerId])

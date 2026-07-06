@@ -19,8 +19,9 @@ Several optional columns can be enabled via **Configure list**:
 - **Planned** — total quantity of this part currently on shopping lists (items not yet linked to a purchase order), any direct draft purchase order line items (added to a PO without originating from a shopping list), and — for a Design's output part — the target quantity of any builds in the Allocating state (planned to be produced but not yet started). Requires Shopping Lists read access. Hidden by default.
 - **On order** — total quantity in purchase orders that have been submitted to a supplier and are awaiting receipt. Requires Purchase Orders read access. Hidden by default.
 - **In production** — for a Design's output part, the total quantity currently being assembled across active builds (builds in Started or In Progress state). Requires Builds read access. Hidden by default.
+- **Balance** — a single at-a-glance figure combining everything already in motion, net of what's already earmarked: `Available + On order + In production − Allocated`. Requires Inventory, Purchase Orders, and Builds read access (all three); the column is omitted entirely if any is missing, since a partial figure would be misleading. Hidden by default. Also shown on the part details panel when those same permissions are held.
 
-Both columns support sorting with cursor-based pagination so they work efficiently across large datasets.
+All of these columns support sorting with cursor-based pagination so they work efficiently across large datasets.
 
 ### Adding A Part
 

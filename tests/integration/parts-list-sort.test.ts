@@ -85,6 +85,8 @@ async function createPart(input: {
   currentStock?: number;
   reservedQty?: number;
   allocatedQty?: number;
+  onOrderQty?: number;
+  inProductionQty?: number;
 }) {
   await prisma.part.create({
     data: {
@@ -96,7 +98,9 @@ async function createPart(input: {
       description: input.description,
       currentStock: input.currentStock ?? 0,
       reservedQty: input.reservedQty ?? 0,
-      allocatedQty: input.allocatedQty ?? 0
+      allocatedQty: input.allocatedQty ?? 0,
+      onOrderQty: input.onOrderQty ?? 0,
+      inProductionQty: input.inProductionQty ?? 0
     }
   });
 }
@@ -316,6 +320,55 @@ describe("parts list DB-level reserved/allocated/available sorting", () => {
     assert.deepEqual(asc, ["P01", "P02", "P03", "P04", "P05"]);
 
     const desc = await collectAllPages(context, "availableQuantity", "desc", 2);
+    assert.deepEqual(desc, ["P05", "P04", "P03", "P02", "P01"]);
+  });
+
+  test("sorts by balanceQuantity (a generated available + onOrder + inProduction - allocated column) across pages", async () => {
+    const suffix = uniqueSuffix();
+    const { workspaceId, userId, unitId, manufacturerId } =
+      await createTestWorkspace(suffix);
+    const context = {
+      user: { id: userId },
+      workspace: { id: workspaceId, primaryCurrency: "EUR" }
+    };
+
+    // balanceQty = (currentStock - reservedQty) + onOrderQty + inProductionQty - allocatedQty.
+    // Every row nets to a distinct balance (P01..P05 -> 10, 20, 30, 40, 50) via a different
+    // combination of inputs so this genuinely exercises all four terms, not just currentStock.
+    const rows: Array<{
+      catalogNumber: string;
+      currentStock: number;
+      reservedQty: number;
+      onOrderQty: number;
+      inProductionQty: number;
+      allocatedQty: number;
+    }> = [
+      { catalogNumber: "P03", currentStock: 100, reservedQty: 70, onOrderQty: 0, inProductionQty: 0, allocatedQty: 0 },
+      { catalogNumber: "P01", currentStock: 100, reservedQty: 100, onOrderQty: 20, inProductionQty: 0, allocatedQty: 10 },
+      { catalogNumber: "P05", currentStock: 0, reservedQty: 0, onOrderQty: 30, inProductionQty: 20, allocatedQty: 0 },
+      { catalogNumber: "P02", currentStock: 50, reservedQty: 50, onOrderQty: 0, inProductionQty: 20, allocatedQty: 0 },
+      { catalogNumber: "P04", currentStock: 100, reservedQty: 90, onOrderQty: 0, inProductionQty: 30, allocatedQty: 0 }
+    ];
+    for (const row of rows) {
+      await createPart({
+        id: `${suffix}-${row.catalogNumber}`,
+        workspaceId,
+        unitId,
+        manufacturerId,
+        catalogNumber: row.catalogNumber,
+        description: null,
+        currentStock: row.currentStock,
+        reservedQty: row.reservedQty,
+        onOrderQty: row.onOrderQty,
+        inProductionQty: row.inProductionQty,
+        allocatedQty: row.allocatedQty
+      });
+    }
+
+    const asc = await collectAllPages(context, "balanceQuantity", "asc", 2);
+    assert.deepEqual(asc, ["P01", "P02", "P03", "P04", "P05"]);
+
+    const desc = await collectAllPages(context, "balanceQuantity", "desc", 2);
     assert.deepEqual(desc, ["P05", "P04", "P03", "P02", "P01"]);
   });
 });

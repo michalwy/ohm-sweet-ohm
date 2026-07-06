@@ -168,6 +168,7 @@ type Copy = {
   reserved: string;
   allocated: string;
   available: string;
+  balance: string;
   planned: string;
   onOrder: string;
   inProduction: string;
@@ -454,6 +455,7 @@ export function PartsListClient({
           reserved: copy.reserved,
           allocated: copy.allocated,
           available: copy.available,
+          balance: copy.balance,
           planned: copy.planned,
           onOrder: copy.onOrder,
           inProduction: copy.inProduction,
@@ -741,6 +743,7 @@ export function PartsListClient({
       reserved: copy.reserved,
       allocated: copy.allocated,
       available: copy.available,
+      balance: copy.balance,
       planned: copy.planned,
       onOrder: copy.onOrder,
       inProduction: copy.inProduction,
@@ -1531,6 +1534,15 @@ export function PartsListClient({
                     </button>
                   ) : null}
                 </div>
+              ) : null}
+              {canReadInventory && canReadPurchaseOrders && canReadBuilds &&
+              selectedPart.balanceQuantity !== null ? (
+                <p className="text-sm text-[var(--color-text-secondary)]">
+                  <span className="font-semibold text-[var(--color-text-primary)]">
+                    {copy.balance}:
+                  </span>{" "}
+                  {selectedPart.balanceQuantity}
+                </p>
               ) : null}
               <section className="grid gap-2">
                 <h3 className="text-sm font-semibold text-[var(--color-text-primary)]">

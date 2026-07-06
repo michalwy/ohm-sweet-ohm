@@ -33,6 +33,7 @@ export type PartsListItem = {
   reservedQuantity: string | null;
   allocatedQuantity: string | null;
   availableQuantity: string | null;
+  balanceQuantity: string | null;
   plannedQuantity: string | null;
   onOrderQuantity: string | null;
   inProductionQuantity: string | null;
@@ -198,6 +199,8 @@ export async function getPartsListPage(
     (requestedSortBy === "reservedQuantity" && !canReadInventory) ||
     (requestedSortBy === "allocatedQuantity" && !canReadInventory) ||
     (requestedSortBy === "availableQuantity" && !canReadInventory) ||
+    (requestedSortBy === "balanceQuantity" &&
+      !(canReadInventory && canReadPurchaseOrders && canReadBuilds)) ||
     (requestedSortBy === "plannedQuantity" && !canReadShoppingLists) ||
     (requestedSortBy === "onOrderQuantity" && !canReadPurchaseOrders) ||
     (requestedSortBy === "avgNetCost" && !canReadPurchaseOrders) ||
@@ -258,6 +261,26 @@ export async function getPartsListPage(
   } else if (activeSortBy === "availableQuantity" && canReadInventory) {
     page = await getDecimalFieldSortedPartsListPage({
       field: "availableQty",
+      baseWhere,
+      categoryPathsById,
+      cursor: input.cursor,
+      pageSize,
+      sortDirection: activeSortDirection,
+      totalCount,
+      workspaceId: context.workspace.id,
+      canReadInventory,
+      canReadShoppingLists,
+      canReadPurchaseOrders,
+      canReadBuilds
+    });
+  } else if (
+    activeSortBy === "balanceQuantity" &&
+    canReadInventory &&
+    canReadPurchaseOrders &&
+    canReadBuilds
+  ) {
+    page = await getDecimalFieldSortedPartsListPage({
+      field: "balanceQty",
       baseWhere,
       categoryPathsById,
       cursor: input.cursor,
@@ -442,6 +465,7 @@ const partListSelect = {
   reservedQty: true,
   allocatedQty: true,
   availableQty: true,
+  balanceQty: true,
   plannedQty: true,
   onOrderQty: true,
   inProductionQty: true,
@@ -504,6 +528,7 @@ async function getDecimalFieldSortedPartsListPage({
     | "reservedQty"
     | "allocatedQty"
     | "availableQty"
+    | "balanceQty"
     | "plannedQty"
     | "onOrderQty"
     | "inProductionQty"
@@ -1016,6 +1041,10 @@ function mapPartListItem({
     reservedQuantity: canReadInventory ? part.reservedQty.toString() : null,
     allocatedQuantity: canReadInventory ? part.allocatedQty.toString() : null,
     availableQuantity: canReadInventory ? part.availableQty.toString() : null,
+    balanceQuantity:
+      canReadInventory && canReadPurchaseOrders && canReadBuilds
+        ? part.balanceQty.toString()
+        : null,
     plannedQuantity: canReadShoppingLists ? part.plannedQty.toString() : null,
     onOrderQuantity: canReadPurchaseOrders ? part.onOrderQty.toString() : null,
     inProductionQuantity: canReadBuilds ? part.inProductionQty.toString() : null,
@@ -1157,6 +1186,7 @@ function getDecimalFieldCursorWhere({
     | "reservedQty"
     | "allocatedQty"
     | "availableQty"
+    | "balanceQty"
     | "plannedQty"
     | "onOrderQty"
     | "inProductionQty"

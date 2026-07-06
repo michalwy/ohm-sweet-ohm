@@ -41,6 +41,7 @@ export type PartsListColumnsCopy = PartsListCategoriesCopy & {
   reserved: string;
   allocated: string;
   available: string;
+  balance: string;
   planned: string;
   onOrder: string;
   inProduction: string;
@@ -99,6 +100,7 @@ type BuildColumnDefsOpts = {
     | "reserved"
     | "allocated"
     | "available"
+    | "balance"
     | "planned"
     | "onOrder"
     | "inProduction"
@@ -280,6 +282,20 @@ export function buildPartsListColumnDefs({
           {
             id: "inProductionQuantity",
             label: copy.inProduction,
+            group: "base" as const,
+            defaultVisible: false,
+            defaultWidth: 120,
+            minWidth: 72,
+            sortable: true,
+            align: "right" as const
+          }
+        ]
+      : []),
+    ...(canReadInventory && canReadPurchaseOrders && canReadBuilds
+      ? [
+          {
+            id: "balanceQuantity",
+            label: copy.balance,
             group: "base" as const,
             defaultVisible: false,
             defaultWidth: 120,
@@ -654,6 +670,31 @@ export function buildPartsListColumns(
               compareNumericDisplayValues(
                 rowA.original.inProductionQuantity ?? "",
                 rowB.original.inProductionQuantity ?? ""
+              ),
+            cell: ({ getValue }) => {
+              const value = nonZeroQuantity(getValue());
+
+              return value ? (
+                <span className="block text-right text-[var(--color-text-primary)]">{value}</span>
+              ) : (
+                <span className="block text-right"><EmptyCell /></span>
+              );
+            }
+          })
+        ]
+      : []),
+    ...(canReadInventory && canReadPurchaseOrders && canReadBuilds
+      ? [
+          columnHelper.accessor("balanceQuantity", {
+            header: () => (
+              <span className="block w-full text-right">{copy.balance}</span>
+            ),
+            size: 120,
+            minSize: 72,
+            sortingFn: (rowA, rowB) =>
+              compareNumericDisplayValues(
+                rowA.original.balanceQuantity ?? "",
+                rowB.original.balanceQuantity ?? ""
               ),
             cell: ({ getValue }) => {
               const value = nonZeroQuantity(getValue());
