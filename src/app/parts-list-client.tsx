@@ -463,13 +463,9 @@ export function PartsListClient({
           avgGrossCost: copy.avgGrossCost,
           defaultLocation: copy.defaultLocation
         },
-        canReadInventory,
-        canReadShoppingLists,
-        canReadPurchaseOrders,
-        canReadBuilds,
         workspaceAttributes
       }),
-    [canReadInventory, canReadShoppingLists, canReadPurchaseOrders, canReadBuilds, copy, workspaceAttributes]
+    [copy, workspaceAttributes]
   );
   const fixedListColumnIds = useMemo(() => ["actions"], []);
   const {
@@ -755,10 +751,6 @@ export function PartsListClient({
       addToPurchaseOrder: copy.addToPurchaseOrder,
       addToShoppingList: copy.addToShoppingList
     },
-    canReadInventory,
-    canReadShoppingLists,
-    canReadPurchaseOrders,
-    canReadBuilds,
     workspaceAttributes,
     isDatabaseAvailable,
     isDeletePending: deletePartMutation.isPending,
@@ -769,10 +761,6 @@ export function PartsListClient({
     onAddToPO: canWritePurchaseOrders ? (part) => setPartForPODialog(part) : undefined,
     onAddToSL: canWriteShoppingLists ? (part) => setPartForSLDialog(part) : undefined
   }), [
-    canReadInventory,
-    canReadShoppingLists,
-    canReadPurchaseOrders,
-    canReadBuilds,
     canWriteShoppingLists,
     canWritePurchaseOrders,
     copy,

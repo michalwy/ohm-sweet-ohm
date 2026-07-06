@@ -187,22 +187,12 @@ export default async function ShoppingListsPage({
 
   const emptyPage = { items: [], nextCursor: null, totalCount: 0, filteredCount: 0 };
 
-  const [initialPage, canWrite, canReadInventory, canReadPurchaseOrders] = await Promise.all([
+  const [initialPage, canWrite] = await Promise.all([
     getShoppingLists(context.workspace.id).catch(() => emptyPage),
     hasWorkspacePermission({
       userId: context.user.id,
       workspaceId: context.workspace.id,
       permission: "shopping-lists:write"
-    }).catch(() => false),
-    hasWorkspacePermission({
-      userId: context.user.id,
-      workspaceId: context.workspace.id,
-      permission: "inventory:read"
-    }).catch(() => false),
-    hasWorkspacePermission({
-      userId: context.user.id,
-      workspaceId: context.workspace.id,
-      permission: "purchase-orders:read"
     }).catch(() => false)
   ]);
 
@@ -217,8 +207,6 @@ export default async function ShoppingListsPage({
     >
       <ShoppingListsClient
         canWrite={canWrite}
-        canReadInventory={canReadInventory}
-        canReadPurchaseOrders={canReadPurchaseOrders}
         copy={copy}
         initialPage={initialPage}
         initialSelectedListId={resolvedSearchParams?.selectedListId}

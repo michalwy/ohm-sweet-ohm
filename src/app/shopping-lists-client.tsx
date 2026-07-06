@@ -159,8 +159,6 @@ type Copy = {
 
 type ShoppingListsClientProps = {
   canWrite: boolean;
-  canReadInventory: boolean;
-  canReadPurchaseOrders: boolean;
   copy: Copy;
   initialPage: ListPage<ShoppingListSummary>;
   initialSelectedListId?: string;
@@ -175,8 +173,6 @@ const columnHelper = createColumnHelper<ShoppingListSummary>();
 
 export function ShoppingListsClient({
   canWrite,
-  canReadInventory,
-  canReadPurchaseOrders,
   copy,
   initialPage,
   initialSelectedListId,
@@ -1335,9 +1331,6 @@ export function ShoppingListsClient({
           existingParts={existingParts}
           open={multiAddSLOpen}
           copy={copy.multiAdd}
-          canReadInventory={canReadInventory}
-          canReadShoppingLists={true}
-          canReadPurchaseOrders={canReadPurchaseOrders}
           onClose={() => setMultiAddSLOpen(false)}
           onSuccess={() => {
             void queryClient.invalidateQueries({ queryKey: ["shopping-list-detail", workspaceSlug, selectedListId] });

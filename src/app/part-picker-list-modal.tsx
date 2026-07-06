@@ -65,9 +65,6 @@ type PartPickerListModalProps = {
   alreadyAddedPartIds: ReadonlySet<string>;
   open: boolean;
   copy: PartPickerCopy;
-  canReadInventory: boolean;
-  canReadShoppingLists: boolean;
-  canReadPurchaseOrders: boolean;
   onClose: () => void;
   onConfirm: (selectedParts: PartsListItem[]) => void;
 };
@@ -78,9 +75,6 @@ export function PartPickerListModal({
   alreadyAddedPartIds,
   open,
   copy,
-  canReadInventory,
-  canReadShoppingLists,
-  canReadPurchaseOrders,
   onClose,
   onConfirm
 }: PartPickerListModalProps) {
@@ -121,13 +115,9 @@ export function PartPickerListModal({
     () =>
       buildPartsListColumnDefs({
         copy,
-        canReadInventory,
-        canReadShoppingLists,
-        canReadPurchaseOrders,
-        canReadBuilds: false,
         workspaceAttributes: []
       }),
-    [canReadInventory, canReadShoppingLists, canReadPurchaseOrders, copy]
+    [copy]
   );
   const fixedListColumnIds = useMemo(() => [] as string[], []);
   const {
@@ -189,17 +179,13 @@ export function PartPickerListModal({
       buildPartsListColumns({
         mode: "picker",
         copy,
-        canReadInventory,
-        canReadShoppingLists,
-        canReadPurchaseOrders,
-        canReadBuilds: false,
         workspaceAttributes: [],
         selectedPartIds,
         alreadyAddedPartIds,
         onToggle: handleToggle
       }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [canReadInventory, canReadShoppingLists, canReadPurchaseOrders, copy, selectedPartIds, alreadyAddedPartIds]
+    [copy, selectedPartIds, alreadyAddedPartIds]
   );
 
   // "select" is not part of the persisted config (it's picker-only), so pin it first explicitly.

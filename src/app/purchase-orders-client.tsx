@@ -483,8 +483,6 @@ type Copy = {
 
 type PurchaseOrdersClientProps = {
   canWrite: boolean;
-  canReadInventory: boolean;
-  canReadShoppingLists: boolean;
   copy: Copy;
   initialPage: ListPage<PurchaseOrderSummary>;
   initialSelectedOrderId?: string;
@@ -503,8 +501,6 @@ const columnHelper = createColumnHelper<PurchaseOrderSummary>();
 
 export function PurchaseOrdersClient({
   canWrite,
-  canReadInventory,
-  canReadShoppingLists,
   copy,
   initialPage,
   initialSelectedOrderId,
@@ -2364,9 +2360,6 @@ export function PurchaseOrdersClient({
           existingParts={existingParts}
           open={multiAddPOOpen}
           copy={copy.multiAdd}
-          canReadInventory={canReadInventory}
-          canReadShoppingLists={canReadShoppingLists}
-          canReadPurchaseOrders={true}
           onClose={() => setMultiAddPOOpen(false)}
           onSuccess={() => {
             refreshDetail(selectedOrderId);

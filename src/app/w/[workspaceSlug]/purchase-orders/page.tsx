@@ -223,23 +223,13 @@ export default async function PurchaseOrdersPage({ params, searchParams }: Purch
 
   const emptyPage = { items: [], nextCursor: null, totalCount: 0, filteredCount: 0 };
 
-  const [initialPage, locations, canWrite, canReadInventory, canReadShoppingLists] = await Promise.all([
+  const [initialPage, locations, canWrite] = await Promise.all([
     getPurchaseOrders(context.workspace.id).catch(() => emptyPage),
     getStorageLocations(context.workspace.id).catch(() => []),
     hasWorkspacePermission({
       userId: context.user.id,
       workspaceId: context.workspace.id,
       permission: "purchase-orders:write"
-    }).catch(() => false),
-    hasWorkspacePermission({
-      userId: context.user.id,
-      workspaceId: context.workspace.id,
-      permission: "inventory:read"
-    }).catch(() => false),
-    hasWorkspacePermission({
-      userId: context.user.id,
-      workspaceId: context.workspace.id,
-      permission: "shopping-lists:read"
     }).catch(() => false)
   ]);
 
@@ -258,8 +248,6 @@ export default async function PurchaseOrdersPage({ params, searchParams }: Purch
       <PurchaseOrdersClient
         copy={copy}
         canWrite={canWrite}
-        canReadInventory={canReadInventory}
-        canReadShoppingLists={canReadShoppingLists}
         initialPage={initialPage}
         initialSelectedOrderId={resolvedSearchParams?.selectedOrderId}
         initialPinnedOrderId={resolvedSearchParams?.pinnedId}

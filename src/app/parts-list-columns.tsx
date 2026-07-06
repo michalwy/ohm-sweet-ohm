@@ -108,19 +108,11 @@ type BuildColumnDefsOpts = {
     | "avgGrossCost"
     | "defaultLocation"
   >;
-  canReadInventory: boolean;
-  canReadShoppingLists: boolean;
-  canReadPurchaseOrders: boolean;
-  canReadBuilds: boolean;
   workspaceAttributes: AttributeListItem[];
 };
 
 export function buildPartsListColumnDefs({
   copy,
-  canReadInventory,
-  canReadShoppingLists,
-  canReadPurchaseOrders,
-  canReadBuilds,
   workspaceAttributes
 }: BuildColumnDefsOpts): ListColumnDefinition[] {
   const attributeColumnDefs: ListColumnDefinition[] = workspaceAttributes.map(
@@ -186,125 +178,105 @@ export function buildPartsListColumnDefs({
       minWidth: 80,
       align: "center" as const
     },
-    ...(canReadInventory
-      ? [
-          {
-            id: "currentStock",
-            label: copy.stock,
-            group: "base" as const,
-            defaultWidth: 120,
-            minWidth: 72,
-            sortable: true,
-            align: "right" as const
-          },
-          {
-            id: "reservedQuantity",
-            label: copy.reserved,
-            group: "base" as const,
-            defaultVisible: false,
-            defaultWidth: 120,
-            minWidth: 72,
-            sortable: true,
-            align: "right" as const
-          },
-          {
-            id: "allocatedQuantity",
-            label: copy.allocated,
-            group: "base" as const,
-            defaultVisible: false,
-            defaultWidth: 120,
-            minWidth: 72,
-            sortable: true,
-            align: "right" as const
-          },
-          {
-            id: "availableQuantity",
-            label: copy.available,
-            group: "base" as const,
-            defaultVisible: false,
-            defaultWidth: 120,
-            minWidth: 72,
-            sortable: true,
-            align: "right" as const
-          }
-        ]
-      : []),
-    ...(canReadShoppingLists
-      ? [
-          {
-            id: "plannedQuantity",
-            label: copy.planned,
-            group: "base" as const,
-            defaultVisible: false,
-            defaultWidth: 120,
-            minWidth: 72,
-            sortable: true,
-            align: "right" as const
-          }
-        ]
-      : []),
-    ...(canReadPurchaseOrders
-      ? [
-          {
-            id: "onOrderQuantity",
-            label: copy.onOrder,
-            group: "base" as const,
-            defaultVisible: false,
-            defaultWidth: 120,
-            minWidth: 72,
-            sortable: true,
-            align: "right" as const
-          },
-          {
-            id: "avgNetCost",
-            label: copy.avgNetCost,
-            group: "base" as const,
-            defaultVisible: false,
-            defaultWidth: 140,
-            minWidth: 80,
-            sortable: true,
-            align: "right" as const
-          },
-          {
-            id: "avgGrossCost",
-            label: copy.avgGrossCost,
-            group: "base" as const,
-            defaultVisible: false,
-            defaultWidth: 140,
-            minWidth: 80,
-            sortable: true,
-            align: "right" as const
-          }
-        ]
-      : []),
-    ...(canReadBuilds
-      ? [
-          {
-            id: "inProductionQuantity",
-            label: copy.inProduction,
-            group: "base" as const,
-            defaultVisible: false,
-            defaultWidth: 120,
-            minWidth: 72,
-            sortable: true,
-            align: "right" as const
-          }
-        ]
-      : []),
-    ...(canReadInventory && canReadPurchaseOrders && canReadBuilds
-      ? [
-          {
-            id: "balanceQuantity",
-            label: copy.balance,
-            group: "base" as const,
-            defaultVisible: false,
-            defaultWidth: 120,
-            minWidth: 72,
-            sortable: true,
-            align: "right" as const
-          }
-        ]
-      : []),
+    {
+      id: "currentStock",
+      label: copy.stock,
+      group: "base" as const,
+      defaultWidth: 120,
+      minWidth: 72,
+      sortable: true,
+      align: "right" as const
+    },
+    {
+      id: "reservedQuantity",
+      label: copy.reserved,
+      group: "base" as const,
+      defaultVisible: false,
+      defaultWidth: 120,
+      minWidth: 72,
+      sortable: true,
+      align: "right" as const
+    },
+    {
+      id: "allocatedQuantity",
+      label: copy.allocated,
+      group: "base" as const,
+      defaultVisible: false,
+      defaultWidth: 120,
+      minWidth: 72,
+      sortable: true,
+      align: "right" as const
+    },
+    {
+      id: "availableQuantity",
+      label: copy.available,
+      group: "base" as const,
+      defaultVisible: false,
+      defaultWidth: 120,
+      minWidth: 72,
+      sortable: true,
+      align: "right" as const
+    },
+    {
+      id: "plannedQuantity",
+      label: copy.planned,
+      group: "base" as const,
+      defaultVisible: false,
+      defaultWidth: 120,
+      minWidth: 72,
+      sortable: true,
+      align: "right" as const
+    },
+    {
+      id: "onOrderQuantity",
+      label: copy.onOrder,
+      group: "base" as const,
+      defaultVisible: false,
+      defaultWidth: 120,
+      minWidth: 72,
+      sortable: true,
+      align: "right" as const
+    },
+    {
+      id: "avgNetCost",
+      label: copy.avgNetCost,
+      group: "base" as const,
+      defaultVisible: false,
+      defaultWidth: 140,
+      minWidth: 80,
+      sortable: true,
+      align: "right" as const
+    },
+    {
+      id: "avgGrossCost",
+      label: copy.avgGrossCost,
+      group: "base" as const,
+      defaultVisible: false,
+      defaultWidth: 140,
+      minWidth: 80,
+      sortable: true,
+      align: "right" as const
+    },
+    {
+      id: "inProductionQuantity",
+      label: copy.inProduction,
+      group: "base" as const,
+      defaultVisible: false,
+      defaultWidth: 120,
+      minWidth: 72,
+      sortable: true,
+      align: "right" as const
+    },
+    {
+      id: "balanceQuantity",
+      label: copy.balance,
+      group: "base" as const,
+      defaultVisible: false,
+      defaultWidth: 120,
+      minWidth: 72,
+      sortable: true,
+      align: "right" as const
+    },
     {
       id: "defaultLocationName",
       label: copy.defaultLocation,
@@ -323,10 +295,6 @@ export function buildPartsListColumnDefs({
 
 type CommonOpts = {
   copy: PartsListColumnsCopy;
-  canReadInventory: boolean;
-  canReadShoppingLists: boolean;
-  canReadPurchaseOrders: boolean;
-  canReadBuilds: boolean;
   workspaceAttributes: AttributeListItem[];
 };
 
@@ -352,14 +320,7 @@ type PickerModeOpts = CommonOpts & {
 export function buildPartsListColumns(
   opts: FullModeOpts | PickerModeOpts
 ): ColumnDef<PartsListItem>[] {
-  const {
-    copy,
-    canReadInventory,
-    canReadShoppingLists,
-    canReadPurchaseOrders,
-    canReadBuilds,
-    workspaceAttributes
-  } = opts;
+  const { copy, workspaceAttributes } = opts;
 
   const columnHelper = createColumnHelper<PartsListItem>();
 
@@ -482,232 +443,212 @@ export function buildPartsListColumns(
           <EmptyCell />
         )
     }),
-    ...(canReadInventory
-      ? [
-          columnHelper.accessor("currentStock", {
-            header: () => (
-              <span className="block w-full text-right">{copy.stock}</span>
-            ),
-            size: 120,
-            minSize: 72,
-            sortingFn: (rowA, rowB) =>
-              compareNumericDisplayValues(
-                rowA.original.currentStock ?? "",
-                rowB.original.currentStock ?? ""
-              ),
-            cell: ({ getValue }) => {
-              const value = nonZeroQuantity(getValue());
+    columnHelper.accessor("currentStock", {
+      header: () => (
+        <span className="block w-full text-right">{copy.stock}</span>
+      ),
+      size: 120,
+      minSize: 72,
+      sortingFn: (rowA, rowB) =>
+        compareNumericDisplayValues(
+          rowA.original.currentStock ?? "",
+          rowB.original.currentStock ?? ""
+        ),
+      cell: ({ getValue }) => {
+        const value = nonZeroQuantity(getValue());
 
-              return value ? (
-                <span className="block text-right text-[var(--color-text-primary)]">{value}</span>
-              ) : (
-                <span className="block text-right"><EmptyCell /></span>
-              );
-            }
-          }),
-          columnHelper.accessor("reservedQuantity", {
-            header: () => (
-              <span className="block w-full text-right">{copy.reserved}</span>
-            ),
-            size: 120,
-            minSize: 72,
-            sortingFn: (rowA, rowB) =>
-              compareNumericDisplayValues(
-                rowA.original.reservedQuantity ?? "",
-                rowB.original.reservedQuantity ?? ""
-              ),
-            cell: ({ getValue }) => {
-              const value = nonZeroQuantity(getValue());
+        return value ? (
+          <span className="block text-right text-[var(--color-text-primary)]">{value}</span>
+        ) : (
+          <span className="block text-right"><EmptyCell /></span>
+        );
+      }
+    }),
+    columnHelper.accessor("reservedQuantity", {
+      header: () => (
+        <span className="block w-full text-right">{copy.reserved}</span>
+      ),
+      size: 120,
+      minSize: 72,
+      sortingFn: (rowA, rowB) =>
+        compareNumericDisplayValues(
+          rowA.original.reservedQuantity ?? "",
+          rowB.original.reservedQuantity ?? ""
+        ),
+      cell: ({ getValue }) => {
+        const value = nonZeroQuantity(getValue());
 
-              return value ? (
-                <span className="block text-right text-[var(--color-text-secondary)]">{value}</span>
-              ) : (
-                <span className="block text-right"><EmptyCell /></span>
-              );
-            }
-          }),
-          columnHelper.accessor("allocatedQuantity", {
-            header: () => (
-              <span className="block w-full text-right">{copy.allocated}</span>
-            ),
-            size: 120,
-            minSize: 72,
-            sortingFn: (rowA, rowB) =>
-              compareNumericDisplayValues(
-                rowA.original.allocatedQuantity ?? "",
-                rowB.original.allocatedQuantity ?? ""
-              ),
-            cell: ({ getValue }) => {
-              const value = nonZeroQuantity(getValue());
+        return value ? (
+          <span className="block text-right text-[var(--color-text-secondary)]">{value}</span>
+        ) : (
+          <span className="block text-right"><EmptyCell /></span>
+        );
+      }
+    }),
+    columnHelper.accessor("allocatedQuantity", {
+      header: () => (
+        <span className="block w-full text-right">{copy.allocated}</span>
+      ),
+      size: 120,
+      minSize: 72,
+      sortingFn: (rowA, rowB) =>
+        compareNumericDisplayValues(
+          rowA.original.allocatedQuantity ?? "",
+          rowB.original.allocatedQuantity ?? ""
+        ),
+      cell: ({ getValue }) => {
+        const value = nonZeroQuantity(getValue());
 
-              return value ? (
-                <span className="block text-right text-[var(--color-text-secondary)]">{value}</span>
-              ) : (
-                <span className="block text-right"><EmptyCell /></span>
-              );
-            }
-          }),
-          columnHelper.accessor("availableQuantity", {
-            header: () => (
-              <span className="block w-full text-right">{copy.available}</span>
-            ),
-            size: 120,
-            minSize: 72,
-            sortingFn: (rowA, rowB) =>
-              compareNumericDisplayValues(
-                rowA.original.availableQuantity ?? "",
-                rowB.original.availableQuantity ?? ""
-              ),
-            cell: ({ getValue }) => {
-              const value = nonZeroQuantity(getValue());
+        return value ? (
+          <span className="block text-right text-[var(--color-text-secondary)]">{value}</span>
+        ) : (
+          <span className="block text-right"><EmptyCell /></span>
+        );
+      }
+    }),
+    columnHelper.accessor("availableQuantity", {
+      header: () => (
+        <span className="block w-full text-right">{copy.available}</span>
+      ),
+      size: 120,
+      minSize: 72,
+      sortingFn: (rowA, rowB) =>
+        compareNumericDisplayValues(
+          rowA.original.availableQuantity ?? "",
+          rowB.original.availableQuantity ?? ""
+        ),
+      cell: ({ getValue }) => {
+        const value = nonZeroQuantity(getValue());
 
-              return value ? (
-                <span className="block text-right text-[var(--color-text-primary)]">{value}</span>
-              ) : (
-                <span className="block text-right"><EmptyCell /></span>
-              );
-            }
-          })
-        ]
-      : []),
-    ...(canReadShoppingLists
-      ? [
-          columnHelper.accessor("plannedQuantity", {
-            header: () => (
-              <span className="block w-full text-right">{copy.planned}</span>
-            ),
-            size: 120,
-            minSize: 72,
-            sortingFn: (rowA, rowB) =>
-              compareNumericDisplayValues(
-                rowA.original.plannedQuantity ?? "",
-                rowB.original.plannedQuantity ?? ""
-              ),
-            cell: ({ getValue }) => {
-              const value = nonZeroQuantity(getValue());
+        return value ? (
+          <span className="block text-right text-[var(--color-text-primary)]">{value}</span>
+        ) : (
+          <span className="block text-right"><EmptyCell /></span>
+        );
+      }
+    }),
+    columnHelper.accessor("plannedQuantity", {
+      header: () => (
+        <span className="block w-full text-right">{copy.planned}</span>
+      ),
+      size: 120,
+      minSize: 72,
+      sortingFn: (rowA, rowB) =>
+        compareNumericDisplayValues(
+          rowA.original.plannedQuantity ?? "",
+          rowB.original.plannedQuantity ?? ""
+        ),
+      cell: ({ getValue }) => {
+        const value = nonZeroQuantity(getValue());
 
-              return value ? (
-                <span className="block text-right text-[var(--color-text-primary)]">{value}</span>
-              ) : (
-                <span className="block text-right"><EmptyCell /></span>
-              );
-            }
-          })
-        ]
-      : []),
-    ...(canReadPurchaseOrders
-      ? [
-          columnHelper.accessor("onOrderQuantity", {
-            header: () => (
-              <span className="block w-full text-right">{copy.onOrder}</span>
-            ),
-            size: 120,
-            minSize: 72,
-            sortingFn: (rowA, rowB) =>
-              compareNumericDisplayValues(
-                rowA.original.onOrderQuantity ?? "",
-                rowB.original.onOrderQuantity ?? ""
-              ),
-            cell: ({ getValue }) => {
-              const value = nonZeroQuantity(getValue());
+        return value ? (
+          <span className="block text-right text-[var(--color-text-primary)]">{value}</span>
+        ) : (
+          <span className="block text-right"><EmptyCell /></span>
+        );
+      }
+    }),
+    columnHelper.accessor("onOrderQuantity", {
+      header: () => (
+        <span className="block w-full text-right">{copy.onOrder}</span>
+      ),
+      size: 120,
+      minSize: 72,
+      sortingFn: (rowA, rowB) =>
+        compareNumericDisplayValues(
+          rowA.original.onOrderQuantity ?? "",
+          rowB.original.onOrderQuantity ?? ""
+        ),
+      cell: ({ getValue }) => {
+        const value = nonZeroQuantity(getValue());
 
-              return value ? (
-                <span className="block text-right text-[var(--color-text-primary)]">{value}</span>
-              ) : (
-                <span className="block text-right"><EmptyCell /></span>
-              );
-            }
-          }),
-          columnHelper.accessor("avgNetCost", {
-            id: "avgNetCost",
-            header: () => (
-              <span className="block w-full text-right">{copy.avgNetCost}</span>
-            ),
-            size: 140,
-            minSize: 80,
-            cell: ({ getValue }) => {
-              const value = getValue();
-              return value ? (
-                <span className="block text-right font-mono text-[var(--color-text-secondary)]">
-                  {value}
-                </span>
-              ) : (
-                <span className="block text-right"><EmptyCell /></span>
-              );
-            }
-          }),
-          columnHelper.accessor("avgGrossCost", {
-            id: "avgGrossCost",
-            header: () => (
-              <span className="block w-full text-right">
-                {copy.avgGrossCost}
-              </span>
-            ),
-            size: 140,
-            minSize: 80,
-            cell: ({ getValue }) => {
-              const value = getValue();
-              return value ? (
-                <span className="block text-right font-mono text-[var(--color-text-secondary)]">
-                  {value}
-                </span>
-              ) : (
-                <span className="block text-right"><EmptyCell /></span>
-              );
-            }
-          })
-        ]
-      : []),
-    ...(canReadBuilds
-      ? [
-          columnHelper.accessor("inProductionQuantity", {
-            header: () => (
-              <span className="block w-full text-right">{copy.inProduction}</span>
-            ),
-            size: 120,
-            minSize: 72,
-            sortingFn: (rowA, rowB) =>
-              compareNumericDisplayValues(
-                rowA.original.inProductionQuantity ?? "",
-                rowB.original.inProductionQuantity ?? ""
-              ),
-            cell: ({ getValue }) => {
-              const value = nonZeroQuantity(getValue());
+        return value ? (
+          <span className="block text-right text-[var(--color-text-primary)]">{value}</span>
+        ) : (
+          <span className="block text-right"><EmptyCell /></span>
+        );
+      }
+    }),
+    columnHelper.accessor("avgNetCost", {
+      id: "avgNetCost",
+      header: () => (
+        <span className="block w-full text-right">{copy.avgNetCost}</span>
+      ),
+      size: 140,
+      minSize: 80,
+      cell: ({ getValue }) => {
+        const value = getValue();
+        return value ? (
+          <span className="block text-right font-mono text-[var(--color-text-secondary)]">
+            {value}
+          </span>
+        ) : (
+          <span className="block text-right"><EmptyCell /></span>
+        );
+      }
+    }),
+    columnHelper.accessor("avgGrossCost", {
+      id: "avgGrossCost",
+      header: () => (
+        <span className="block w-full text-right">
+          {copy.avgGrossCost}
+        </span>
+      ),
+      size: 140,
+      minSize: 80,
+      cell: ({ getValue }) => {
+        const value = getValue();
+        return value ? (
+          <span className="block text-right font-mono text-[var(--color-text-secondary)]">
+            {value}
+          </span>
+        ) : (
+          <span className="block text-right"><EmptyCell /></span>
+        );
+      }
+    }),
+    columnHelper.accessor("inProductionQuantity", {
+      header: () => (
+        <span className="block w-full text-right">{copy.inProduction}</span>
+      ),
+      size: 120,
+      minSize: 72,
+      sortingFn: (rowA, rowB) =>
+        compareNumericDisplayValues(
+          rowA.original.inProductionQuantity ?? "",
+          rowB.original.inProductionQuantity ?? ""
+        ),
+      cell: ({ getValue }) => {
+        const value = nonZeroQuantity(getValue());
 
-              return value ? (
-                <span className="block text-right text-[var(--color-text-primary)]">{value}</span>
-              ) : (
-                <span className="block text-right"><EmptyCell /></span>
-              );
-            }
-          })
-        ]
-      : []),
-    ...(canReadInventory && canReadPurchaseOrders && canReadBuilds
-      ? [
-          columnHelper.accessor("balanceQuantity", {
-            header: () => (
-              <span className="block w-full text-right">{copy.balance}</span>
-            ),
-            size: 120,
-            minSize: 72,
-            sortingFn: (rowA, rowB) =>
-              compareNumericDisplayValues(
-                rowA.original.balanceQuantity ?? "",
-                rowB.original.balanceQuantity ?? ""
-              ),
-            cell: ({ getValue }) => {
-              const value = nonZeroQuantity(getValue());
+        return value ? (
+          <span className="block text-right text-[var(--color-text-primary)]">{value}</span>
+        ) : (
+          <span className="block text-right"><EmptyCell /></span>
+        );
+      }
+    }),
+    columnHelper.accessor("balanceQuantity", {
+      header: () => (
+        <span className="block w-full text-right">{copy.balance}</span>
+      ),
+      size: 120,
+      minSize: 72,
+      sortingFn: (rowA, rowB) =>
+        compareNumericDisplayValues(
+          rowA.original.balanceQuantity ?? "",
+          rowB.original.balanceQuantity ?? ""
+        ),
+      cell: ({ getValue }) => {
+        const value = nonZeroQuantity(getValue());
 
-              return value ? (
-                <span className="block text-right text-[var(--color-text-primary)]">{value}</span>
-              ) : (
-                <span className="block text-right"><EmptyCell /></span>
-              );
-            }
-          })
-        ]
-      : []),
+        return value ? (
+          <span className="block text-right text-[var(--color-text-primary)]">{value}</span>
+        ) : (
+          <span className="block text-right"><EmptyCell /></span>
+        );
+      }
+    }),
     columnHelper.accessor("defaultLocationName", {
       header: () => copy.defaultLocation,
       size: 160,

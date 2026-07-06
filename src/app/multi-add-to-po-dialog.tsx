@@ -33,9 +33,6 @@ type MultiAddToPODialogProps = {
   existingParts: ReadonlyMap<string, string>;
   open: boolean;
   copy: MultiAddToPOCopy;
-  canReadInventory: boolean;
-  canReadShoppingLists: boolean;
-  canReadPurchaseOrders: boolean;
   onClose: () => void;
   onSuccess: () => void;
 };
@@ -53,9 +50,6 @@ export function MultiAddToPODialog({
   existingParts,
   open,
   copy,
-  canReadInventory,
-  canReadShoppingLists,
-  canReadPurchaseOrders,
   onClose,
   onSuccess
 }: MultiAddToPODialogProps) {
@@ -147,9 +141,6 @@ export function MultiAddToPODialog({
         alreadyAddedPartIds={existingPartIds}
         open={open}
         copy={pickerCopy}
-        canReadInventory={canReadInventory}
-        canReadShoppingLists={canReadShoppingLists}
-        canReadPurchaseOrders={canReadPurchaseOrders}
         onClose={handleClose}
         onConfirm={handleConfirmSelection}
       />

@@ -14,7 +14,10 @@ function uniqueSuffix() {
   return randomBytes(4).toString("hex");
 }
 
-async function createTestWorkspace(suffix: string) {
+async function createTestWorkspace(
+  suffix: string,
+  rolePermissionKeys: string[] = ["admin"]
+) {
   await ensurePermissions();
 
   const { workspaceId, userId } = await prisma.$transaction(async (tx) => {
@@ -38,7 +41,9 @@ async function createTestWorkspace(suffix: string) {
         workspaceId: workspace.id,
         name: "owner",
         isSystem: true,
-        permissions: { create: [{ permissionKey: "admin" }] }
+        permissions: {
+          create: rolePermissionKeys.map((permissionKey) => ({ permissionKey }))
+        }
       }
     });
 
@@ -370,5 +375,57 @@ describe("parts list DB-level reserved/allocated/available sorting", () => {
 
     const desc = await collectAllPages(context, "balanceQuantity", "desc", 2);
     assert.deepEqual(desc, ["P05", "P04", "P03", "P02", "P01"]);
+  });
+});
+
+describe("parts list quantity columns with only parts:read", () => {
+  test("populates and sorts by the core quantity/cost columns without domain-specific permissions", async () => {
+    const suffix = uniqueSuffix();
+    const { workspaceId, userId, unitId, manufacturerId } = await createTestWorkspace(
+      suffix,
+      ["parts:read"]
+    );
+    const context = {
+      user: { id: userId },
+      workspace: { id: workspaceId, primaryCurrency: "EUR" }
+    };
+
+    await createPart({
+      id: `${suffix}-P01`,
+      workspaceId,
+      unitId,
+      manufacturerId,
+      catalogNumber: "P01",
+      description: null,
+      currentStock: 10,
+      reservedQty: 2,
+      allocatedQty: 3,
+      onOrderQty: 4,
+      inProductionQty: 5
+    });
+
+    const page = await getPartsListPage(context, {});
+    const [item] = page.items;
+    assert.ok(item, "part is returned");
+    assert.equal(item.currentStock, "10");
+    assert.equal(item.reservedQuantity, "2");
+    assert.equal(item.allocatedQuantity, "3");
+    assert.equal(item.availableQuantity, "8");
+    assert.equal(item.onOrderQuantity, "4");
+    assert.equal(item.inProductionQuantity, "5");
+    assert.equal(item.plannedQuantity, "0");
+    // balanceQty = (currentStock - reservedQty) + onOrderQty + inProductionQty - allocatedQty
+    //            = (10 - 2) + 4 + 5 - 3 = 14.
+    assert.equal(item.balanceQuantity, "14");
+
+    const asc = await collectAllPages(context, "currentStock", "asc", 5);
+    assert.deepEqual(asc, ["P01"], "sorting by currentStock is not blocked");
+
+    const balanceSort = await collectAllPages(context, "balanceQuantity", "asc", 5);
+    assert.deepEqual(
+      balanceSort,
+      ["P01"],
+      "sorting by balanceQuantity is not blocked either"
+    );
   });
 });
