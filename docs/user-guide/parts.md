@@ -16,7 +16,7 @@ You can also:
 
 Several optional columns can be enabled via **Configure list**:
 
-- **Planned** — total quantity of this part currently on shopping lists (items not yet linked to a purchase order), any direct draft purchase order line items (added to a PO without originating from a shopping list), and — for a Design's output part — the target quantity of any builds in the Allocated state (planned to be produced but not yet started). Requires Shopping Lists read access. Hidden by default.
+- **Planned** — total quantity of this part currently on shopping lists (items not yet linked to a purchase order), any direct draft purchase order line items (added to a PO without originating from a shopping list), and — for a Design's output part — the target quantity of any builds in the Allocating state (planned to be produced but not yet started). Requires Shopping Lists read access. Hidden by default.
 - **On order** — total quantity in purchase orders that have been submitted to a supplier and are awaiting receipt. Requires Purchase Orders read access. Hidden by default.
 - **In production** — for a Design's output part, the total quantity currently being assembled across active builds (builds in Started or In Progress state). Requires Builds read access. Hidden by default.
 
@@ -55,7 +55,7 @@ Click any row in the parts list to open the detail panel on the right. The panel
 - **Movement history** — the 50 most recent inventory entries (receipts, issues, transfers, adjustments). Each entry is shown across separate **Type**, **Qty**, **From**, **To**, **Note**, **Date**, and **Author** columns, which you can sort, resize, reorder, and toggle via **Configure list**. Requires Inventory read access.
 - **Purchase Orders** — all purchase order lines that reference this part, ordered by date descending (most recent first), up to 50 rows. Shows order reference, supplier, status (Draft / Ordered / Received), order date, quantity, and unit price with currency. An **Add to PO** button below the table opens a quick-add dialog. Requires Purchase Orders read access; the button additionally requires Purchase Orders write access.
 - **Shopping Lists** — all shopping lists that currently contain this part, ordered alphabetically by list name. Shows list name (click to open that list), quantity requested, and notes. An **Add to shopping list** button below the table opens a quick-add dialog. Requires Shopping Lists read access; the button additionally requires Shopping Lists write access.
-- **Builds** — all builds that currently have this part allocated (build in Allocated state) or reserved (build in Started / In Progress state, from unassembled designator assignments), ordered by creation date descending. Shows build reference (design name, revision, target quantity; click to open that build), state, and quantity allocated and/or reserved. Requires Builds read access.
+- **Builds** — all builds that currently have this part allocated (build in Allocating state) or reserved (build in Started / In Progress state, from unassembled designator assignments), ordered by creation date descending. Shows build reference (design name, revision, target quantity; click to open that build), state, and quantity allocated and/or reserved. Requires Builds read access.
 
 ### Quick-Add To Purchase Order
 

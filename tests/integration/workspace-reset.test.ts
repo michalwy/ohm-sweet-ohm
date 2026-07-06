@@ -174,7 +174,7 @@ async function addBuildData(workspaceId: string, unitId: string) {
       designRevisionId: design.revisions[0].id,
       outputLocationId: location.id,
       targetQuantity: 1,
-      state: "CREATED"
+      state: "ALLOCATING"
     }
   });
 

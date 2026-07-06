@@ -12,9 +12,7 @@ import {
   getBuildDetail,
   getBuildsForWorkspace,
   getPartBuildAllocations,
-  markBuildAllocated,
   reassignDesignatorAssignment,
-  reopenBuild,
   setBuildAllocations,
   setBuildLineAllocations,
   startBuild,
@@ -200,42 +198,6 @@ export async function reassignDesignatorAssignmentAction(input: {
       assignmentId: input.assignmentId,
       partId: input.partId,
       sourceLocationId: input.sourceLocationId
-    });
-    if (!result.ok) throw new Error(result.error);
-    return success(null);
-  } catch (error) {
-    return failure(error);
-  }
-}
-
-export async function markBuildAllocatedAction(input: {
-  workspaceSlug: string;
-  buildId: string;
-}): Promise<BuildActionResult<null>> {
-  try {
-    const context = await getContext(input.workspaceSlug);
-    const result = await markBuildAllocated({
-      userId: context.user.id,
-      workspaceId: context.workspace.id,
-      buildId: input.buildId
-    });
-    if (!result.ok) throw new Error(result.error);
-    return success(null);
-  } catch (error) {
-    return failure(error);
-  }
-}
-
-export async function reopenBuildAction(input: {
-  workspaceSlug: string;
-  buildId: string;
-}): Promise<BuildActionResult<null>> {
-  try {
-    const context = await getContext(input.workspaceSlug);
-    const result = await reopenBuild({
-      userId: context.user.id,
-      workspaceId: context.workspace.id,
-      buildId: input.buildId
     });
     if (!result.ok) throw new Error(result.error);
     return success(null);

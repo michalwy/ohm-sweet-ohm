@@ -10,8 +10,11 @@ Builds live under **Builds** in the workspace navigation. Reading builds require
 ## Stock terms
 
 - **On hand** — the stock you physically have (the Stock column on the parts list).
-- **Allocated** — a soft, informational reservation ("I plan to use these"). It does **not**
-  reduce what is available, and over-allocation is allowed.
+- **Incoming** — stock that isn't on hand yet but is on its way: on order from a supplier, or being
+  produced by another active build. A build can plan against incoming stock, but cannot **start**
+  until it actually arrives as on-hand stock.
+- **Allocated** — a soft, informational reservation ("I plan to use these"), covering both on-hand
+  and incoming stock. It does **not** reduce what is available, and over-allocation is allowed.
 - **Reserved** — a hard reservation. It reduces **Available** stock, so reserved parts cannot be
   used by another build until they are consumed or released.
 - **Available** — `On hand − Reserved`. This is the amount you can still commit elsewhere. The
@@ -41,28 +44,42 @@ can adjust.
 
 | State | What it means | Effect on stock |
 |---|---|---|
-| **Created** | Editable. Allocate each line to one or more parts. | None |
-| **Allocated** | Every line is fully allocated. | Marks parts **allocated** (informational) |
+| **Allocating** | Editable at any time. Allocate each line to one or more parts. | Every saved entry immediately marks parts **allocated** (informational) |
 | **Started** | Stock is hard-reserved. | Converts allocated into **reserved**; reduces Available |
 | **In progress** | At least one designator assembled. | Each assembled designator **issues** its parts from the line's source location |
 | **Completed** | All designators assembled (reached automatically). | **Receives** the target quantity of the output part into the output location |
 | **Cancelled** | Stopped manually. | Releases the remaining allocation/reservation |
 
+A build stays in **Allocating** for as long as you're planning it — there is no separate "Allocate"
+step or locked-then-reopened state. Allocation entries can be added, edited, or removed at any time
+before you choose **Start**, and every save immediately updates the **Allocated** figures shown on
+the parts list.
+
 ## Allocating parts
 
-While a build is **Created**, open it and allocate each line. A line can be **split across several
-parts** — for example 50 resistors met as 20 from one part and 30 from another — and each part is
-drawn from its own **source location**. For each entry you choose the **part** (from the parts that
-match the line's specification **and still have available stock**, each shown with its manufacturer
-and available quantity), the **source location** to consume from, and a **quantity**. **Add part** adds another entry, pre-filled with the next best available part,
-location, and quantity to cover what is still unallocated (the same greedy suggestion the build
-makes when it is created); adjust it as needed. The remove button drops an entry.
+While a build is **Allocating**, open it and allocate each line. A line can be **split across
+several parts** — for example 50 resistors met as 20 from one part and 30 from another — and each
+part is drawn from its own **source location**. For each entry you choose the **part** (from the
+parts that match the line's specification **and still have available stock**, each shown with its
+manufacturer and available quantity), the **source location** to consume from, and a **quantity**.
+**Add part** adds another entry, pre-filled with the next best available part, location, and
+quantity to cover what is still unallocated (the same greedy suggestion the build makes when it is
+created); adjust it as needed. The remove button drops an entry.
+
+An entry can also be left **without a source location**, which plans against **incoming** stock
+(on order from a supplier, or being produced by another active build) instead of on-hand stock —
+labeled **Incoming** rather than **On hand**. This lets you prepare a build ahead of parts arriving.
+Each line's progress bar shows both shares side by side (dark green for on-hand, light green for
+incoming). An incoming-backed entry always keeps its line — and so the build — from being ready to
+**Start**, since starting requires the parts to be physically on hand; once the incoming stock
+actually lands, edit the entry to add a real location (an ordinary save, no extra step needed) and
+the build becomes start-ready.
 
 Each line shows its running **Allocated** total against the required quantity. You cannot allocate
-more of a part than is **available**, nor more from a location than that location has **available**
-there — the source-location picker and its per-location figures already net out any hard
-reservation another started build holds at that location, so an entry that exceeds either is
-highlighted.
+more of a part than is **available** — on hand plus incoming, combined — nor more from a location
+than that location has **available** there — the source-location picker and its per-location
+figures already net out any hard reservation another started build holds at that location, so an
+entry that exceeds either is highlighted.
 
 **Apply** saves the allocation of **all lines at once**, in a single step. This is deliberate: it
 keeps the whole build consistent, so rearranging parts between lines (for example moving a part off
@@ -70,23 +87,19 @@ one line and onto another) can never leave the build temporarily over-allocated.
 once your edits differ from what is saved, every entry is complete, and nothing exceeds available
 stock; partial lines are allowed while you work.
 
-The primary button reflects this progression: it reads **Apply** while there are unsaved changes
-(or the plan is still incomplete), then turns into **Allocate** once every line is fully allocated
-and your changes are saved. Choose **Allocate** to move the build to the **Allocated** state. To
-change an allocation afterwards, choose **Reopen** to return to
-**Created**.
+**Start** becomes available once every line is fully allocated — every entry has a real source
+location — and your changes are saved; it stays disabled otherwise.
 
-Because allocation is a soft, informational hold, stock can still move after a build is
-**Allocated** — for example another build reserves the same part, or someone transfers stock out
-of the chosen source location. Opening an **Allocated** build re-checks its allocation against
-current stock and shows a warning banner naming the affected part(s)/location(s) when the plan no
+Because allocation is a soft, informational hold, stock can still move while a build is
+**Allocating** — for example another build reserves the same part, or someone transfers stock out
+of the chosen source location. The build detail view re-checks the allocation against current stock
+continuously and shows a warning banner naming the affected part(s)/location(s) when the plan no
 longer holds. The warning is informational only; it does not block **Start**, but starting will
-still fail with the same guard described below until the allocation is fixed (via **Reopen**) or
-stock is restored.
+still fail with the same guard described below until the allocation is fixed or stock is restored.
 
 ## Starting a build
 
-From **Allocated**, choose **Start**. A build can only start when:
+Once every line is fully allocated, choose **Start**. A build can only start when:
 
 1. Every line is fully allocated.
 2. **Available** stock (on hand minus existing reservations) covers every part's requirement.
@@ -118,13 +131,14 @@ output part is received into the output location.
 
 ## Printing a pick list
 
-From **Allocated**, **Started**, or **In progress**, choose **Print pick list** to open a
+From **Allocating**, **Started**, or **In progress**, choose **Print pick list** to open a
 printable document (in a new tab) listing every part to physically gather, grouped by **source
 location** to minimize walking back and forth, with a blank checkbox next to each line for
 tick-off while picking. Each line shows the part's catalog number, manufacturer, the BOM line's
 full category, and quantity needed at that location.
 
-- While **Allocated**, quantities come from the allocation plan.
+- While **Allocating**, quantities come from the current allocation plan (incoming-backed entries
+  have no location yet, so they appear ungrouped until a location is assigned).
 - While **Started**/**In progress**, quantities reflect the full original allocation, with a note
   on any line where some units have already been assembled — the list does not shrink as you
   assemble, so it always shows the complete picture for the build.
@@ -146,7 +160,7 @@ re-print rather than only what remains.
 
 Cancelling releases stock that has not yet been consumed:
 
-- From **Allocated**, the soft allocation is released.
+- From **Allocating**, the soft allocation is released.
 - From **Started**/**In progress**, the remaining reservation is released.
 
 Designators that were already assembled are **not** reversed — those parts were physically used.

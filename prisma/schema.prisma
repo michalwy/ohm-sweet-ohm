@@ -157,8 +157,7 @@ model BomMatcher {
 }
 
 enum BuildState {
-  CREATED
-  ALLOCATED
+  ALLOCATING
   STARTED
   IN_PROGRESS
   COMPLETED
@@ -171,7 +170,7 @@ model Build {
   designRevisionId String
   outputLocationId String?
   targetQuantity   Int
-  state            BuildState @default(CREATED)
+  state            BuildState @default(ALLOCATING)
   startedAt        DateTime?
   completedAt      DateTime?
   cancelledAt      DateTime?
@@ -213,7 +212,7 @@ model BuildLineItem {
 
 /// One part entry in a build line's split allocation: a chosen part + source location and the
 /// number of units of that part for the line. A line may have several entries whose quantities
-/// sum to (designatorCount × build.targetQuantity). Edited while the build is CREATED.
+/// sum to (designatorCount × build.targetQuantity). Edited while the build is ALLOCATING.
 model BuildLineAllocation {
   id               String   @id @default(cuid())
   workspaceId      String

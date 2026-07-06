@@ -10,6 +10,14 @@
 > `assembledQuantity` are replaced by a single `assembled` boolean per physical unit.
 > `distributeAllocations` now emits one row per unit instead of grouping consecutive units of the
 > same part.
+>
+> **Further superseded by [ADR 0025](0025-continuous-build-allocation.md).** As of #185 the
+> "editable only while `CREATED`, must reopen from `ALLOCATED`" rule below is replaced by one
+> continuously-editable `ALLOCATING` state — allocation entries can be added/edited/removed at any
+> time before `startBuild`, with `allocatedQty` maintained live on every save instead of applied in
+> bulk by a manual "Allocate" click. Allocation entries may also now have no `sourceLocationId`
+> (planning against incoming stock); the stock-guard and completeness rules described below are
+> otherwise unchanged.
 
 [ADR 0021](0021-builds-and-stock-state-transitions.md) introduced builds with a **per-line
 allocation**: each build line chose a single part and a single source location, shared by all of

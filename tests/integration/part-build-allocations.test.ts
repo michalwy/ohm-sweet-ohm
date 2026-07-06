@@ -16,7 +16,6 @@ import {
   cancelBuild,
   createBuild,
   getPartBuildAllocations,
-  markBuildAllocated,
   setBuildLineAllocations,
   startBuild
 } from "../../src/server/builds/builds";
@@ -188,16 +187,9 @@ async function createAndAllocateBuild(scenario: Scenario, targetQuantity = 2) {
 }
 
 describe("getPartBuildAllocations", () => {
-  test("build in ALLOCATED state contributes to allocatedQty only", async () => {
+  test("build in ALLOCATING state (with a live allocation) contributes to allocatedQty only", async () => {
     const scenario = await createScenario(uniqueSuffix());
     const { buildId, requiredUnits } = await createAndAllocateBuild(scenario, 2);
-
-    const allocated = await markBuildAllocated({
-      userId: scenario.userId,
-      workspaceId: scenario.workspaceId,
-      buildId
-    });
-    assert.ok(allocated.ok, JSON.stringify(allocated));
 
     const items = await getPartBuildAllocations({
       userId: scenario.userId,
@@ -207,7 +199,7 @@ describe("getPartBuildAllocations", () => {
 
     assert.equal(items.length, 1);
     assert.equal(items[0]?.buildId, buildId);
-    assert.equal(items[0]?.state, "ALLOCATED");
+    assert.equal(items[0]?.state, "ALLOCATING");
     assert.equal(items[0]?.allocatedQty, requiredUnits);
     assert.equal(items[0]?.reservedQty, 0);
   });
@@ -216,11 +208,6 @@ describe("getPartBuildAllocations", () => {
     const scenario = await createScenario(uniqueSuffix());
     const { buildId, requiredUnits } = await createAndAllocateBuild(scenario, 2);
 
-    await markBuildAllocated({
-      userId: scenario.userId,
-      workspaceId: scenario.workspaceId,
-      buildId
-    });
     const started = await startBuild({
       userId: scenario.userId,
       workspaceId: scenario.workspaceId,
@@ -245,11 +232,6 @@ describe("getPartBuildAllocations", () => {
     const scenario = await createScenario(uniqueSuffix());
     const { buildId, requiredUnits } = await createAndAllocateBuild(scenario, 2);
 
-    await markBuildAllocated({
-      userId: scenario.userId,
-      workspaceId: scenario.workspaceId,
-      buildId
-    });
     await startBuild({ userId: scenario.userId, workspaceId: scenario.workspaceId, buildId });
 
     const assignments = await prisma.buildDesignatorAssignment.findMany({
@@ -280,10 +262,11 @@ describe("getPartBuildAllocations", () => {
     assert.equal(items[0]?.reservedQty, requiredUnits - 1);
   });
 
-  test("CREATED, COMPLETED, and CANCELLED builds are excluded", async () => {
+  test("CANCELLED and COMPLETED builds are excluded", async () => {
     const scenario = await createScenario(uniqueSuffix(), "12");
 
-    // CREATED: allocated in memory but not yet marked ALLOCATED.
+    // ALLOCATING (with a live allocation) appears — see the dedicated test above. Cancelling it
+    // must remove it from the list.
     const { buildId: createdBuildId } = await createAndAllocateBuild(scenario, 2);
 
     let items = await getPartBuildAllocations({
@@ -291,14 +274,8 @@ describe("getPartBuildAllocations", () => {
       workspaceId: scenario.workspaceId,
       partId: scenario.buildLinePartId
     });
-    assert.equal(items.length, 0, "a CREATED build must not appear");
+    assert.equal(items.length, 1, "the ALLOCATING build appears before cancellation");
 
-    // CANCELLED: allocate, mark allocated, then cancel.
-    await markBuildAllocated({
-      userId: scenario.userId,
-      workspaceId: scenario.workspaceId,
-      buildId: createdBuildId
-    });
     const cancelled = await cancelBuild({
       userId: scenario.userId,
       workspaceId: scenario.workspaceId,
@@ -315,11 +292,6 @@ describe("getPartBuildAllocations", () => {
 
     // COMPLETED: a second build, run to completion by assembling every unit.
     const { buildId: completedBuildId, requiredUnits } = await createAndAllocateBuild(scenario, 1);
-    await markBuildAllocated({
-      userId: scenario.userId,
-      workspaceId: scenario.workspaceId,
-      buildId: completedBuildId
-    });
     await startBuild({
       userId: scenario.userId,
       workspaceId: scenario.workspaceId,
@@ -370,19 +342,9 @@ describe("getPartBuildAllocations", () => {
 
     const { buildId: allocatedBuildId, requiredUnits: allocatedUnits } =
       await createAndAllocateBuild(scenario, 2);
-    await markBuildAllocated({
-      userId: scenario.userId,
-      workspaceId: scenario.workspaceId,
-      buildId: allocatedBuildId
-    });
 
     const { buildId: startedBuildId, requiredUnits: startedUnits } =
       await createAndAllocateBuild(scenario, 2);
-    await markBuildAllocated({
-      userId: scenario.userId,
-      workspaceId: scenario.workspaceId,
-      buildId: startedBuildId
-    });
     await startBuild({
       userId: scenario.userId,
       workspaceId: scenario.workspaceId,
@@ -397,7 +359,7 @@ describe("getPartBuildAllocations", () => {
 
     assert.equal(items.length, 2);
     const byId = new Map(items.map((item) => [item.buildId, item]));
-    assert.equal(byId.get(allocatedBuildId)?.state, "ALLOCATED");
+    assert.equal(byId.get(allocatedBuildId)?.state, "ALLOCATING");
     assert.equal(byId.get(allocatedBuildId)?.allocatedQty, allocatedUnits);
     assert.equal(byId.get(allocatedBuildId)?.reservedQty, 0);
     assert.equal(byId.get(startedBuildId)?.state, "STARTED");

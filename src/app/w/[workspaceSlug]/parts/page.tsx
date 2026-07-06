@@ -213,8 +213,7 @@ const copy = {
   buildAllocationsColAllocated: "Allocated",
   buildAllocationsColReserved: "Reserved",
   buildStates: {
-    CREATED: "Created",
-    ALLOCATED: "Allocated",
+    ALLOCATING: "Allocating",
     STARTED: "Started",
     IN_PROGRESS: "In progress",
     COMPLETED: "Completed",

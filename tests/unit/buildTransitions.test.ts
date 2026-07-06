@@ -3,7 +3,6 @@ import { describe, test } from "node:test";
 
 import {
   aggregateRequirementsByPart,
-  isAllocationEditable,
   isCancellable,
   isTerminal,
   requiredForLine
@@ -29,15 +28,8 @@ describe("build transition helpers", () => {
     assert.equal([...result.keys()].length, 2);
   });
 
-  test("isAllocationEditable only in created/allocated", () => {
-    assert.equal(isAllocationEditable("CREATED"), true);
-    assert.equal(isAllocationEditable("ALLOCATED"), true);
-    assert.equal(isAllocationEditable("STARTED"), false);
-    assert.equal(isAllocationEditable("COMPLETED"), false);
-  });
-
   test("isCancellable excludes terminal states", () => {
-    assert.equal(isCancellable("CREATED"), true);
+    assert.equal(isCancellable("ALLOCATING"), true);
     assert.equal(isCancellable("STARTED"), true);
     assert.equal(isCancellable("IN_PROGRESS"), true);
     assert.equal(isCancellable("COMPLETED"), false);

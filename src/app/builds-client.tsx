@@ -18,9 +18,7 @@ import {
   deleteBuildAction,
   getBuildCreateOptionsAction,
   getBuildDetailAction,
-  markBuildAllocatedAction,
   reassignDesignatorAssignmentAction,
-  reopenBuildAction,
   setBuildAllocationsAction,
   startBuildAction
 } from "@/server/builds/buildActions";
@@ -116,10 +114,10 @@ export type BuildsCopy = {
   partDoesNotMatchSpec: string;
   changePart: string;
   confirm: string;
-  markAllocated: string;
+  onHand: string;
+  incoming: string;
   printPickList: string;
   printAssemblyList: string;
-  reopen: string;
   start: string;
   cancelBuild: string;
   deleteBuild: string;
@@ -158,8 +156,7 @@ type BuildsClientProps = {
 const columnHelper = createColumnHelper<BuildSummary>();
 
 export const BUILD_STATE_BADGE_CLASS: Record<string, string> = {
-  CREATED: "bg-[var(--color-bg-subtle)] text-[var(--color-text-secondary)]",
-  ALLOCATED: "bg-[var(--color-accent-soft)] text-[var(--color-accent)]",
+  ALLOCATING: "bg-[var(--color-bg-subtle)] text-[var(--color-text-secondary)]",
   STARTED: "bg-[var(--color-warning-soft)] text-[var(--color-warning)]",
   IN_PROGRESS: "bg-[var(--color-warning-soft)] text-[var(--color-warning)]",
   COMPLETED: "bg-[var(--color-success-soft)] text-[var(--color-success)]",
@@ -370,12 +367,6 @@ export function BuildsClient({
     };
   }
 
-  const markAllocatedMutation = useMutation(
-    buildTransitionMutation((buildId) => markBuildAllocatedAction({ workspaceSlug, buildId }))
-  );
-  const reopenMutation = useMutation(
-    buildTransitionMutation((buildId) => reopenBuildAction({ workspaceSlug, buildId }))
-  );
   const startMutation = useMutation(
     buildTransitionMutation((buildId) => startBuildAction({ workspaceSlug, buildId }))
   );
@@ -722,8 +713,6 @@ export function BuildsClient({
             onAssemble={(input) => assembleMutation.mutate(input)}
             onAssembleUnit={(input) => assembleUnitMutation.mutate(input)}
             onReassign={(input) => reassignMutation.mutate(input)}
-            onMarkAllocated={(buildId) => markAllocatedMutation.mutate(buildId)}
-            onReopen={(buildId) => reopenMutation.mutate(buildId)}
             onStart={(buildId) => startMutation.mutate(buildId)}
             onCancel={(buildId) => cancelMutation.mutate(buildId)}
             onDelete={(buildId) => setBuildPendingDeleteId(buildId)}
@@ -886,8 +875,6 @@ type BuildDetailContentProps = {
   onAssemble: (input: { assignmentId: string }) => void;
   onAssembleUnit: (input: { buildId: string; unitIndex: number }) => void;
   onReassign: (input: { assignmentId: string; partId: string; sourceLocationId: string | null }) => void;
-  onMarkAllocated: (buildId: string) => void;
-  onReopen: (buildId: string) => void;
   onStart: (buildId: string) => void;
   onCancel: (buildId: string) => void;
   onDelete: (buildId: string) => void;
@@ -909,8 +896,6 @@ function BuildDetailContent({
   onAssemble,
   onAssembleUnit,
   onReassign,
-  onMarkAllocated,
-  onReopen,
   onStart,
   onCancel,
   onDelete
@@ -938,7 +923,7 @@ function BuildDetailContent({
   }
 
   const build = detail;
-  const editable = build.state === "CREATED";
+  const editable = build.state === "ALLOCATING";
   const unitsComplete = detail.units.filter((u) => u.status === "complete").length;
   const entriesFor = (line: BuildLine): AllocationDraft[] => draftsByLine[line.id] ?? draftsFromLine(line);
 
@@ -957,17 +942,35 @@ function BuildDetailContent({
   };
 
   // Build-wide Apply gating: dirty vs persisted, every present entry complete, aggregate within stock.
+  // "Complete" only requires a part and a valid quantity — a save is allowed at any time during the
+  // ongoing ALLOCATING phase (ADR 0025), including entries left without a location (incoming stock,
+  // #185) or partial lines; full-location completeness is a separate, stricter check for `Start`.
   const dirty = draftSignatureOf(build.lines, entriesFor) !== serverSignature;
   const entriesComplete = build.lines
     .flatMap((line) => entriesFor(line))
-    .every((e) => e.partId && e.sourceLocationId && Number.isInteger(Number(e.quantity)) && Number(e.quantity) >= 1);
+    .every((e) => e.partId && Number.isInteger(Number(e.quantity)) && Number(e.quantity) >= 1);
   const applyStockOk = buildAllocationStockOk(build.lines, entriesFor);
   const applyEnabled = dirty && entriesComplete && applyStockOk;
   const fullyAllocated = build.lines.every((line) => isLineFullyAllocated(line));
   // Stock can drop out from under a saved plan (another build reserves the same part/location)
-  // between Apply and Allocate; applyStockOk re-derives from the freshly fetched line data on every
-  // render, so it also catches that case even though the draft itself did not change.
-  const readyToAllocate = !dirty && fullyAllocated && applyStockOk;
+  // between saves; applyStockOk re-derives from the freshly fetched line data on every render, so
+  // it also catches that case even though the draft itself did not change.
+  const readyToStart = !dirty && fullyAllocated && applyStockOk;
+
+  // Aggregate on-hand vs incoming allocation totals across every line, for the build-wide split
+  // progress bar (ADR 0025) — dark green for on-hand-backed quantity, light green for incoming.
+  const allocationTotals = build.lines.reduce(
+    (sum, line) => {
+      for (const e of entriesFor(line)) {
+        const qty = Number.parseInt(e.quantity, 10) || 0;
+        if (e.sourceLocationId) sum.onHand += qty;
+        else sum.incoming += qty;
+      }
+      sum.required += line.requiredUnits;
+      return sum;
+    },
+    { onHand: 0, incoming: 0, required: 0 }
+  );
 
   function handleApply() {
     onSetBuildAllocations({
@@ -975,7 +978,7 @@ function BuildDetailContent({
       lines: build.lines.map((line) => ({
         buildLineItemId: line.id,
         entries: entriesFor(line)
-          .filter((e) => e.partId && e.sourceLocationId)
+          .filter((e) => e.partId)
           .map((e) => ({
             partId: e.partId,
             sourceLocationId: e.sourceLocationId,
@@ -1014,19 +1017,43 @@ function BuildDetailContent({
         </div>
         <div className="grid gap-1 px-3 py-2.5">
           <p className="text-xs uppercase tracking-wide text-[var(--color-text-muted)]">
-            {copy.progress}
+            {editable ? copy.allocatedOfRequired : copy.progress}
           </p>
-          <p className="text-sm font-medium text-[var(--color-text-primary)]">
-            {unitsComplete} / {detail.targetQuantity} {copy.unitsComplete}
-          </p>
-          <p className="text-xs text-[var(--color-text-muted)]">
-            {unitsAssembled} / {unitsTotal} {copy.partsAssembled}
-          </p>
-          <LinearProgressBar percent={unitsTotal > 0 ? (unitsAssembled / unitsTotal) * 100 : 0} />
+          {editable ? (
+            <>
+              <p className="text-sm font-medium text-[var(--color-text-primary)]">
+                {allocationTotals.onHand + allocationTotals.incoming} / {allocationTotals.required}{" "}
+                {copy.allocatedOfRequired}
+                {allocationTotals.incoming > 0 ? ` (${allocationTotals.incoming} ${copy.incoming})` : ""}
+              </p>
+              <AllocationSplitProgressBar
+                onHandPercent={
+                  allocationTotals.required > 0
+                    ? (allocationTotals.onHand / allocationTotals.required) * 100
+                    : 0
+                }
+                incomingPercent={
+                  allocationTotals.required > 0
+                    ? (allocationTotals.incoming / allocationTotals.required) * 100
+                    : 0
+                }
+              />
+            </>
+          ) : (
+            <>
+              <p className="text-sm font-medium text-[var(--color-text-primary)]">
+                {unitsComplete} / {detail.targetQuantity} {copy.unitsComplete}
+              </p>
+              <p className="text-xs text-[var(--color-text-muted)]">
+                {unitsAssembled} / {unitsTotal} {copy.partsAssembled}
+              </p>
+              <LinearProgressBar percent={unitsTotal > 0 ? (unitsAssembled / unitsTotal) * 100 : 0} />
+            </>
+          )}
         </div>
       </section>
 
-      {detail.state === "ALLOCATED" && detail.allocationWarnings.length > 0 && (
+      {detail.state === "ALLOCATING" && detail.allocationWarnings.length > 0 && (
         <div className="rounded-md border border-[var(--color-warning)] bg-[var(--color-warning-soft)] px-3 py-2 text-sm text-[var(--color-warning)]">
           <p className="font-semibold">{copy.allocationWarningHeading}</p>
           <ul className="mt-1 list-disc pl-5">
@@ -1047,36 +1074,31 @@ function BuildDetailContent({
       )}
 
       {(canWrite ||
-        detail.state === "ALLOCATED" ||
+        detail.state === "ALLOCATING" ||
         detail.state === "STARTED" ||
         detail.state === "IN_PROGRESS" ||
         detail.state === "COMPLETED") && (
         <section className="flex flex-wrap gap-2">
-          {canWrite && detail.state === "CREATED" && (
+          {canWrite && detail.state === "ALLOCATING" && (
             <>
               <button
                 className={primaryActionClass}
                 type="button"
-                disabled={readyToAllocate ? false : !applyEnabled}
-                onClick={readyToAllocate ? () => onMarkAllocated(detail.id) : handleApply}
+                disabled={!applyEnabled}
+                onClick={handleApply}
               >
-                {readyToAllocate ? copy.markAllocated : copy.applyAllocation}
+                {copy.applyAllocation}
+              </button>
+              <button
+                className={primaryActionClass}
+                type="button"
+                disabled={!readyToStart}
+                onClick={() => onStart(detail.id)}
+              >
+                {copy.start}
               </button>
               <button className={actionButtonClass} type="button" onClick={() => onDelete(detail.id)}>
                 {copy.deleteBuild}
-              </button>
-            </>
-          )}
-          {canWrite && detail.state === "ALLOCATED" && (
-            <>
-              <button className={primaryActionClass} type="button" onClick={() => onStart(detail.id)}>
-                {copy.start}
-              </button>
-              <button className={actionButtonClass} type="button" onClick={() => onReopen(detail.id)}>
-                {copy.reopen}
-              </button>
-              <button className={actionButtonClass} type="button" onClick={() => onCancel(detail.id)}>
-                {copy.cancelBuild}
               </button>
             </>
           )}
@@ -1085,7 +1107,7 @@ function BuildDetailContent({
               {copy.cancelBuild}
             </button>
           )}
-          {(detail.state === "ALLOCATED" || detail.state === "STARTED" || detail.state === "IN_PROGRESS") && (
+          {(detail.state === "ALLOCATING" || detail.state === "STARTED" || detail.state === "IN_PROGRESS") && (
             <Link
               className={actionButtonClass}
               href={`/w/${workspaceSlug}/builds/${detail.id}/pick-list`}
@@ -1208,11 +1230,17 @@ function buildAllocationStockOk(lines: BuildLine[], entriesFor: (line: BuildLine
   const balanceByLocation = new Map<string, number>();
   for (const line of lines) {
     for (const candidate of line.matchCandidates) {
-      availableByPart.set(candidate.id, Number(candidate.availableQuantity));
+      availableByPart.set(
+        candidate.id,
+        Number(candidate.onHandAvailableQuantity) + Number(candidate.incomingAvailableQuantity)
+      );
     }
     for (const allocation of line.allocations) {
       if (!availableByPart.has(allocation.part.id)) {
-        availableByPart.set(allocation.part.id, Number(allocation.part.availableQuantity));
+        availableByPart.set(
+          allocation.part.id,
+          Number(allocation.part.onHandAvailableQuantity) + Number(allocation.part.incomingAvailableQuantity)
+        );
       }
     }
     for (const pb of line.partBalances) {
@@ -1304,6 +1332,12 @@ function BuildLineRow({
   const allocatedTotal = editing
     ? entries.reduce((sum, e) => sum + (Number.parseInt(e.quantity, 10) || 0), 0)
     : line.allocations.reduce((sum, a) => sum + a.quantity, 0);
+  const onHandTotal = editing
+    ? entries
+        .filter((e) => e.sourceLocationId)
+        .reduce((sum, e) => sum + (Number.parseInt(e.quantity, 10) || 0), 0)
+    : line.allocations.filter((a) => a.sourceLocation).reduce((sum, a) => sum + a.quantity, 0);
+  const incomingTotal = allocatedTotal - onHandTotal;
   const assembledTotal = line.assignments.filter((a) => a.assembled).length;
   const started = line.assignments.length > 0;
   // Mirrors the progress bar's own ratio, so the header accent and the bar always agree.
@@ -1337,13 +1371,19 @@ function BuildLineRow({
               ? `${copy.assembledOfRequired} ${assembledTotal}/${line.requiredUnits}`
               : `${copy.allocatedOfRequired} ${allocatedTotal}/${line.requiredUnits}`}
           </span>
-          <StackedProgressBar
-            className="w-20"
-            // Once started, allocation is always complete (starting requires full allocation), so
-            // showing it would just be a redundant full bar — only assembly progress matters then.
-            basePercent={started || line.requiredUnits === 0 ? 0 : (allocatedTotal / line.requiredUnits) * 100}
-            overlayPercent={line.requiredUnits > 0 ? (assembledTotal / line.requiredUnits) * 100 : 0}
-          />
+          {started ? (
+            <StackedProgressBar
+              className="w-20"
+              basePercent={0}
+              overlayPercent={line.requiredUnits > 0 ? (assembledTotal / line.requiredUnits) * 100 : 0}
+            />
+          ) : (
+            <AllocationSplitProgressBar
+              className="w-20"
+              onHandPercent={line.requiredUnits > 0 ? (onHandTotal / line.requiredUnits) * 100 : 0}
+              incomingPercent={line.requiredUnits > 0 ? (incomingTotal / line.requiredUnits) * 100 : 0}
+            />
+          )}
         </div>
       </div>
 
@@ -1404,6 +1444,41 @@ function StackedProgressBar({
   );
 }
 
+/**
+ * A two-tone horizontal progress bar for allocation completeness while a build is `ALLOCATING`
+ * (ADR 0025): a dark-green segment for the on-hand-backed portion of the requirement, followed
+ * immediately by a lighter-green segment for the incoming-backed portion (`onOrderQty`/
+ * `inProductionQty`, #185) — the two are adjacent, not overlaid, since they're additive shares of
+ * the same requirement rather than one being a subset of the other.
+ */
+function AllocationSplitProgressBar({
+  onHandPercent,
+  incomingPercent,
+  className
+}: {
+  onHandPercent: number;
+  incomingPercent: number;
+  className?: string;
+}) {
+  const clamp = (value: number) => Math.min(100, Math.max(0, value));
+  const onHand = clamp(onHandPercent);
+  const incoming = clamp(Math.min(incomingPercent, 100 - onHand));
+  return (
+    <div
+      className={`relative h-1.5 shrink-0 overflow-hidden rounded-full bg-[var(--color-border)] ${className ?? ""}`}
+    >
+      <div
+        className="absolute inset-y-0 left-0 rounded-full bg-[var(--color-success)]"
+        style={{ width: `${onHand}%` }}
+      />
+      <div
+        className="absolute inset-y-0 rounded-full bg-[var(--color-success-soft)]"
+        style={{ left: `${onHand}%`, width: `${incoming}%` }}
+      />
+    </div>
+  );
+}
+
 const removeButtonClass =
   "inline-flex h-10 items-center rounded-md border border-[var(--color-border-strong)] px-2 text-sm text-[var(--color-text-muted)] transition hover:bg-[var(--color-bg-subtle)] disabled:opacity-50";
 
@@ -1454,18 +1529,22 @@ function AllocationEditor({
     [line.partBalances]
   );
 
-  // Available stock per part (on hand − reserved) and physical balance per (part, location), net of
-  // what the build's *other* lines currently draw (live) — so this line cannot claim the same stock.
+  // Available stock per part — on hand (currentStock − reservedQty) plus incoming (onOrderQty +
+  // inProductionQty, #185), combined into one draw-from pool — and physical balance per (part,
+  // location), net of what the build's *other* lines currently draw (live) — so this line cannot
+  // claim the same stock.
   const availableByPart = useMemo(() => {
     const map = new Map<string, number>();
     const net = (partId: string, gross: number) =>
       Math.max(0, gross - (externalUsage.parts[partId] ?? 0));
+    const total = (candidate: { onHandAvailableQuantity: string; incomingAvailableQuantity: string }) =>
+      Number(candidate.onHandAvailableQuantity) + Number(candidate.incomingAvailableQuantity);
     for (const candidate of line.matchCandidates) {
-      map.set(candidate.id, net(candidate.id, Number(candidate.availableQuantity)));
+      map.set(candidate.id, net(candidate.id, total(candidate)));
     }
     for (const allocation of line.allocations) {
       if (!map.has(allocation.part.id)) {
-        map.set(allocation.part.id, net(allocation.part.id, Number(allocation.part.availableQuantity)));
+        map.set(allocation.part.id, net(allocation.part.id, total(allocation.part)));
       }
     }
     return map;
@@ -1489,12 +1568,28 @@ function AllocationEditor({
 
   const qtyByPart = new Map<string, number>();
   const qtyByPartLocation = new Map<string, number>();
+  const incomingQtyByPart = new Map<string, number>();
   for (const entry of entries) {
     const qty = Number.parseInt(entry.quantity, 10) || 0;
     if (entry.partId) qtyByPart.set(entry.partId, (qtyByPart.get(entry.partId) ?? 0) + qty);
     if (entry.partId && entry.sourceLocationId) {
       const key = `${entry.partId}::${entry.sourceLocationId}`;
       qtyByPartLocation.set(key, (qtyByPartLocation.get(key) ?? 0) + qty);
+    } else if (entry.partId) {
+      incomingQtyByPart.set(entry.partId, (incomingQtyByPart.get(entry.partId) ?? 0) + qty);
+    }
+  }
+  // Raw incoming availability (onOrderQty + inProductionQty), not netted against the combined pool —
+  // used only to decide which *row* looks wrong (#185): an on-hand entry that fits its own location
+  // balance is never the culprit when the part's combined total is over, so only the incoming
+  // entries are checked against incoming capacity specifically.
+  const incomingAvailableByPart = new Map<string, number>();
+  for (const candidate of line.matchCandidates) {
+    incomingAvailableByPart.set(candidate.id, Number(candidate.incomingAvailableQuantity));
+  }
+  for (const allocation of line.allocations) {
+    if (!incomingAvailableByPart.has(allocation.part.id)) {
+      incomingAvailableByPart.set(allocation.part.id, Number(allocation.part.incomingAvailableQuantity));
     }
   }
   const partOver = (partId: string) =>
@@ -1503,6 +1598,15 @@ function AllocationEditor({
     Boolean(partId && locationId) &&
     (qtyByPartLocation.get(`${partId}::${locationId}`) ?? 0) >
       (balanceByPartLocation.get(`${partId}::${locationId}`) ?? 0);
+  const incomingOver = (partId: string) =>
+    Boolean(partId) && (incomingQtyByPart.get(partId) ?? 0) > (incomingAvailableByPart.get(partId) ?? 0);
+  // Which resource pool a specific row draws from decides whether *that row* is highlighted: an
+  // on-hand row is only ever wrong if its own location can't cover it; an incoming row is only ever
+  // wrong if incoming capacity itself can't cover it. The part-level combined check below still
+  // gates Apply (the two pools can each look fine on their own while the combined total is still
+  // over), it just no longer decides per-row highlighting.
+  const rowOver = (entry: AllocationDraft) =>
+    entry.sourceLocationId ? locationOver(entry.partId, entry.sourceLocationId) : incomingOver(entry.partId);
   const anyPartOver = [...qtyByPart.keys()].some((partId) => partOver(partId));
   const anyLocationOver = entries.some((e) => locationOver(e.partId, e.sourceLocationId));
   const stockOk = !anyPartOver && !anyLocationOver;
@@ -1556,6 +1660,13 @@ function AllocationEditor({
           quantity: String(Math.min(remaining, capacity))
         };
       }
+      // No on-hand location has spare capacity for this part, but its combined pool (on hand +
+      // incoming, #185) still has room — suggest an incoming (location-less) entry for the rest.
+      return {
+        partId: candidate.id,
+        sourceLocationId: null,
+        quantity: String(Math.min(remaining, partCapacity))
+      };
     }
 
     return blank;
@@ -1590,19 +1701,23 @@ function AllocationEditor({
   return (
     <div className="grid gap-2">
       {entries.length > 0 && (
-        <div className="grid grid-cols-[1fr_1fr_auto_auto] gap-2 text-xs text-[var(--color-text-muted)]">
+        <div className="grid grid-cols-[1fr_1fr_auto_auto_auto] gap-2 text-xs text-[var(--color-text-muted)]">
           <span>{copy.part}</span>
           <span>{copy.sourceLocation}</span>
+          <span aria-hidden="true" />
           <span>{copy.quantity}</span>
           <span aria-hidden="true" />
         </div>
       )}
       {entries.map((entry, index) => {
         const narrowed = narrowLocationsToBalances(locations, balancesByPart.get(entry.partId) ?? []);
-        const overPart = partOver(entry.partId);
+        const overPart = rowOver(entry);
         const overLocation = locationOver(entry.partId, entry.sourceLocationId);
+        // An entry with no source location plans against incoming stock (onOrderQty/inProductionQty,
+        // #185) — clearly labeled so the user knows why it can't make the build start-ready yet.
+        const isIncoming = Boolean(entry.partId) && !entry.sourceLocationId;
         return (
-          <div key={index} className="grid grid-cols-[1fr_1fr_auto_auto] items-center gap-2">
+          <div key={index} className="grid grid-cols-[1fr_1fr_auto_auto_auto] items-center gap-2">
             <BuildPartSelect
               name={`alloc-part-${line.id}-${index}`}
               options={selectablePartOptions.filter((p) => p.available > 0 || p.id === entry.partId)}
@@ -1622,13 +1737,26 @@ function AllocationEditor({
               name={`alloc-${line.id}-${index}`}
               selectedId={entry.sourceLocationId ?? ""}
               onSelectedIdChange={(locationId) => update(index, { sourceLocationId: locationId || null })}
-              emptyLabel={copy.unassigned}
+              emptyLabel={isIncoming ? copy.incoming : copy.unassigned}
               describeLocation={describeLocationBalance(copy, narrowed.balanceById)}
               className="w-full"
               buttonClassName={`${formLocationSelectButtonClassName}${
                 overLocation ? ` ${stockErrorBorder}` : ""
               }`}
             />
+            {entry.partId ? (
+              <span
+                className={`whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-medium ${
+                  isIncoming
+                    ? "bg-[var(--color-success-soft)] text-[var(--color-success)]"
+                    : "bg-[var(--color-bg-subtle)] text-[var(--color-text-secondary)]"
+                }`}
+              >
+                {isIncoming ? copy.incoming : copy.onHand}
+              </span>
+            ) : (
+              <span aria-hidden="true" />
+            )}
             <input
               className={`${smallSelectClass} w-20${overPart || overLocation ? ` ${stockErrorBorder}` : ""}`}
               type="number"
@@ -1746,7 +1874,7 @@ function BomLineBreakdown({
               <PartLink partId={row.partId} name={row.catalogNumber} />
             </span>
             <span className="truncate text-xs text-[var(--color-text-muted)]">
-              {row.sourceLocation?.path ?? copy.unassigned}
+              {row.sourceLocation?.path ?? (showAssembled ? copy.unassigned : copy.incoming)}
             </span>
           </div>
           {/* Same fixed width as the line header's bar, so both form one aligned column. */}
@@ -2062,7 +2190,8 @@ function ReassignEditor({
         catalogNumber: assignment.part.catalogNumber,
         description: null,
         manufacturerName: "",
-        availableQuantity: ""
+        onHandAvailableQuantity: "",
+        incomingAvailableQuantity: ""
       });
     }
     return opts;
@@ -2085,7 +2214,7 @@ function ReassignEditor({
           <option key={part.id} value={part.id}>
             {part.catalogNumber}
             {part.manufacturerName ? ` · ${part.manufacturerName}` : ""}
-            {part.availableQuantity ? ` — ${copy.available} ${part.availableQuantity}` : ""}
+            {part.onHandAvailableQuantity ? ` — ${copy.available} ${part.onHandAvailableQuantity}` : ""}
           </option>
         ))}
       </select>

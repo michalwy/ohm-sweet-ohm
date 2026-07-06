@@ -5,6 +5,13 @@
 
 ## Context
 
+> **Superseded by [ADR 0025](0025-continuous-build-allocation.md).** As of #185 the `created`/
+> `allocated` states below are collapsed into one continuously-editable `ALLOCATING` state, with
+> `allocatedQty`/`plannedQty` maintained live instead of applied by a manual "Allocate" transition.
+> The stock-effect table's `created`/`allocated` rows and the "editable while `created` or
+> `allocated`" rule are what changed; everything else on this page (reserved, in-production,
+> completion, cancellation semantics) is unchanged.
+
 Issue #63 (refs #9) introduces a **Build**: a concrete production run of a Design revision for
 a target quantity. A build progresses through defined states, each driving inventory
 transitions. This is the first feature that distinguishes **on-hand** stock from **allocated**

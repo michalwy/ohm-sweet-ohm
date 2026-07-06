@@ -22,7 +22,6 @@ import {
   cancelBuild,
   createBuild,
   getBuildDetail,
-  markBuildAllocated,
   reassignDesignatorAssignment,
   setBuildAllocations,
   setBuildLineAllocations,
@@ -405,6 +404,52 @@ describe("build flow", () => {
     assert.equal(lines[0]?.allocations[0]?.quantity, 6);
   });
 
+  test("createBuild pre-fill caps a pinned line's entry to what's actually at the best location, splitting across a second location instead of over-suggesting", async () => {
+    const scenario = await createScenario(uniqueSuffix(), { stockAtSource: "11", stockAtSecond: "10" });
+    const buildId = await createBuildFor(scenario, 4); // 3 designators × 4 = 12 required
+
+    const line = await prisma.buildLineItem.findFirstOrThrow({
+      where: { buildId },
+      select: { allocations: { select: { sourceLocationId: true, quantity: true } } }
+    });
+    // Must never suggest more than a location physically holds (the bug: 12 all from a
+    // location with only 11), and must cover the requirement by splitting across both locations.
+    for (const allocation of line.allocations) {
+      assert.ok(allocation.quantity <= 11, "no single entry may exceed its location's balance");
+    }
+    assert.equal(
+      line.allocations.reduce((sum, a) => sum + a.quantity, 0),
+      12
+    );
+    const bySourceLocation = new Map(line.allocations.map((a) => [a.sourceLocationId, a.quantity]));
+    assert.equal(bySourceLocation.get(scenario.sourceLocationId), 11);
+    assert.equal(bySourceLocation.get(scenario.secondLocationId), 1);
+  });
+
+  test("createBuild pre-fill falls back to incoming stock for a pinned line when on-hand stock is insufficient (issue #185)", async () => {
+    const scenario = await createScenario(uniqueSuffix(), { stockAtSource: "11" });
+    await prisma.part.update({
+      where: { id: scenario.buildLinePartId },
+      data: { onOrderQty: 5 }
+    });
+    const buildId = await createBuildFor(scenario, 4); // 3 designators × 4 = 12 required
+
+    const line = await prisma.buildLineItem.findFirstOrThrow({
+      where: { buildId },
+      select: { allocations: { select: { sourceLocationId: true, quantity: true } } }
+    });
+    assert.equal(line.allocations.length, 2);
+    const onHand = line.allocations.find((a) => a.sourceLocationId === scenario.sourceLocationId);
+    const incoming = line.allocations.find((a) => a.sourceLocationId === null);
+    assert.equal(onHand?.quantity, 11, "on-hand entry capped to the location's actual balance");
+    assert.equal(incoming?.quantity, 1, "the remaining unit falls back to incoming stock");
+    assert.equal(
+      (await partStock(scenario.workspaceId, scenario.buildLinePartId)).allocatedQty,
+      "12",
+      "both the on-hand and incoming-backed portions count toward the live allocatedQty"
+    );
+  });
+
   test("createBuild rejects a missing output location", async () => {
     const scenario = await createScenario(uniqueSuffix());
     const build = await createBuild({
@@ -422,12 +467,7 @@ describe("build flow", () => {
     const scenario = await createScenario(uniqueSuffix(), { stockAtSource: "6" });
     const { buildId } = await createAndAllocateBuild(scenario, 2);
 
-    const allocated = await markBuildAllocated({
-      userId: scenario.userId,
-      workspaceId: scenario.workspaceId,
-      buildId
-    });
-    assert.ok(allocated.ok, JSON.stringify(allocated));
+    // Allocation is live from the moment entries are saved (ADR 0025) — no separate "allocate" step.
     assert.equal((await partStock(scenario.workspaceId, scenario.buildLinePartId)).allocatedQty, "6");
 
     const started = await startBuild({
@@ -513,7 +553,6 @@ describe("build flow", () => {
       { partId: scenario.partBId, sourceLocationId: scenario.locationBId, quantity: 2 }
     ]);
 
-    await markBuildAllocated({ userId: scenario.userId, workspaceId: scenario.workspaceId, buildId });
     assert.equal((await partStock(scenario.workspaceId, scenario.partAId)).allocatedQty, "4");
     assert.equal((await partStock(scenario.workspaceId, scenario.partBId)).allocatedQty, "2");
 
@@ -561,7 +600,6 @@ describe("build flow", () => {
     const scenario = await createScenario(uniqueSuffix(), { stockAtSource: "6" });
     const { buildId } = await createAndAllocateBuild(scenario, 2); // 3 designators × 2 units
 
-    await markBuildAllocated({ userId: scenario.userId, workspaceId: scenario.workspaceId, buildId });
     await startBuild({ userId: scenario.userId, workspaceId: scenario.workspaceId, buildId });
 
     const unit1 = await assembleBuildUnit({
@@ -627,7 +665,6 @@ describe("build flow", () => {
       { partId: scenario.partAId, sourceLocationId: scenario.locationAId, quantity: 7 },
       { partId: scenario.partBId, sourceLocationId: scenario.locationBId, quantity: 3 }
     ]);
-    await markBuildAllocated({ userId: scenario.userId, workspaceId: scenario.workspaceId, buildId });
     const started = await startBuild({ userId: scenario.userId, workspaceId: scenario.workspaceId, buildId });
     assert.ok(started.ok, JSON.stringify(started));
 
@@ -660,7 +697,6 @@ describe("build flow", () => {
     await setAllocations(scenario, line.id, [
       { partId: scenario.partAId, sourceLocationId: scenario.locationAId, quantity: 3 }
     ]);
-    await markBuildAllocated({ userId: scenario.userId, workspaceId: scenario.workspaceId, buildId });
     await startBuild({ userId: scenario.userId, workspaceId: scenario.workspaceId, buildId });
 
     assert.equal((await partStock(scenario.workspaceId, scenario.partAId)).reservedQty, "3");
@@ -755,6 +791,104 @@ describe("build flow", () => {
       ]
     });
     assert.ok(ok.ok, JSON.stringify(ok));
+  });
+
+  test("setBuildLineAllocations allows a location-less entry backed by incoming stock (issue #185)", async () => {
+    const scenario = await createScenario(uniqueSuffix(), { stockAtSource: "2" });
+    const buildId = await createBuildFor(scenario, 2); // R1-R3 × 2 = 6 units
+    const line = await firstLineId(buildId);
+
+    // Only 2 on hand; the remaining 4 must come from incoming stock (onOrderQty + inProductionQty).
+    await prisma.part.update({
+      where: { id: scenario.buildLinePartId },
+      data: { onOrderQty: 1, inProductionQty: 3 }
+    });
+
+    const overIncoming = await setBuildLineAllocations({
+      userId: scenario.userId,
+      workspaceId: scenario.workspaceId,
+      buildLineItemId: line.id,
+      entries: [
+        { partId: scenario.buildLinePartId, sourceLocationId: scenario.sourceLocationId, quantity: 2 },
+        { partId: scenario.buildLinePartId, sourceLocationId: null, quantity: 5 }
+      ]
+    });
+    assert.equal(overIncoming.ok, false, "on hand (2) + incoming (4) = 6, one more than available");
+    if (!overIncoming.ok) assert.equal(overIncoming.error, "insufficient-available-stock");
+
+    const ok = await setBuildLineAllocations({
+      userId: scenario.userId,
+      workspaceId: scenario.workspaceId,
+      buildLineItemId: line.id,
+      entries: [
+        { partId: scenario.buildLinePartId, sourceLocationId: scenario.sourceLocationId, quantity: 2 },
+        { partId: scenario.buildLinePartId, sourceLocationId: null, quantity: 4 }
+      ]
+    });
+    assert.ok(ok.ok, JSON.stringify(ok));
+
+    // Both the on-hand and the incoming-backed portion count toward the live allocatedQty.
+    assert.equal((await partStock(scenario.workspaceId, scenario.buildLinePartId)).allocatedQty, "6");
+
+    // The line is not fully allocated for start-readiness purposes (the incoming entry has no
+    // location), so starting the build must still fail even though the quantities balance.
+    const started = await startBuild({ userId: scenario.userId, workspaceId: scenario.workspaceId, buildId });
+    assert.equal(started.ok, false);
+    if (!started.ok) assert.equal(started.error, "build-not-fully-allocated");
+
+    // Once the incoming stock actually lands as real currentStock, editing the entry to add a
+    // location (no reopen step needed, ADR 0025) makes the build start-ready.
+    await createInventoryEntry({
+      workspaceId: scenario.workspaceId,
+      partId: scenario.buildLinePartId,
+      entryType: "RECEIPT",
+      quantity: "4",
+      toLocationId: scenario.sourceLocationId
+    });
+    await prisma.part.update({
+      where: { id: scenario.buildLinePartId },
+      data: { onOrderQty: 0, inProductionQty: 0 }
+    });
+    const relocated = await setBuildLineAllocations({
+      userId: scenario.userId,
+      workspaceId: scenario.workspaceId,
+      buildLineItemId: line.id,
+      entries: [{ partId: scenario.buildLinePartId, sourceLocationId: scenario.sourceLocationId, quantity: 6 }]
+    });
+    assert.ok(relocated.ok, JSON.stringify(relocated));
+    // Re-saving the same total quantity for the part must not double-count allocatedQty.
+    assert.equal((await partStock(scenario.workspaceId, scenario.buildLinePartId)).allocatedQty, "6");
+
+    const startedAfterArrival = await startBuild({
+      userId: scenario.userId,
+      workspaceId: scenario.workspaceId,
+      buildId
+    });
+    assert.ok(startedAfterArrival.ok, JSON.stringify(startedAfterArrival));
+  });
+
+  test("setBuildLineAllocations still rejects when on hand plus incoming stock is insufficient", async () => {
+    const scenario = await createScenario(uniqueSuffix(), { stockAtSource: "1" });
+    const buildId = await createBuildFor(scenario, 2); // requires 6
+    const line = await firstLineId(buildId);
+
+    await prisma.part.update({
+      where: { id: scenario.buildLinePartId },
+      data: { onOrderQty: 2, inProductionQty: 1 }
+    });
+
+    const result = await setBuildLineAllocations({
+      userId: scenario.userId,
+      workspaceId: scenario.workspaceId,
+      buildLineItemId: line.id,
+      entries: [
+        { partId: scenario.buildLinePartId, sourceLocationId: scenario.sourceLocationId, quantity: 1 },
+        { partId: scenario.buildLinePartId, sourceLocationId: null, quantity: 5 }
+      ]
+    });
+    // On hand (1) + incoming (3) = 4, short of the 6 required.
+    assert.equal(result.ok, false);
+    if (!result.ok) assert.equal(result.error, "insufficient-available-stock");
   });
 
   test("setBuildAllocations saves all lines atomically and rejects aggregate over-allocation", async () => {
@@ -887,7 +1021,6 @@ describe("build flow", () => {
     // has enough available — the start guard is the safety net once allocation is locked in.
     const scenario = await createScenario(uniqueSuffix(), { stockAtSource: "6" });
     const { buildId } = await createAndAllocateBuild(scenario, 2); // requires 6
-    await markBuildAllocated({ userId: scenario.userId, workspaceId: scenario.workspaceId, buildId });
 
     await createInventoryEntry({
       workspaceId: scenario.workspaceId,
@@ -914,7 +1047,6 @@ describe("build flow", () => {
     // requirement but the chosen source location no longer does.
     const scenario = await createScenario(uniqueSuffix(), { stockAtSource: "6" });
     const { buildId } = await createAndAllocateBuild(scenario, 2); // requires 6 at source
-    await markBuildAllocated({ userId: scenario.userId, workspaceId: scenario.workspaceId, buildId });
 
     await createInventoryEntry({
       workspaceId: scenario.workspaceId,
@@ -940,7 +1072,6 @@ describe("build flow", () => {
     // assignments must relocate to the destination, leaving the source with 1 unreserved unit.
     const scenario = await createScenario(uniqueSuffix(), { stockAtSource: "6" });
     const { buildId } = await createAndAllocateBuild(scenario, 1); // requires 3 at source
-    await markBuildAllocated({ userId: scenario.userId, workspaceId: scenario.workspaceId, buildId });
     const started = await startBuild({
       userId: scenario.userId,
       workspaceId: scenario.workspaceId,
@@ -983,10 +1114,9 @@ describe("build flow", () => {
     assert.equal(countByLocation.get(scenario.secondLocationId), 2, "two reservations relocate with the transfer");
   });
 
-  test("getBuildDetail flags an ALLOCATED build whose available stock dropped since allocation", async () => {
+  test("getBuildDetail flags an ALLOCATING build whose available stock dropped since allocation", async () => {
     const scenario = await createScenario(uniqueSuffix(), { stockAtSource: "6" });
     const { buildId, lineId } = await createAndAllocateBuild(scenario, 2); // requires 6
-    await markBuildAllocated({ userId: scenario.userId, workspaceId: scenario.workspaceId, buildId });
 
     const beforeDetail = await getBuildDetail({
       userId: scenario.userId,
@@ -1018,10 +1148,9 @@ describe("build flow", () => {
     assert.equal(component.reservedQty, "0");
   });
 
-  test("getBuildDetail flags an ALLOCATED build whose source-location balance dropped since allocation", async () => {
+  test("getBuildDetail flags an ALLOCATING build whose source-location balance dropped since allocation", async () => {
     const scenario = await createScenario(uniqueSuffix(), { stockAtSource: "6" });
     const { buildId } = await createAndAllocateBuild(scenario, 2); // requires 6 at source
-    await markBuildAllocated({ userId: scenario.userId, workspaceId: scenario.workspaceId, buildId });
 
     await createInventoryEntry({
       workspaceId: scenario.workspaceId,
@@ -1041,11 +1170,36 @@ describe("build flow", () => {
     assert.equal(detail?.allocationWarnings[0]?.reason, "insufficient-location-stock");
   });
 
+  test("getBuildDetail does not warn about an incoming-backed entry falling short of currentStock (issue #185)", async () => {
+    const scenario = await createScenario(uniqueSuffix(), { stockAtSource: "2" });
+    const buildId = await createBuildFor(scenario, 2); // requires 6
+    const line = await firstLineId(buildId);
+
+    await prisma.part.update({
+      where: { id: scenario.buildLinePartId },
+      data: { onOrderQty: 4 }
+    });
+
+    // 2 on hand (matches the location exactly) + 4 incoming (no location) = 6, fully covering the
+    // requirement — this is the expected, steady-state shape of an incoming-backed allocation, not
+    // drift, and must not be flagged.
+    await setAllocations(scenario, line.id, [
+      { partId: scenario.buildLinePartId, sourceLocationId: scenario.sourceLocationId, quantity: 2 },
+      { partId: scenario.buildLinePartId, sourceLocationId: null, quantity: 4 }
+    ]);
+
+    const detail = await getBuildDetail({
+      userId: scenario.userId,
+      workspaceId: scenario.workspaceId,
+      buildId
+    });
+    assert.equal(detail?.allocationWarnings.length, 0);
+  });
+
   test("cancel from started releases reservation without reversing assembled parts", async () => {
     const scenario = await createScenario(uniqueSuffix(), { stockAtSource: "6" });
     const { buildId } = await createAndAllocateBuild(scenario, 2);
 
-    await markBuildAllocated({ userId: scenario.userId, workspaceId: scenario.workspaceId, buildId });
     await startBuild({ userId: scenario.userId, workspaceId: scenario.workspaceId, buildId });
 
     const assignments = await prisma.buildDesignatorAssignment.findMany({
@@ -1082,11 +1236,10 @@ describe("build flow", () => {
     );
   });
 
-  test("cancel from allocated releases the soft allocation", async () => {
+  test("cancel from allocating releases the soft allocation", async () => {
     const scenario = await createScenario(uniqueSuffix(), { stockAtSource: "6" });
     const { buildId } = await createAndAllocateBuild(scenario, 2);
 
-    await markBuildAllocated({ userId: scenario.userId, workspaceId: scenario.workspaceId, buildId });
     assert.equal((await partStock(scenario.workspaceId, scenario.buildLinePartId)).allocatedQty, "6");
 
     const cancelled = await cancelBuild({
@@ -1101,14 +1254,13 @@ describe("build flow", () => {
     assert.equal(component.reservedQty, "0");
   });
 
-  test("output part's plannedQty/inProductionQty (issue #184): planned while allocated, moves to in-production on start, cleared on completion", async () => {
+  test("output part's plannedQty/inProductionQty (issue #184): planned while allocating, moves to in-production on start, cleared on completion", async () => {
     const scenario = await createScenario(uniqueSuffix(), { stockAtSource: "6" });
     const { buildId } = await createAndAllocateBuild(scenario, 2);
 
-    await markBuildAllocated({ userId: scenario.userId, workspaceId: scenario.workspaceId, buildId });
     let outputStock = await partStock(scenario.workspaceId, scenario.outputPartId);
-    assert.equal(outputStock.plannedQty, "2", "ALLOCATED is a soft commitment counted as planned");
-    assert.equal(outputStock.inProductionQty, "0", "ALLOCATED does not count toward in-production");
+    assert.equal(outputStock.plannedQty, "2", "ALLOCATING is a soft commitment counted as planned");
+    assert.equal(outputStock.inProductionQty, "0", "ALLOCATING does not count toward in-production");
 
     const started = await startBuild({ userId: scenario.userId, workspaceId: scenario.workspaceId, buildId });
     assert.ok(started.ok, JSON.stringify(started));
@@ -1146,10 +1298,9 @@ describe("build flow", () => {
     assert.equal(outputStock.plannedQty, "0");
   });
 
-  test("output part's plannedQty/inProductionQty (issue #184): released on cancel from STARTED and from ALLOCATED", async () => {
+  test("output part's plannedQty/inProductionQty (issue #184): released on cancel from STARTED and from ALLOCATING", async () => {
     const scenario = await createScenario(uniqueSuffix(), { stockAtSource: "6" });
     const { buildId: startedBuildId } = await createAndAllocateBuild(scenario, 2);
-    await markBuildAllocated({ userId: scenario.userId, workspaceId: scenario.workspaceId, buildId: startedBuildId });
     await startBuild({ userId: scenario.userId, workspaceId: scenario.workspaceId, buildId: startedBuildId });
     assert.equal(
       (await partStock(scenario.workspaceId, scenario.outputPartId)).inProductionQty,
@@ -1167,7 +1318,6 @@ describe("build flow", () => {
     assert.equal(outputStock.plannedQty, "0", "STARTED had already moved it out of planned before cancel");
 
     const { buildId: allocatedBuildId } = await createAndAllocateBuild(scenario, 1);
-    await markBuildAllocated({ userId: scenario.userId, workspaceId: scenario.workspaceId, buildId: allocatedBuildId });
     assert.equal((await partStock(scenario.workspaceId, scenario.outputPartId)).plannedQty, "1");
 
     const cancelledAllocated = await cancelBuild({
@@ -1177,8 +1327,8 @@ describe("build flow", () => {
     });
     assert.ok(cancelledAllocated.ok, JSON.stringify(cancelledAllocated));
     outputStock = await partStock(scenario.workspaceId, scenario.outputPartId);
-    assert.equal(outputStock.inProductionQty, "0", "cancelling an ALLOCATED build never touched in-production");
-    assert.equal(outputStock.plannedQty, "0", "cancelling an ALLOCATED build releases its planned hold");
+    assert.equal(outputStock.inProductionQty, "0", "cancelling an ALLOCATING build never touched in-production");
+    assert.equal(outputStock.plannedQty, "0", "cancelling an ALLOCATING build releases its planned hold");
   });
 
   test("per-location available balance nets out another build's hard reservation at that location (refs #172)", async () => {
@@ -1186,7 +1336,6 @@ describe("build flow", () => {
 
     // Build A reserves 6 units of the component at the source location (STARTED).
     const { buildId: buildAId } = await createAndAllocateBuild(scenario, 2); // 3 designators × 2
-    await markBuildAllocated({ userId: scenario.userId, workspaceId: scenario.workspaceId, buildId: buildAId });
     const startedA = await startBuild({ userId: scenario.userId, workspaceId: scenario.workspaceId, buildId: buildAId });
     assert.ok(startedA.ok, JSON.stringify(startedA));
 
@@ -1203,7 +1352,7 @@ describe("build flow", () => {
     });
     assert.equal(availableBalances.get(scenario.sourceLocationId)?.toString(), "4");
 
-    // A second, still-CREATED build's allocation picker must offer the reservation-aware figure,
+    // A second, still-ALLOCATING build's allocation picker must offer the reservation-aware figure,
     // not the raw physical balance, for the same source location.
     const buildBId = await createBuildFor(scenario, 1); // 3 designators × 1
     const detail = await getBuildDetail({

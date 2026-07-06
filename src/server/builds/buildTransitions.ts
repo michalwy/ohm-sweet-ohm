@@ -4,27 +4,11 @@
  * and own the stock side-effects.
  */
 
-export type BuildState =
-  | "CREATED"
-  | "ALLOCATED"
-  | "STARTED"
-  | "IN_PROGRESS"
-  | "COMPLETED"
-  | "CANCELLED";
-
-/** States in which a build's per-line part/source-location allocation may still be edited. */
-export function isAllocationEditable(state: BuildState): boolean {
-  return state === "CREATED" || state === "ALLOCATED";
-}
+export type BuildState = "ALLOCATING" | "STARTED" | "IN_PROGRESS" | "COMPLETED" | "CANCELLED";
 
 /** States from which a build may be cancelled (released). */
 export function isCancellable(state: BuildState): boolean {
-  return (
-    state === "CREATED" ||
-    state === "ALLOCATED" ||
-    state === "STARTED" ||
-    state === "IN_PROGRESS"
-  );
+  return state === "ALLOCATING" || state === "STARTED" || state === "IN_PROGRESS";
 }
 
 export function isTerminal(state: BuildState): boolean {

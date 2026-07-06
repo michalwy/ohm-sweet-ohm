@@ -6,8 +6,7 @@ import { getBuildAssemblyList, type BuildState } from "@/server/builds/builds";
 import { PrintBar } from "../print-bar";
 
 const stateLabels: Record<BuildState, string> = {
-  CREATED: "Created",
-  ALLOCATED: "Allocated",
+  ALLOCATING: "Allocating",
   STARTED: "Started",
   IN_PROGRESS: "In progress",
   COMPLETED: "Completed",

@@ -33,13 +33,7 @@ import {
 import { getPartCategories } from "@/server/parts/categories";
 import { aggregateRequirementsByPart, isCancellable } from "@/server/builds/buildTransitions";
 
-export type BuildState =
-  | "CREATED"
-  | "ALLOCATED"
-  | "STARTED"
-  | "IN_PROGRESS"
-  | "COMPLETED"
-  | "CANCELLED";
+export type BuildState = "ALLOCATING" | "STARTED" | "IN_PROGRESS" | "COMPLETED" | "CANCELLED";
 
 export type BuildSummary = {
   id: string;
@@ -59,7 +53,10 @@ export type BuildMatchCandidate = {
   catalogNumber: string;
   description: string | null;
   manufacturerName: string;
-  availableQuantity: string;
+  /** Physically on hand and unreserved (`currentStock − reservedQty`). */
+  onHandAvailableQuantity: string;
+  /** Incoming (`onOrderQty + inProductionQty`) — can be planned against, but not started against. */
+  incomingAvailableQuantity: string;
 };
 
 export type BuildSourceLocationBalance = {
@@ -78,7 +75,12 @@ export type BuildLocationRef = { id: string; name: string; path: string };
 
 export type BuildAllocationDetail = {
   id: string;
-  part: { id: string; catalogNumber: string; availableQuantity: string };
+  part: {
+    id: string;
+    catalogNumber: string;
+    onHandAvailableQuantity: string;
+    incomingAvailableQuantity: string;
+  };
   sourceLocation: BuildLocationRef | null;
   quantity: number;
 };
@@ -153,7 +155,7 @@ export type BuildDetail = {
   locations: StorageLocationListItem[];
   lines: BuildLineDetail[];
   units: BuildUnitDetail[];
-  /** Only populated while `state === "ALLOCATED"`; see {@link getAllocationWarnings}. */
+  /** Only populated while `state === "ALLOCATING"`; see {@link getAllocationWarnings}. */
   allocationWarnings: BuildAllocationWarning[];
 };
 
@@ -165,7 +167,7 @@ export type BuildPickListEntry = {
   /** The BOM line's frozen full category path (e.g. "Passives » Resistors"), from the first line contributing this entry. */
   categoryName: string | null;
   totalQuantity: number;
-  /** Units already assembled from this (part, location) pair; always 0 while `state === "ALLOCATED"`. */
+  /** Units already assembled from this (part, location) pair; always 0 while `state === "ALLOCATING"`. */
   assembledQuantity: number;
 };
 
@@ -353,10 +355,11 @@ const partBuildAllocationSelect = {
 } satisfies Prisma.BuildSelect;
 
 /**
- * Builds currently holding a live allocation or reservation for a part (ADR 0021/0023): a build in
- * ALLOCATED state holds soft `allocatedQty` via BuildLineAllocation rows, while STARTED/IN_PROGRESS
- * builds hold hard `reservedQty` via unassembled (not yet assembled) BuildDesignatorAssignment rows.
- * A build is in exactly one state, so it can only ever contribute to one of the two buckets.
+ * Builds currently holding a live allocation or reservation for a part (ADR 0021/0023/0025): a
+ * build in ALLOCATING state holds soft `allocatedQty` via BuildLineAllocation rows (live from the
+ * moment entries are saved), while STARTED/IN_PROGRESS builds hold hard `reservedQty` via
+ * unassembled (not yet assembled) BuildDesignatorAssignment rows. A build is in exactly one state,
+ * so it can only ever contribute to one of the two buckets.
  */
 export async function getPartBuildAllocations({
   userId,
@@ -373,7 +376,7 @@ export async function getPartBuildAllocations({
     prisma.build.findMany({
       where: {
         workspaceId,
-        state: "ALLOCATED",
+        state: "ALLOCATING",
         lineItems: { some: { allocations: { some: { partId } } } }
       },
       select: {
@@ -483,7 +486,16 @@ export async function getBuildDetail({
             select: {
               id: true,
               quantity: true,
-              part: { select: { id: true, catalogNumber: true, currentStock: true, reservedQty: true } },
+              part: {
+                select: {
+                  id: true,
+                  catalogNumber: true,
+                  currentStock: true,
+                  reservedQty: true,
+                  onOrderQty: true,
+                  inProductionQty: true
+                }
+              },
               sourceLocation: { select: { id: true, name: true } }
             }
           },
@@ -505,10 +517,11 @@ export async function getBuildDetail({
 
   if (!build) return null;
 
-  // Candidate parts + per-location balances are needed both while allocating (CREATED) and while
-  // assembling (STARTED/IN_PROGRESS), where a designator may be re-assigned to any matching part.
+  // Candidate parts + per-location balances are needed both while allocating (ALLOCATING) and
+  // while assembling (STARTED/IN_PROGRESS), where a designator may be re-assigned to any matching
+  // part.
   const showPickers =
-    build.state === "CREATED" || build.state === "STARTED" || build.state === "IN_PROGRESS";
+    build.state === "ALLOCATING" || build.state === "STARTED" || build.state === "IN_PROGRESS";
   const candidatesByLine = showPickers
     ? await getMatchCandidatesForLines(
         workspaceId,
@@ -581,7 +594,7 @@ export async function getBuildDetail({
     });
 
   const allocationWarnings =
-    build.state === "ALLOCATED"
+    build.state === "ALLOCATING"
       ? await getAllocationWarnings(workspaceId, build.lineItems, withPath)
       : [];
 
@@ -621,7 +634,8 @@ export async function getBuildDetail({
           part: {
             id: a.part.id,
             catalogNumber: a.part.catalogNumber,
-            availableQuantity: a.part.currentStock.minus(a.part.reservedQty).toString()
+            onHandAvailableQuantity: a.part.currentStock.minus(a.part.reservedQty).toString(),
+            incomingAvailableQuantity: a.part.onOrderQty.plus(a.part.inProductionQty).toString()
           },
           sourceLocation: withPath(a.sourceLocation),
           quantity: a.quantity
@@ -649,11 +663,11 @@ export async function getBuildDetail({
 
 /**
  * A printable, location-grouped pick list for a build: how much of each part to physically gather
- * from each source location. Only available once an allocation plan exists (`ALLOCATED` or
- * later); returns `null` otherwise (or if the build doesn't exist / isn't in this workspace).
+ * from each source location. Only available once the build is at least `ALLOCATING`; returns
+ * `null` if the build doesn't exist / isn't in this workspace.
  *
- * - `ALLOCATED`: aggregates the editable allocation plan (`BuildLineAllocation`) — nothing has
- *   been assembled yet.
+ * - `ALLOCATING`: aggregates the current (possibly partial, possibly incoming-backed) allocation
+ *   plan (`BuildLineAllocation`) — nothing has been assembled yet.
  * - `STARTED` / `IN_PROGRESS`: aggregates *all* per-unit assignment rows (`BuildDesignatorAssignment`),
  *   not just the unassembled ones, so the list keeps showing the full original need while flagging
  *   how much of it has already been picked/assembled (`assembledQuantity`).
@@ -716,7 +730,7 @@ export async function getBuildPickList({
   });
 
   if (!build) return null;
-  if (build.state !== "ALLOCATED" && build.state !== "STARTED" && build.state !== "IN_PROGRESS") {
+  if (build.state !== "ALLOCATING" && build.state !== "STARTED" && build.state !== "IN_PROGRESS") {
     return null;
   }
 
@@ -777,7 +791,7 @@ export async function getBuildPickList({
     }
   };
 
-  if (build.state === "ALLOCATED") {
+  if (build.state === "ALLOCATING") {
     for (const line of build.lineItems) {
       for (const allocation of line.allocations) {
         addEntry(allocation.part, allocation.sourceLocation, allocation.quantity, false, line.categoryName);
@@ -928,12 +942,14 @@ export async function getBuildAssemblyList({
 }
 
 /**
- * Re-check an `ALLOCATED` build's allocation entries against *current* stock, mirroring
- * `startBuild`'s hard guards (ADR 0021/0023) but read-only: part-level availability
- * (`currentStock − reservedQty`, aggregated across the build's own entries for that part) and
- * per-(part, source location) physical balance. Stock can move between allocation and start (e.g.
- * another build reserves the same part), so this surfaces the mismatch on the detail view instead
- * of only failing at `startBuild`.
+ * Re-check an `ALLOCATING` build's on-hand-backed allocation entries against *current* stock,
+ * mirroring `startBuild`'s hard guards (ADR 0021/0023) but read-only: part-level availability
+ * (`currentStock − reservedQty`, aggregated across the build's own on-hand entries for that part)
+ * and per-(part, source location) physical balance. Stock can move between allocation and start
+ * (e.g. another build reserves the same part), so this surfaces the mismatch on the detail view
+ * instead of only failing at `startBuild`. Incoming-backed entries (`sourceLocationId: null`,
+ * ADR 0025/#185) are excluded from this check entirely: they were never expected to be covered by
+ * `currentStock` in the first place, so falling short of it is normal, not drift.
  */
 async function getAllocationWarnings(
   workspaceId: string,
@@ -947,15 +963,21 @@ async function getAllocationWarnings(
   }[],
   withPath: (location: { id: string; name: string } | null) => BuildLocationRef | null
 ): Promise<BuildAllocationWarning[]> {
+  // Only on-hand-backed entries (a real sourceLocation) are checked against currentStock/location
+  // balances here: an incoming-backed entry (#185) never drew from currentStock in the first place,
+  // so it never "drifts" the way an on-hand entry can — it's expected to fall short of currentStock
+  // until the incoming stock actually lands, and that is not itself a warning-worthy condition.
   const transitionLines = lineItems.map((line) => ({
     id: line.id,
     designators: "",
     designatorCount: 0,
-    allocations: line.allocations.map((a) => ({
-      partId: a.part.id,
-      sourceLocationId: a.sourceLocation?.id ?? null,
-      quantity: a.quantity
-    }))
+    allocations: line.allocations
+      .filter((a) => a.sourceLocation)
+      .map((a) => ({
+        partId: a.part.id,
+        sourceLocationId: a.sourceLocation?.id ?? null,
+        quantity: a.quantity
+      }))
   }));
   const requiredByPart = buildRequirements({ lines: transitionLines });
   const requiredByPartLocation = requirementsByPartLocation({ lines: transitionLines });
@@ -1072,10 +1094,19 @@ async function getMatchCandidatesForLines(
 
     const availability = await prisma.part.findMany({
       where: { id: { in: matches.map((m) => m.id) }, workspaceId },
-      select: { id: true, currentStock: true, reservedQty: true }
+      select: {
+        id: true,
+        currentStock: true,
+        reservedQty: true,
+        onOrderQty: true,
+        inProductionQty: true
+      }
     });
-    const availableById = new Map(
+    const onHandById = new Map(
       availability.map((p) => [p.id, p.currentStock.minus(p.reservedQty).toString()])
+    );
+    const incomingById = new Map(
+      availability.map((p) => [p.id, p.onOrderQty.plus(p.inProductionQty).toString()])
     );
 
     result.set(
@@ -1085,7 +1116,8 @@ async function getMatchCandidatesForLines(
         catalogNumber: m.catalogNumber,
         description: m.description,
         manufacturerName: m.manufacturerName,
-        availableQuantity: availableById.get(m.id) ?? "0"
+        onHandAvailableQuantity: onHandById.get(m.id) ?? "0",
+        incomingAvailableQuantity: incomingById.get(m.id) ?? "0"
       }))
     );
   }
@@ -1096,12 +1128,19 @@ async function getMatchCandidatesForLines(
 /** Running tally of stock a build's pre-fill has already claimed, so later lines don't double-book. */
 type SuggestionUsage = { byLocation: Map<string, number> };
 
+/** Sentinel "location" key for incoming stock (onOrderQty/inProductionQty, #185) in `SuggestionUsage`. */
+const INCOMING_USAGE_KEY = "__incoming__";
+
 /**
- * Greedily pre-fill a line's allocation from stock that is physically available, **net of what the
- * build's earlier lines already claimed** (`used`). A pinned line yields a single entry of the
- * pinned part (best remaining location); an unpinned line draws from its matching parts and their
- * remaining locations until `required` units are covered (or stock runs out, leaving a partial
- * suggestion). The returned entries are folded back into `used` by the caller.
+ * Greedily pre-fill a line's allocation from stock, **net of what the build's earlier lines already
+ * claimed** (`used`). A pinned line draws only from its pinned part; an unpinned line draws from its
+ * matching parts, in order. Either way, physically on-hand locations are tried first (best-stocked
+ * first, split across several locations/parts as needed via {@link suggestAllocation}, which caps
+ * each entry to that location's actual remaining balance); if the requirement is still short after
+ * on-hand stock runs out, the remainder falls back to a location-less entry against incoming stock
+ * (onOrderQty + inProductionQty, #185) for the pinned part (or the first match), leaving a partial
+ * suggestion only if even that isn't enough. The returned entries are folded back into `used` by the
+ * caller.
  */
 async function suggestLineAllocations(
   workspaceId: string,
@@ -1114,35 +1153,45 @@ async function suggestLineAllocations(
   const remainingAt = (partId: string, locationId: string, balance: Prisma.Decimal) =>
     Math.floor(Number(balance)) - (used.byLocation.get(partLocationKey(partId, locationId)) ?? 0);
 
-  if (spec.pinnedPartId) {
-    const balances = await getPartLocationAvailableBalances({ workspaceId, partId: spec.pinnedPartId });
-    const best = [...balances.entries()]
-      .map(([locationId, balance]) => ({
-        locationId,
-        remaining: remainingAt(spec.pinnedPartId as string, locationId, balance)
-      }))
-      .filter((l) => l.remaining > 0)
-      .sort((a, b) => b.remaining - a.remaining)[0];
-    return [{ partId: spec.pinnedPartId, sourceLocationId: best?.locationId ?? null, quantity: required }];
-  }
+  const matchIds = spec.pinnedPartId
+    ? [spec.pinnedPartId]
+    : (await findMatchingParts({ workspaceId, spec })).map((m) => m.id);
 
-  const matches = await findMatchingParts({ workspaceId, spec });
   const candidates: AllocationCandidate[] = [];
-  for (const match of matches) {
-    const balances = await getPartLocationAvailableBalances({ workspaceId, partId: match.id });
+  for (const partId of matchIds) {
+    const balances = await getPartLocationAvailableBalances({ workspaceId, partId });
     const locations = [...balances.entries()]
-      .map(([locationId, balance]) => ({ locationId, remaining: remainingAt(match.id, locationId, balance) }))
+      .map(([locationId, balance]) => ({ locationId, remaining: remainingAt(partId, locationId, balance) }))
       .filter((l) => l.remaining > 0)
       .sort((a, b) => b.remaining - a.remaining);
     for (const location of locations) {
-      candidates.push({
-        partId: match.id,
-        sourceLocationId: location.locationId,
-        available: location.remaining
+      candidates.push({ partId, sourceLocationId: location.locationId, available: location.remaining });
+    }
+  }
+
+  const suggestion = suggestAllocation(required, candidates);
+
+  const stillNeeded = required - sumEntries(suggestion);
+  const incomingPartId = matchIds[0];
+  if (stillNeeded > 0 && incomingPartId) {
+    const part = await prisma.part.findFirst({
+      where: { id: incomingPartId, workspaceId },
+      select: { onOrderQty: true, inProductionQty: true }
+    });
+    const incomingKey = partLocationKey(incomingPartId, INCOMING_USAGE_KEY);
+    const incomingAvailable = part
+      ? Math.floor(Number(part.onOrderQty.plus(part.inProductionQty))) - (used.byLocation.get(incomingKey) ?? 0)
+      : 0;
+    if (incomingAvailable > 0) {
+      suggestion.push({
+        partId: incomingPartId,
+        sourceLocationId: null,
+        quantity: Math.min(stillNeeded, incomingAvailable)
       });
     }
   }
-  return suggestAllocation(required, candidates);
+
+  return suggestion;
 }
 
 // --- Create-dialog options ---
@@ -1268,11 +1317,22 @@ export async function createBuild({
     const spec = specs.get(line.id);
     const suggestion = spec ? await suggestLineAllocations(workspaceId, required, spec, usage) : [];
     for (const entry of suggestion) {
-      if (!entry.sourceLocationId) continue;
-      const key = partLocationKey(entry.partId, entry.sourceLocationId);
+      const key = entry.sourceLocationId
+        ? partLocationKey(entry.partId, entry.sourceLocationId)
+        : partLocationKey(entry.partId, INCOMING_USAGE_KEY);
       usage.byLocation.set(key, (usage.byLocation.get(key) ?? 0) + entry.quantity);
     }
     plan.push({ line, designatorCount: parsed.quantity, suggestion });
+  }
+
+  // The build is live from creation: the design's output part immediately counts the run toward
+  // `plannedQty`, and any greedily pre-filled entries immediately count toward `Part.allocatedQty`
+  // (ADR 0025) — there is no separate "allocate" step to defer this to anymore.
+  const allocatedByPart = new Map<string, number>();
+  for (const { suggestion } of plan) {
+    for (const entry of suggestion) {
+      allocatedByPart.set(entry.partId, (allocatedByPart.get(entry.partId) ?? 0) + entry.quantity);
+    }
   }
 
   const build = await prisma.$transaction(async (tx) => {
@@ -1283,9 +1343,9 @@ export async function createBuild({
         targetQuantity,
         outputLocationId: outputLocationId ?? null,
         createdByUserId: createdByUserId ?? null,
-        state: "CREATED"
+        state: "ALLOCATING"
       },
-      select: { id: true }
+      select: { id: true, designRevision: { select: { design: { select: { outputPartId: true } } } } }
     });
 
     for (const { line, designatorCount, suggestion } of plan) {
@@ -1314,6 +1374,18 @@ export async function createBuild({
       }
     }
 
+    if (allocatedByPart.size > 0) {
+      await lockParts(tx, workspaceId, [...allocatedByPart.keys()]);
+      for (const [partId, quantity] of allocatedByPart) {
+        await tx.part.update({ where: { id: partId }, data: { allocatedQty: { increment: quantity } } });
+      }
+    }
+    await lockParts(tx, workspaceId, [created.designRevision.design.outputPartId]);
+    await tx.part.update({
+      where: { id: created.designRevision.design.outputPartId },
+      data: { plannedQty: { increment: targetQuantity } }
+    });
+
     return created;
   });
 
@@ -1333,12 +1405,44 @@ export async function deleteBuild({
 
   const build = await prisma.build.findFirst({
     where: { id: buildId, workspaceId },
-    select: { id: true, state: true }
+    select: {
+      id: true,
+      state: true,
+      targetQuantity: true,
+      designRevision: { select: { design: { select: { outputPartId: true } } } },
+      lineItems: { select: { allocations: { select: { partId: true, quantity: true } } } }
+    }
   });
   if (!build) return { ok: false, error: "build-not-found" };
 
-  if (build.state !== "CREATED" && build.state !== "CANCELLED") {
+  if (build.state !== "ALLOCATING" && build.state !== "CANCELLED") {
     return { ok: false, error: "build-not-deletable" };
+  }
+
+  // An ALLOCATING build holds live allocatedQty/plannedQty (ADR 0025) from the moment it's created,
+  // so deleting it must release those the same way cancelling would. A CANCELLED build already
+  // released its holds when it was cancelled.
+  if (build.state === "ALLOCATING") {
+    const requiredByPart = aggregateRequirementsByPart(
+      build.lineItems.flatMap((line) =>
+        line.allocations.map((a) => ({ partId: a.partId, required: a.quantity }))
+      )
+    );
+    await prisma.$transaction(async (tx) => {
+      if (requiredByPart.size > 0) {
+        await lockParts(tx, workspaceId, [...requiredByPart.keys()]);
+        for (const [partId, amount] of requiredByPart) {
+          await tx.part.update({ where: { id: partId }, data: { allocatedQty: { decrement: amount } } });
+        }
+      }
+      await lockParts(tx, workspaceId, [build.designRevision.design.outputPartId]);
+      await tx.part.update({
+        where: { id: build.designRevision.design.outputPartId },
+        data: { plannedQty: { decrement: build.targetQuantity } }
+      });
+      await tx.build.delete({ where: { id: buildId } });
+    });
+    return { ok: true, data: null };
   }
 
   await prisma.build.delete({ where: { id: buildId } });
@@ -1349,9 +1453,11 @@ export async function deleteBuild({
 
 /**
  * Replace the split allocation of one build line: a set of {part, source location, quantity}
- * entries. Only permitted while the build is `CREATED`; an `ALLOCATED` build must be reopened
- * first so the denormalized `allocatedQty` stays consistent. Partial totals are allowed while
- * editing — the "fully allocated" guard is enforced at allocate/start.
+ * entries. Only permitted while the build is `ALLOCATING`; edits apply immediately (ADR 0025) —
+ * there is no separate "allocate"/"reopen" step. Partial totals are allowed while editing — the
+ * "fully allocated" guard is enforced at `startBuild`. An entry with no `sourceLocationId` is a
+ * plan against incoming stock (`onOrderQty`/`inProductionQty`), which has no location yet; such an
+ * entry always keeps the line (and therefore the build) from being start-ready.
  */
 export async function setBuildLineAllocations({
   userId,
@@ -1371,7 +1477,7 @@ export async function setBuildLineAllocations({
     select: { id: true, buildId: true, build: { select: { state: true } } }
   });
   if (!line) return { ok: false, error: "build-line-not-found" };
-  if (line.build.state !== "CREATED") return { ok: false, error: "build-not-editable" };
+  if (line.build.state !== "ALLOCATING") return { ok: false, error: "build-not-editable" };
 
   for (const entry of entries) {
     if (!Number.isInteger(entry.quantity) || entry.quantity < 1) {
@@ -1388,9 +1494,11 @@ export async function setBuildLineAllocations({
     }
   }
 
-  // Stock guard: never allocate more of a part than is available (currentStock − reservedQty),
-  // nor more at a (part, location) than that location physically holds. The build is still
-  // CREATED, so it holds no reservation of its own yet — availability is otherwise-committed stock.
+  // Stock guard: never allocate more of a part than is available — on hand (currentStock −
+  // reservedQty) plus incoming (onOrderQty + inProductionQty, #185) — nor more at a (part,
+  // location) than that location physically holds (incoming stock has no location, so it never
+  // enters the per-location check below). The build holds no hard reservation of its own yet —
+  // availability is otherwise-committed/incoming stock.
   const perPart = new Map<string, number>();
   const perPartLocation = new Map<string, { partId: string; locationId: string; qty: number }>();
   for (const entry of entries) {
@@ -1424,9 +1532,20 @@ export async function setBuildLineAllocations({
 
   const parts = await prisma.part.findMany({
     where: { id: { in: [...perPart.keys()] }, workspaceId },
-    select: { id: true, currentStock: true, reservedQty: true }
+    select: {
+      id: true,
+      currentStock: true,
+      reservedQty: true,
+      onOrderQty: true,
+      inProductionQty: true
+    }
   });
-  const availableById = new Map(parts.map((p) => [p.id, p.currentStock.minus(p.reservedQty)]));
+  const availableById = new Map(
+    parts.map((p) => [
+      p.id,
+      p.currentStock.minus(p.reservedQty).plus(p.onOrderQty).plus(p.inProductionQty)
+    ])
+  );
   for (const [partId, qty] of perPart) {
     const available = (availableById.get(partId) ?? new Prisma.Decimal(0)).minus(
       otherByPart.get(partId) ?? 0
@@ -1447,7 +1566,27 @@ export async function setBuildLineAllocations({
     if (balance.lessThan(qty)) return { ok: false, error: "insufficient-location-stock" };
   }
 
+  // Live allocatedQty maintenance (ADR 0025): diff this line's previously-persisted entries
+  // against the new ones and apply the per-part delta, instead of deferring to a bulk "allocate".
+  const oldEntries = await prisma.buildLineAllocation.findMany({
+    where: { buildLineItemId },
+    select: { partId: true, quantity: true }
+  });
+  const oldPerPart = new Map<string, number>();
+  for (const e of oldEntries) oldPerPart.set(e.partId, (oldPerPart.get(e.partId) ?? 0) + e.quantity);
+  const deltaByPart = new Map<string, number>();
+  for (const partId of new Set([...perPart.keys(), ...oldPerPart.keys()])) {
+    const delta = (perPart.get(partId) ?? 0) - (oldPerPart.get(partId) ?? 0);
+    if (delta !== 0) deltaByPart.set(partId, delta);
+  }
+
   await prisma.$transaction(async (tx) => {
+    if (deltaByPart.size > 0) {
+      await lockParts(tx, workspaceId, [...deltaByPart.keys()]);
+      for (const [partId, delta] of deltaByPart) {
+        await tx.part.update({ where: { id: partId }, data: { allocatedQty: { increment: delta } } });
+      }
+    }
     await tx.buildLineAllocation.deleteMany({ where: { buildLineItemId } });
     if (entries.length > 0) {
       await tx.buildLineAllocation.createMany({
@@ -1469,8 +1608,9 @@ export async function setBuildLineAllocations({
  * Replace the split allocation of **every** line of a build in one transaction. This is the
  * authoritative save for the allocation editor: the whole draft is validated against stock together
  * and written atomically, so partial per-line saves can never leave the build over-allocated.
- * Partial totals per line are allowed (completeness is enforced later at allocate/start); only the
- * aggregate stock guards apply. Only permitted while the build is `CREATED`.
+ * Partial totals per line are allowed (completeness is enforced later at `startBuild`); only the
+ * aggregate stock guards apply. Only permitted while the build is `ALLOCATING`; edits apply
+ * immediately (ADR 0025) — there is no separate "allocate"/"reopen" step.
  */
 export async function setBuildAllocations({
   userId,
@@ -1490,10 +1630,14 @@ export async function setBuildAllocations({
 
   const build = await prisma.build.findFirst({
     where: { id: buildId, workspaceId },
-    select: { id: true, state: true, lineItems: { select: { id: true } } }
+    select: {
+      id: true,
+      state: true,
+      lineItems: { select: { id: true, allocations: { select: { partId: true, quantity: true } } } }
+    }
   });
   if (!build) return { ok: false, error: "build-not-found" };
-  if (build.state !== "CREATED") return { ok: false, error: "build-not-editable" };
+  if (build.state !== "ALLOCATING") return { ok: false, error: "build-not-editable" };
 
   const lineIds = new Set(build.lineItems.map((l) => l.id));
   const allEntries: { partId: string; sourceLocationId: string | null; quantity: number }[] = [];
@@ -1534,9 +1678,20 @@ export async function setBuildAllocations({
 
   const parts = await prisma.part.findMany({
     where: { id: { in: [...perPart.keys()] }, workspaceId },
-    select: { id: true, currentStock: true, reservedQty: true }
+    select: {
+      id: true,
+      currentStock: true,
+      reservedQty: true,
+      onOrderQty: true,
+      inProductionQty: true
+    }
   });
-  const availableById = new Map(parts.map((p) => [p.id, p.currentStock.minus(p.reservedQty)]));
+  const availableById = new Map(
+    parts.map((p) => [
+      p.id,
+      p.currentStock.minus(p.reservedQty).plus(p.onOrderQty).plus(p.inProductionQty)
+    ])
+  );
   for (const [partId, qty] of perPart) {
     const available = availableById.get(partId) ?? new Prisma.Decimal(0);
     if (available.lessThan(qty)) return { ok: false, error: "insufficient-available-stock" };
@@ -1553,7 +1708,25 @@ export async function setBuildAllocations({
     if (balance.lessThan(qty)) return { ok: false, error: "insufficient-location-stock" };
   }
 
+  // Live allocatedQty maintenance (ADR 0025): diff the build's previously-persisted entries
+  // (across all lines) against the new aggregate and apply the per-part delta.
+  const oldPerPart = new Map<string, number>();
+  for (const l of build.lineItems) {
+    for (const a of l.allocations) oldPerPart.set(a.partId, (oldPerPart.get(a.partId) ?? 0) + a.quantity);
+  }
+  const deltaByPart = new Map<string, number>();
+  for (const partId of new Set([...perPart.keys(), ...oldPerPart.keys()])) {
+    const delta = (perPart.get(partId) ?? 0) - (oldPerPart.get(partId) ?? 0);
+    if (delta !== 0) deltaByPart.set(partId, delta);
+  }
+
   await prisma.$transaction(async (tx) => {
+    if (deltaByPart.size > 0) {
+      await lockParts(tx, workspaceId, [...deltaByPart.keys()]);
+      for (const [partId, delta] of deltaByPart) {
+        await tx.part.update({ where: { id: partId }, data: { allocatedQty: { increment: delta } } });
+      }
+    }
     await tx.buildLineAllocation.deleteMany({ where: { buildLineItem: { buildId } } });
     const data = lines.flatMap((line) =>
       line.entries.map((entry) => ({
@@ -1572,87 +1745,11 @@ export async function setBuildAllocations({
 
 // --- Mutations: state transitions ---
 
-/** `CREATED → ALLOCATED`: require every line fully allocated, then apply soft `allocatedQty`. */
-export async function markBuildAllocated({
-  userId,
-  workspaceId,
-  buildId
-}: {
-  userId: string;
-  workspaceId: string;
-  buildId: string;
-}): Promise<ActionResult<null>> {
-  await authorizeWorkspacePermission({ userId, workspaceId, permission: "builds:write" });
-
-  const build = await loadBuildForTransition(workspaceId, buildId);
-  if (!build) return { ok: false, error: "build-not-found" };
-  if (build.state !== "CREATED") return { ok: false, error: "invalid-build-transition" };
-  if (!isFullyAllocated(build)) return { ok: false, error: "build-not-fully-allocated" };
-
-  const requiredByPart = buildRequirements(build);
-
-  await prisma.$transaction(async (tx) => {
-    await lockParts(tx, workspaceId, [...requiredByPart.keys()]);
-    for (const [partId, required] of requiredByPart) {
-      await tx.part.update({
-        where: { id: partId },
-        data: { allocatedQty: { increment: required } }
-      });
-    }
-    // The output part isn't necessarily among the consumed parts above: an ALLOCATED build is a
-    // soft commitment to produce it, so it now counts toward the output part's plannedQty too.
-    await lockParts(tx, workspaceId, [build.outputPartId]);
-    await tx.part.update({
-      where: { id: build.outputPartId },
-      data: { plannedQty: { increment: build.targetQuantity } }
-    });
-    await tx.build.update({ where: { id: buildId }, data: { state: "ALLOCATED" } });
-  });
-
-  return { ok: true, data: null };
-}
-
-/** `ALLOCATED → CREATED`: release the soft `allocatedQty` so allocation can be edited again. */
-export async function reopenBuild({
-  userId,
-  workspaceId,
-  buildId
-}: {
-  userId: string;
-  workspaceId: string;
-  buildId: string;
-}): Promise<ActionResult<null>> {
-  await authorizeWorkspacePermission({ userId, workspaceId, permission: "builds:write" });
-
-  const build = await loadBuildForTransition(workspaceId, buildId);
-  if (!build) return { ok: false, error: "build-not-found" };
-  if (build.state !== "ALLOCATED") return { ok: false, error: "invalid-build-transition" };
-
-  const requiredByPart = buildRequirements(build);
-
-  await prisma.$transaction(async (tx) => {
-    await lockParts(tx, workspaceId, [...requiredByPart.keys()]);
-    for (const [partId, required] of requiredByPart) {
-      await tx.part.update({
-        where: { id: partId },
-        data: { allocatedQty: { decrement: required } }
-      });
-    }
-    await lockParts(tx, workspaceId, [build.outputPartId]);
-    await tx.part.update({
-      where: { id: build.outputPartId },
-      data: { plannedQty: { decrement: build.targetQuantity } }
-    });
-    await tx.build.update({ where: { id: buildId }, data: { state: "CREATED" } });
-  });
-
-  return { ok: true, data: null };
-}
-
 /**
- * `ALLOCATED → STARTED`: hard-reserve stock and distribute the allocation down to per-designator,
- * per-part assignment rows. Guards part-level availability (`currentStock − reservedQty`) and each
- * (part, source-location) balance, then moves the soft allocation into a hard reservation.
+ * `ALLOCATING → STARTED`: hard-reserve stock and distribute the allocation down to per-designator,
+ * per-part assignment rows. Guards part-level availability (`currentStock − reservedQty` — real
+ * on-hand stock only, incoming stock does not count here) and each (part, source-location)
+ * balance, then moves the soft allocation into a hard reservation.
  */
 export async function startBuild({
   userId,
@@ -1667,7 +1764,7 @@ export async function startBuild({
 
   const build = await loadBuildForTransition(workspaceId, buildId);
   if (!build) return { ok: false, error: "build-not-found" };
-  if (build.state !== "ALLOCATED") return { ok: false, error: "invalid-build-transition" };
+  if (build.state !== "ALLOCATING") return { ok: false, error: "invalid-build-transition" };
   if (!isFullyAllocated(build)) return { ok: false, error: "build-not-fully-allocated" };
 
   const requiredByPart = buildRequirements(build);
@@ -2159,40 +2256,36 @@ export async function cancelBuild({
   }
 
   const releasesInProduction = build.state === "STARTED" || build.state === "IN_PROGRESS";
-  const releasesPlanned = build.state === "ALLOCATED";
+  const releasesPlanned = build.state === "ALLOCATING";
 
   // What remains reserved/allocated depends on the phase: before start the hold lives on the
-  // allocation entries (`allocatedQty`); once started it lives on the un-assembled portion of the
-  // per-designator rows (`reservedQty`).
-  const releaseField =
-    build.state === "ALLOCATED" ? "allocatedQty" : build.state === "CREATED" ? null : "reservedQty";
+  // allocation entries (`allocatedQty`, live since creation per ADR 0025); once started it lives
+  // on the un-assembled portion of the per-designator rows (`reservedQty`).
+  const releaseField = releasesPlanned ? "allocatedQty" : "reservedQty";
 
-  const remainingByPart =
-    build.state === "ALLOCATED"
-      ? aggregateRequirementsByPart(
-          build.lineItems.flatMap((line) =>
-            line.allocations.map((a) => ({ partId: a.partId, required: a.quantity }))
-          )
+  const remainingByPart = releasesPlanned
+    ? aggregateRequirementsByPart(
+        build.lineItems.flatMap((line) =>
+          line.allocations.map((a) => ({ partId: a.partId, required: a.quantity }))
         )
-      : aggregateRequirementsByPart(
-          build.lineItems.flatMap((line) =>
-            line.assignments.map((a) => ({
-              partId: a.partId,
-              required: a.assembled ? 0 : 1
-            }))
-          )
-        );
+      )
+    : aggregateRequirementsByPart(
+        build.lineItems.flatMap((line) =>
+          line.assignments.map((a) => ({
+            partId: a.partId,
+            required: a.assembled ? 0 : 1
+          }))
+        )
+      );
 
   await prisma.$transaction(async (tx) => {
-    if (releaseField) {
-      await lockParts(tx, workspaceId, [...remainingByPart.keys()]);
-      for (const [partId, amount] of remainingByPart) {
-        if (amount === 0) continue;
-        await tx.part.update({
-          where: { id: partId },
-          data: { [releaseField]: { decrement: amount } }
-        });
-      }
+    await lockParts(tx, workspaceId, [...remainingByPart.keys()]);
+    for (const [partId, amount] of remainingByPart) {
+      if (amount === 0) continue;
+      await tx.part.update({
+        where: { id: partId },
+        data: { [releaseField]: { decrement: amount } }
+      });
     }
     if (releasesInProduction || releasesPlanned) {
       // The output part may not be among the consumed parts above, so lock/update it separately.
