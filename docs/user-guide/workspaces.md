@@ -14,13 +14,16 @@ Think of a workspace as one workshop environment with its own parts, categories,
 
 ### Starting Data Presets
 
-When creating a workspace you can choose one of three starting data options:
+When creating a workspace you can choose one of four starting data options:
 
 - **Empty workspace** (default) — the workspace starts with no data. Best when you want to build your part library from scratch.
+- **Starter dictionaries only** — seeds only the dictionary layer: a broad category tree (modeled after a real electronics distributor's category hierarchy — passives, semiconductors, ICs, optoelectronics, electromechanical, connectors, crystals/timing, protection, and sensors, each broken into specific subcategories) with the correct attribute bindings, a curated attribute list, common manufacturers and suppliers, and a few extra stock-keeping units (Grams, Rolls, Boxes, Sets) alongside the always-on Pieces/Meters/Liters. No parts, locations, or stock are created — ideal when you want a head start on setup but plan to enter your own real parts.
 - **Demo parts** — seeds the workspace with ~250 real electronic parts across common categories (resistors, capacitors, MOSFETs, microcontrollers, connectors, and more), complete with categories, attributes, manufacturers, and storage locations.
 - **Demo parts + orders** — everything in "Demo parts" plus two shopping lists and three purchase orders (one received, one ordered, one draft) so you can explore the full ordering workflow immediately.
 
 Seeded data behaves identically to data you create yourself — you can edit, delete, or extend any of it. The preset cannot be changed after the workspace is created.
+
+Unlike the demo presets, starter dictionaries can also be loaded into an existing workspace at any time from **Settings → General** — see below.
 
 ### Archiving And Restoring A Workspace
 
@@ -44,6 +47,18 @@ The workspace immediately reappears in the active list and is accessible again t
 **What members see:** If a member navigates to an archived workspace URL, they are redirected to the Workspaces page with a notice that the workspace has been archived.
 
 **Automatic deletion after the retention period:** Archived workspaces are automatically and permanently deleted after a retention period (default: 30 days). The Workspaces page shows the scheduled deletion date next to each archived workspace. If you restore the workspace before that date, the automatic deletion is cancelled. Once the retention period expires and deletion is scheduled, restoration is no longer possible.
+
+### Loading Starter Dictionaries Into An Existing Workspace
+
+If a workspace started empty and you want the same head start the "Starter dictionaries only" preset gives at creation, you can load it at any time from **Settings → General**.
+
+This action is **additive and non-destructive**: it only adds categories, attributes, manufacturers/suppliers, and extra stock units that don't already exist — it never deletes or overwrites existing data, and it does not add any parts, locations, or stock. It is safe to run more than once.
+
+**To load starter dictionaries** (admins only):
+
+1. Open the workspace.
+2. Navigate to **Settings → General**.
+3. Click **Load starter dictionaries**.
 
 ### Resetting A Workspace To Demo Data
 

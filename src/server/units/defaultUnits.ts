@@ -10,6 +10,13 @@ const DEFAULT_UNITS = [
 
 export const DEFAULT_PART_UNIT_NORMALIZED_NAME = "pieces";
 
+const STARTER_DICTIONARY_UNITS = [
+  { name: "Grams", normalizedName: "grams", symbol: "g", allowsFraction: true },
+  { name: "Rolls", normalizedName: "rolls", symbol: "rolls", allowsFraction: false },
+  { name: "Boxes", normalizedName: "boxes", symbol: "boxes", allowsFraction: false },
+  { name: "Sets", normalizedName: "sets", symbol: "sets", allowsFraction: false }
+] as const;
+
 export async function ensureDefaultUnitsForWorkspace(
   tx: DatabaseClient,
   workspaceId: string
@@ -36,6 +43,52 @@ export async function ensureDefaultUnitsForWorkspace(
       }
     });
   }
+}
+
+export async function ensureStarterDictionaryUnitsForWorkspace(
+  tx: DatabaseClient,
+  workspaceId: string
+): Promise<number> {
+  let unitsCreated = 0;
+
+  for (const unit of STARTER_DICTIONARY_UNITS) {
+    const existing = await tx.unit.findUnique({
+      where: {
+        workspaceId_normalizedName: {
+          workspaceId,
+          normalizedName: unit.normalizedName
+        }
+      },
+      select: { id: true }
+    });
+
+    if (!existing) {
+      unitsCreated++;
+    }
+
+    await tx.unit.upsert({
+      where: {
+        workspaceId_normalizedName: {
+          workspaceId,
+          normalizedName: unit.normalizedName
+        }
+      },
+      update: {
+        name: unit.name,
+        symbol: unit.symbol,
+        allowsFraction: unit.allowsFraction
+      },
+      create: {
+        workspaceId,
+        name: unit.name,
+        normalizedName: unit.normalizedName,
+        symbol: unit.symbol,
+        allowsFraction: unit.allowsFraction
+      }
+    });
+  }
+
+  return unitsCreated;
 }
 
 export async function getDefaultPartUnitId(

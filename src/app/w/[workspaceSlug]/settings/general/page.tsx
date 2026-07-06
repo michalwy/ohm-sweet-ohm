@@ -51,6 +51,7 @@ export default async function GeneralSettingsPage({ params }: GeneralPageProps) 
       <GeneralSettingsClient
         canArchive={canArchive}
         canReset={canArchive}
+        canLoadStarterDictionaries={canArchive}
         workspaceName={context.workspace.name}
         workspaceSlug={workspaceSlug}
       />

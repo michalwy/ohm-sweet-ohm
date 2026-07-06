@@ -12,11 +12,16 @@ import {
   openDialog,
   closeDialog
 } from "@/app/dialog-shell";
-import { archiveWorkspace, resetWorkspaceToDemoPreset } from "@/server/workspaces/actions";
+import {
+  archiveWorkspace,
+  loadStarterDictionaries,
+  resetWorkspaceToDemoPreset
+} from "@/server/workspaces/actions";
 
 type GeneralSettingsClientProps = {
   canArchive: boolean;
   canReset: boolean;
+  canLoadStarterDictionaries: boolean;
   workspaceName: string;
   workspaceSlug: string;
 };
@@ -46,12 +51,20 @@ const copy = {
   permissionDenied: "You do not have permission to archive this workspace.",
   unavailable: "Archiving failed. Please try again.",
   resetPermissionDenied: "You do not have permission to reset this workspace.",
-  resetUnavailable: "Reset failed. Please try again."
+  resetUnavailable: "Reset failed. Please try again.",
+  starterDictionaries: "Load starter dictionaries",
+  starterDictionariesIntro:
+    "Add categories, attributes, common manufacturers/suppliers, and extra stock units to this workspace. Safe to run more than once — existing data is never duplicated or overwritten, and no parts or stock are added.",
+  starterDictionariesButton: "Load starter dictionaries",
+  starterDictionariesSuccess: "Starter dictionaries loaded.",
+  starterDictionariesPermissionDenied: "You do not have permission to modify this workspace.",
+  starterDictionariesUnavailable: "Loading starter dictionaries failed. Please try again."
 };
 
 export function GeneralSettingsClient({
   canArchive,
   canReset,
+  canLoadStarterDictionaries,
   workspaceName,
   workspaceSlug
 }: GeneralSettingsClientProps) {
@@ -60,6 +73,8 @@ export function GeneralSettingsClient({
   const [archiveErrorMsg, setArchiveErrorMsg] = useState<string | null>(null);
   const [resetErrorMsg, setResetErrorMsg] = useState<string | null>(null);
   const [resetPreset, setResetPreset] = useState<"parts-only" | "parts-and-orders">("parts-only");
+  const [starterDictionariesErrorMsg, setStarterDictionariesErrorMsg] = useState<string | null>(null);
+  const [starterDictionariesSuccessMsg, setStarterDictionariesSuccessMsg] = useState<string | null>(null);
 
   const archiveMutation = useMutation({
     mutationFn: () => archiveWorkspace(workspaceSlug),
@@ -93,6 +108,23 @@ export function GeneralSettingsClient({
     }
   });
 
+  const starterDictionariesMutation = useMutation({
+    mutationFn: () => loadStarterDictionaries(workspaceSlug),
+    onSuccess: (result) => {
+      if (!result.ok) {
+        setStarterDictionariesSuccessMsg(null);
+        setStarterDictionariesErrorMsg(
+          result.error === "workspace-permission-denied"
+            ? copy.starterDictionariesPermissionDenied
+            : copy.starterDictionariesUnavailable
+        );
+        return;
+      }
+      setStarterDictionariesErrorMsg(null);
+      setStarterDictionariesSuccessMsg(copy.starterDictionariesSuccess);
+    }
+  });
+
   return (
     <div className="max-w-lg space-y-8">
       <div className="space-y-4">
@@ -105,6 +137,31 @@ export function GeneralSettingsClient({
           <p className="font-mono text-sm text-[var(--color-text-muted)]">/w/{workspaceSlug}</p>
         </div>
       </div>
+
+      {canLoadStarterDictionaries && (
+        <div className="rounded-lg border border-[var(--color-border)] p-4">
+          <p className="text-sm font-medium text-[var(--color-text-secondary)]">{copy.starterDictionaries}</p>
+          <p className="mt-1 text-sm leading-6 text-[var(--color-text-secondary)]">{copy.starterDictionariesIntro}</p>
+          {starterDictionariesErrorMsg && (
+            <p className="mt-3 rounded-md border border-[var(--color-error-border)] bg-[var(--color-error-soft)] px-3 py-2 text-sm text-[var(--color-error)]">
+              {starterDictionariesErrorMsg}
+            </p>
+          )}
+          {starterDictionariesSuccessMsg && (
+            <p className="mt-3 rounded-md border border-[var(--color-success-border)] bg-[var(--color-success-soft)] px-3 py-2 text-sm text-[var(--color-success)]">
+              {starterDictionariesSuccessMsg}
+            </p>
+          )}
+          <button
+            className="mt-3 min-h-9 rounded-md border border-[var(--color-border-strong)] bg-[var(--color-bg-elevated)] px-3 py-1.5 text-sm font-medium text-[var(--color-text-primary)] transition hover:border-[var(--color-border-hover)] hover:bg-[var(--color-bg-subtle)] focus:outline-none focus:ring-2 focus:ring-[var(--color-ring)] focus:ring-offset-2 disabled:opacity-60"
+            type="button"
+            disabled={starterDictionariesMutation.isPending}
+            onClick={() => starterDictionariesMutation.mutate()}
+          >
+            {copy.starterDictionariesButton}
+          </button>
+        </div>
+      )}
 
       {(canArchive || canReset) && (
         <div className="rounded-lg border border-[var(--color-error-border)] p-4 space-y-6">

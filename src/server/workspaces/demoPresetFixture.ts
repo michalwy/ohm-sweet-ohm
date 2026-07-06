@@ -231,20 +231,61 @@ export const DEMO_PRESET_FIXTURE: DemoPresetFixture = {
         { key: "gender_male", label: "Male", sortOrder: 0 },
         { key: "gender_female", label: "Female", sortOrder: 1 }
       ]
-    }
+    },
+    { key: "coilVoltage", name: "Coil Voltage", type: "QUANTITY", baseUnitSymbol: "V" },
+    { key: "numberOfPoles", name: "Number of Poles", type: "NUMBER" },
+    {
+      key: "ledColor",
+      name: "LED Color",
+      type: "CHOICE",
+      choices: [
+        { key: "led_red", label: "Red", sortOrder: 0 },
+        { key: "led_green", label: "Green", sortOrder: 1 },
+        { key: "led_blue", label: "Blue", sortOrder: 2 },
+        { key: "led_yellow", label: "Yellow", sortOrder: 3 },
+        { key: "led_white", label: "White", sortOrder: 4 },
+        { key: "led_rgb", label: "RGB", sortOrder: 5 },
+        { key: "led_infrared", label: "Infrared", sortOrder: 6 }
+      ]
+    },
+    { key: "wavelength", name: "Wavelength", type: "QUANTITY", baseUnitSymbol: "nm" },
+    { key: "oscillatorFrequency", name: "Frequency", type: "QUANTITY", baseUnitSymbol: "Hz" },
+    { key: "loadCapacitance", name: "Load Capacitance", type: "QUANTITY", baseUnitSymbol: "F" },
+    { key: "memorySize", name: "Memory Size", type: "TEXT" },
+    {
+      key: "interfaceProtocol",
+      name: "Interface Protocol",
+      type: "CHOICE",
+      choices: [
+        { key: "iface_i2c", label: "I2C", sortOrder: 0 },
+        { key: "iface_spi", label: "SPI", sortOrder: 1 },
+        { key: "iface_uart", label: "UART", sortOrder: 2 },
+        { key: "iface_1wire", label: "1-Wire", sortOrder: 3 },
+        { key: "iface_can", label: "CAN", sortOrder: 4 },
+        { key: "iface_rs232", label: "RS-232", sortOrder: 5 },
+        { key: "iface_rs485", label: "RS-485", sortOrder: 6 },
+        { key: "iface_usb", label: "USB", sortOrder: 7 }
+      ]
+    },
+    { key: "clampingVoltage", name: "Clamping Voltage", type: "QUANTITY", baseUnitSymbol: "V" }
   ],
 
+  // Category tree structured after TME's real category hierarchy (family -> subfamily ->
+  // assignable leaf), broadened from a flat ~15-category list so the starter-dictionaries
+  // preset (#207) gives a genuinely useful foundation. Existing demo-fixture leaf keys that
+  // still map 1:1 (zeners, mosfets, bjts, microcontrollers, opamps, regulators, timers) keep
+  // their original key so no part remapping is needed for them; only resistors, capacitors,
+  // diodes, logic, and connectors were split finely enough to require remapping existing parts
+  // (see the `parts` array below).
   categories: [
-    // Root categories
+    // ── Passives ──────────────────────────────────────────────────────────────
     { key: "passives", name: "Passives", isAssignable: false },
-    { key: "semiconductors", name: "Semiconductors", isAssignable: false },
-    { key: "ics", name: "Integrated Circuits", isAssignable: false, parentKey: "semiconductors" },
-    // Passives leaf categories
+    { key: "resistorsFamily", name: "Resistors", isAssignable: false, parentKey: "passives" },
     {
-      key: "resistors",
-      name: "Resistors",
+      key: "smdResistors",
+      name: "SMD Resistors",
       isAssignable: true,
-      parentKey: "passives",
+      parentKey: "resistorsFamily",
       valueAttributeKey: "resistance",
       attributes: [
         { attributeKey: "resistance", sortOrder: 0, isPrimary: true },
@@ -255,10 +296,46 @@ export const DEMO_PRESET_FIXTURE: DemoPresetFixture = {
       ]
     },
     {
-      key: "capacitors",
-      name: "Capacitors",
+      key: "thtResistors",
+      name: "THT Resistors",
       isAssignable: true,
-      parentKey: "passives",
+      parentKey: "resistorsFamily",
+      valueAttributeKey: "resistance",
+      attributes: [
+        { attributeKey: "resistance", sortOrder: 0, isPrimary: true },
+        { attributeKey: "tolerance", sortOrder: 1 },
+        { attributeKey: "powerRating", sortOrder: 2 },
+        { attributeKey: "temperatureCoefficient", sortOrder: 3 }
+      ]
+    },
+    {
+      key: "resistorNetworks",
+      name: "Resistor Networks",
+      isAssignable: true,
+      parentKey: "resistorsFamily",
+      attributes: [
+        { attributeKey: "resistance", sortOrder: 0, isPrimary: true },
+        { attributeKey: "pinCount", sortOrder: 1 },
+        { attributeKey: "package", sortOrder: 2 }
+      ]
+    },
+    {
+      key: "potentiometersTrimmers",
+      name: "Potentiometers & Trimmers",
+      isAssignable: true,
+      parentKey: "resistorsFamily",
+      attributes: [
+        { attributeKey: "resistance", sortOrder: 0, isPrimary: true },
+        { attributeKey: "powerRating", sortOrder: 1 },
+        { attributeKey: "package", sortOrder: 2 }
+      ]
+    },
+    { key: "capacitorsFamily", name: "Capacitors", isAssignable: false, parentKey: "passives" },
+    {
+      key: "ceramicCapacitors",
+      name: "Ceramic Capacitors",
+      isAssignable: true,
+      parentKey: "capacitorsFamily",
       valueAttributeKey: "capacitance",
       attributes: [
         { attributeKey: "capacitance", sortOrder: 0, isPrimary: true },
@@ -269,10 +346,63 @@ export const DEMO_PRESET_FIXTURE: DemoPresetFixture = {
       ]
     },
     {
-      key: "inductors",
-      name: "Inductors",
+      key: "electrolyticCapacitors",
+      name: "Electrolytic Capacitors",
       isAssignable: true,
-      parentKey: "passives",
+      parentKey: "capacitorsFamily",
+      valueAttributeKey: "capacitance",
+      attributes: [
+        { attributeKey: "capacitance", sortOrder: 0, isPrimary: true },
+        { attributeKey: "voltageRating", sortOrder: 1 },
+        { attributeKey: "tolerance", sortOrder: 2 },
+        { attributeKey: "dielectricType", sortOrder: 3 },
+        { attributeKey: "package", sortOrder: 4 }
+      ]
+    },
+    {
+      key: "tantalumCapacitors",
+      name: "Tantalum Capacitors",
+      isAssignable: true,
+      parentKey: "capacitorsFamily",
+      valueAttributeKey: "capacitance",
+      attributes: [
+        { attributeKey: "capacitance", sortOrder: 0, isPrimary: true },
+        { attributeKey: "voltageRating", sortOrder: 1 },
+        { attributeKey: "tolerance", sortOrder: 2 },
+        { attributeKey: "package", sortOrder: 3 }
+      ]
+    },
+    {
+      key: "filmCapacitors",
+      name: "Film Capacitors",
+      isAssignable: true,
+      parentKey: "capacitorsFamily",
+      valueAttributeKey: "capacitance",
+      attributes: [
+        { attributeKey: "capacitance", sortOrder: 0, isPrimary: true },
+        { attributeKey: "voltageRating", sortOrder: 1 },
+        { attributeKey: "tolerance", sortOrder: 2 },
+        { attributeKey: "package", sortOrder: 3 }
+      ]
+    },
+    {
+      key: "supercapacitors",
+      name: "Supercapacitors",
+      isAssignable: true,
+      parentKey: "capacitorsFamily",
+      valueAttributeKey: "capacitance",
+      attributes: [
+        { attributeKey: "capacitance", sortOrder: 0, isPrimary: true },
+        { attributeKey: "voltageRating", sortOrder: 1 },
+        { attributeKey: "package", sortOrder: 2 }
+      ]
+    },
+    { key: "inductorsFamily", name: "Inductors", isAssignable: false, parentKey: "passives" },
+    {
+      key: "smdInductors",
+      name: "SMD Inductors",
+      isAssignable: true,
+      parentKey: "inductorsFamily",
       valueAttributeKey: "inductance",
       attributes: [
         { attributeKey: "inductance", sortOrder: 0, isPrimary: true },
@@ -282,12 +412,51 @@ export const DEMO_PRESET_FIXTURE: DemoPresetFixture = {
         { attributeKey: "package", sortOrder: 4 }
       ]
     },
-    // Semiconductors leaf categories
     {
-      key: "diodes",
-      name: "Diodes",
+      key: "thtInductorsChokes",
+      name: "THT Inductors & Chokes",
       isAssignable: true,
-      parentKey: "semiconductors",
+      parentKey: "inductorsFamily",
+      valueAttributeKey: "inductance",
+      attributes: [
+        { attributeKey: "inductance", sortOrder: 0, isPrimary: true },
+        { attributeKey: "currentRating", sortOrder: 1 },
+        { attributeKey: "dcr", sortOrder: 2 }
+      ]
+    },
+
+    // ── Semiconductors ────────────────────────────────────────────────────────
+    { key: "semiconductors", name: "Semiconductors", isAssignable: false },
+    { key: "diodesFamily", name: "Diodes", isAssignable: false, parentKey: "semiconductors" },
+    {
+      key: "universalDiodes",
+      name: "Universal / Switching Diodes",
+      isAssignable: true,
+      parentKey: "diodesFamily",
+      attributes: [
+        { attributeKey: "package", sortOrder: 0, isPrimary: true },
+        { attributeKey: "forwardVoltage", sortOrder: 1 },
+        { attributeKey: "currentRating", sortOrder: 2 },
+        { attributeKey: "voltageRating", sortOrder: 3 }
+      ]
+    },
+    {
+      key: "schottkyDiodes",
+      name: "Schottky Diodes",
+      isAssignable: true,
+      parentKey: "diodesFamily",
+      attributes: [
+        { attributeKey: "package", sortOrder: 0, isPrimary: true },
+        { attributeKey: "forwardVoltage", sortOrder: 1 },
+        { attributeKey: "currentRating", sortOrder: 2 },
+        { attributeKey: "voltageRating", sortOrder: 3 }
+      ]
+    },
+    {
+      key: "rectifierDiodes",
+      name: "Rectifier Diodes",
+      isAssignable: true,
+      parentKey: "diodesFamily",
       attributes: [
         { attributeKey: "package", sortOrder: 0, isPrimary: true },
         { attributeKey: "forwardVoltage", sortOrder: 1 },
@@ -299,7 +468,7 @@ export const DEMO_PRESET_FIXTURE: DemoPresetFixture = {
       key: "zeners",
       name: "Zener Diodes",
       isAssignable: true,
-      parentKey: "semiconductors",
+      parentKey: "diodesFamily",
       valueAttributeKey: "zenerVoltage",
       attributes: [
         { attributeKey: "zenerVoltage", sortOrder: 0, isPrimary: true },
@@ -307,11 +476,12 @@ export const DEMO_PRESET_FIXTURE: DemoPresetFixture = {
         { attributeKey: "package", sortOrder: 2 }
       ]
     },
+    { key: "transistorsFamily", name: "Transistors", isAssignable: false, parentKey: "semiconductors" },
     {
       key: "mosfets",
       name: "MOSFETs",
       isAssignable: true,
-      parentKey: "semiconductors",
+      parentKey: "transistorsFamily",
       attributes: [
         { attributeKey: "channelType", sortOrder: 0, isPrimary: true },
         { attributeKey: "package", sortOrder: 1 },
@@ -325,7 +495,7 @@ export const DEMO_PRESET_FIXTURE: DemoPresetFixture = {
       key: "bjts",
       name: "BJTs",
       isAssignable: true,
-      parentKey: "semiconductors",
+      parentKey: "transistorsFamily",
       attributes: [
         { attributeKey: "channelType", sortOrder: 0, isPrimary: true },
         { attributeKey: "package", sortOrder: 1 },
@@ -334,7 +504,42 @@ export const DEMO_PRESET_FIXTURE: DemoPresetFixture = {
         { attributeKey: "hfe", sortOrder: 4 }
       ]
     },
-    // IC sub-categories
+    {
+      key: "igbts",
+      name: "IGBTs",
+      isAssignable: true,
+      parentKey: "transistorsFamily",
+      attributes: [
+        { attributeKey: "package", sortOrder: 0, isPrimary: true },
+        { attributeKey: "vceMax", sortOrder: 1 },
+        { attributeKey: "currentRating", sortOrder: 2 }
+      ]
+    },
+    {
+      key: "jfets",
+      name: "JFETs",
+      isAssignable: true,
+      parentKey: "transistorsFamily",
+      attributes: [
+        { attributeKey: "channelType", sortOrder: 0, isPrimary: true },
+        { attributeKey: "package", sortOrder: 1 },
+        { attributeKey: "vgsThreshold", sortOrder: 2 }
+      ]
+    },
+    {
+      key: "thyristorsTriacs",
+      name: "Thyristors & Triacs",
+      isAssignable: true,
+      parentKey: "semiconductors",
+      attributes: [
+        { attributeKey: "package", sortOrder: 0, isPrimary: true },
+        { attributeKey: "voltageRating", sortOrder: 1 },
+        { attributeKey: "currentRating", sortOrder: 2 }
+      ]
+    },
+
+    // ── Integrated Circuits ───────────────────────────────────────────────────
+    { key: "ics", name: "Integrated Circuits", isAssignable: false, parentKey: "semiconductors" },
     {
       key: "microcontrollers",
       name: "Microcontrollers",
@@ -352,6 +557,19 @@ export const DEMO_PRESET_FIXTURE: DemoPresetFixture = {
       ]
     },
     {
+      key: "memoryIcs",
+      name: "Memory",
+      isAssignable: true,
+      parentKey: "ics",
+      attributes: [
+        { attributeKey: "package", sortOrder: 0, isPrimary: true },
+        { attributeKey: "memorySize", sortOrder: 1 },
+        { attributeKey: "interfaceProtocol", sortOrder: 2 },
+        { attributeKey: "supplyVoltageMin", sortOrder: 3 },
+        { attributeKey: "supplyVoltageMax", sortOrder: 4 }
+      ]
+    },
+    {
       key: "opamps",
       name: "Op-Amps",
       isAssignable: true,
@@ -366,15 +584,41 @@ export const DEMO_PRESET_FIXTURE: DemoPresetFixture = {
       ]
     },
     {
-      key: "regulators",
-      name: "Voltage Regulators",
+      key: "comparators",
+      name: "Comparators",
       isAssignable: true,
       parentKey: "ics",
+      attributes: [
+        { attributeKey: "package", sortOrder: 0, isPrimary: true },
+        { attributeKey: "inputOffsetVoltage", sortOrder: 1 },
+        { attributeKey: "supplyVoltageMin", sortOrder: 2 },
+        { attributeKey: "supplyVoltageMax", sortOrder: 3 }
+      ]
+    },
+    { key: "voltageRegulatorsFamily", name: "Voltage Regulators", isAssignable: false, parentKey: "ics" },
+    {
+      key: "regulators",
+      name: "Linear Voltage Regulators",
+      isAssignable: true,
+      parentKey: "voltageRegulatorsFamily",
       attributes: [
         { attributeKey: "outputVoltage", sortOrder: 0, isPrimary: true },
         { attributeKey: "outputCurrentMax", sortOrder: 1 },
         { attributeKey: "dropoutVoltage", sortOrder: 2 },
         { attributeKey: "package", sortOrder: 3 }
+      ]
+    },
+    {
+      key: "dcdcConverters",
+      name: "DC-DC Converters",
+      isAssignable: true,
+      parentKey: "voltageRegulatorsFamily",
+      attributes: [
+        { attributeKey: "outputVoltage", sortOrder: 0, isPrimary: true },
+        { attributeKey: "outputCurrentMax", sortOrder: 1 },
+        { attributeKey: "supplyVoltageMin", sortOrder: 2 },
+        { attributeKey: "supplyVoltageMax", sortOrder: 3 },
+        { attributeKey: "package", sortOrder: 4 }
       ]
     },
     {
@@ -384,22 +628,471 @@ export const DEMO_PRESET_FIXTURE: DemoPresetFixture = {
       parentKey: "ics",
       attributes: [{ attributeKey: "package", sortOrder: 0, isPrimary: true }]
     },
+    { key: "logicFamily", name: "Logic ICs", isAssignable: false, parentKey: "ics" },
     {
-      key: "logic",
-      name: "Logic ICs",
+      key: "logicGates",
+      name: "Logic Gates",
       isAssignable: true,
-      parentKey: "ics",
+      parentKey: "logicFamily",
       attributes: [{ attributeKey: "package", sortOrder: 0, isPrimary: true }]
     },
     {
-      key: "connectors",
-      name: "Connectors",
+      key: "flipFlopsLatches",
+      name: "Flip-Flops & Latches",
       isAssignable: true,
+      parentKey: "logicFamily",
+      attributes: [{ attributeKey: "package", sortOrder: 0, isPrimary: true }]
+    },
+    {
+      key: "shiftRegisters",
+      name: "Shift Registers",
+      isAssignable: true,
+      parentKey: "logicFamily",
+      attributes: [
+        { attributeKey: "package", sortOrder: 0, isPrimary: true },
+        { attributeKey: "pinCount", sortOrder: 1 }
+      ]
+    },
+    {
+      key: "decodersMultiplexers",
+      name: "Decoders & Multiplexers",
+      isAssignable: true,
+      parentKey: "logicFamily",
+      attributes: [{ attributeKey: "package", sortOrder: 0, isPrimary: true }]
+    },
+    {
+      key: "logicBuffersTransceivers",
+      name: "Buffers & Transceivers",
+      isAssignable: true,
+      parentKey: "logicFamily",
+      attributes: [{ attributeKey: "package", sortOrder: 0, isPrimary: true }]
+    },
+    {
+      key: "counters",
+      name: "Counters & Dividers",
+      isAssignable: true,
+      parentKey: "logicFamily",
+      attributes: [{ attributeKey: "package", sortOrder: 0, isPrimary: true }]
+    },
+    {
+      key: "interfaceIcs",
+      name: "Interface ICs",
+      isAssignable: true,
+      parentKey: "ics",
+      attributes: [
+        { attributeKey: "package", sortOrder: 0, isPrimary: true },
+        { attributeKey: "interfaceProtocol", sortOrder: 1 },
+        { attributeKey: "supplyVoltageMin", sortOrder: 2 },
+        { attributeKey: "supplyVoltageMax", sortOrder: 3 }
+      ]
+    },
+    {
+      key: "powerManagementIcs",
+      name: "Power Management ICs",
+      isAssignable: true,
+      parentKey: "ics",
+      attributes: [
+        { attributeKey: "package", sortOrder: 0, isPrimary: true },
+        { attributeKey: "outputVoltage", sortOrder: 1 },
+        { attributeKey: "outputCurrentMax", sortOrder: 2 }
+      ]
+    },
+
+    // ── Optoelectronics ───────────────────────────────────────────────────────
+    { key: "optoelectronics", name: "Optoelectronics", isAssignable: false },
+    { key: "ledsFamily", name: "LEDs", isAssignable: false, parentKey: "optoelectronics" },
+    {
+      key: "thtLeds",
+      name: "THT LEDs",
+      isAssignable: true,
+      parentKey: "ledsFamily",
+      attributes: [
+        { attributeKey: "ledColor", sortOrder: 0, isPrimary: true },
+        { attributeKey: "forwardVoltage", sortOrder: 1 },
+        { attributeKey: "currentRating", sortOrder: 2 }
+      ]
+    },
+    {
+      key: "smdLeds",
+      name: "SMD LEDs",
+      isAssignable: true,
+      parentKey: "ledsFamily",
+      attributes: [
+        { attributeKey: "ledColor", sortOrder: 0, isPrimary: true },
+        { attributeKey: "forwardVoltage", sortOrder: 1 },
+        { attributeKey: "currentRating", sortOrder: 2 },
+        { attributeKey: "package", sortOrder: 3 }
+      ]
+    },
+    {
+      key: "rgbLeds",
+      name: "RGB LEDs",
+      isAssignable: true,
+      parentKey: "ledsFamily",
+      attributes: [
+        { attributeKey: "forwardVoltage", sortOrder: 0, isPrimary: true },
+        { attributeKey: "currentRating", sortOrder: 1 },
+        { attributeKey: "package", sortOrder: 2 }
+      ]
+    },
+    {
+      key: "photodiodesPhototransistors",
+      name: "Photodiodes & Phototransistors",
+      isAssignable: true,
+      parentKey: "optoelectronics",
+      attributes: [
+        { attributeKey: "wavelength", sortOrder: 0, isPrimary: true },
+        { attributeKey: "package", sortOrder: 1 }
+      ]
+    },
+    {
+      key: "optocouplers",
+      name: "Optocouplers & Optoisolators",
+      isAssignable: true,
+      parentKey: "optoelectronics",
+      attributes: [
+        { attributeKey: "package", sortOrder: 0, isPrimary: true },
+        { attributeKey: "voltageRating", sortOrder: 1 }
+      ]
+    },
+    { key: "displaysFamily", name: "Displays", isAssignable: false, parentKey: "optoelectronics" },
+    {
+      key: "sevenSegmentDisplays",
+      name: "7-Segment Displays",
+      isAssignable: true,
+      parentKey: "displaysFamily",
+      attributes: [
+        { attributeKey: "ledColor", sortOrder: 0, isPrimary: true },
+        { attributeKey: "pinCount", sortOrder: 1 }
+      ]
+    },
+    {
+      key: "lcdDisplays",
+      name: "LCD Displays",
+      isAssignable: true,
+      parentKey: "displaysFamily",
+      attributes: [
+        { attributeKey: "pinCount", sortOrder: 0, isPrimary: true },
+        { attributeKey: "interfaceProtocol", sortOrder: 1 },
+        { attributeKey: "supplyVoltageMin", sortOrder: 2 },
+        { attributeKey: "supplyVoltageMax", sortOrder: 3 }
+      ]
+    },
+    {
+      key: "oledDisplays",
+      name: "OLED Displays",
+      isAssignable: true,
+      parentKey: "displaysFamily",
+      attributes: [
+        { attributeKey: "interfaceProtocol", sortOrder: 0, isPrimary: true },
+        { attributeKey: "supplyVoltageMin", sortOrder: 1 },
+        { attributeKey: "supplyVoltageMax", sortOrder: 2 }
+      ]
+    },
+
+    // ── Electromechanical ─────────────────────────────────────────────────────
+    { key: "electromechanical", name: "Electromechanical", isAssignable: false },
+    { key: "relaysFamily", name: "Relays", isAssignable: false, parentKey: "electromechanical" },
+    {
+      key: "signalRelays",
+      name: "Signal Relays",
+      isAssignable: true,
+      parentKey: "relaysFamily",
+      attributes: [
+        { attributeKey: "coilVoltage", sortOrder: 0, isPrimary: true },
+        { attributeKey: "currentRating", sortOrder: 1 },
+        { attributeKey: "numberOfPoles", sortOrder: 2 }
+      ]
+    },
+    {
+      key: "powerRelays",
+      name: "Power Relays",
+      isAssignable: true,
+      parentKey: "relaysFamily",
+      attributes: [
+        { attributeKey: "coilVoltage", sortOrder: 0, isPrimary: true },
+        { attributeKey: "currentRating", sortOrder: 1 },
+        { attributeKey: "numberOfPoles", sortOrder: 2 }
+      ]
+    },
+    {
+      key: "solidStateRelays",
+      name: "Solid State Relays",
+      isAssignable: true,
+      parentKey: "relaysFamily",
+      attributes: [
+        { attributeKey: "voltageRating", sortOrder: 0, isPrimary: true },
+        { attributeKey: "currentRating", sortOrder: 1 }
+      ]
+    },
+    { key: "switchesFamily", name: "Switches", isAssignable: false, parentKey: "electromechanical" },
+    {
+      key: "tactileSwitches",
+      name: "Tactile Switches",
+      isAssignable: true,
+      parentKey: "switchesFamily",
+      attributes: [
+        { attributeKey: "currentRating", sortOrder: 0, isPrimary: true },
+        { attributeKey: "mountingType", sortOrder: 1 }
+      ]
+    },
+    {
+      key: "toggleSwitches",
+      name: "Toggle Switches",
+      isAssignable: true,
+      parentKey: "switchesFamily",
+      attributes: [
+        { attributeKey: "currentRating", sortOrder: 0, isPrimary: true },
+        { attributeKey: "numberOfPoles", sortOrder: 1 }
+      ]
+    },
+    {
+      key: "dipSwitches",
+      name: "DIP Switches",
+      isAssignable: true,
+      parentKey: "switchesFamily",
+      attributes: [{ attributeKey: "pinCount", sortOrder: 0, isPrimary: true }]
+    },
+    {
+      key: "slideSwitches",
+      name: "Slide Switches",
+      isAssignable: true,
+      parentKey: "switchesFamily",
+      attributes: [
+        { attributeKey: "currentRating", sortOrder: 0, isPrimary: true },
+        { attributeKey: "numberOfPoles", sortOrder: 1 }
+      ]
+    },
+    {
+      key: "rotarySwitchesEncoders",
+      name: "Rotary Switches & Encoders",
+      isAssignable: true,
+      parentKey: "switchesFamily",
+      attributes: [{ attributeKey: "numberOfPoles", sortOrder: 0, isPrimary: true }]
+    },
+
+    // ── Connectors ────────────────────────────────────────────────────────────
+    { key: "connectors", name: "Connectors", isAssignable: false },
+    {
+      key: "boardHeaders",
+      name: "Board Headers & Pin Headers",
+      isAssignable: true,
+      parentKey: "connectors",
       attributes: [
         { attributeKey: "pinCount", sortOrder: 0, isPrimary: true },
         { attributeKey: "pitch", sortOrder: 1 },
         { attributeKey: "mountingType", sortOrder: 2 },
         { attributeKey: "gender", sortOrder: 3 }
+      ]
+    },
+    {
+      key: "wireHousings",
+      name: "Wire Housings & Crimp Connectors",
+      isAssignable: true,
+      parentKey: "connectors",
+      attributes: [
+        { attributeKey: "pinCount", sortOrder: 0, isPrimary: true },
+        { attributeKey: "pitch", sortOrder: 1 },
+        { attributeKey: "gender", sortOrder: 2 }
+      ]
+    },
+    {
+      key: "terminalBlocks",
+      name: "Terminal Blocks",
+      isAssignable: true,
+      parentKey: "connectors",
+      attributes: [
+        { attributeKey: "pinCount", sortOrder: 0, isPrimary: true },
+        { attributeKey: "pitch", sortOrder: 1 },
+        { attributeKey: "mountingType", sortOrder: 2 }
+      ]
+    },
+    {
+      key: "usbConnectors",
+      name: "USB Connectors",
+      isAssignable: true,
+      parentKey: "connectors",
+      attributes: [
+        { attributeKey: "mountingType", sortOrder: 0, isPrimary: true },
+        { attributeKey: "gender", sortOrder: 1 }
+      ]
+    },
+    {
+      key: "powerJacks",
+      name: "Power Jacks & Barrel Connectors",
+      isAssignable: true,
+      parentKey: "connectors",
+      attributes: [
+        { attributeKey: "voltageRating", sortOrder: 0, isPrimary: true },
+        { attributeKey: "currentRating", sortOrder: 1 },
+        { attributeKey: "mountingType", sortOrder: 2 }
+      ]
+    },
+    {
+      key: "dsubConnectors",
+      name: "D-Sub Connectors",
+      isAssignable: true,
+      parentKey: "connectors",
+      attributes: [
+        { attributeKey: "pinCount", sortOrder: 0, isPrimary: true },
+        { attributeKey: "gender", sortOrder: 1 },
+        { attributeKey: "mountingType", sortOrder: 2 }
+      ]
+    },
+    {
+      key: "rfConnectors",
+      name: "RF Connectors",
+      isAssignable: true,
+      parentKey: "connectors",
+      attributes: [
+        { attributeKey: "gender", sortOrder: 0, isPrimary: true },
+        { attributeKey: "mountingType", sortOrder: 1 }
+      ]
+    },
+
+    // ── Crystals & Timing ─────────────────────────────────────────────────────
+    { key: "crystalsTiming", name: "Crystals & Timing", isAssignable: false },
+    {
+      key: "crystals",
+      name: "Crystals",
+      isAssignable: true,
+      parentKey: "crystalsTiming",
+      valueAttributeKey: "oscillatorFrequency",
+      attributes: [
+        { attributeKey: "oscillatorFrequency", sortOrder: 0, isPrimary: true },
+        { attributeKey: "loadCapacitance", sortOrder: 1 },
+        { attributeKey: "package", sortOrder: 2 }
+      ]
+    },
+    {
+      key: "oscillators",
+      name: "Oscillators",
+      isAssignable: true,
+      parentKey: "crystalsTiming",
+      valueAttributeKey: "oscillatorFrequency",
+      attributes: [
+        { attributeKey: "oscillatorFrequency", sortOrder: 0, isPrimary: true },
+        { attributeKey: "supplyVoltageMin", sortOrder: 1 },
+        { attributeKey: "supplyVoltageMax", sortOrder: 2 },
+        { attributeKey: "package", sortOrder: 3 }
+      ]
+    },
+    {
+      key: "resonators",
+      name: "Resonators",
+      isAssignable: true,
+      parentKey: "crystalsTiming",
+      valueAttributeKey: "oscillatorFrequency",
+      attributes: [
+        { attributeKey: "oscillatorFrequency", sortOrder: 0, isPrimary: true },
+        { attributeKey: "package", sortOrder: 1 }
+      ]
+    },
+
+    // ── Protection & Filters ──────────────────────────────────────────────────
+    { key: "protectionFilters", name: "Protection & Filters", isAssignable: false },
+    {
+      key: "fuses",
+      name: "Fuses",
+      isAssignable: true,
+      parentKey: "protectionFilters",
+      attributes: [
+        { attributeKey: "currentRating", sortOrder: 0, isPrimary: true },
+        { attributeKey: "voltageRating", sortOrder: 1 },
+        { attributeKey: "package", sortOrder: 2 }
+      ]
+    },
+    {
+      key: "varistors",
+      name: "Varistors (MOVs)",
+      isAssignable: true,
+      parentKey: "protectionFilters",
+      attributes: [
+        { attributeKey: "clampingVoltage", sortOrder: 0, isPrimary: true },
+        { attributeKey: "voltageRating", sortOrder: 1 },
+        { attributeKey: "package", sortOrder: 2 }
+      ]
+    },
+    {
+      key: "tvsDiodes",
+      name: "TVS Diodes / ESD Protection",
+      isAssignable: true,
+      parentKey: "protectionFilters",
+      attributes: [
+        { attributeKey: "clampingVoltage", sortOrder: 0, isPrimary: true },
+        { attributeKey: "voltageRating", sortOrder: 1 },
+        { attributeKey: "package", sortOrder: 2 }
+      ]
+    },
+    {
+      key: "emiFiltersFerriteBeads",
+      name: "EMI Filters & Ferrite Beads",
+      isAssignable: true,
+      parentKey: "protectionFilters",
+      attributes: [
+        { attributeKey: "currentRating", sortOrder: 0, isPrimary: true },
+        { attributeKey: "package", sortOrder: 1 }
+      ]
+    },
+
+    // ── Sensors ───────────────────────────────────────────────────────────────
+    { key: "sensors", name: "Sensors", isAssignable: false },
+    {
+      key: "temperatureSensors",
+      name: "Temperature Sensors",
+      isAssignable: true,
+      parentKey: "sensors",
+      attributes: [
+        { attributeKey: "package", sortOrder: 0, isPrimary: true },
+        { attributeKey: "interfaceProtocol", sortOrder: 1 },
+        { attributeKey: "supplyVoltageMin", sortOrder: 2 },
+        { attributeKey: "supplyVoltageMax", sortOrder: 3 }
+      ]
+    },
+    {
+      key: "humiditySensors",
+      name: "Humidity Sensors",
+      isAssignable: true,
+      parentKey: "sensors",
+      attributes: [
+        { attributeKey: "package", sortOrder: 0, isPrimary: true },
+        { attributeKey: "interfaceProtocol", sortOrder: 1 },
+        { attributeKey: "supplyVoltageMin", sortOrder: 2 },
+        { attributeKey: "supplyVoltageMax", sortOrder: 3 }
+      ]
+    },
+    {
+      key: "motionImuSensors",
+      name: "Motion & IMU Sensors",
+      isAssignable: true,
+      parentKey: "sensors",
+      attributes: [
+        { attributeKey: "package", sortOrder: 0, isPrimary: true },
+        { attributeKey: "interfaceProtocol", sortOrder: 1 },
+        { attributeKey: "supplyVoltageMin", sortOrder: 2 },
+        { attributeKey: "supplyVoltageMax", sortOrder: 3 }
+      ]
+    },
+    {
+      key: "currentSensors",
+      name: "Current Sensors",
+      isAssignable: true,
+      parentKey: "sensors",
+      attributes: [
+        { attributeKey: "currentRating", sortOrder: 0, isPrimary: true },
+        { attributeKey: "package", sortOrder: 1 },
+        { attributeKey: "interfaceProtocol", sortOrder: 2 }
+      ]
+    },
+    {
+      key: "lightSensors",
+      name: "Light Sensors",
+      isAssignable: true,
+      parentKey: "sensors",
+      attributes: [
+        { attributeKey: "package", sortOrder: 0, isPrimary: true },
+        { attributeKey: "interfaceProtocol", sortOrder: 1 },
+        { attributeKey: "wavelength", sortOrder: 2 }
       ]
     }
   ],
@@ -447,122 +1140,122 @@ export const DEMO_PRESET_FIXTURE: DemoPresetFixture = {
 
   parts: [
     // ── Resistors (Yageo 0402 ±1%) ───────────────────────────────────────────
-    { catalogNumber: "RC0402FR-0710RL", manufacturerKey: "yageo", primaryCategoryKey: "resistors", attributes: [{ attributeKey: "resistance", quantityBaseValue: 10, displayValue: "10 Ω" }, { attributeKey: "tolerance", choiceOptionKey: "tol_1p" }, { attributeKey: "package", choiceOptionKey: "pkg_0402" }, { attributeKey: "powerRating", quantityBaseValue: 0.0625, displayValue: "62.5 mW" }, { attributeKey: "temperatureCoefficient", quantityBaseValue: 100, displayValue: "±100 ppm/°C" }], stockEntries: [{ locationKey: "drawer_a1", quantity: 500 }] },
-    { catalogNumber: "RC0402FR-0722RL", manufacturerKey: "yageo", primaryCategoryKey: "resistors", attributes: [{ attributeKey: "resistance", quantityBaseValue: 22, displayValue: "22 Ω" }, { attributeKey: "tolerance", choiceOptionKey: "tol_1p" }, { attributeKey: "package", choiceOptionKey: "pkg_0402" }, { attributeKey: "powerRating", quantityBaseValue: 0.0625, displayValue: "62.5 mW" }, { attributeKey: "temperatureCoefficient", quantityBaseValue: 100, displayValue: "±100 ppm/°C" }], stockEntries: [{ locationKey: "drawer_a1", quantity: 300 }] },
-    { catalogNumber: "RC0402FR-0747RL", manufacturerKey: "yageo", primaryCategoryKey: "resistors", attributes: [{ attributeKey: "resistance", quantityBaseValue: 47, displayValue: "47 Ω" }, { attributeKey: "tolerance", choiceOptionKey: "tol_1p" }, { attributeKey: "package", choiceOptionKey: "pkg_0402" }, { attributeKey: "powerRating", quantityBaseValue: 0.0625, displayValue: "62.5 mW" }, { attributeKey: "temperatureCoefficient", quantityBaseValue: 100, displayValue: "±100 ppm/°C" }], stockEntries: [{ locationKey: "drawer_a1", quantity: 200 }] },
-    { catalogNumber: "RC0402FR-07100RL", manufacturerKey: "yageo", primaryCategoryKey: "resistors", attributes: [{ attributeKey: "resistance", quantityBaseValue: 100, displayValue: "100 Ω" }, { attributeKey: "tolerance", choiceOptionKey: "tol_1p" }, { attributeKey: "package", choiceOptionKey: "pkg_0402" }, { attributeKey: "powerRating", quantityBaseValue: 0.0625, displayValue: "62.5 mW" }, { attributeKey: "temperatureCoefficient", quantityBaseValue: 100, displayValue: "±100 ppm/°C" }], stockEntries: [{ locationKey: "drawer_a1", quantity: 400 }] },
-    { catalogNumber: "RC0402FR-07180RL", manufacturerKey: "yageo", primaryCategoryKey: "resistors", attributes: [{ attributeKey: "resistance", quantityBaseValue: 180, displayValue: "180 Ω" }, { attributeKey: "tolerance", choiceOptionKey: "tol_1p" }, { attributeKey: "package", choiceOptionKey: "pkg_0402" }, { attributeKey: "powerRating", quantityBaseValue: 0.0625, displayValue: "62.5 mW" }, { attributeKey: "temperatureCoefficient", quantityBaseValue: 100, displayValue: "±100 ppm/°C" }] },
-    { catalogNumber: "RC0402FR-07220RL", manufacturerKey: "yageo", primaryCategoryKey: "resistors", attributes: [{ attributeKey: "resistance", quantityBaseValue: 220, displayValue: "220 Ω" }, { attributeKey: "tolerance", choiceOptionKey: "tol_1p" }, { attributeKey: "package", choiceOptionKey: "pkg_0402" }, { attributeKey: "powerRating", quantityBaseValue: 0.0625, displayValue: "62.5 mW" }, { attributeKey: "temperatureCoefficient", quantityBaseValue: 100, displayValue: "±100 ppm/°C" }], stockEntries: [{ locationKey: "drawer_a1", quantity: 200 }] },
-    { catalogNumber: "RC0402FR-07330RL", manufacturerKey: "yageo", primaryCategoryKey: "resistors", attributes: [{ attributeKey: "resistance", quantityBaseValue: 330, displayValue: "330 Ω" }, { attributeKey: "tolerance", choiceOptionKey: "tol_1p" }, { attributeKey: "package", choiceOptionKey: "pkg_0402" }, { attributeKey: "powerRating", quantityBaseValue: 0.0625, displayValue: "62.5 mW" }, { attributeKey: "temperatureCoefficient", quantityBaseValue: 100, displayValue: "±100 ppm/°C" }] },
-    { catalogNumber: "RC0402FR-07470RL", manufacturerKey: "yageo", primaryCategoryKey: "resistors", attributes: [{ attributeKey: "resistance", quantityBaseValue: 470, displayValue: "470 Ω" }, { attributeKey: "tolerance", choiceOptionKey: "tol_1p" }, { attributeKey: "package", choiceOptionKey: "pkg_0402" }, { attributeKey: "powerRating", quantityBaseValue: 0.0625, displayValue: "62.5 mW" }, { attributeKey: "temperatureCoefficient", quantityBaseValue: 100, displayValue: "±100 ppm/°C" }], stockEntries: [{ locationKey: "drawer_a1", quantity: 150 }] },
-    { catalogNumber: "RC0402FR-07560RL", manufacturerKey: "yageo", primaryCategoryKey: "resistors", attributes: [{ attributeKey: "resistance", quantityBaseValue: 560, displayValue: "560 Ω" }, { attributeKey: "tolerance", choiceOptionKey: "tol_1p" }, { attributeKey: "package", choiceOptionKey: "pkg_0402" }, { attributeKey: "powerRating", quantityBaseValue: 0.0625, displayValue: "62.5 mW" }, { attributeKey: "temperatureCoefficient", quantityBaseValue: 100, displayValue: "±100 ppm/°C" }] },
-    { catalogNumber: "RC0402FR-071KL", manufacturerKey: "yageo", primaryCategoryKey: "resistors", attributes: [{ attributeKey: "resistance", quantityBaseValue: 1000, displayValue: "1 kΩ" }, { attributeKey: "tolerance", choiceOptionKey: "tol_1p" }, { attributeKey: "package", choiceOptionKey: "pkg_0402" }, { attributeKey: "powerRating", quantityBaseValue: 0.0625, displayValue: "62.5 mW" }, { attributeKey: "temperatureCoefficient", quantityBaseValue: 100, displayValue: "±100 ppm/°C" }], stockEntries: [{ locationKey: "drawer_a1", quantity: 500 }] },
-    { catalogNumber: "RC0402FR-071K5L", manufacturerKey: "yageo", primaryCategoryKey: "resistors", attributes: [{ attributeKey: "resistance", quantityBaseValue: 1500, displayValue: "1.5 kΩ" }, { attributeKey: "tolerance", choiceOptionKey: "tol_1p" }, { attributeKey: "package", choiceOptionKey: "pkg_0402" }, { attributeKey: "powerRating", quantityBaseValue: 0.0625, displayValue: "62.5 mW" }, { attributeKey: "temperatureCoefficient", quantityBaseValue: 100, displayValue: "±100 ppm/°C" }] },
-    { catalogNumber: "RC0402FR-072K2L", manufacturerKey: "yageo", primaryCategoryKey: "resistors", attributes: [{ attributeKey: "resistance", quantityBaseValue: 2200, displayValue: "2.2 kΩ" }, { attributeKey: "tolerance", choiceOptionKey: "tol_1p" }, { attributeKey: "package", choiceOptionKey: "pkg_0402" }, { attributeKey: "powerRating", quantityBaseValue: 0.0625, displayValue: "62.5 mW" }, { attributeKey: "temperatureCoefficient", quantityBaseValue: 100, displayValue: "±100 ppm/°C" }], stockEntries: [{ locationKey: "drawer_a1", quantity: 200 }] },
-    { catalogNumber: "RC0402FR-073K3L", manufacturerKey: "yageo", primaryCategoryKey: "resistors", attributes: [{ attributeKey: "resistance", quantityBaseValue: 3300, displayValue: "3.3 kΩ" }, { attributeKey: "tolerance", choiceOptionKey: "tol_1p" }, { attributeKey: "package", choiceOptionKey: "pkg_0402" }, { attributeKey: "powerRating", quantityBaseValue: 0.0625, displayValue: "62.5 mW" }, { attributeKey: "temperatureCoefficient", quantityBaseValue: 100, displayValue: "±100 ppm/°C" }] },
-    { catalogNumber: "RC0402FR-074K7L", manufacturerKey: "yageo", primaryCategoryKey: "resistors", attributes: [{ attributeKey: "resistance", quantityBaseValue: 4700, displayValue: "4.7 kΩ" }, { attributeKey: "tolerance", choiceOptionKey: "tol_1p" }, { attributeKey: "package", choiceOptionKey: "pkg_0402" }, { attributeKey: "powerRating", quantityBaseValue: 0.0625, displayValue: "62.5 mW" }, { attributeKey: "temperatureCoefficient", quantityBaseValue: 100, displayValue: "±100 ppm/°C" }], stockEntries: [{ locationKey: "drawer_a1", quantity: 300 }] },
-    { catalogNumber: "RC0402FR-076K8L", manufacturerKey: "yageo", primaryCategoryKey: "resistors", attributes: [{ attributeKey: "resistance", quantityBaseValue: 6800, displayValue: "6.8 kΩ" }, { attributeKey: "tolerance", choiceOptionKey: "tol_1p" }, { attributeKey: "package", choiceOptionKey: "pkg_0402" }, { attributeKey: "powerRating", quantityBaseValue: 0.0625, displayValue: "62.5 mW" }, { attributeKey: "temperatureCoefficient", quantityBaseValue: 100, displayValue: "±100 ppm/°C" }] },
-    { catalogNumber: "RC0402FR-0710KL", manufacturerKey: "yageo", primaryCategoryKey: "resistors", attributes: [{ attributeKey: "resistance", quantityBaseValue: 10000, displayValue: "10 kΩ" }, { attributeKey: "tolerance", choiceOptionKey: "tol_1p" }, { attributeKey: "package", choiceOptionKey: "pkg_0402" }, { attributeKey: "powerRating", quantityBaseValue: 0.0625, displayValue: "62.5 mW" }, { attributeKey: "temperatureCoefficient", quantityBaseValue: 100, displayValue: "±100 ppm/°C" }], stockEntries: [{ locationKey: "drawer_a1", quantity: 600 }] },
-    { catalogNumber: "RC0402FR-0722KL", manufacturerKey: "yageo", primaryCategoryKey: "resistors", attributes: [{ attributeKey: "resistance", quantityBaseValue: 22000, displayValue: "22 kΩ" }, { attributeKey: "tolerance", choiceOptionKey: "tol_1p" }, { attributeKey: "package", choiceOptionKey: "pkg_0402" }, { attributeKey: "powerRating", quantityBaseValue: 0.0625, displayValue: "62.5 mW" }, { attributeKey: "temperatureCoefficient", quantityBaseValue: 100, displayValue: "±100 ppm/°C" }], stockEntries: [{ locationKey: "drawer_a1", quantity: 200 }] },
-    { catalogNumber: "RC0402FR-0733KL", manufacturerKey: "yageo", primaryCategoryKey: "resistors", attributes: [{ attributeKey: "resistance", quantityBaseValue: 33000, displayValue: "33 kΩ" }, { attributeKey: "tolerance", choiceOptionKey: "tol_1p" }, { attributeKey: "package", choiceOptionKey: "pkg_0402" }, { attributeKey: "powerRating", quantityBaseValue: 0.0625, displayValue: "62.5 mW" }, { attributeKey: "temperatureCoefficient", quantityBaseValue: 100, displayValue: "±100 ppm/°C" }] },
-    { catalogNumber: "RC0402FR-0747KL", manufacturerKey: "yageo", primaryCategoryKey: "resistors", attributes: [{ attributeKey: "resistance", quantityBaseValue: 47000, displayValue: "47 kΩ" }, { attributeKey: "tolerance", choiceOptionKey: "tol_1p" }, { attributeKey: "package", choiceOptionKey: "pkg_0402" }, { attributeKey: "powerRating", quantityBaseValue: 0.0625, displayValue: "62.5 mW" }, { attributeKey: "temperatureCoefficient", quantityBaseValue: 100, displayValue: "±100 ppm/°C" }], stockEntries: [{ locationKey: "drawer_a1", quantity: 150 }] },
-    { catalogNumber: "RC0402FR-0768KL", manufacturerKey: "yageo", primaryCategoryKey: "resistors", attributes: [{ attributeKey: "resistance", quantityBaseValue: 68000, displayValue: "68 kΩ" }, { attributeKey: "tolerance", choiceOptionKey: "tol_1p" }, { attributeKey: "package", choiceOptionKey: "pkg_0402" }, { attributeKey: "powerRating", quantityBaseValue: 0.0625, displayValue: "62.5 mW" }, { attributeKey: "temperatureCoefficient", quantityBaseValue: 100, displayValue: "±100 ppm/°C" }] },
-    { catalogNumber: "RC0402FR-07100KL", manufacturerKey: "yageo", primaryCategoryKey: "resistors", attributes: [{ attributeKey: "resistance", quantityBaseValue: 100000, displayValue: "100 kΩ" }, { attributeKey: "tolerance", choiceOptionKey: "tol_1p" }, { attributeKey: "package", choiceOptionKey: "pkg_0402" }, { attributeKey: "powerRating", quantityBaseValue: 0.0625, displayValue: "62.5 mW" }, { attributeKey: "temperatureCoefficient", quantityBaseValue: 100, displayValue: "±100 ppm/°C" }], stockEntries: [{ locationKey: "drawer_a1", quantity: 200 }] },
-    { catalogNumber: "RC0402FR-07220KL", manufacturerKey: "yageo", primaryCategoryKey: "resistors", attributes: [{ attributeKey: "resistance", quantityBaseValue: 220000, displayValue: "220 kΩ" }, { attributeKey: "tolerance", choiceOptionKey: "tol_1p" }, { attributeKey: "package", choiceOptionKey: "pkg_0402" }, { attributeKey: "powerRating", quantityBaseValue: 0.0625, displayValue: "62.5 mW" }, { attributeKey: "temperatureCoefficient", quantityBaseValue: 100, displayValue: "±100 ppm/°C" }] },
-    { catalogNumber: "RC0402FR-07470KL", manufacturerKey: "yageo", primaryCategoryKey: "resistors", attributes: [{ attributeKey: "resistance", quantityBaseValue: 470000, displayValue: "470 kΩ" }, { attributeKey: "tolerance", choiceOptionKey: "tol_1p" }, { attributeKey: "package", choiceOptionKey: "pkg_0402" }, { attributeKey: "powerRating", quantityBaseValue: 0.0625, displayValue: "62.5 mW" }, { attributeKey: "temperatureCoefficient", quantityBaseValue: 100, displayValue: "±100 ppm/°C" }] },
-    { catalogNumber: "RC0402FR-071ML", manufacturerKey: "yageo", primaryCategoryKey: "resistors", attributes: [{ attributeKey: "resistance", quantityBaseValue: 1000000, displayValue: "1 MΩ" }, { attributeKey: "tolerance", choiceOptionKey: "tol_1p" }, { attributeKey: "package", choiceOptionKey: "pkg_0402" }, { attributeKey: "powerRating", quantityBaseValue: 0.0625, displayValue: "62.5 mW" }, { attributeKey: "temperatureCoefficient", quantityBaseValue: 100, displayValue: "±100 ppm/°C" }] },
+    { catalogNumber: "RC0402FR-0710RL", manufacturerKey: "yageo", primaryCategoryKey: "smdResistors", attributes: [{ attributeKey: "resistance", quantityBaseValue: 10, displayValue: "10 Ω" }, { attributeKey: "tolerance", choiceOptionKey: "tol_1p" }, { attributeKey: "package", choiceOptionKey: "pkg_0402" }, { attributeKey: "powerRating", quantityBaseValue: 0.0625, displayValue: "62.5 mW" }, { attributeKey: "temperatureCoefficient", quantityBaseValue: 100, displayValue: "±100 ppm/°C" }], stockEntries: [{ locationKey: "drawer_a1", quantity: 500 }] },
+    { catalogNumber: "RC0402FR-0722RL", manufacturerKey: "yageo", primaryCategoryKey: "smdResistors", attributes: [{ attributeKey: "resistance", quantityBaseValue: 22, displayValue: "22 Ω" }, { attributeKey: "tolerance", choiceOptionKey: "tol_1p" }, { attributeKey: "package", choiceOptionKey: "pkg_0402" }, { attributeKey: "powerRating", quantityBaseValue: 0.0625, displayValue: "62.5 mW" }, { attributeKey: "temperatureCoefficient", quantityBaseValue: 100, displayValue: "±100 ppm/°C" }], stockEntries: [{ locationKey: "drawer_a1", quantity: 300 }] },
+    { catalogNumber: "RC0402FR-0747RL", manufacturerKey: "yageo", primaryCategoryKey: "smdResistors", attributes: [{ attributeKey: "resistance", quantityBaseValue: 47, displayValue: "47 Ω" }, { attributeKey: "tolerance", choiceOptionKey: "tol_1p" }, { attributeKey: "package", choiceOptionKey: "pkg_0402" }, { attributeKey: "powerRating", quantityBaseValue: 0.0625, displayValue: "62.5 mW" }, { attributeKey: "temperatureCoefficient", quantityBaseValue: 100, displayValue: "±100 ppm/°C" }], stockEntries: [{ locationKey: "drawer_a1", quantity: 200 }] },
+    { catalogNumber: "RC0402FR-07100RL", manufacturerKey: "yageo", primaryCategoryKey: "smdResistors", attributes: [{ attributeKey: "resistance", quantityBaseValue: 100, displayValue: "100 Ω" }, { attributeKey: "tolerance", choiceOptionKey: "tol_1p" }, { attributeKey: "package", choiceOptionKey: "pkg_0402" }, { attributeKey: "powerRating", quantityBaseValue: 0.0625, displayValue: "62.5 mW" }, { attributeKey: "temperatureCoefficient", quantityBaseValue: 100, displayValue: "±100 ppm/°C" }], stockEntries: [{ locationKey: "drawer_a1", quantity: 400 }] },
+    { catalogNumber: "RC0402FR-07180RL", manufacturerKey: "yageo", primaryCategoryKey: "smdResistors", attributes: [{ attributeKey: "resistance", quantityBaseValue: 180, displayValue: "180 Ω" }, { attributeKey: "tolerance", choiceOptionKey: "tol_1p" }, { attributeKey: "package", choiceOptionKey: "pkg_0402" }, { attributeKey: "powerRating", quantityBaseValue: 0.0625, displayValue: "62.5 mW" }, { attributeKey: "temperatureCoefficient", quantityBaseValue: 100, displayValue: "±100 ppm/°C" }] },
+    { catalogNumber: "RC0402FR-07220RL", manufacturerKey: "yageo", primaryCategoryKey: "smdResistors", attributes: [{ attributeKey: "resistance", quantityBaseValue: 220, displayValue: "220 Ω" }, { attributeKey: "tolerance", choiceOptionKey: "tol_1p" }, { attributeKey: "package", choiceOptionKey: "pkg_0402" }, { attributeKey: "powerRating", quantityBaseValue: 0.0625, displayValue: "62.5 mW" }, { attributeKey: "temperatureCoefficient", quantityBaseValue: 100, displayValue: "±100 ppm/°C" }], stockEntries: [{ locationKey: "drawer_a1", quantity: 200 }] },
+    { catalogNumber: "RC0402FR-07330RL", manufacturerKey: "yageo", primaryCategoryKey: "smdResistors", attributes: [{ attributeKey: "resistance", quantityBaseValue: 330, displayValue: "330 Ω" }, { attributeKey: "tolerance", choiceOptionKey: "tol_1p" }, { attributeKey: "package", choiceOptionKey: "pkg_0402" }, { attributeKey: "powerRating", quantityBaseValue: 0.0625, displayValue: "62.5 mW" }, { attributeKey: "temperatureCoefficient", quantityBaseValue: 100, displayValue: "±100 ppm/°C" }] },
+    { catalogNumber: "RC0402FR-07470RL", manufacturerKey: "yageo", primaryCategoryKey: "smdResistors", attributes: [{ attributeKey: "resistance", quantityBaseValue: 470, displayValue: "470 Ω" }, { attributeKey: "tolerance", choiceOptionKey: "tol_1p" }, { attributeKey: "package", choiceOptionKey: "pkg_0402" }, { attributeKey: "powerRating", quantityBaseValue: 0.0625, displayValue: "62.5 mW" }, { attributeKey: "temperatureCoefficient", quantityBaseValue: 100, displayValue: "±100 ppm/°C" }], stockEntries: [{ locationKey: "drawer_a1", quantity: 150 }] },
+    { catalogNumber: "RC0402FR-07560RL", manufacturerKey: "yageo", primaryCategoryKey: "smdResistors", attributes: [{ attributeKey: "resistance", quantityBaseValue: 560, displayValue: "560 Ω" }, { attributeKey: "tolerance", choiceOptionKey: "tol_1p" }, { attributeKey: "package", choiceOptionKey: "pkg_0402" }, { attributeKey: "powerRating", quantityBaseValue: 0.0625, displayValue: "62.5 mW" }, { attributeKey: "temperatureCoefficient", quantityBaseValue: 100, displayValue: "±100 ppm/°C" }] },
+    { catalogNumber: "RC0402FR-071KL", manufacturerKey: "yageo", primaryCategoryKey: "smdResistors", attributes: [{ attributeKey: "resistance", quantityBaseValue: 1000, displayValue: "1 kΩ" }, { attributeKey: "tolerance", choiceOptionKey: "tol_1p" }, { attributeKey: "package", choiceOptionKey: "pkg_0402" }, { attributeKey: "powerRating", quantityBaseValue: 0.0625, displayValue: "62.5 mW" }, { attributeKey: "temperatureCoefficient", quantityBaseValue: 100, displayValue: "±100 ppm/°C" }], stockEntries: [{ locationKey: "drawer_a1", quantity: 500 }] },
+    { catalogNumber: "RC0402FR-071K5L", manufacturerKey: "yageo", primaryCategoryKey: "smdResistors", attributes: [{ attributeKey: "resistance", quantityBaseValue: 1500, displayValue: "1.5 kΩ" }, { attributeKey: "tolerance", choiceOptionKey: "tol_1p" }, { attributeKey: "package", choiceOptionKey: "pkg_0402" }, { attributeKey: "powerRating", quantityBaseValue: 0.0625, displayValue: "62.5 mW" }, { attributeKey: "temperatureCoefficient", quantityBaseValue: 100, displayValue: "±100 ppm/°C" }] },
+    { catalogNumber: "RC0402FR-072K2L", manufacturerKey: "yageo", primaryCategoryKey: "smdResistors", attributes: [{ attributeKey: "resistance", quantityBaseValue: 2200, displayValue: "2.2 kΩ" }, { attributeKey: "tolerance", choiceOptionKey: "tol_1p" }, { attributeKey: "package", choiceOptionKey: "pkg_0402" }, { attributeKey: "powerRating", quantityBaseValue: 0.0625, displayValue: "62.5 mW" }, { attributeKey: "temperatureCoefficient", quantityBaseValue: 100, displayValue: "±100 ppm/°C" }], stockEntries: [{ locationKey: "drawer_a1", quantity: 200 }] },
+    { catalogNumber: "RC0402FR-073K3L", manufacturerKey: "yageo", primaryCategoryKey: "smdResistors", attributes: [{ attributeKey: "resistance", quantityBaseValue: 3300, displayValue: "3.3 kΩ" }, { attributeKey: "tolerance", choiceOptionKey: "tol_1p" }, { attributeKey: "package", choiceOptionKey: "pkg_0402" }, { attributeKey: "powerRating", quantityBaseValue: 0.0625, displayValue: "62.5 mW" }, { attributeKey: "temperatureCoefficient", quantityBaseValue: 100, displayValue: "±100 ppm/°C" }] },
+    { catalogNumber: "RC0402FR-074K7L", manufacturerKey: "yageo", primaryCategoryKey: "smdResistors", attributes: [{ attributeKey: "resistance", quantityBaseValue: 4700, displayValue: "4.7 kΩ" }, { attributeKey: "tolerance", choiceOptionKey: "tol_1p" }, { attributeKey: "package", choiceOptionKey: "pkg_0402" }, { attributeKey: "powerRating", quantityBaseValue: 0.0625, displayValue: "62.5 mW" }, { attributeKey: "temperatureCoefficient", quantityBaseValue: 100, displayValue: "±100 ppm/°C" }], stockEntries: [{ locationKey: "drawer_a1", quantity: 300 }] },
+    { catalogNumber: "RC0402FR-076K8L", manufacturerKey: "yageo", primaryCategoryKey: "smdResistors", attributes: [{ attributeKey: "resistance", quantityBaseValue: 6800, displayValue: "6.8 kΩ" }, { attributeKey: "tolerance", choiceOptionKey: "tol_1p" }, { attributeKey: "package", choiceOptionKey: "pkg_0402" }, { attributeKey: "powerRating", quantityBaseValue: 0.0625, displayValue: "62.5 mW" }, { attributeKey: "temperatureCoefficient", quantityBaseValue: 100, displayValue: "±100 ppm/°C" }] },
+    { catalogNumber: "RC0402FR-0710KL", manufacturerKey: "yageo", primaryCategoryKey: "smdResistors", attributes: [{ attributeKey: "resistance", quantityBaseValue: 10000, displayValue: "10 kΩ" }, { attributeKey: "tolerance", choiceOptionKey: "tol_1p" }, { attributeKey: "package", choiceOptionKey: "pkg_0402" }, { attributeKey: "powerRating", quantityBaseValue: 0.0625, displayValue: "62.5 mW" }, { attributeKey: "temperatureCoefficient", quantityBaseValue: 100, displayValue: "±100 ppm/°C" }], stockEntries: [{ locationKey: "drawer_a1", quantity: 600 }] },
+    { catalogNumber: "RC0402FR-0722KL", manufacturerKey: "yageo", primaryCategoryKey: "smdResistors", attributes: [{ attributeKey: "resistance", quantityBaseValue: 22000, displayValue: "22 kΩ" }, { attributeKey: "tolerance", choiceOptionKey: "tol_1p" }, { attributeKey: "package", choiceOptionKey: "pkg_0402" }, { attributeKey: "powerRating", quantityBaseValue: 0.0625, displayValue: "62.5 mW" }, { attributeKey: "temperatureCoefficient", quantityBaseValue: 100, displayValue: "±100 ppm/°C" }], stockEntries: [{ locationKey: "drawer_a1", quantity: 200 }] },
+    { catalogNumber: "RC0402FR-0733KL", manufacturerKey: "yageo", primaryCategoryKey: "smdResistors", attributes: [{ attributeKey: "resistance", quantityBaseValue: 33000, displayValue: "33 kΩ" }, { attributeKey: "tolerance", choiceOptionKey: "tol_1p" }, { attributeKey: "package", choiceOptionKey: "pkg_0402" }, { attributeKey: "powerRating", quantityBaseValue: 0.0625, displayValue: "62.5 mW" }, { attributeKey: "temperatureCoefficient", quantityBaseValue: 100, displayValue: "±100 ppm/°C" }] },
+    { catalogNumber: "RC0402FR-0747KL", manufacturerKey: "yageo", primaryCategoryKey: "smdResistors", attributes: [{ attributeKey: "resistance", quantityBaseValue: 47000, displayValue: "47 kΩ" }, { attributeKey: "tolerance", choiceOptionKey: "tol_1p" }, { attributeKey: "package", choiceOptionKey: "pkg_0402" }, { attributeKey: "powerRating", quantityBaseValue: 0.0625, displayValue: "62.5 mW" }, { attributeKey: "temperatureCoefficient", quantityBaseValue: 100, displayValue: "±100 ppm/°C" }], stockEntries: [{ locationKey: "drawer_a1", quantity: 150 }] },
+    { catalogNumber: "RC0402FR-0768KL", manufacturerKey: "yageo", primaryCategoryKey: "smdResistors", attributes: [{ attributeKey: "resistance", quantityBaseValue: 68000, displayValue: "68 kΩ" }, { attributeKey: "tolerance", choiceOptionKey: "tol_1p" }, { attributeKey: "package", choiceOptionKey: "pkg_0402" }, { attributeKey: "powerRating", quantityBaseValue: 0.0625, displayValue: "62.5 mW" }, { attributeKey: "temperatureCoefficient", quantityBaseValue: 100, displayValue: "±100 ppm/°C" }] },
+    { catalogNumber: "RC0402FR-07100KL", manufacturerKey: "yageo", primaryCategoryKey: "smdResistors", attributes: [{ attributeKey: "resistance", quantityBaseValue: 100000, displayValue: "100 kΩ" }, { attributeKey: "tolerance", choiceOptionKey: "tol_1p" }, { attributeKey: "package", choiceOptionKey: "pkg_0402" }, { attributeKey: "powerRating", quantityBaseValue: 0.0625, displayValue: "62.5 mW" }, { attributeKey: "temperatureCoefficient", quantityBaseValue: 100, displayValue: "±100 ppm/°C" }], stockEntries: [{ locationKey: "drawer_a1", quantity: 200 }] },
+    { catalogNumber: "RC0402FR-07220KL", manufacturerKey: "yageo", primaryCategoryKey: "smdResistors", attributes: [{ attributeKey: "resistance", quantityBaseValue: 220000, displayValue: "220 kΩ" }, { attributeKey: "tolerance", choiceOptionKey: "tol_1p" }, { attributeKey: "package", choiceOptionKey: "pkg_0402" }, { attributeKey: "powerRating", quantityBaseValue: 0.0625, displayValue: "62.5 mW" }, { attributeKey: "temperatureCoefficient", quantityBaseValue: 100, displayValue: "±100 ppm/°C" }] },
+    { catalogNumber: "RC0402FR-07470KL", manufacturerKey: "yageo", primaryCategoryKey: "smdResistors", attributes: [{ attributeKey: "resistance", quantityBaseValue: 470000, displayValue: "470 kΩ" }, { attributeKey: "tolerance", choiceOptionKey: "tol_1p" }, { attributeKey: "package", choiceOptionKey: "pkg_0402" }, { attributeKey: "powerRating", quantityBaseValue: 0.0625, displayValue: "62.5 mW" }, { attributeKey: "temperatureCoefficient", quantityBaseValue: 100, displayValue: "±100 ppm/°C" }] },
+    { catalogNumber: "RC0402FR-071ML", manufacturerKey: "yageo", primaryCategoryKey: "smdResistors", attributes: [{ attributeKey: "resistance", quantityBaseValue: 1000000, displayValue: "1 MΩ" }, { attributeKey: "tolerance", choiceOptionKey: "tol_1p" }, { attributeKey: "package", choiceOptionKey: "pkg_0402" }, { attributeKey: "powerRating", quantityBaseValue: 0.0625, displayValue: "62.5 mW" }, { attributeKey: "temperatureCoefficient", quantityBaseValue: 100, displayValue: "±100 ppm/°C" }] },
     // Yageo 0402 ±5%
-    { catalogNumber: "RC0402JR-0715RL", manufacturerKey: "yageo", primaryCategoryKey: "resistors", attributes: [{ attributeKey: "resistance", quantityBaseValue: 15, displayValue: "15 Ω" }, { attributeKey: "tolerance", choiceOptionKey: "tol_5p" }, { attributeKey: "package", choiceOptionKey: "pkg_0402" }, { attributeKey: "powerRating", quantityBaseValue: 0.0625, displayValue: "62.5 mW" }, { attributeKey: "temperatureCoefficient", quantityBaseValue: 100, displayValue: "±100 ppm/°C" }] },
-    { catalogNumber: "RC0402JR-0733RL", manufacturerKey: "yageo", primaryCategoryKey: "resistors", attributes: [{ attributeKey: "resistance", quantityBaseValue: 33, displayValue: "33 Ω" }, { attributeKey: "tolerance", choiceOptionKey: "tol_5p" }, { attributeKey: "package", choiceOptionKey: "pkg_0402" }, { attributeKey: "powerRating", quantityBaseValue: 0.0625, displayValue: "62.5 mW" }, { attributeKey: "temperatureCoefficient", quantityBaseValue: 100, displayValue: "±100 ppm/°C" }] },
-    { catalogNumber: "RC0402JR-0768RL", manufacturerKey: "yageo", primaryCategoryKey: "resistors", attributes: [{ attributeKey: "resistance", quantityBaseValue: 68, displayValue: "68 Ω" }, { attributeKey: "tolerance", choiceOptionKey: "tol_5p" }, { attributeKey: "package", choiceOptionKey: "pkg_0402" }, { attributeKey: "powerRating", quantityBaseValue: 0.0625, displayValue: "62.5 mW" }, { attributeKey: "temperatureCoefficient", quantityBaseValue: 100, displayValue: "±100 ppm/°C" }] },
-    { catalogNumber: "RC0402JR-07150RL", manufacturerKey: "yageo", primaryCategoryKey: "resistors", attributes: [{ attributeKey: "resistance", quantityBaseValue: 150, displayValue: "150 Ω" }, { attributeKey: "tolerance", choiceOptionKey: "tol_5p" }, { attributeKey: "package", choiceOptionKey: "pkg_0402" }, { attributeKey: "powerRating", quantityBaseValue: 0.0625, displayValue: "62.5 mW" }, { attributeKey: "temperatureCoefficient", quantityBaseValue: 100, displayValue: "±100 ppm/°C" }] },
-    { catalogNumber: "RC0402JR-07390RL", manufacturerKey: "yageo", primaryCategoryKey: "resistors", attributes: [{ attributeKey: "resistance", quantityBaseValue: 390, displayValue: "390 Ω" }, { attributeKey: "tolerance", choiceOptionKey: "tol_5p" }, { attributeKey: "package", choiceOptionKey: "pkg_0402" }, { attributeKey: "powerRating", quantityBaseValue: 0.0625, displayValue: "62.5 mW" }, { attributeKey: "temperatureCoefficient", quantityBaseValue: 100, displayValue: "±100 ppm/°C" }] },
-    { catalogNumber: "RC0402JR-07680RL", manufacturerKey: "yageo", primaryCategoryKey: "resistors", attributes: [{ attributeKey: "resistance", quantityBaseValue: 680, displayValue: "680 Ω" }, { attributeKey: "tolerance", choiceOptionKey: "tol_5p" }, { attributeKey: "package", choiceOptionKey: "pkg_0402" }, { attributeKey: "powerRating", quantityBaseValue: 0.0625, displayValue: "62.5 mW" }, { attributeKey: "temperatureCoefficient", quantityBaseValue: 100, displayValue: "±100 ppm/°C" }] },
-    { catalogNumber: "RC0402JR-071K5L", manufacturerKey: "yageo", primaryCategoryKey: "resistors", attributes: [{ attributeKey: "resistance", quantityBaseValue: 1500, displayValue: "1.5 kΩ" }, { attributeKey: "tolerance", choiceOptionKey: "tol_5p" }, { attributeKey: "package", choiceOptionKey: "pkg_0402" }, { attributeKey: "powerRating", quantityBaseValue: 0.0625, displayValue: "62.5 mW" }, { attributeKey: "temperatureCoefficient", quantityBaseValue: 100, displayValue: "±100 ppm/°C" }] },
-    { catalogNumber: "RC0402JR-073K3L", manufacturerKey: "yageo", primaryCategoryKey: "resistors", attributes: [{ attributeKey: "resistance", quantityBaseValue: 3300, displayValue: "3.3 kΩ" }, { attributeKey: "tolerance", choiceOptionKey: "tol_5p" }, { attributeKey: "package", choiceOptionKey: "pkg_0402" }, { attributeKey: "powerRating", quantityBaseValue: 0.0625, displayValue: "62.5 mW" }, { attributeKey: "temperatureCoefficient", quantityBaseValue: 100, displayValue: "±100 ppm/°C" }] },
-    { catalogNumber: "RC0402JR-076K8L", manufacturerKey: "yageo", primaryCategoryKey: "resistors", attributes: [{ attributeKey: "resistance", quantityBaseValue: 6800, displayValue: "6.8 kΩ" }, { attributeKey: "tolerance", choiceOptionKey: "tol_5p" }, { attributeKey: "package", choiceOptionKey: "pkg_0402" }, { attributeKey: "powerRating", quantityBaseValue: 0.0625, displayValue: "62.5 mW" }, { attributeKey: "temperatureCoefficient", quantityBaseValue: 100, displayValue: "±100 ppm/°C" }] },
-    { catalogNumber: "RC0402JR-0715KL", manufacturerKey: "yageo", primaryCategoryKey: "resistors", attributes: [{ attributeKey: "resistance", quantityBaseValue: 15000, displayValue: "15 kΩ" }, { attributeKey: "tolerance", choiceOptionKey: "tol_5p" }, { attributeKey: "package", choiceOptionKey: "pkg_0402" }, { attributeKey: "powerRating", quantityBaseValue: 0.0625, displayValue: "62.5 mW" }, { attributeKey: "temperatureCoefficient", quantityBaseValue: 100, displayValue: "±100 ppm/°C" }] },
+    { catalogNumber: "RC0402JR-0715RL", manufacturerKey: "yageo", primaryCategoryKey: "smdResistors", attributes: [{ attributeKey: "resistance", quantityBaseValue: 15, displayValue: "15 Ω" }, { attributeKey: "tolerance", choiceOptionKey: "tol_5p" }, { attributeKey: "package", choiceOptionKey: "pkg_0402" }, { attributeKey: "powerRating", quantityBaseValue: 0.0625, displayValue: "62.5 mW" }, { attributeKey: "temperatureCoefficient", quantityBaseValue: 100, displayValue: "±100 ppm/°C" }] },
+    { catalogNumber: "RC0402JR-0733RL", manufacturerKey: "yageo", primaryCategoryKey: "smdResistors", attributes: [{ attributeKey: "resistance", quantityBaseValue: 33, displayValue: "33 Ω" }, { attributeKey: "tolerance", choiceOptionKey: "tol_5p" }, { attributeKey: "package", choiceOptionKey: "pkg_0402" }, { attributeKey: "powerRating", quantityBaseValue: 0.0625, displayValue: "62.5 mW" }, { attributeKey: "temperatureCoefficient", quantityBaseValue: 100, displayValue: "±100 ppm/°C" }] },
+    { catalogNumber: "RC0402JR-0768RL", manufacturerKey: "yageo", primaryCategoryKey: "smdResistors", attributes: [{ attributeKey: "resistance", quantityBaseValue: 68, displayValue: "68 Ω" }, { attributeKey: "tolerance", choiceOptionKey: "tol_5p" }, { attributeKey: "package", choiceOptionKey: "pkg_0402" }, { attributeKey: "powerRating", quantityBaseValue: 0.0625, displayValue: "62.5 mW" }, { attributeKey: "temperatureCoefficient", quantityBaseValue: 100, displayValue: "±100 ppm/°C" }] },
+    { catalogNumber: "RC0402JR-07150RL", manufacturerKey: "yageo", primaryCategoryKey: "smdResistors", attributes: [{ attributeKey: "resistance", quantityBaseValue: 150, displayValue: "150 Ω" }, { attributeKey: "tolerance", choiceOptionKey: "tol_5p" }, { attributeKey: "package", choiceOptionKey: "pkg_0402" }, { attributeKey: "powerRating", quantityBaseValue: 0.0625, displayValue: "62.5 mW" }, { attributeKey: "temperatureCoefficient", quantityBaseValue: 100, displayValue: "±100 ppm/°C" }] },
+    { catalogNumber: "RC0402JR-07390RL", manufacturerKey: "yageo", primaryCategoryKey: "smdResistors", attributes: [{ attributeKey: "resistance", quantityBaseValue: 390, displayValue: "390 Ω" }, { attributeKey: "tolerance", choiceOptionKey: "tol_5p" }, { attributeKey: "package", choiceOptionKey: "pkg_0402" }, { attributeKey: "powerRating", quantityBaseValue: 0.0625, displayValue: "62.5 mW" }, { attributeKey: "temperatureCoefficient", quantityBaseValue: 100, displayValue: "±100 ppm/°C" }] },
+    { catalogNumber: "RC0402JR-07680RL", manufacturerKey: "yageo", primaryCategoryKey: "smdResistors", attributes: [{ attributeKey: "resistance", quantityBaseValue: 680, displayValue: "680 Ω" }, { attributeKey: "tolerance", choiceOptionKey: "tol_5p" }, { attributeKey: "package", choiceOptionKey: "pkg_0402" }, { attributeKey: "powerRating", quantityBaseValue: 0.0625, displayValue: "62.5 mW" }, { attributeKey: "temperatureCoefficient", quantityBaseValue: 100, displayValue: "±100 ppm/°C" }] },
+    { catalogNumber: "RC0402JR-071K5L", manufacturerKey: "yageo", primaryCategoryKey: "smdResistors", attributes: [{ attributeKey: "resistance", quantityBaseValue: 1500, displayValue: "1.5 kΩ" }, { attributeKey: "tolerance", choiceOptionKey: "tol_5p" }, { attributeKey: "package", choiceOptionKey: "pkg_0402" }, { attributeKey: "powerRating", quantityBaseValue: 0.0625, displayValue: "62.5 mW" }, { attributeKey: "temperatureCoefficient", quantityBaseValue: 100, displayValue: "±100 ppm/°C" }] },
+    { catalogNumber: "RC0402JR-073K3L", manufacturerKey: "yageo", primaryCategoryKey: "smdResistors", attributes: [{ attributeKey: "resistance", quantityBaseValue: 3300, displayValue: "3.3 kΩ" }, { attributeKey: "tolerance", choiceOptionKey: "tol_5p" }, { attributeKey: "package", choiceOptionKey: "pkg_0402" }, { attributeKey: "powerRating", quantityBaseValue: 0.0625, displayValue: "62.5 mW" }, { attributeKey: "temperatureCoefficient", quantityBaseValue: 100, displayValue: "±100 ppm/°C" }] },
+    { catalogNumber: "RC0402JR-076K8L", manufacturerKey: "yageo", primaryCategoryKey: "smdResistors", attributes: [{ attributeKey: "resistance", quantityBaseValue: 6800, displayValue: "6.8 kΩ" }, { attributeKey: "tolerance", choiceOptionKey: "tol_5p" }, { attributeKey: "package", choiceOptionKey: "pkg_0402" }, { attributeKey: "powerRating", quantityBaseValue: 0.0625, displayValue: "62.5 mW" }, { attributeKey: "temperatureCoefficient", quantityBaseValue: 100, displayValue: "±100 ppm/°C" }] },
+    { catalogNumber: "RC0402JR-0715KL", manufacturerKey: "yageo", primaryCategoryKey: "smdResistors", attributes: [{ attributeKey: "resistance", quantityBaseValue: 15000, displayValue: "15 kΩ" }, { attributeKey: "tolerance", choiceOptionKey: "tol_5p" }, { attributeKey: "package", choiceOptionKey: "pkg_0402" }, { attributeKey: "powerRating", quantityBaseValue: 0.0625, displayValue: "62.5 mW" }, { attributeKey: "temperatureCoefficient", quantityBaseValue: 100, displayValue: "±100 ppm/°C" }] },
     // Yageo 0603
-    { catalogNumber: "RC0603FR-0710RL", manufacturerKey: "yageo", primaryCategoryKey: "resistors", attributes: [{ attributeKey: "resistance", quantityBaseValue: 10, displayValue: "10 Ω" }, { attributeKey: "tolerance", choiceOptionKey: "tol_1p" }, { attributeKey: "package", choiceOptionKey: "pkg_0603" }, { attributeKey: "powerRating", quantityBaseValue: 0.1, displayValue: "100 mW" }, { attributeKey: "temperatureCoefficient", quantityBaseValue: 100, displayValue: "±100 ppm/°C" }], stockEntries: [{ locationKey: "drawer_a1", quantity: 300 }] },
-    { catalogNumber: "RC0603FR-07100RL", manufacturerKey: "yageo", primaryCategoryKey: "resistors", attributes: [{ attributeKey: "resistance", quantityBaseValue: 100, displayValue: "100 Ω" }, { attributeKey: "tolerance", choiceOptionKey: "tol_1p" }, { attributeKey: "package", choiceOptionKey: "pkg_0603" }, { attributeKey: "powerRating", quantityBaseValue: 0.1, displayValue: "100 mW" }, { attributeKey: "temperatureCoefficient", quantityBaseValue: 100, displayValue: "±100 ppm/°C" }], stockEntries: [{ locationKey: "drawer_a1", quantity: 200 }] },
-    { catalogNumber: "RC0603FR-07470RL", manufacturerKey: "yageo", primaryCategoryKey: "resistors", attributes: [{ attributeKey: "resistance", quantityBaseValue: 470, displayValue: "470 Ω" }, { attributeKey: "tolerance", choiceOptionKey: "tol_1p" }, { attributeKey: "package", choiceOptionKey: "pkg_0603" }, { attributeKey: "powerRating", quantityBaseValue: 0.1, displayValue: "100 mW" }, { attributeKey: "temperatureCoefficient", quantityBaseValue: 100, displayValue: "±100 ppm/°C" }] },
-    { catalogNumber: "RC0603FR-071KL", manufacturerKey: "yageo", primaryCategoryKey: "resistors", attributes: [{ attributeKey: "resistance", quantityBaseValue: 1000, displayValue: "1 kΩ" }, { attributeKey: "tolerance", choiceOptionKey: "tol_1p" }, { attributeKey: "package", choiceOptionKey: "pkg_0603" }, { attributeKey: "powerRating", quantityBaseValue: 0.1, displayValue: "100 mW" }, { attributeKey: "temperatureCoefficient", quantityBaseValue: 100, displayValue: "±100 ppm/°C" }], stockEntries: [{ locationKey: "drawer_a1", quantity: 300 }] },
-    { catalogNumber: "RC0603FR-072K2L", manufacturerKey: "yageo", primaryCategoryKey: "resistors", attributes: [{ attributeKey: "resistance", quantityBaseValue: 2200, displayValue: "2.2 kΩ" }, { attributeKey: "tolerance", choiceOptionKey: "tol_1p" }, { attributeKey: "package", choiceOptionKey: "pkg_0603" }, { attributeKey: "powerRating", quantityBaseValue: 0.1, displayValue: "100 mW" }, { attributeKey: "temperatureCoefficient", quantityBaseValue: 100, displayValue: "±100 ppm/°C" }] },
-    { catalogNumber: "RC0603FR-0710KL", manufacturerKey: "yageo", primaryCategoryKey: "resistors", attributes: [{ attributeKey: "resistance", quantityBaseValue: 10000, displayValue: "10 kΩ" }, { attributeKey: "tolerance", choiceOptionKey: "tol_1p" }, { attributeKey: "package", choiceOptionKey: "pkg_0603" }, { attributeKey: "powerRating", quantityBaseValue: 0.1, displayValue: "100 mW" }, { attributeKey: "temperatureCoefficient", quantityBaseValue: 100, displayValue: "±100 ppm/°C" }], stockEntries: [{ locationKey: "drawer_a1", quantity: 400 }] },
-    { catalogNumber: "RC0603FR-0722KL", manufacturerKey: "yageo", primaryCategoryKey: "resistors", attributes: [{ attributeKey: "resistance", quantityBaseValue: 22000, displayValue: "22 kΩ" }, { attributeKey: "tolerance", choiceOptionKey: "tol_1p" }, { attributeKey: "package", choiceOptionKey: "pkg_0603" }, { attributeKey: "powerRating", quantityBaseValue: 0.1, displayValue: "100 mW" }, { attributeKey: "temperatureCoefficient", quantityBaseValue: 100, displayValue: "±100 ppm/°C" }] },
-    { catalogNumber: "RC0603FR-0747KL", manufacturerKey: "yageo", primaryCategoryKey: "resistors", attributes: [{ attributeKey: "resistance", quantityBaseValue: 47000, displayValue: "47 kΩ" }, { attributeKey: "tolerance", choiceOptionKey: "tol_1p" }, { attributeKey: "package", choiceOptionKey: "pkg_0603" }, { attributeKey: "powerRating", quantityBaseValue: 0.1, displayValue: "100 mW" }, { attributeKey: "temperatureCoefficient", quantityBaseValue: 100, displayValue: "±100 ppm/°C" }] },
-    { catalogNumber: "RC0603FR-07100KL", manufacturerKey: "yageo", primaryCategoryKey: "resistors", attributes: [{ attributeKey: "resistance", quantityBaseValue: 100000, displayValue: "100 kΩ" }, { attributeKey: "tolerance", choiceOptionKey: "tol_1p" }, { attributeKey: "package", choiceOptionKey: "pkg_0603" }, { attributeKey: "powerRating", quantityBaseValue: 0.1, displayValue: "100 mW" }, { attributeKey: "temperatureCoefficient", quantityBaseValue: 100, displayValue: "±100 ppm/°C" }] },
-    { catalogNumber: "RC0603FR-071ML", manufacturerKey: "yageo", primaryCategoryKey: "resistors", attributes: [{ attributeKey: "resistance", quantityBaseValue: 1000000, displayValue: "1 MΩ" }, { attributeKey: "tolerance", choiceOptionKey: "tol_1p" }, { attributeKey: "package", choiceOptionKey: "pkg_0603" }, { attributeKey: "powerRating", quantityBaseValue: 0.1, displayValue: "100 mW" }, { attributeKey: "temperatureCoefficient", quantityBaseValue: 100, displayValue: "±100 ppm/°C" }] },
+    { catalogNumber: "RC0603FR-0710RL", manufacturerKey: "yageo", primaryCategoryKey: "smdResistors", attributes: [{ attributeKey: "resistance", quantityBaseValue: 10, displayValue: "10 Ω" }, { attributeKey: "tolerance", choiceOptionKey: "tol_1p" }, { attributeKey: "package", choiceOptionKey: "pkg_0603" }, { attributeKey: "powerRating", quantityBaseValue: 0.1, displayValue: "100 mW" }, { attributeKey: "temperatureCoefficient", quantityBaseValue: 100, displayValue: "±100 ppm/°C" }], stockEntries: [{ locationKey: "drawer_a1", quantity: 300 }] },
+    { catalogNumber: "RC0603FR-07100RL", manufacturerKey: "yageo", primaryCategoryKey: "smdResistors", attributes: [{ attributeKey: "resistance", quantityBaseValue: 100, displayValue: "100 Ω" }, { attributeKey: "tolerance", choiceOptionKey: "tol_1p" }, { attributeKey: "package", choiceOptionKey: "pkg_0603" }, { attributeKey: "powerRating", quantityBaseValue: 0.1, displayValue: "100 mW" }, { attributeKey: "temperatureCoefficient", quantityBaseValue: 100, displayValue: "±100 ppm/°C" }], stockEntries: [{ locationKey: "drawer_a1", quantity: 200 }] },
+    { catalogNumber: "RC0603FR-07470RL", manufacturerKey: "yageo", primaryCategoryKey: "smdResistors", attributes: [{ attributeKey: "resistance", quantityBaseValue: 470, displayValue: "470 Ω" }, { attributeKey: "tolerance", choiceOptionKey: "tol_1p" }, { attributeKey: "package", choiceOptionKey: "pkg_0603" }, { attributeKey: "powerRating", quantityBaseValue: 0.1, displayValue: "100 mW" }, { attributeKey: "temperatureCoefficient", quantityBaseValue: 100, displayValue: "±100 ppm/°C" }] },
+    { catalogNumber: "RC0603FR-071KL", manufacturerKey: "yageo", primaryCategoryKey: "smdResistors", attributes: [{ attributeKey: "resistance", quantityBaseValue: 1000, displayValue: "1 kΩ" }, { attributeKey: "tolerance", choiceOptionKey: "tol_1p" }, { attributeKey: "package", choiceOptionKey: "pkg_0603" }, { attributeKey: "powerRating", quantityBaseValue: 0.1, displayValue: "100 mW" }, { attributeKey: "temperatureCoefficient", quantityBaseValue: 100, displayValue: "±100 ppm/°C" }], stockEntries: [{ locationKey: "drawer_a1", quantity: 300 }] },
+    { catalogNumber: "RC0603FR-072K2L", manufacturerKey: "yageo", primaryCategoryKey: "smdResistors", attributes: [{ attributeKey: "resistance", quantityBaseValue: 2200, displayValue: "2.2 kΩ" }, { attributeKey: "tolerance", choiceOptionKey: "tol_1p" }, { attributeKey: "package", choiceOptionKey: "pkg_0603" }, { attributeKey: "powerRating", quantityBaseValue: 0.1, displayValue: "100 mW" }, { attributeKey: "temperatureCoefficient", quantityBaseValue: 100, displayValue: "±100 ppm/°C" }] },
+    { catalogNumber: "RC0603FR-0710KL", manufacturerKey: "yageo", primaryCategoryKey: "smdResistors", attributes: [{ attributeKey: "resistance", quantityBaseValue: 10000, displayValue: "10 kΩ" }, { attributeKey: "tolerance", choiceOptionKey: "tol_1p" }, { attributeKey: "package", choiceOptionKey: "pkg_0603" }, { attributeKey: "powerRating", quantityBaseValue: 0.1, displayValue: "100 mW" }, { attributeKey: "temperatureCoefficient", quantityBaseValue: 100, displayValue: "±100 ppm/°C" }], stockEntries: [{ locationKey: "drawer_a1", quantity: 400 }] },
+    { catalogNumber: "RC0603FR-0722KL", manufacturerKey: "yageo", primaryCategoryKey: "smdResistors", attributes: [{ attributeKey: "resistance", quantityBaseValue: 22000, displayValue: "22 kΩ" }, { attributeKey: "tolerance", choiceOptionKey: "tol_1p" }, { attributeKey: "package", choiceOptionKey: "pkg_0603" }, { attributeKey: "powerRating", quantityBaseValue: 0.1, displayValue: "100 mW" }, { attributeKey: "temperatureCoefficient", quantityBaseValue: 100, displayValue: "±100 ppm/°C" }] },
+    { catalogNumber: "RC0603FR-0747KL", manufacturerKey: "yageo", primaryCategoryKey: "smdResistors", attributes: [{ attributeKey: "resistance", quantityBaseValue: 47000, displayValue: "47 kΩ" }, { attributeKey: "tolerance", choiceOptionKey: "tol_1p" }, { attributeKey: "package", choiceOptionKey: "pkg_0603" }, { attributeKey: "powerRating", quantityBaseValue: 0.1, displayValue: "100 mW" }, { attributeKey: "temperatureCoefficient", quantityBaseValue: 100, displayValue: "±100 ppm/°C" }] },
+    { catalogNumber: "RC0603FR-07100KL", manufacturerKey: "yageo", primaryCategoryKey: "smdResistors", attributes: [{ attributeKey: "resistance", quantityBaseValue: 100000, displayValue: "100 kΩ" }, { attributeKey: "tolerance", choiceOptionKey: "tol_1p" }, { attributeKey: "package", choiceOptionKey: "pkg_0603" }, { attributeKey: "powerRating", quantityBaseValue: 0.1, displayValue: "100 mW" }, { attributeKey: "temperatureCoefficient", quantityBaseValue: 100, displayValue: "±100 ppm/°C" }] },
+    { catalogNumber: "RC0603FR-071ML", manufacturerKey: "yageo", primaryCategoryKey: "smdResistors", attributes: [{ attributeKey: "resistance", quantityBaseValue: 1000000, displayValue: "1 MΩ" }, { attributeKey: "tolerance", choiceOptionKey: "tol_1p" }, { attributeKey: "package", choiceOptionKey: "pkg_0603" }, { attributeKey: "powerRating", quantityBaseValue: 0.1, displayValue: "100 mW" }, { attributeKey: "temperatureCoefficient", quantityBaseValue: 100, displayValue: "±100 ppm/°C" }] },
     // Yageo 0805
-    { catalogNumber: "RC0805FR-0710RL", manufacturerKey: "yageo", primaryCategoryKey: "resistors", attributes: [{ attributeKey: "resistance", quantityBaseValue: 10, displayValue: "10 Ω" }, { attributeKey: "tolerance", choiceOptionKey: "tol_1p" }, { attributeKey: "package", choiceOptionKey: "pkg_0805" }, { attributeKey: "powerRating", quantityBaseValue: 0.125, displayValue: "125 mW" }, { attributeKey: "temperatureCoefficient", quantityBaseValue: 100, displayValue: "±100 ppm/°C" }] },
-    { catalogNumber: "RC0805FR-07100RL", manufacturerKey: "yageo", primaryCategoryKey: "resistors", attributes: [{ attributeKey: "resistance", quantityBaseValue: 100, displayValue: "100 Ω" }, { attributeKey: "tolerance", choiceOptionKey: "tol_1p" }, { attributeKey: "package", choiceOptionKey: "pkg_0805" }, { attributeKey: "powerRating", quantityBaseValue: 0.125, displayValue: "125 mW" }, { attributeKey: "temperatureCoefficient", quantityBaseValue: 100, displayValue: "±100 ppm/°C" }] },
-    { catalogNumber: "RC0805FR-07470RL", manufacturerKey: "yageo", primaryCategoryKey: "resistors", attributes: [{ attributeKey: "resistance", quantityBaseValue: 470, displayValue: "470 Ω" }, { attributeKey: "tolerance", choiceOptionKey: "tol_1p" }, { attributeKey: "package", choiceOptionKey: "pkg_0805" }, { attributeKey: "powerRating", quantityBaseValue: 0.125, displayValue: "125 mW" }, { attributeKey: "temperatureCoefficient", quantityBaseValue: 100, displayValue: "±100 ppm/°C" }] },
-    { catalogNumber: "RC0805FR-071KL", manufacturerKey: "yageo", primaryCategoryKey: "resistors", attributes: [{ attributeKey: "resistance", quantityBaseValue: 1000, displayValue: "1 kΩ" }, { attributeKey: "tolerance", choiceOptionKey: "tol_1p" }, { attributeKey: "package", choiceOptionKey: "pkg_0805" }, { attributeKey: "powerRating", quantityBaseValue: 0.125, displayValue: "125 mW" }, { attributeKey: "temperatureCoefficient", quantityBaseValue: 100, displayValue: "±100 ppm/°C" }] },
-    { catalogNumber: "RC0805FR-074K7L", manufacturerKey: "yageo", primaryCategoryKey: "resistors", attributes: [{ attributeKey: "resistance", quantityBaseValue: 4700, displayValue: "4.7 kΩ" }, { attributeKey: "tolerance", choiceOptionKey: "tol_1p" }, { attributeKey: "package", choiceOptionKey: "pkg_0805" }, { attributeKey: "powerRating", quantityBaseValue: 0.125, displayValue: "125 mW" }, { attributeKey: "temperatureCoefficient", quantityBaseValue: 100, displayValue: "±100 ppm/°C" }] },
-    { catalogNumber: "RC0805FR-0710KL", manufacturerKey: "yageo", primaryCategoryKey: "resistors", attributes: [{ attributeKey: "resistance", quantityBaseValue: 10000, displayValue: "10 kΩ" }, { attributeKey: "tolerance", choiceOptionKey: "tol_1p" }, { attributeKey: "package", choiceOptionKey: "pkg_0805" }, { attributeKey: "powerRating", quantityBaseValue: 0.125, displayValue: "125 mW" }, { attributeKey: "temperatureCoefficient", quantityBaseValue: 100, displayValue: "±100 ppm/°C" }], stockEntries: [{ locationKey: "drawer_a1", quantity: 200 }] },
-    { catalogNumber: "RC0805FR-0747KL", manufacturerKey: "yageo", primaryCategoryKey: "resistors", attributes: [{ attributeKey: "resistance", quantityBaseValue: 47000, displayValue: "47 kΩ" }, { attributeKey: "tolerance", choiceOptionKey: "tol_1p" }, { attributeKey: "package", choiceOptionKey: "pkg_0805" }, { attributeKey: "powerRating", quantityBaseValue: 0.125, displayValue: "125 mW" }, { attributeKey: "temperatureCoefficient", quantityBaseValue: 100, displayValue: "±100 ppm/°C" }] },
-    { catalogNumber: "RC0805FR-07100KL", manufacturerKey: "yageo", primaryCategoryKey: "resistors", attributes: [{ attributeKey: "resistance", quantityBaseValue: 100000, displayValue: "100 kΩ" }, { attributeKey: "tolerance", choiceOptionKey: "tol_1p" }, { attributeKey: "package", choiceOptionKey: "pkg_0805" }, { attributeKey: "powerRating", quantityBaseValue: 0.125, displayValue: "125 mW" }, { attributeKey: "temperatureCoefficient", quantityBaseValue: 100, displayValue: "±100 ppm/°C" }] },
+    { catalogNumber: "RC0805FR-0710RL", manufacturerKey: "yageo", primaryCategoryKey: "smdResistors", attributes: [{ attributeKey: "resistance", quantityBaseValue: 10, displayValue: "10 Ω" }, { attributeKey: "tolerance", choiceOptionKey: "tol_1p" }, { attributeKey: "package", choiceOptionKey: "pkg_0805" }, { attributeKey: "powerRating", quantityBaseValue: 0.125, displayValue: "125 mW" }, { attributeKey: "temperatureCoefficient", quantityBaseValue: 100, displayValue: "±100 ppm/°C" }] },
+    { catalogNumber: "RC0805FR-07100RL", manufacturerKey: "yageo", primaryCategoryKey: "smdResistors", attributes: [{ attributeKey: "resistance", quantityBaseValue: 100, displayValue: "100 Ω" }, { attributeKey: "tolerance", choiceOptionKey: "tol_1p" }, { attributeKey: "package", choiceOptionKey: "pkg_0805" }, { attributeKey: "powerRating", quantityBaseValue: 0.125, displayValue: "125 mW" }, { attributeKey: "temperatureCoefficient", quantityBaseValue: 100, displayValue: "±100 ppm/°C" }] },
+    { catalogNumber: "RC0805FR-07470RL", manufacturerKey: "yageo", primaryCategoryKey: "smdResistors", attributes: [{ attributeKey: "resistance", quantityBaseValue: 470, displayValue: "470 Ω" }, { attributeKey: "tolerance", choiceOptionKey: "tol_1p" }, { attributeKey: "package", choiceOptionKey: "pkg_0805" }, { attributeKey: "powerRating", quantityBaseValue: 0.125, displayValue: "125 mW" }, { attributeKey: "temperatureCoefficient", quantityBaseValue: 100, displayValue: "±100 ppm/°C" }] },
+    { catalogNumber: "RC0805FR-071KL", manufacturerKey: "yageo", primaryCategoryKey: "smdResistors", attributes: [{ attributeKey: "resistance", quantityBaseValue: 1000, displayValue: "1 kΩ" }, { attributeKey: "tolerance", choiceOptionKey: "tol_1p" }, { attributeKey: "package", choiceOptionKey: "pkg_0805" }, { attributeKey: "powerRating", quantityBaseValue: 0.125, displayValue: "125 mW" }, { attributeKey: "temperatureCoefficient", quantityBaseValue: 100, displayValue: "±100 ppm/°C" }] },
+    { catalogNumber: "RC0805FR-074K7L", manufacturerKey: "yageo", primaryCategoryKey: "smdResistors", attributes: [{ attributeKey: "resistance", quantityBaseValue: 4700, displayValue: "4.7 kΩ" }, { attributeKey: "tolerance", choiceOptionKey: "tol_1p" }, { attributeKey: "package", choiceOptionKey: "pkg_0805" }, { attributeKey: "powerRating", quantityBaseValue: 0.125, displayValue: "125 mW" }, { attributeKey: "temperatureCoefficient", quantityBaseValue: 100, displayValue: "±100 ppm/°C" }] },
+    { catalogNumber: "RC0805FR-0710KL", manufacturerKey: "yageo", primaryCategoryKey: "smdResistors", attributes: [{ attributeKey: "resistance", quantityBaseValue: 10000, displayValue: "10 kΩ" }, { attributeKey: "tolerance", choiceOptionKey: "tol_1p" }, { attributeKey: "package", choiceOptionKey: "pkg_0805" }, { attributeKey: "powerRating", quantityBaseValue: 0.125, displayValue: "125 mW" }, { attributeKey: "temperatureCoefficient", quantityBaseValue: 100, displayValue: "±100 ppm/°C" }], stockEntries: [{ locationKey: "drawer_a1", quantity: 200 }] },
+    { catalogNumber: "RC0805FR-0747KL", manufacturerKey: "yageo", primaryCategoryKey: "smdResistors", attributes: [{ attributeKey: "resistance", quantityBaseValue: 47000, displayValue: "47 kΩ" }, { attributeKey: "tolerance", choiceOptionKey: "tol_1p" }, { attributeKey: "package", choiceOptionKey: "pkg_0805" }, { attributeKey: "powerRating", quantityBaseValue: 0.125, displayValue: "125 mW" }, { attributeKey: "temperatureCoefficient", quantityBaseValue: 100, displayValue: "±100 ppm/°C" }] },
+    { catalogNumber: "RC0805FR-07100KL", manufacturerKey: "yageo", primaryCategoryKey: "smdResistors", attributes: [{ attributeKey: "resistance", quantityBaseValue: 100000, displayValue: "100 kΩ" }, { attributeKey: "tolerance", choiceOptionKey: "tol_1p" }, { attributeKey: "package", choiceOptionKey: "pkg_0805" }, { attributeKey: "powerRating", quantityBaseValue: 0.125, displayValue: "125 mW" }, { attributeKey: "temperatureCoefficient", quantityBaseValue: 100, displayValue: "±100 ppm/°C" }] },
     // Vishay CRCW 0402
-    { catalogNumber: "CRCW04020000Z0ED", manufacturerKey: "vishay", primaryCategoryKey: "resistors", attributes: [{ attributeKey: "resistance", quantityBaseValue: 0, displayValue: "0 Ω" }, { attributeKey: "package", choiceOptionKey: "pkg_0402" }, { attributeKey: "powerRating", quantityBaseValue: 0.0625, displayValue: "62.5 mW" }], stockEntries: [{ locationKey: "drawer_a1", quantity: 100 }] },
-    { catalogNumber: "CRCW040210R0FKED", manufacturerKey: "vishay", primaryCategoryKey: "resistors", attributes: [{ attributeKey: "resistance", quantityBaseValue: 10, displayValue: "10 Ω" }, { attributeKey: "tolerance", choiceOptionKey: "tol_1p" }, { attributeKey: "package", choiceOptionKey: "pkg_0402" }, { attributeKey: "powerRating", quantityBaseValue: 0.0625, displayValue: "62.5 mW" }, { attributeKey: "temperatureCoefficient", quantityBaseValue: 100, displayValue: "±100 ppm/°C" }] },
-    { catalogNumber: "CRCW0402100RFKED", manufacturerKey: "vishay", primaryCategoryKey: "resistors", attributes: [{ attributeKey: "resistance", quantityBaseValue: 100, displayValue: "100 Ω" }, { attributeKey: "tolerance", choiceOptionKey: "tol_1p" }, { attributeKey: "package", choiceOptionKey: "pkg_0402" }, { attributeKey: "powerRating", quantityBaseValue: 0.0625, displayValue: "62.5 mW" }, { attributeKey: "temperatureCoefficient", quantityBaseValue: 100, displayValue: "±100 ppm/°C" }] },
-    { catalogNumber: "CRCW04021K00FKED", manufacturerKey: "vishay", primaryCategoryKey: "resistors", attributes: [{ attributeKey: "resistance", quantityBaseValue: 1000, displayValue: "1 kΩ" }, { attributeKey: "tolerance", choiceOptionKey: "tol_1p" }, { attributeKey: "package", choiceOptionKey: "pkg_0402" }, { attributeKey: "powerRating", quantityBaseValue: 0.0625, displayValue: "62.5 mW" }, { attributeKey: "temperatureCoefficient", quantityBaseValue: 100, displayValue: "±100 ppm/°C" }] },
-    { catalogNumber: "CRCW040210K0FKED", manufacturerKey: "vishay", primaryCategoryKey: "resistors", attributes: [{ attributeKey: "resistance", quantityBaseValue: 10000, displayValue: "10 kΩ" }, { attributeKey: "tolerance", choiceOptionKey: "tol_1p" }, { attributeKey: "package", choiceOptionKey: "pkg_0402" }, { attributeKey: "powerRating", quantityBaseValue: 0.0625, displayValue: "62.5 mW" }, { attributeKey: "temperatureCoefficient", quantityBaseValue: 100, displayValue: "±100 ppm/°C" }] },
-    { catalogNumber: "CRCW0402100KFKED", manufacturerKey: "vishay", primaryCategoryKey: "resistors", attributes: [{ attributeKey: "resistance", quantityBaseValue: 100000, displayValue: "100 kΩ" }, { attributeKey: "tolerance", choiceOptionKey: "tol_1p" }, { attributeKey: "package", choiceOptionKey: "pkg_0402" }, { attributeKey: "powerRating", quantityBaseValue: 0.0625, displayValue: "62.5 mW" }, { attributeKey: "temperatureCoefficient", quantityBaseValue: 100, displayValue: "±100 ppm/°C" }] },
+    { catalogNumber: "CRCW04020000Z0ED", manufacturerKey: "vishay", primaryCategoryKey: "smdResistors", attributes: [{ attributeKey: "resistance", quantityBaseValue: 0, displayValue: "0 Ω" }, { attributeKey: "package", choiceOptionKey: "pkg_0402" }, { attributeKey: "powerRating", quantityBaseValue: 0.0625, displayValue: "62.5 mW" }], stockEntries: [{ locationKey: "drawer_a1", quantity: 100 }] },
+    { catalogNumber: "CRCW040210R0FKED", manufacturerKey: "vishay", primaryCategoryKey: "smdResistors", attributes: [{ attributeKey: "resistance", quantityBaseValue: 10, displayValue: "10 Ω" }, { attributeKey: "tolerance", choiceOptionKey: "tol_1p" }, { attributeKey: "package", choiceOptionKey: "pkg_0402" }, { attributeKey: "powerRating", quantityBaseValue: 0.0625, displayValue: "62.5 mW" }, { attributeKey: "temperatureCoefficient", quantityBaseValue: 100, displayValue: "±100 ppm/°C" }] },
+    { catalogNumber: "CRCW0402100RFKED", manufacturerKey: "vishay", primaryCategoryKey: "smdResistors", attributes: [{ attributeKey: "resistance", quantityBaseValue: 100, displayValue: "100 Ω" }, { attributeKey: "tolerance", choiceOptionKey: "tol_1p" }, { attributeKey: "package", choiceOptionKey: "pkg_0402" }, { attributeKey: "powerRating", quantityBaseValue: 0.0625, displayValue: "62.5 mW" }, { attributeKey: "temperatureCoefficient", quantityBaseValue: 100, displayValue: "±100 ppm/°C" }] },
+    { catalogNumber: "CRCW04021K00FKED", manufacturerKey: "vishay", primaryCategoryKey: "smdResistors", attributes: [{ attributeKey: "resistance", quantityBaseValue: 1000, displayValue: "1 kΩ" }, { attributeKey: "tolerance", choiceOptionKey: "tol_1p" }, { attributeKey: "package", choiceOptionKey: "pkg_0402" }, { attributeKey: "powerRating", quantityBaseValue: 0.0625, displayValue: "62.5 mW" }, { attributeKey: "temperatureCoefficient", quantityBaseValue: 100, displayValue: "±100 ppm/°C" }] },
+    { catalogNumber: "CRCW040210K0FKED", manufacturerKey: "vishay", primaryCategoryKey: "smdResistors", attributes: [{ attributeKey: "resistance", quantityBaseValue: 10000, displayValue: "10 kΩ" }, { attributeKey: "tolerance", choiceOptionKey: "tol_1p" }, { attributeKey: "package", choiceOptionKey: "pkg_0402" }, { attributeKey: "powerRating", quantityBaseValue: 0.0625, displayValue: "62.5 mW" }, { attributeKey: "temperatureCoefficient", quantityBaseValue: 100, displayValue: "±100 ppm/°C" }] },
+    { catalogNumber: "CRCW0402100KFKED", manufacturerKey: "vishay", primaryCategoryKey: "smdResistors", attributes: [{ attributeKey: "resistance", quantityBaseValue: 100000, displayValue: "100 kΩ" }, { attributeKey: "tolerance", choiceOptionKey: "tol_1p" }, { attributeKey: "package", choiceOptionKey: "pkg_0402" }, { attributeKey: "powerRating", quantityBaseValue: 0.0625, displayValue: "62.5 mW" }, { attributeKey: "temperatureCoefficient", quantityBaseValue: 100, displayValue: "±100 ppm/°C" }] },
     // Vishay CRCW 0603
-    { catalogNumber: "CRCW060310R0FKEA", manufacturerKey: "vishay", primaryCategoryKey: "resistors", attributes: [{ attributeKey: "resistance", quantityBaseValue: 10, displayValue: "10 Ω" }, { attributeKey: "tolerance", choiceOptionKey: "tol_1p" }, { attributeKey: "package", choiceOptionKey: "pkg_0603" }, { attributeKey: "powerRating", quantityBaseValue: 0.1, displayValue: "100 mW" }, { attributeKey: "temperatureCoefficient", quantityBaseValue: 100, displayValue: "±100 ppm/°C" }] },
-    { catalogNumber: "CRCW06031K00FKEA", manufacturerKey: "vishay", primaryCategoryKey: "resistors", attributes: [{ attributeKey: "resistance", quantityBaseValue: 1000, displayValue: "1 kΩ" }, { attributeKey: "tolerance", choiceOptionKey: "tol_1p" }, { attributeKey: "package", choiceOptionKey: "pkg_0603" }, { attributeKey: "powerRating", quantityBaseValue: 0.1, displayValue: "100 mW" }, { attributeKey: "temperatureCoefficient", quantityBaseValue: 100, displayValue: "±100 ppm/°C" }] },
-    { catalogNumber: "CRCW060310K0FKEA", manufacturerKey: "vishay", primaryCategoryKey: "resistors", attributes: [{ attributeKey: "resistance", quantityBaseValue: 10000, displayValue: "10 kΩ" }, { attributeKey: "tolerance", choiceOptionKey: "tol_1p" }, { attributeKey: "package", choiceOptionKey: "pkg_0603" }, { attributeKey: "powerRating", quantityBaseValue: 0.1, displayValue: "100 mW" }, { attributeKey: "temperatureCoefficient", quantityBaseValue: 100, displayValue: "±100 ppm/°C" }] },
-    { catalogNumber: "CRCW0603100KFKEA", manufacturerKey: "vishay", primaryCategoryKey: "resistors", attributes: [{ attributeKey: "resistance", quantityBaseValue: 100000, displayValue: "100 kΩ" }, { attributeKey: "tolerance", choiceOptionKey: "tol_1p" }, { attributeKey: "package", choiceOptionKey: "pkg_0603" }, { attributeKey: "powerRating", quantityBaseValue: 0.1, displayValue: "100 mW" }, { attributeKey: "temperatureCoefficient", quantityBaseValue: 100, displayValue: "±100 ppm/°C" }] },
+    { catalogNumber: "CRCW060310R0FKEA", manufacturerKey: "vishay", primaryCategoryKey: "smdResistors", attributes: [{ attributeKey: "resistance", quantityBaseValue: 10, displayValue: "10 Ω" }, { attributeKey: "tolerance", choiceOptionKey: "tol_1p" }, { attributeKey: "package", choiceOptionKey: "pkg_0603" }, { attributeKey: "powerRating", quantityBaseValue: 0.1, displayValue: "100 mW" }, { attributeKey: "temperatureCoefficient", quantityBaseValue: 100, displayValue: "±100 ppm/°C" }] },
+    { catalogNumber: "CRCW06031K00FKEA", manufacturerKey: "vishay", primaryCategoryKey: "smdResistors", attributes: [{ attributeKey: "resistance", quantityBaseValue: 1000, displayValue: "1 kΩ" }, { attributeKey: "tolerance", choiceOptionKey: "tol_1p" }, { attributeKey: "package", choiceOptionKey: "pkg_0603" }, { attributeKey: "powerRating", quantityBaseValue: 0.1, displayValue: "100 mW" }, { attributeKey: "temperatureCoefficient", quantityBaseValue: 100, displayValue: "±100 ppm/°C" }] },
+    { catalogNumber: "CRCW060310K0FKEA", manufacturerKey: "vishay", primaryCategoryKey: "smdResistors", attributes: [{ attributeKey: "resistance", quantityBaseValue: 10000, displayValue: "10 kΩ" }, { attributeKey: "tolerance", choiceOptionKey: "tol_1p" }, { attributeKey: "package", choiceOptionKey: "pkg_0603" }, { attributeKey: "powerRating", quantityBaseValue: 0.1, displayValue: "100 mW" }, { attributeKey: "temperatureCoefficient", quantityBaseValue: 100, displayValue: "±100 ppm/°C" }] },
+    { catalogNumber: "CRCW0603100KFKEA", manufacturerKey: "vishay", primaryCategoryKey: "smdResistors", attributes: [{ attributeKey: "resistance", quantityBaseValue: 100000, displayValue: "100 kΩ" }, { attributeKey: "tolerance", choiceOptionKey: "tol_1p" }, { attributeKey: "package", choiceOptionKey: "pkg_0603" }, { attributeKey: "powerRating", quantityBaseValue: 0.1, displayValue: "100 mW" }, { attributeKey: "temperatureCoefficient", quantityBaseValue: 100, displayValue: "±100 ppm/°C" }] },
     // Bourns CFR-25 THT
-    { catalogNumber: "CFR-25JB-52-10R", manufacturerKey: "bourns", primaryCategoryKey: "resistors", attributes: [{ attributeKey: "resistance", quantityBaseValue: 10, displayValue: "10 Ω" }, { attributeKey: "tolerance", choiceOptionKey: "tol_5p" }, { attributeKey: "package", choiceOptionKey: "pkg_tht" }, { attributeKey: "powerRating", quantityBaseValue: 0.25, displayValue: "250 mW" }, { attributeKey: "temperatureCoefficient", quantityBaseValue: 350, displayValue: "±350 ppm/°C" }], stockEntries: [{ locationKey: "drawer_a2", quantity: 100 }] },
-    { catalogNumber: "CFR-25JB-52-100R", manufacturerKey: "bourns", primaryCategoryKey: "resistors", attributes: [{ attributeKey: "resistance", quantityBaseValue: 100, displayValue: "100 Ω" }, { attributeKey: "tolerance", choiceOptionKey: "tol_5p" }, { attributeKey: "package", choiceOptionKey: "pkg_tht" }, { attributeKey: "powerRating", quantityBaseValue: 0.25, displayValue: "250 mW" }, { attributeKey: "temperatureCoefficient", quantityBaseValue: 350, displayValue: "±350 ppm/°C" }], stockEntries: [{ locationKey: "drawer_a2", quantity: 100 }] },
-    { catalogNumber: "CFR-25JB-52-1K", manufacturerKey: "bourns", primaryCategoryKey: "resistors", attributes: [{ attributeKey: "resistance", quantityBaseValue: 1000, displayValue: "1 kΩ" }, { attributeKey: "tolerance", choiceOptionKey: "tol_5p" }, { attributeKey: "package", choiceOptionKey: "pkg_tht" }, { attributeKey: "powerRating", quantityBaseValue: 0.25, displayValue: "250 mW" }, { attributeKey: "temperatureCoefficient", quantityBaseValue: 350, displayValue: "±350 ppm/°C" }], stockEntries: [{ locationKey: "drawer_a2", quantity: 80 }] },
-    { catalogNumber: "CFR-25JB-52-10K", manufacturerKey: "bourns", primaryCategoryKey: "resistors", attributes: [{ attributeKey: "resistance", quantityBaseValue: 10000, displayValue: "10 kΩ" }, { attributeKey: "tolerance", choiceOptionKey: "tol_5p" }, { attributeKey: "package", choiceOptionKey: "pkg_tht" }, { attributeKey: "powerRating", quantityBaseValue: 0.25, displayValue: "250 mW" }, { attributeKey: "temperatureCoefficient", quantityBaseValue: 350, displayValue: "±350 ppm/°C" }], stockEntries: [{ locationKey: "drawer_a2", quantity: 100 }] },
-    { catalogNumber: "CFR-25JB-52-100K", manufacturerKey: "bourns", primaryCategoryKey: "resistors", attributes: [{ attributeKey: "resistance", quantityBaseValue: 100000, displayValue: "100 kΩ" }, { attributeKey: "tolerance", choiceOptionKey: "tol_5p" }, { attributeKey: "package", choiceOptionKey: "pkg_tht" }, { attributeKey: "powerRating", quantityBaseValue: 0.25, displayValue: "250 mW" }, { attributeKey: "temperatureCoefficient", quantityBaseValue: 350, displayValue: "±350 ppm/°C" }] },
-    { catalogNumber: "CFR-25JB-52-1M", manufacturerKey: "bourns", primaryCategoryKey: "resistors", attributes: [{ attributeKey: "resistance", quantityBaseValue: 1000000, displayValue: "1 MΩ" }, { attributeKey: "tolerance", choiceOptionKey: "tol_5p" }, { attributeKey: "package", choiceOptionKey: "pkg_tht" }, { attributeKey: "powerRating", quantityBaseValue: 0.25, displayValue: "250 mW" }, { attributeKey: "temperatureCoefficient", quantityBaseValue: 350, displayValue: "±350 ppm/°C" }] },
+    { catalogNumber: "CFR-25JB-52-10R", manufacturerKey: "bourns", primaryCategoryKey: "thtResistors", attributes: [{ attributeKey: "resistance", quantityBaseValue: 10, displayValue: "10 Ω" }, { attributeKey: "tolerance", choiceOptionKey: "tol_5p" }, { attributeKey: "package", choiceOptionKey: "pkg_tht" }, { attributeKey: "powerRating", quantityBaseValue: 0.25, displayValue: "250 mW" }, { attributeKey: "temperatureCoefficient", quantityBaseValue: 350, displayValue: "±350 ppm/°C" }], stockEntries: [{ locationKey: "drawer_a2", quantity: 100 }] },
+    { catalogNumber: "CFR-25JB-52-100R", manufacturerKey: "bourns", primaryCategoryKey: "thtResistors", attributes: [{ attributeKey: "resistance", quantityBaseValue: 100, displayValue: "100 Ω" }, { attributeKey: "tolerance", choiceOptionKey: "tol_5p" }, { attributeKey: "package", choiceOptionKey: "pkg_tht" }, { attributeKey: "powerRating", quantityBaseValue: 0.25, displayValue: "250 mW" }, { attributeKey: "temperatureCoefficient", quantityBaseValue: 350, displayValue: "±350 ppm/°C" }], stockEntries: [{ locationKey: "drawer_a2", quantity: 100 }] },
+    { catalogNumber: "CFR-25JB-52-1K", manufacturerKey: "bourns", primaryCategoryKey: "thtResistors", attributes: [{ attributeKey: "resistance", quantityBaseValue: 1000, displayValue: "1 kΩ" }, { attributeKey: "tolerance", choiceOptionKey: "tol_5p" }, { attributeKey: "package", choiceOptionKey: "pkg_tht" }, { attributeKey: "powerRating", quantityBaseValue: 0.25, displayValue: "250 mW" }, { attributeKey: "temperatureCoefficient", quantityBaseValue: 350, displayValue: "±350 ppm/°C" }], stockEntries: [{ locationKey: "drawer_a2", quantity: 80 }] },
+    { catalogNumber: "CFR-25JB-52-10K", manufacturerKey: "bourns", primaryCategoryKey: "thtResistors", attributes: [{ attributeKey: "resistance", quantityBaseValue: 10000, displayValue: "10 kΩ" }, { attributeKey: "tolerance", choiceOptionKey: "tol_5p" }, { attributeKey: "package", choiceOptionKey: "pkg_tht" }, { attributeKey: "powerRating", quantityBaseValue: 0.25, displayValue: "250 mW" }, { attributeKey: "temperatureCoefficient", quantityBaseValue: 350, displayValue: "±350 ppm/°C" }], stockEntries: [{ locationKey: "drawer_a2", quantity: 100 }] },
+    { catalogNumber: "CFR-25JB-52-100K", manufacturerKey: "bourns", primaryCategoryKey: "thtResistors", attributes: [{ attributeKey: "resistance", quantityBaseValue: 100000, displayValue: "100 kΩ" }, { attributeKey: "tolerance", choiceOptionKey: "tol_5p" }, { attributeKey: "package", choiceOptionKey: "pkg_tht" }, { attributeKey: "powerRating", quantityBaseValue: 0.25, displayValue: "250 mW" }, { attributeKey: "temperatureCoefficient", quantityBaseValue: 350, displayValue: "±350 ppm/°C" }] },
+    { catalogNumber: "CFR-25JB-52-1M", manufacturerKey: "bourns", primaryCategoryKey: "thtResistors", attributes: [{ attributeKey: "resistance", quantityBaseValue: 1000000, displayValue: "1 MΩ" }, { attributeKey: "tolerance", choiceOptionKey: "tol_5p" }, { attributeKey: "package", choiceOptionKey: "pkg_tht" }, { attributeKey: "powerRating", quantityBaseValue: 0.25, displayValue: "250 mW" }, { attributeKey: "temperatureCoefficient", quantityBaseValue: 350, displayValue: "±350 ppm/°C" }] },
 
     // ── Capacitors ────────────────────────────────────────────────────────────
     // Murata GRM 0402 X7R
-    { catalogNumber: "GRM155R71C104KA88D", manufacturerKey: "murata", primaryCategoryKey: "capacitors", attributes: [{ attributeKey: "capacitance", quantityBaseValue: 1e-7, displayValue: "100 nF" }, { attributeKey: "voltageRating", quantityBaseValue: 16, displayValue: "16 V" }, { attributeKey: "tolerance", choiceOptionKey: "tol_10p" }, { attributeKey: "package", choiceOptionKey: "pkg_0402" }, { attributeKey: "dielectricType", choiceOptionKey: "dielectric_x7r" }], stockEntries: [{ locationKey: "drawer_a2", quantity: 500 }] },
-    { catalogNumber: "GRM155R60J105KA12D", manufacturerKey: "murata", primaryCategoryKey: "capacitors", attributes: [{ attributeKey: "capacitance", quantityBaseValue: 1e-6, displayValue: "1 µF" }, { attributeKey: "voltageRating", quantityBaseValue: 6.3, displayValue: "6.3 V" }, { attributeKey: "tolerance", choiceOptionKey: "tol_10p" }, { attributeKey: "package", choiceOptionKey: "pkg_0402" }, { attributeKey: "dielectricType", choiceOptionKey: "dielectric_x5r" }], stockEntries: [{ locationKey: "drawer_a2", quantity: 300 }] },
-    { catalogNumber: "GRM1555C1H100JA01D", manufacturerKey: "murata", primaryCategoryKey: "capacitors", attributes: [{ attributeKey: "capacitance", quantityBaseValue: 1e-11, displayValue: "10 pF" }, { attributeKey: "voltageRating", quantityBaseValue: 50, displayValue: "50 V" }, { attributeKey: "tolerance", choiceOptionKey: "tol_5p" }, { attributeKey: "package", choiceOptionKey: "pkg_0402" }, { attributeKey: "dielectricType", choiceOptionKey: "dielectric_c0g" }] },
-    { catalogNumber: "GRM1555C1H220JA01D", manufacturerKey: "murata", primaryCategoryKey: "capacitors", attributes: [{ attributeKey: "capacitance", quantityBaseValue: 2.2e-11, displayValue: "22 pF" }, { attributeKey: "voltageRating", quantityBaseValue: 50, displayValue: "50 V" }, { attributeKey: "tolerance", choiceOptionKey: "tol_5p" }, { attributeKey: "package", choiceOptionKey: "pkg_0402" }, { attributeKey: "dielectricType", choiceOptionKey: "dielectric_c0g" }] },
-    { catalogNumber: "GRM155R71H103KA88D", manufacturerKey: "murata", primaryCategoryKey: "capacitors", attributes: [{ attributeKey: "capacitance", quantityBaseValue: 1e-8, displayValue: "10 nF" }, { attributeKey: "voltageRating", quantityBaseValue: 50, displayValue: "50 V" }, { attributeKey: "tolerance", choiceOptionKey: "tol_10p" }, { attributeKey: "package", choiceOptionKey: "pkg_0402" }, { attributeKey: "dielectricType", choiceOptionKey: "dielectric_x7r" }], stockEntries: [{ locationKey: "drawer_a2", quantity: 400 }] },
+    { catalogNumber: "GRM155R71C104KA88D", manufacturerKey: "murata", primaryCategoryKey: "ceramicCapacitors", attributes: [{ attributeKey: "capacitance", quantityBaseValue: 1e-7, displayValue: "100 nF" }, { attributeKey: "voltageRating", quantityBaseValue: 16, displayValue: "16 V" }, { attributeKey: "tolerance", choiceOptionKey: "tol_10p" }, { attributeKey: "package", choiceOptionKey: "pkg_0402" }, { attributeKey: "dielectricType", choiceOptionKey: "dielectric_x7r" }], stockEntries: [{ locationKey: "drawer_a2", quantity: 500 }] },
+    { catalogNumber: "GRM155R60J105KA12D", manufacturerKey: "murata", primaryCategoryKey: "ceramicCapacitors", attributes: [{ attributeKey: "capacitance", quantityBaseValue: 1e-6, displayValue: "1 µF" }, { attributeKey: "voltageRating", quantityBaseValue: 6.3, displayValue: "6.3 V" }, { attributeKey: "tolerance", choiceOptionKey: "tol_10p" }, { attributeKey: "package", choiceOptionKey: "pkg_0402" }, { attributeKey: "dielectricType", choiceOptionKey: "dielectric_x5r" }], stockEntries: [{ locationKey: "drawer_a2", quantity: 300 }] },
+    { catalogNumber: "GRM1555C1H100JA01D", manufacturerKey: "murata", primaryCategoryKey: "ceramicCapacitors", attributes: [{ attributeKey: "capacitance", quantityBaseValue: 1e-11, displayValue: "10 pF" }, { attributeKey: "voltageRating", quantityBaseValue: 50, displayValue: "50 V" }, { attributeKey: "tolerance", choiceOptionKey: "tol_5p" }, { attributeKey: "package", choiceOptionKey: "pkg_0402" }, { attributeKey: "dielectricType", choiceOptionKey: "dielectric_c0g" }] },
+    { catalogNumber: "GRM1555C1H220JA01D", manufacturerKey: "murata", primaryCategoryKey: "ceramicCapacitors", attributes: [{ attributeKey: "capacitance", quantityBaseValue: 2.2e-11, displayValue: "22 pF" }, { attributeKey: "voltageRating", quantityBaseValue: 50, displayValue: "50 V" }, { attributeKey: "tolerance", choiceOptionKey: "tol_5p" }, { attributeKey: "package", choiceOptionKey: "pkg_0402" }, { attributeKey: "dielectricType", choiceOptionKey: "dielectric_c0g" }] },
+    { catalogNumber: "GRM155R71H103KA88D", manufacturerKey: "murata", primaryCategoryKey: "ceramicCapacitors", attributes: [{ attributeKey: "capacitance", quantityBaseValue: 1e-8, displayValue: "10 nF" }, { attributeKey: "voltageRating", quantityBaseValue: 50, displayValue: "50 V" }, { attributeKey: "tolerance", choiceOptionKey: "tol_10p" }, { attributeKey: "package", choiceOptionKey: "pkg_0402" }, { attributeKey: "dielectricType", choiceOptionKey: "dielectric_x7r" }], stockEntries: [{ locationKey: "drawer_a2", quantity: 400 }] },
     // Murata GRM 0603
-    { catalogNumber: "GRM188R71C104KA93D", manufacturerKey: "murata", primaryCategoryKey: "capacitors", attributes: [{ attributeKey: "capacitance", quantityBaseValue: 1e-7, displayValue: "100 nF" }, { attributeKey: "voltageRating", quantityBaseValue: 16, displayValue: "16 V" }, { attributeKey: "tolerance", choiceOptionKey: "tol_10p" }, { attributeKey: "package", choiceOptionKey: "pkg_0603" }, { attributeKey: "dielectricType", choiceOptionKey: "dielectric_x7r" }], stockEntries: [{ locationKey: "drawer_a2", quantity: 300 }] },
-    { catalogNumber: "GRM188R61A106KE69D", manufacturerKey: "murata", primaryCategoryKey: "capacitors", attributes: [{ attributeKey: "capacitance", quantityBaseValue: 1e-5, displayValue: "10 µF" }, { attributeKey: "voltageRating", quantityBaseValue: 10, displayValue: "10 V" }, { attributeKey: "tolerance", choiceOptionKey: "tol_10p" }, { attributeKey: "package", choiceOptionKey: "pkg_0603" }, { attributeKey: "dielectricType", choiceOptionKey: "dielectric_x5r" }], stockEntries: [{ locationKey: "drawer_a2", quantity: 100 }] },
-    { catalogNumber: "GRM188C81E225KE15D", manufacturerKey: "murata", primaryCategoryKey: "capacitors", attributes: [{ attributeKey: "capacitance", quantityBaseValue: 2.2e-6, displayValue: "2.2 µF" }, { attributeKey: "voltageRating", quantityBaseValue: 25, displayValue: "25 V" }, { attributeKey: "tolerance", choiceOptionKey: "tol_10p" }, { attributeKey: "package", choiceOptionKey: "pkg_0603" }, { attributeKey: "dielectricType", choiceOptionKey: "dielectric_x5r" }] },
+    { catalogNumber: "GRM188R71C104KA93D", manufacturerKey: "murata", primaryCategoryKey: "ceramicCapacitors", attributes: [{ attributeKey: "capacitance", quantityBaseValue: 1e-7, displayValue: "100 nF" }, { attributeKey: "voltageRating", quantityBaseValue: 16, displayValue: "16 V" }, { attributeKey: "tolerance", choiceOptionKey: "tol_10p" }, { attributeKey: "package", choiceOptionKey: "pkg_0603" }, { attributeKey: "dielectricType", choiceOptionKey: "dielectric_x7r" }], stockEntries: [{ locationKey: "drawer_a2", quantity: 300 }] },
+    { catalogNumber: "GRM188R61A106KE69D", manufacturerKey: "murata", primaryCategoryKey: "ceramicCapacitors", attributes: [{ attributeKey: "capacitance", quantityBaseValue: 1e-5, displayValue: "10 µF" }, { attributeKey: "voltageRating", quantityBaseValue: 10, displayValue: "10 V" }, { attributeKey: "tolerance", choiceOptionKey: "tol_10p" }, { attributeKey: "package", choiceOptionKey: "pkg_0603" }, { attributeKey: "dielectricType", choiceOptionKey: "dielectric_x5r" }], stockEntries: [{ locationKey: "drawer_a2", quantity: 100 }] },
+    { catalogNumber: "GRM188C81E225KE15D", manufacturerKey: "murata", primaryCategoryKey: "ceramicCapacitors", attributes: [{ attributeKey: "capacitance", quantityBaseValue: 2.2e-6, displayValue: "2.2 µF" }, { attributeKey: "voltageRating", quantityBaseValue: 25, displayValue: "25 V" }, { attributeKey: "tolerance", choiceOptionKey: "tol_10p" }, { attributeKey: "package", choiceOptionKey: "pkg_0603" }, { attributeKey: "dielectricType", choiceOptionKey: "dielectric_x5r" }] },
     // Murata GRM 0805
-    { catalogNumber: "GRM21BR71H104KA01L", manufacturerKey: "murata", primaryCategoryKey: "capacitors", attributes: [{ attributeKey: "capacitance", quantityBaseValue: 1e-7, displayValue: "100 nF" }, { attributeKey: "voltageRating", quantityBaseValue: 50, displayValue: "50 V" }, { attributeKey: "tolerance", choiceOptionKey: "tol_10p" }, { attributeKey: "package", choiceOptionKey: "pkg_0805" }, { attributeKey: "dielectricType", choiceOptionKey: "dielectric_x7r" }] },
-    { catalogNumber: "GRM21BR60J106KE19L", manufacturerKey: "murata", primaryCategoryKey: "capacitors", attributes: [{ attributeKey: "capacitance", quantityBaseValue: 1e-5, displayValue: "10 µF" }, { attributeKey: "voltageRating", quantityBaseValue: 6.3, displayValue: "6.3 V" }, { attributeKey: "tolerance", choiceOptionKey: "tol_10p" }, { attributeKey: "package", choiceOptionKey: "pkg_0805" }, { attributeKey: "dielectricType", choiceOptionKey: "dielectric_x5r" }], stockEntries: [{ locationKey: "drawer_a2", quantity: 100 }] },
+    { catalogNumber: "GRM21BR71H104KA01L", manufacturerKey: "murata", primaryCategoryKey: "ceramicCapacitors", attributes: [{ attributeKey: "capacitance", quantityBaseValue: 1e-7, displayValue: "100 nF" }, { attributeKey: "voltageRating", quantityBaseValue: 50, displayValue: "50 V" }, { attributeKey: "tolerance", choiceOptionKey: "tol_10p" }, { attributeKey: "package", choiceOptionKey: "pkg_0805" }, { attributeKey: "dielectricType", choiceOptionKey: "dielectric_x7r" }] },
+    { catalogNumber: "GRM21BR60J106KE19L", manufacturerKey: "murata", primaryCategoryKey: "ceramicCapacitors", attributes: [{ attributeKey: "capacitance", quantityBaseValue: 1e-5, displayValue: "10 µF" }, { attributeKey: "voltageRating", quantityBaseValue: 6.3, displayValue: "6.3 V" }, { attributeKey: "tolerance", choiceOptionKey: "tol_10p" }, { attributeKey: "package", choiceOptionKey: "pkg_0805" }, { attributeKey: "dielectricType", choiceOptionKey: "dielectric_x5r" }], stockEntries: [{ locationKey: "drawer_a2", quantity: 100 }] },
     // Murata GRM 1206
-    { catalogNumber: "GRM31CR60J107ME39L", manufacturerKey: "murata", primaryCategoryKey: "capacitors", attributes: [{ attributeKey: "capacitance", quantityBaseValue: 1e-4, displayValue: "100 µF" }, { attributeKey: "voltageRating", quantityBaseValue: 6.3, displayValue: "6.3 V" }, { attributeKey: "tolerance", choiceOptionKey: "tol_20p" }, { attributeKey: "package", choiceOptionKey: "pkg_1206" }, { attributeKey: "dielectricType", choiceOptionKey: "dielectric_x5r" }] },
+    { catalogNumber: "GRM31CR60J107ME39L", manufacturerKey: "murata", primaryCategoryKey: "ceramicCapacitors", attributes: [{ attributeKey: "capacitance", quantityBaseValue: 1e-4, displayValue: "100 µF" }, { attributeKey: "voltageRating", quantityBaseValue: 6.3, displayValue: "6.3 V" }, { attributeKey: "tolerance", choiceOptionKey: "tol_20p" }, { attributeKey: "package", choiceOptionKey: "pkg_1206" }, { attributeKey: "dielectricType", choiceOptionKey: "dielectric_x5r" }] },
     // Yageo CC 0402
-    { catalogNumber: "CC0402KRX7R9BB101", manufacturerKey: "yageo", primaryCategoryKey: "capacitors", attributes: [{ attributeKey: "capacitance", quantityBaseValue: 1e-10, displayValue: "100 pF" }, { attributeKey: "voltageRating", quantityBaseValue: 50, displayValue: "50 V" }, { attributeKey: "tolerance", choiceOptionKey: "tol_10p" }, { attributeKey: "package", choiceOptionKey: "pkg_0402" }, { attributeKey: "dielectricType", choiceOptionKey: "dielectric_x7r" }] },
-    { catalogNumber: "CC0402KRX7R9BB102", manufacturerKey: "yageo", primaryCategoryKey: "capacitors", attributes: [{ attributeKey: "capacitance", quantityBaseValue: 1e-9, displayValue: "1 nF" }, { attributeKey: "voltageRating", quantityBaseValue: 50, displayValue: "50 V" }, { attributeKey: "tolerance", choiceOptionKey: "tol_10p" }, { attributeKey: "package", choiceOptionKey: "pkg_0402" }, { attributeKey: "dielectricType", choiceOptionKey: "dielectric_x7r" }] },
-    { catalogNumber: "CC0402KRX7R9BB103", manufacturerKey: "yageo", primaryCategoryKey: "capacitors", attributes: [{ attributeKey: "capacitance", quantityBaseValue: 1e-8, displayValue: "10 nF" }, { attributeKey: "voltageRating", quantityBaseValue: 50, displayValue: "50 V" }, { attributeKey: "tolerance", choiceOptionKey: "tol_10p" }, { attributeKey: "package", choiceOptionKey: "pkg_0402" }, { attributeKey: "dielectricType", choiceOptionKey: "dielectric_x7r" }], stockEntries: [{ locationKey: "drawer_a2", quantity: 300 }] },
-    { catalogNumber: "CC0402KRX7R9BB104", manufacturerKey: "yageo", primaryCategoryKey: "capacitors", attributes: [{ attributeKey: "capacitance", quantityBaseValue: 1e-7, displayValue: "100 nF" }, { attributeKey: "voltageRating", quantityBaseValue: 50, displayValue: "50 V" }, { attributeKey: "tolerance", choiceOptionKey: "tol_10p" }, { attributeKey: "package", choiceOptionKey: "pkg_0402" }, { attributeKey: "dielectricType", choiceOptionKey: "dielectric_x7r" }], stockEntries: [{ locationKey: "drawer_a2", quantity: 500 }] },
-    { catalogNumber: "CC0402JPRNPO9BB101", manufacturerKey: "yageo", primaryCategoryKey: "capacitors", attributes: [{ attributeKey: "capacitance", quantityBaseValue: 1e-10, displayValue: "100 pF" }, { attributeKey: "voltageRating", quantityBaseValue: 50, displayValue: "50 V" }, { attributeKey: "tolerance", choiceOptionKey: "tol_5p" }, { attributeKey: "package", choiceOptionKey: "pkg_0402" }, { attributeKey: "dielectricType", choiceOptionKey: "dielectric_c0g" }] },
+    { catalogNumber: "CC0402KRX7R9BB101", manufacturerKey: "yageo", primaryCategoryKey: "ceramicCapacitors", attributes: [{ attributeKey: "capacitance", quantityBaseValue: 1e-10, displayValue: "100 pF" }, { attributeKey: "voltageRating", quantityBaseValue: 50, displayValue: "50 V" }, { attributeKey: "tolerance", choiceOptionKey: "tol_10p" }, { attributeKey: "package", choiceOptionKey: "pkg_0402" }, { attributeKey: "dielectricType", choiceOptionKey: "dielectric_x7r" }] },
+    { catalogNumber: "CC0402KRX7R9BB102", manufacturerKey: "yageo", primaryCategoryKey: "ceramicCapacitors", attributes: [{ attributeKey: "capacitance", quantityBaseValue: 1e-9, displayValue: "1 nF" }, { attributeKey: "voltageRating", quantityBaseValue: 50, displayValue: "50 V" }, { attributeKey: "tolerance", choiceOptionKey: "tol_10p" }, { attributeKey: "package", choiceOptionKey: "pkg_0402" }, { attributeKey: "dielectricType", choiceOptionKey: "dielectric_x7r" }] },
+    { catalogNumber: "CC0402KRX7R9BB103", manufacturerKey: "yageo", primaryCategoryKey: "ceramicCapacitors", attributes: [{ attributeKey: "capacitance", quantityBaseValue: 1e-8, displayValue: "10 nF" }, { attributeKey: "voltageRating", quantityBaseValue: 50, displayValue: "50 V" }, { attributeKey: "tolerance", choiceOptionKey: "tol_10p" }, { attributeKey: "package", choiceOptionKey: "pkg_0402" }, { attributeKey: "dielectricType", choiceOptionKey: "dielectric_x7r" }], stockEntries: [{ locationKey: "drawer_a2", quantity: 300 }] },
+    { catalogNumber: "CC0402KRX7R9BB104", manufacturerKey: "yageo", primaryCategoryKey: "ceramicCapacitors", attributes: [{ attributeKey: "capacitance", quantityBaseValue: 1e-7, displayValue: "100 nF" }, { attributeKey: "voltageRating", quantityBaseValue: 50, displayValue: "50 V" }, { attributeKey: "tolerance", choiceOptionKey: "tol_10p" }, { attributeKey: "package", choiceOptionKey: "pkg_0402" }, { attributeKey: "dielectricType", choiceOptionKey: "dielectric_x7r" }], stockEntries: [{ locationKey: "drawer_a2", quantity: 500 }] },
+    { catalogNumber: "CC0402JPRNPO9BB101", manufacturerKey: "yageo", primaryCategoryKey: "ceramicCapacitors", attributes: [{ attributeKey: "capacitance", quantityBaseValue: 1e-10, displayValue: "100 pF" }, { attributeKey: "voltageRating", quantityBaseValue: 50, displayValue: "50 V" }, { attributeKey: "tolerance", choiceOptionKey: "tol_5p" }, { attributeKey: "package", choiceOptionKey: "pkg_0402" }, { attributeKey: "dielectricType", choiceOptionKey: "dielectric_c0g" }] },
     // Yageo CC 0603
-    { catalogNumber: "CC0603KRX7R9BB103", manufacturerKey: "yageo", primaryCategoryKey: "capacitors", attributes: [{ attributeKey: "capacitance", quantityBaseValue: 1e-8, displayValue: "10 nF" }, { attributeKey: "voltageRating", quantityBaseValue: 50, displayValue: "50 V" }, { attributeKey: "tolerance", choiceOptionKey: "tol_10p" }, { attributeKey: "package", choiceOptionKey: "pkg_0603" }, { attributeKey: "dielectricType", choiceOptionKey: "dielectric_x7r" }] },
-    { catalogNumber: "CC0603KRX7R9BB104", manufacturerKey: "yageo", primaryCategoryKey: "capacitors", attributes: [{ attributeKey: "capacitance", quantityBaseValue: 1e-7, displayValue: "100 nF" }, { attributeKey: "voltageRating", quantityBaseValue: 50, displayValue: "50 V" }, { attributeKey: "tolerance", choiceOptionKey: "tol_10p" }, { attributeKey: "package", choiceOptionKey: "pkg_0603" }, { attributeKey: "dielectricType", choiceOptionKey: "dielectric_x7r" }], stockEntries: [{ locationKey: "drawer_a2", quantity: 200 }] },
-    { catalogNumber: "CC0603KRX5R9BB105", manufacturerKey: "yageo", primaryCategoryKey: "capacitors", attributes: [{ attributeKey: "capacitance", quantityBaseValue: 1e-6, displayValue: "1 µF" }, { attributeKey: "voltageRating", quantityBaseValue: 10, displayValue: "10 V" }, { attributeKey: "tolerance", choiceOptionKey: "tol_10p" }, { attributeKey: "package", choiceOptionKey: "pkg_0603" }, { attributeKey: "dielectricType", choiceOptionKey: "dielectric_x5r" }] },
-    { catalogNumber: "CC0603KRX5R9BB106", manufacturerKey: "yageo", primaryCategoryKey: "capacitors", attributes: [{ attributeKey: "capacitance", quantityBaseValue: 1e-5, displayValue: "10 µF" }, { attributeKey: "voltageRating", quantityBaseValue: 10, displayValue: "10 V" }, { attributeKey: "tolerance", choiceOptionKey: "tol_20p" }, { attributeKey: "package", choiceOptionKey: "pkg_0603" }, { attributeKey: "dielectricType", choiceOptionKey: "dielectric_x5r" }] },
+    { catalogNumber: "CC0603KRX7R9BB103", manufacturerKey: "yageo", primaryCategoryKey: "ceramicCapacitors", attributes: [{ attributeKey: "capacitance", quantityBaseValue: 1e-8, displayValue: "10 nF" }, { attributeKey: "voltageRating", quantityBaseValue: 50, displayValue: "50 V" }, { attributeKey: "tolerance", choiceOptionKey: "tol_10p" }, { attributeKey: "package", choiceOptionKey: "pkg_0603" }, { attributeKey: "dielectricType", choiceOptionKey: "dielectric_x7r" }] },
+    { catalogNumber: "CC0603KRX7R9BB104", manufacturerKey: "yageo", primaryCategoryKey: "ceramicCapacitors", attributes: [{ attributeKey: "capacitance", quantityBaseValue: 1e-7, displayValue: "100 nF" }, { attributeKey: "voltageRating", quantityBaseValue: 50, displayValue: "50 V" }, { attributeKey: "tolerance", choiceOptionKey: "tol_10p" }, { attributeKey: "package", choiceOptionKey: "pkg_0603" }, { attributeKey: "dielectricType", choiceOptionKey: "dielectric_x7r" }], stockEntries: [{ locationKey: "drawer_a2", quantity: 200 }] },
+    { catalogNumber: "CC0603KRX5R9BB105", manufacturerKey: "yageo", primaryCategoryKey: "ceramicCapacitors", attributes: [{ attributeKey: "capacitance", quantityBaseValue: 1e-6, displayValue: "1 µF" }, { attributeKey: "voltageRating", quantityBaseValue: 10, displayValue: "10 V" }, { attributeKey: "tolerance", choiceOptionKey: "tol_10p" }, { attributeKey: "package", choiceOptionKey: "pkg_0603" }, { attributeKey: "dielectricType", choiceOptionKey: "dielectric_x5r" }] },
+    { catalogNumber: "CC0603KRX5R9BB106", manufacturerKey: "yageo", primaryCategoryKey: "ceramicCapacitors", attributes: [{ attributeKey: "capacitance", quantityBaseValue: 1e-5, displayValue: "10 µF" }, { attributeKey: "voltageRating", quantityBaseValue: 10, displayValue: "10 V" }, { attributeKey: "tolerance", choiceOptionKey: "tol_20p" }, { attributeKey: "package", choiceOptionKey: "pkg_0603" }, { attributeKey: "dielectricType", choiceOptionKey: "dielectric_x5r" }] },
     // Panasonic electrolytic
-    { catalogNumber: "EEU-FR1E101", manufacturerKey: "panasonic", primaryCategoryKey: "capacitors", attributes: [{ attributeKey: "capacitance", quantityBaseValue: 1e-4, displayValue: "100 µF" }, { attributeKey: "voltageRating", quantityBaseValue: 25, displayValue: "25 V" }, { attributeKey: "package", choiceOptionKey: "pkg_tht" }, { attributeKey: "dielectricType", choiceOptionKey: "dielectric_aluminum_electrolytic" }], stockEntries: [{ locationKey: "drawer_a2", quantity: 50 }] },
-    { catalogNumber: "EEU-FR1E470", manufacturerKey: "panasonic", primaryCategoryKey: "capacitors", attributes: [{ attributeKey: "capacitance", quantityBaseValue: 4.7e-5, displayValue: "47 µF" }, { attributeKey: "voltageRating", quantityBaseValue: 25, displayValue: "25 V" }, { attributeKey: "package", choiceOptionKey: "pkg_tht" }, { attributeKey: "dielectricType", choiceOptionKey: "dielectric_aluminum_electrolytic" }], stockEntries: [{ locationKey: "drawer_a2", quantity: 50 }] },
-    { catalogNumber: "EEU-FR1E471", manufacturerKey: "panasonic", primaryCategoryKey: "capacitors", attributes: [{ attributeKey: "capacitance", quantityBaseValue: 4.7e-4, displayValue: "470 µF" }, { attributeKey: "voltageRating", quantityBaseValue: 25, displayValue: "25 V" }, { attributeKey: "package", choiceOptionKey: "pkg_tht" }, { attributeKey: "dielectricType", choiceOptionKey: "dielectric_aluminum_electrolytic" }] },
-    { catalogNumber: "EEA-GA1E102", manufacturerKey: "panasonic", primaryCategoryKey: "capacitors", attributes: [{ attributeKey: "capacitance", quantityBaseValue: 1e-3, displayValue: "1000 µF" }, { attributeKey: "voltageRating", quantityBaseValue: 25, displayValue: "25 V" }, { attributeKey: "package", choiceOptionKey: "pkg_tht" }, { attributeKey: "dielectricType", choiceOptionKey: "dielectric_aluminum_electrolytic" }] },
-    { catalogNumber: "EEEFK1E471P", manufacturerKey: "panasonic", primaryCategoryKey: "capacitors", attributes: [{ attributeKey: "capacitance", quantityBaseValue: 4.7e-4, displayValue: "470 µF" }, { attributeKey: "voltageRating", quantityBaseValue: 25, displayValue: "25 V" }, { attributeKey: "dielectricType", choiceOptionKey: "dielectric_aluminum_electrolytic" }] },
+    { catalogNumber: "EEU-FR1E101", manufacturerKey: "panasonic", primaryCategoryKey: "electrolyticCapacitors", attributes: [{ attributeKey: "capacitance", quantityBaseValue: 1e-4, displayValue: "100 µF" }, { attributeKey: "voltageRating", quantityBaseValue: 25, displayValue: "25 V" }, { attributeKey: "package", choiceOptionKey: "pkg_tht" }, { attributeKey: "dielectricType", choiceOptionKey: "dielectric_aluminum_electrolytic" }], stockEntries: [{ locationKey: "drawer_a2", quantity: 50 }] },
+    { catalogNumber: "EEU-FR1E470", manufacturerKey: "panasonic", primaryCategoryKey: "electrolyticCapacitors", attributes: [{ attributeKey: "capacitance", quantityBaseValue: 4.7e-5, displayValue: "47 µF" }, { attributeKey: "voltageRating", quantityBaseValue: 25, displayValue: "25 V" }, { attributeKey: "package", choiceOptionKey: "pkg_tht" }, { attributeKey: "dielectricType", choiceOptionKey: "dielectric_aluminum_electrolytic" }], stockEntries: [{ locationKey: "drawer_a2", quantity: 50 }] },
+    { catalogNumber: "EEU-FR1E471", manufacturerKey: "panasonic", primaryCategoryKey: "electrolyticCapacitors", attributes: [{ attributeKey: "capacitance", quantityBaseValue: 4.7e-4, displayValue: "470 µF" }, { attributeKey: "voltageRating", quantityBaseValue: 25, displayValue: "25 V" }, { attributeKey: "package", choiceOptionKey: "pkg_tht" }, { attributeKey: "dielectricType", choiceOptionKey: "dielectric_aluminum_electrolytic" }] },
+    { catalogNumber: "EEA-GA1E102", manufacturerKey: "panasonic", primaryCategoryKey: "electrolyticCapacitors", attributes: [{ attributeKey: "capacitance", quantityBaseValue: 1e-3, displayValue: "1000 µF" }, { attributeKey: "voltageRating", quantityBaseValue: 25, displayValue: "25 V" }, { attributeKey: "package", choiceOptionKey: "pkg_tht" }, { attributeKey: "dielectricType", choiceOptionKey: "dielectric_aluminum_electrolytic" }] },
+    { catalogNumber: "EEEFK1E471P", manufacturerKey: "panasonic", primaryCategoryKey: "electrolyticCapacitors", attributes: [{ attributeKey: "capacitance", quantityBaseValue: 4.7e-4, displayValue: "470 µF" }, { attributeKey: "voltageRating", quantityBaseValue: 25, displayValue: "25 V" }, { attributeKey: "dielectricType", choiceOptionKey: "dielectric_aluminum_electrolytic" }] },
     // KEMET
-    { catalogNumber: "C0402C104K5RACTU", manufacturerKey: "kemet", primaryCategoryKey: "capacitors", attributes: [{ attributeKey: "capacitance", quantityBaseValue: 1e-7, displayValue: "100 nF" }, { attributeKey: "voltageRating", quantityBaseValue: 50, displayValue: "50 V" }, { attributeKey: "tolerance", choiceOptionKey: "tol_10p" }, { attributeKey: "package", choiceOptionKey: "pkg_0402" }, { attributeKey: "dielectricType", choiceOptionKey: "dielectric_x7r" }] },
-    { catalogNumber: "C0603C104K5RACTU", manufacturerKey: "kemet", primaryCategoryKey: "capacitors", attributes: [{ attributeKey: "capacitance", quantityBaseValue: 1e-7, displayValue: "100 nF" }, { attributeKey: "voltageRating", quantityBaseValue: 50, displayValue: "50 V" }, { attributeKey: "tolerance", choiceOptionKey: "tol_10p" }, { attributeKey: "package", choiceOptionKey: "pkg_0603" }, { attributeKey: "dielectricType", choiceOptionKey: "dielectric_x7r" }] },
-    { catalogNumber: "C0805C104K5RACTU", manufacturerKey: "kemet", primaryCategoryKey: "capacitors", attributes: [{ attributeKey: "capacitance", quantityBaseValue: 1e-7, displayValue: "100 nF" }, { attributeKey: "voltageRating", quantityBaseValue: 50, displayValue: "50 V" }, { attributeKey: "tolerance", choiceOptionKey: "tol_10p" }, { attributeKey: "package", choiceOptionKey: "pkg_0805" }, { attributeKey: "dielectricType", choiceOptionKey: "dielectric_x7r" }] },
-    { catalogNumber: "C1210C226K3RACTU", manufacturerKey: "kemet", primaryCategoryKey: "capacitors", attributes: [{ attributeKey: "capacitance", quantityBaseValue: 2.2e-5, displayValue: "22 µF" }, { attributeKey: "voltageRating", quantityBaseValue: 25, displayValue: "25 V" }, { attributeKey: "tolerance", choiceOptionKey: "tol_10p" }, { attributeKey: "package", choiceOptionKey: "pkg_1210" }, { attributeKey: "dielectricType", choiceOptionKey: "dielectric_x7r" }] },
+    { catalogNumber: "C0402C104K5RACTU", manufacturerKey: "kemet", primaryCategoryKey: "ceramicCapacitors", attributes: [{ attributeKey: "capacitance", quantityBaseValue: 1e-7, displayValue: "100 nF" }, { attributeKey: "voltageRating", quantityBaseValue: 50, displayValue: "50 V" }, { attributeKey: "tolerance", choiceOptionKey: "tol_10p" }, { attributeKey: "package", choiceOptionKey: "pkg_0402" }, { attributeKey: "dielectricType", choiceOptionKey: "dielectric_x7r" }] },
+    { catalogNumber: "C0603C104K5RACTU", manufacturerKey: "kemet", primaryCategoryKey: "ceramicCapacitors", attributes: [{ attributeKey: "capacitance", quantityBaseValue: 1e-7, displayValue: "100 nF" }, { attributeKey: "voltageRating", quantityBaseValue: 50, displayValue: "50 V" }, { attributeKey: "tolerance", choiceOptionKey: "tol_10p" }, { attributeKey: "package", choiceOptionKey: "pkg_0603" }, { attributeKey: "dielectricType", choiceOptionKey: "dielectric_x7r" }] },
+    { catalogNumber: "C0805C104K5RACTU", manufacturerKey: "kemet", primaryCategoryKey: "ceramicCapacitors", attributes: [{ attributeKey: "capacitance", quantityBaseValue: 1e-7, displayValue: "100 nF" }, { attributeKey: "voltageRating", quantityBaseValue: 50, displayValue: "50 V" }, { attributeKey: "tolerance", choiceOptionKey: "tol_10p" }, { attributeKey: "package", choiceOptionKey: "pkg_0805" }, { attributeKey: "dielectricType", choiceOptionKey: "dielectric_x7r" }] },
+    { catalogNumber: "C1210C226K3RACTU", manufacturerKey: "kemet", primaryCategoryKey: "ceramicCapacitors", attributes: [{ attributeKey: "capacitance", quantityBaseValue: 2.2e-5, displayValue: "22 µF" }, { attributeKey: "voltageRating", quantityBaseValue: 25, displayValue: "25 V" }, { attributeKey: "tolerance", choiceOptionKey: "tol_10p" }, { attributeKey: "package", choiceOptionKey: "pkg_1210" }, { attributeKey: "dielectricType", choiceOptionKey: "dielectric_x7r" }] },
     // AVX
-    { catalogNumber: "04025C104KAT2A", manufacturerKey: "avx", primaryCategoryKey: "capacitors", attributes: [{ attributeKey: "capacitance", quantityBaseValue: 1e-7, displayValue: "100 nF" }, { attributeKey: "voltageRating", quantityBaseValue: 25, displayValue: "25 V" }, { attributeKey: "tolerance", choiceOptionKey: "tol_10p" }, { attributeKey: "package", choiceOptionKey: "pkg_0402" }, { attributeKey: "dielectricType", choiceOptionKey: "dielectric_x7r" }] },
-    { catalogNumber: "06031C225KAT2A", manufacturerKey: "avx", primaryCategoryKey: "capacitors", attributes: [{ attributeKey: "capacitance", quantityBaseValue: 2.2e-6, displayValue: "2.2 µF" }, { attributeKey: "voltageRating", quantityBaseValue: 16, displayValue: "16 V" }, { attributeKey: "tolerance", choiceOptionKey: "tol_10p" }, { attributeKey: "package", choiceOptionKey: "pkg_0603" }, { attributeKey: "dielectricType", choiceOptionKey: "dielectric_x5r" }] },
+    { catalogNumber: "04025C104KAT2A", manufacturerKey: "avx", primaryCategoryKey: "ceramicCapacitors", attributes: [{ attributeKey: "capacitance", quantityBaseValue: 1e-7, displayValue: "100 nF" }, { attributeKey: "voltageRating", quantityBaseValue: 25, displayValue: "25 V" }, { attributeKey: "tolerance", choiceOptionKey: "tol_10p" }, { attributeKey: "package", choiceOptionKey: "pkg_0402" }, { attributeKey: "dielectricType", choiceOptionKey: "dielectric_x7r" }] },
+    { catalogNumber: "06031C225KAT2A", manufacturerKey: "avx", primaryCategoryKey: "ceramicCapacitors", attributes: [{ attributeKey: "capacitance", quantityBaseValue: 2.2e-6, displayValue: "2.2 µF" }, { attributeKey: "voltageRating", quantityBaseValue: 16, displayValue: "16 V" }, { attributeKey: "tolerance", choiceOptionKey: "tol_10p" }, { attributeKey: "package", choiceOptionKey: "pkg_0603" }, { attributeKey: "dielectricType", choiceOptionKey: "dielectric_x5r" }] },
 
     // ── Inductors ─────────────────────────────────────────────────────────────
     // Bourns SRR series
@@ -576,14 +1269,14 @@ export const DEMO_PRESET_FIXTURE: DemoPresetFixture = {
     { catalogNumber: "SRR1005-221Y", manufacturerKey: "bourns", primaryCategoryKey: "inductors", attributes: [{ attributeKey: "inductance", quantityBaseValue: 2.2e-4, displayValue: "220 µH" }, { attributeKey: "currentRating", quantityBaseValue: 0.55, displayValue: "550 mA" }, { attributeKey: "dcr", quantityBaseValue: 0.85, displayValue: "850 mΩ" }, { attributeKey: "selfResonantFrequency", quantityBaseValue: 6000000.0, displayValue: "6 MHz" }] },
 
     // ── Diodes ────────────────────────────────────────────────────────────────
-    { catalogNumber: "1N4148W", manufacturerKey: "diodesinc", primaryCategoryKey: "diodes", attributes: [{ attributeKey: "package", choiceOptionKey: "pkg_sot323" }, { attributeKey: "voltageRating", quantityBaseValue: 100, displayValue: "100 V" }, { attributeKey: "currentRating", quantityBaseValue: 0.15, displayValue: "150 mA" }, { attributeKey: "forwardVoltage", quantityBaseValue: 1.0, displayValue: "1 V" }], stockEntries: [{ locationKey: "drawer_a3", quantity: 200 }] },
-    { catalogNumber: "1N4148WT", manufacturerKey: "vishay", primaryCategoryKey: "diodes", attributes: [{ attributeKey: "package", choiceOptionKey: "pkg_sot323" }, { attributeKey: "voltageRating", quantityBaseValue: 100, displayValue: "100 V" }, { attributeKey: "currentRating", quantityBaseValue: 0.15, displayValue: "150 mA" }, { attributeKey: "forwardVoltage", quantityBaseValue: 1.0, displayValue: "1 V" }] },
-    { catalogNumber: "1N5819-T", manufacturerKey: "diodesinc", primaryCategoryKey: "diodes", attributes: [{ attributeKey: "package", choiceOptionKey: "pkg_sma" }, { attributeKey: "voltageRating", quantityBaseValue: 40, displayValue: "40 V" }, { attributeKey: "currentRating", quantityBaseValue: 1, displayValue: "1 A" }, { attributeKey: "forwardVoltage", quantityBaseValue: 0.55, displayValue: "550 mV" }], stockEntries: [{ locationKey: "drawer_a3", quantity: 80 }] },
-    { catalogNumber: "1N4001RLG", manufacturerKey: "onsemi", primaryCategoryKey: "diodes", attributes: [{ attributeKey: "package", choiceOptionKey: "pkg_tht" }, { attributeKey: "voltageRating", quantityBaseValue: 50, displayValue: "50 V" }, { attributeKey: "currentRating", quantityBaseValue: 1, displayValue: "1 A" }, { attributeKey: "forwardVoltage", quantityBaseValue: 1.1, displayValue: "1.1 V" }], stockEntries: [{ locationKey: "drawer_a3", quantity: 100 }] },
-    { catalogNumber: "1N4007RLG", manufacturerKey: "onsemi", primaryCategoryKey: "diodes", attributes: [{ attributeKey: "package", choiceOptionKey: "pkg_tht" }, { attributeKey: "voltageRating", quantityBaseValue: 1000, displayValue: "1000 V" }, { attributeKey: "currentRating", quantityBaseValue: 1, displayValue: "1 A" }, { attributeKey: "forwardVoltage", quantityBaseValue: 1.1, displayValue: "1.1 V" }], stockEntries: [{ locationKey: "drawer_a3", quantity: 100 }] },
-    { catalogNumber: "BAT54S", manufacturerKey: "vishay", primaryCategoryKey: "diodes", attributes: [{ attributeKey: "package", choiceOptionKey: "pkg_sot23" }, { attributeKey: "voltageRating", quantityBaseValue: 30, displayValue: "30 V" }, { attributeKey: "currentRating", quantityBaseValue: 0.2, displayValue: "200 mA" }, { attributeKey: "forwardVoltage", quantityBaseValue: 0.4, displayValue: "400 mV" }] },
-    { catalogNumber: "SS14", manufacturerKey: "vishay", primaryCategoryKey: "diodes", attributes: [{ attributeKey: "package", choiceOptionKey: "pkg_sma" }, { attributeKey: "voltageRating", quantityBaseValue: 40, displayValue: "40 V" }, { attributeKey: "currentRating", quantityBaseValue: 1, displayValue: "1 A" }, { attributeKey: "forwardVoltage", quantityBaseValue: 0.55, displayValue: "550 mV" }] },
-    { catalogNumber: "SS34", manufacturerKey: "vishay", primaryCategoryKey: "diodes", attributes: [{ attributeKey: "package", choiceOptionKey: "pkg_smb" }, { attributeKey: "voltageRating", quantityBaseValue: 40, displayValue: "40 V" }, { attributeKey: "currentRating", quantityBaseValue: 3, displayValue: "3 A" }, { attributeKey: "forwardVoltage", quantityBaseValue: 0.5, displayValue: "500 mV" }] },
+    { catalogNumber: "1N4148W", manufacturerKey: "diodesinc", primaryCategoryKey: "universalDiodes", attributes: [{ attributeKey: "package", choiceOptionKey: "pkg_sot323" }, { attributeKey: "voltageRating", quantityBaseValue: 100, displayValue: "100 V" }, { attributeKey: "currentRating", quantityBaseValue: 0.15, displayValue: "150 mA" }, { attributeKey: "forwardVoltage", quantityBaseValue: 1.0, displayValue: "1 V" }], stockEntries: [{ locationKey: "drawer_a3", quantity: 200 }] },
+    { catalogNumber: "1N4148WT", manufacturerKey: "vishay", primaryCategoryKey: "universalDiodes", attributes: [{ attributeKey: "package", choiceOptionKey: "pkg_sot323" }, { attributeKey: "voltageRating", quantityBaseValue: 100, displayValue: "100 V" }, { attributeKey: "currentRating", quantityBaseValue: 0.15, displayValue: "150 mA" }, { attributeKey: "forwardVoltage", quantityBaseValue: 1.0, displayValue: "1 V" }] },
+    { catalogNumber: "1N5819-T", manufacturerKey: "diodesinc", primaryCategoryKey: "schottkyDiodes", attributes: [{ attributeKey: "package", choiceOptionKey: "pkg_sma" }, { attributeKey: "voltageRating", quantityBaseValue: 40, displayValue: "40 V" }, { attributeKey: "currentRating", quantityBaseValue: 1, displayValue: "1 A" }, { attributeKey: "forwardVoltage", quantityBaseValue: 0.55, displayValue: "550 mV" }], stockEntries: [{ locationKey: "drawer_a3", quantity: 80 }] },
+    { catalogNumber: "1N4001RLG", manufacturerKey: "onsemi", primaryCategoryKey: "rectifierDiodes", attributes: [{ attributeKey: "package", choiceOptionKey: "pkg_tht" }, { attributeKey: "voltageRating", quantityBaseValue: 50, displayValue: "50 V" }, { attributeKey: "currentRating", quantityBaseValue: 1, displayValue: "1 A" }, { attributeKey: "forwardVoltage", quantityBaseValue: 1.1, displayValue: "1.1 V" }], stockEntries: [{ locationKey: "drawer_a3", quantity: 100 }] },
+    { catalogNumber: "1N4007RLG", manufacturerKey: "onsemi", primaryCategoryKey: "rectifierDiodes", attributes: [{ attributeKey: "package", choiceOptionKey: "pkg_tht" }, { attributeKey: "voltageRating", quantityBaseValue: 1000, displayValue: "1000 V" }, { attributeKey: "currentRating", quantityBaseValue: 1, displayValue: "1 A" }, { attributeKey: "forwardVoltage", quantityBaseValue: 1.1, displayValue: "1.1 V" }], stockEntries: [{ locationKey: "drawer_a3", quantity: 100 }] },
+    { catalogNumber: "BAT54S", manufacturerKey: "vishay", primaryCategoryKey: "schottkyDiodes", attributes: [{ attributeKey: "package", choiceOptionKey: "pkg_sot23" }, { attributeKey: "voltageRating", quantityBaseValue: 30, displayValue: "30 V" }, { attributeKey: "currentRating", quantityBaseValue: 0.2, displayValue: "200 mA" }, { attributeKey: "forwardVoltage", quantityBaseValue: 0.4, displayValue: "400 mV" }] },
+    { catalogNumber: "SS14", manufacturerKey: "vishay", primaryCategoryKey: "schottkyDiodes", attributes: [{ attributeKey: "package", choiceOptionKey: "pkg_sma" }, { attributeKey: "voltageRating", quantityBaseValue: 40, displayValue: "40 V" }, { attributeKey: "currentRating", quantityBaseValue: 1, displayValue: "1 A" }, { attributeKey: "forwardVoltage", quantityBaseValue: 0.55, displayValue: "550 mV" }] },
+    { catalogNumber: "SS34", manufacturerKey: "vishay", primaryCategoryKey: "schottkyDiodes", attributes: [{ attributeKey: "package", choiceOptionKey: "pkg_smb" }, { attributeKey: "voltageRating", quantityBaseValue: 40, displayValue: "40 V" }, { attributeKey: "currentRating", quantityBaseValue: 3, displayValue: "3 A" }, { attributeKey: "forwardVoltage", quantityBaseValue: 0.5, displayValue: "500 mV" }] },
     // ── Zener Diodes ─────────────────────────────────────────────────────────
     // Vishay BZX84C SOT-23
     { catalogNumber: "BZX84C3V3", manufacturerKey: "vishay", primaryCategoryKey: "zeners", attributes: [{ attributeKey: "package", choiceOptionKey: "pkg_sot23" }, { attributeKey: "zenerVoltage", quantityBaseValue: 3.3, displayValue: "3.3 V" }, { attributeKey: "powerRating", quantityBaseValue: 0.35, displayValue: "350 mW" }] },
@@ -666,35 +1359,35 @@ export const DEMO_PRESET_FIXTURE: DemoPresetFixture = {
     { catalogNumber: "LM556CN", manufacturerKey: "ti", primaryCategoryKey: "timers", attributes: [{ attributeKey: "package", choiceOptionKey: "pkg_dip14" }] },
 
     // ── Logic ICs ─────────────────────────────────────────────────────────────
-    { catalogNumber: "SN74HC00N", manufacturerKey: "ti", primaryCategoryKey: "logic", attributes: [{ attributeKey: "package", choiceOptionKey: "pkg_dip14" }], stockEntries: [{ locationKey: "drawer_a5", quantity: 20 }] },
-    { catalogNumber: "SN74HC04N", manufacturerKey: "ti", primaryCategoryKey: "logic", attributes: [{ attributeKey: "package", choiceOptionKey: "pkg_dip14" }], stockEntries: [{ locationKey: "drawer_a5", quantity: 20 }] },
-    { catalogNumber: "SN74HC08N", manufacturerKey: "ti", primaryCategoryKey: "logic", attributes: [{ attributeKey: "package", choiceOptionKey: "pkg_dip14" }] },
-    { catalogNumber: "SN74HC32N", manufacturerKey: "ti", primaryCategoryKey: "logic", attributes: [{ attributeKey: "package", choiceOptionKey: "pkg_dip14" }] },
-    { catalogNumber: "SN74HC86N", manufacturerKey: "ti", primaryCategoryKey: "logic", attributes: [{ attributeKey: "package", choiceOptionKey: "pkg_dip14" }] },
-    { catalogNumber: "SN74HC595N", manufacturerKey: "ti", primaryCategoryKey: "logic", attributes: [{ attributeKey: "package", choiceOptionKey: "pkg_dip16" }], stockEntries: [{ locationKey: "drawer_a5", quantity: 15 }] },
-    { catalogNumber: "SN74HC245N", manufacturerKey: "ti", primaryCategoryKey: "logic", attributes: [{ attributeKey: "package", choiceOptionKey: "pkg_dip20" }] },
-    { catalogNumber: "SN74HC74N", manufacturerKey: "ti", primaryCategoryKey: "logic", attributes: [{ attributeKey: "package", choiceOptionKey: "pkg_dip14" }] },
-    { catalogNumber: "SN74HC164N", manufacturerKey: "ti", primaryCategoryKey: "logic", attributes: [{ attributeKey: "package", choiceOptionKey: "pkg_dip14" }] },
-    { catalogNumber: "SN74HC138N", manufacturerKey: "ti", primaryCategoryKey: "logic", attributes: [{ attributeKey: "package", choiceOptionKey: "pkg_dip16" }] },
-    { catalogNumber: "CD4017BE", manufacturerKey: "ti", primaryCategoryKey: "logic", attributes: [{ attributeKey: "package", choiceOptionKey: "pkg_dip16" }] },
+    { catalogNumber: "SN74HC00N", manufacturerKey: "ti", primaryCategoryKey: "logicGates", attributes: [{ attributeKey: "package", choiceOptionKey: "pkg_dip14" }], stockEntries: [{ locationKey: "drawer_a5", quantity: 20 }] },
+    { catalogNumber: "SN74HC04N", manufacturerKey: "ti", primaryCategoryKey: "logicGates", attributes: [{ attributeKey: "package", choiceOptionKey: "pkg_dip14" }], stockEntries: [{ locationKey: "drawer_a5", quantity: 20 }] },
+    { catalogNumber: "SN74HC08N", manufacturerKey: "ti", primaryCategoryKey: "logicGates", attributes: [{ attributeKey: "package", choiceOptionKey: "pkg_dip14" }] },
+    { catalogNumber: "SN74HC32N", manufacturerKey: "ti", primaryCategoryKey: "logicGates", attributes: [{ attributeKey: "package", choiceOptionKey: "pkg_dip14" }] },
+    { catalogNumber: "SN74HC86N", manufacturerKey: "ti", primaryCategoryKey: "logicGates", attributes: [{ attributeKey: "package", choiceOptionKey: "pkg_dip14" }] },
+    { catalogNumber: "SN74HC595N", manufacturerKey: "ti", primaryCategoryKey: "shiftRegisters", attributes: [{ attributeKey: "package", choiceOptionKey: "pkg_dip16" }], stockEntries: [{ locationKey: "drawer_a5", quantity: 15 }] },
+    { catalogNumber: "SN74HC245N", manufacturerKey: "ti", primaryCategoryKey: "logicBuffersTransceivers", attributes: [{ attributeKey: "package", choiceOptionKey: "pkg_dip20" }] },
+    { catalogNumber: "SN74HC74N", manufacturerKey: "ti", primaryCategoryKey: "flipFlopsLatches", attributes: [{ attributeKey: "package", choiceOptionKey: "pkg_dip14" }] },
+    { catalogNumber: "SN74HC164N", manufacturerKey: "ti", primaryCategoryKey: "shiftRegisters", attributes: [{ attributeKey: "package", choiceOptionKey: "pkg_dip14" }] },
+    { catalogNumber: "SN74HC138N", manufacturerKey: "ti", primaryCategoryKey: "decodersMultiplexers", attributes: [{ attributeKey: "package", choiceOptionKey: "pkg_dip16" }] },
+    { catalogNumber: "CD4017BE", manufacturerKey: "ti", primaryCategoryKey: "counters", attributes: [{ attributeKey: "package", choiceOptionKey: "pkg_dip16" }] },
 
     // ── Connectors ────────────────────────────────────────────────────────────
-    { catalogNumber: "B2B-PH-K-S(LF)(SN)", manufacturerKey: "jst", primaryCategoryKey: "connectors", attributes: [{ attributeKey: "pinCount", numberValue: 2 }, { attributeKey: "pitch", quantityBaseValue: 0.002, displayValue: "2 mm" }, { attributeKey: "mountingType", choiceOptionKey: "mount_tht" }, { attributeKey: "gender", choiceOptionKey: "gender_male" }], stockEntries: [{ locationKey: "drawer_b3", quantity: 50 }] },
-    { catalogNumber: "B3B-PH-K-S(LF)(SN)", manufacturerKey: "jst", primaryCategoryKey: "connectors", attributes: [{ attributeKey: "pinCount", numberValue: 3 }, { attributeKey: "pitch", quantityBaseValue: 0.002, displayValue: "2 mm" }, { attributeKey: "mountingType", choiceOptionKey: "mount_tht" }, { attributeKey: "gender", choiceOptionKey: "gender_male" }], stockEntries: [{ locationKey: "drawer_b3", quantity: 40 }] },
-    { catalogNumber: "B4B-PH-K-S(LF)(SN)", manufacturerKey: "jst", primaryCategoryKey: "connectors", attributes: [{ attributeKey: "pinCount", numberValue: 4 }, { attributeKey: "pitch", quantityBaseValue: 0.002, displayValue: "2 mm" }, { attributeKey: "mountingType", choiceOptionKey: "mount_tht" }, { attributeKey: "gender", choiceOptionKey: "gender_male" }], stockEntries: [{ locationKey: "drawer_b3", quantity: 30 }] },
-    { catalogNumber: "B6B-PH-K-S(LF)(SN)", manufacturerKey: "jst", primaryCategoryKey: "connectors", attributes: [{ attributeKey: "pinCount", numberValue: 6 }, { attributeKey: "pitch", quantityBaseValue: 0.002, displayValue: "2 mm" }, { attributeKey: "mountingType", choiceOptionKey: "mount_tht" }, { attributeKey: "gender", choiceOptionKey: "gender_male" }] },
-    { catalogNumber: "B8B-PH-K-S(LF)(SN)", manufacturerKey: "jst", primaryCategoryKey: "connectors", attributes: [{ attributeKey: "pinCount", numberValue: 8 }, { attributeKey: "pitch", quantityBaseValue: 0.002, displayValue: "2 mm" }, { attributeKey: "mountingType", choiceOptionKey: "mount_tht" }, { attributeKey: "gender", choiceOptionKey: "gender_male" }] },
-    { catalogNumber: "PHR-2", manufacturerKey: "jst", primaryCategoryKey: "connectors", attributes: [{ attributeKey: "pinCount", numberValue: 2 }, { attributeKey: "pitch", quantityBaseValue: 0.002, displayValue: "2 mm" }, { attributeKey: "gender", choiceOptionKey: "gender_female" }], stockEntries: [{ locationKey: "drawer_b3", quantity: 50 }] },
-    { catalogNumber: "PHR-3", manufacturerKey: "jst", primaryCategoryKey: "connectors", attributes: [{ attributeKey: "pinCount", numberValue: 3 }, { attributeKey: "pitch", quantityBaseValue: 0.002, displayValue: "2 mm" }, { attributeKey: "gender", choiceOptionKey: "gender_female" }] },
-    { catalogNumber: "PHR-4", manufacturerKey: "jst", primaryCategoryKey: "connectors", attributes: [{ attributeKey: "pinCount", numberValue: 4 }, { attributeKey: "pitch", quantityBaseValue: 0.002, displayValue: "2 mm" }, { attributeKey: "gender", choiceOptionKey: "gender_female" }] },
-    { catalogNumber: "68602-140HLF", manufacturerKey: "amphenol", primaryCategoryKey: "connectors", attributes: [{ attributeKey: "pinCount", numberValue: 40 }, { attributeKey: "pitch", quantityBaseValue: 0.00254, displayValue: "2.54 mm" }, { attributeKey: "mountingType", choiceOptionKey: "mount_tht" }, { attributeKey: "gender", choiceOptionKey: "gender_male" }], stockEntries: [{ locationKey: "drawer_b3", quantity: 20 }] },
-    { catalogNumber: "67996-240HLF", manufacturerKey: "amphenol", primaryCategoryKey: "connectors", attributes: [{ attributeKey: "pinCount", numberValue: 40 }, { attributeKey: "pitch", quantityBaseValue: 0.00254, displayValue: "2.54 mm" }, { attributeKey: "gender", choiceOptionKey: "gender_female" }] },
-    { catalogNumber: "MHRD1260T1", manufacturerKey: "amphenol", primaryCategoryKey: "connectors", attributes: [{ attributeKey: "pinCount", numberValue: 6 }, { attributeKey: "pitch", quantityBaseValue: 0.00254, displayValue: "2.54 mm" }, { attributeKey: "mountingType", choiceOptionKey: "mount_tht" }, { attributeKey: "gender", choiceOptionKey: "gender_male" }] },
-    { catalogNumber: "10118194-0001LF", manufacturerKey: "amphenol", primaryCategoryKey: "connectors", attributes: [{ attributeKey: "pinCount", numberValue: 5 }, { attributeKey: "pitch", quantityBaseValue: 0.00254, displayValue: "2.54 mm" }, { attributeKey: "mountingType", choiceOptionKey: "mount_tht" }, { attributeKey: "gender", choiceOptionKey: "gender_male" }] },
-    { catalogNumber: "0022232041", manufacturerKey: "molex", primaryCategoryKey: "connectors", attributes: [{ attributeKey: "pinCount", numberValue: 4 }, { attributeKey: "pitch", quantityBaseValue: 0.00254, displayValue: "2.54 mm" }, { attributeKey: "gender", choiceOptionKey: "gender_female" }], stockEntries: [{ locationKey: "drawer_b3", quantity: 25 }] },
-    { catalogNumber: "0022232051", manufacturerKey: "molex", primaryCategoryKey: "connectors", attributes: [{ attributeKey: "pinCount", numberValue: 5 }, { attributeKey: "pitch", quantityBaseValue: 0.00254, displayValue: "2.54 mm" }, { attributeKey: "gender", choiceOptionKey: "gender_female" }] },
-    { catalogNumber: "0022232061", manufacturerKey: "molex", primaryCategoryKey: "connectors", attributes: [{ attributeKey: "pinCount", numberValue: 6 }, { attributeKey: "pitch", quantityBaseValue: 0.00254, displayValue: "2.54 mm" }, { attributeKey: "gender", choiceOptionKey: "gender_female" }] },
-    { catalogNumber: "47589-0001", manufacturerKey: "molex", primaryCategoryKey: "connectors", attributes: [{ attributeKey: "pinCount", numberValue: 5 }, { attributeKey: "pitch", quantityBaseValue: 0.00254, displayValue: "2.54 mm" }, { attributeKey: "mountingType", choiceOptionKey: "mount_tht" }, { attributeKey: "gender", choiceOptionKey: "gender_male" }] }
+    { catalogNumber: "B2B-PH-K-S(LF)(SN)", manufacturerKey: "jst", primaryCategoryKey: "boardHeaders", attributes: [{ attributeKey: "pinCount", numberValue: 2 }, { attributeKey: "pitch", quantityBaseValue: 0.002, displayValue: "2 mm" }, { attributeKey: "mountingType", choiceOptionKey: "mount_tht" }, { attributeKey: "gender", choiceOptionKey: "gender_male" }], stockEntries: [{ locationKey: "drawer_b3", quantity: 50 }] },
+    { catalogNumber: "B3B-PH-K-S(LF)(SN)", manufacturerKey: "jst", primaryCategoryKey: "boardHeaders", attributes: [{ attributeKey: "pinCount", numberValue: 3 }, { attributeKey: "pitch", quantityBaseValue: 0.002, displayValue: "2 mm" }, { attributeKey: "mountingType", choiceOptionKey: "mount_tht" }, { attributeKey: "gender", choiceOptionKey: "gender_male" }], stockEntries: [{ locationKey: "drawer_b3", quantity: 40 }] },
+    { catalogNumber: "B4B-PH-K-S(LF)(SN)", manufacturerKey: "jst", primaryCategoryKey: "boardHeaders", attributes: [{ attributeKey: "pinCount", numberValue: 4 }, { attributeKey: "pitch", quantityBaseValue: 0.002, displayValue: "2 mm" }, { attributeKey: "mountingType", choiceOptionKey: "mount_tht" }, { attributeKey: "gender", choiceOptionKey: "gender_male" }], stockEntries: [{ locationKey: "drawer_b3", quantity: 30 }] },
+    { catalogNumber: "B6B-PH-K-S(LF)(SN)", manufacturerKey: "jst", primaryCategoryKey: "boardHeaders", attributes: [{ attributeKey: "pinCount", numberValue: 6 }, { attributeKey: "pitch", quantityBaseValue: 0.002, displayValue: "2 mm" }, { attributeKey: "mountingType", choiceOptionKey: "mount_tht" }, { attributeKey: "gender", choiceOptionKey: "gender_male" }] },
+    { catalogNumber: "B8B-PH-K-S(LF)(SN)", manufacturerKey: "jst", primaryCategoryKey: "boardHeaders", attributes: [{ attributeKey: "pinCount", numberValue: 8 }, { attributeKey: "pitch", quantityBaseValue: 0.002, displayValue: "2 mm" }, { attributeKey: "mountingType", choiceOptionKey: "mount_tht" }, { attributeKey: "gender", choiceOptionKey: "gender_male" }] },
+    { catalogNumber: "PHR-2", manufacturerKey: "jst", primaryCategoryKey: "wireHousings", attributes: [{ attributeKey: "pinCount", numberValue: 2 }, { attributeKey: "pitch", quantityBaseValue: 0.002, displayValue: "2 mm" }, { attributeKey: "gender", choiceOptionKey: "gender_female" }], stockEntries: [{ locationKey: "drawer_b3", quantity: 50 }] },
+    { catalogNumber: "PHR-3", manufacturerKey: "jst", primaryCategoryKey: "wireHousings", attributes: [{ attributeKey: "pinCount", numberValue: 3 }, { attributeKey: "pitch", quantityBaseValue: 0.002, displayValue: "2 mm" }, { attributeKey: "gender", choiceOptionKey: "gender_female" }] },
+    { catalogNumber: "PHR-4", manufacturerKey: "jst", primaryCategoryKey: "wireHousings", attributes: [{ attributeKey: "pinCount", numberValue: 4 }, { attributeKey: "pitch", quantityBaseValue: 0.002, displayValue: "2 mm" }, { attributeKey: "gender", choiceOptionKey: "gender_female" }] },
+    { catalogNumber: "68602-140HLF", manufacturerKey: "amphenol", primaryCategoryKey: "boardHeaders", attributes: [{ attributeKey: "pinCount", numberValue: 40 }, { attributeKey: "pitch", quantityBaseValue: 0.00254, displayValue: "2.54 mm" }, { attributeKey: "mountingType", choiceOptionKey: "mount_tht" }, { attributeKey: "gender", choiceOptionKey: "gender_male" }], stockEntries: [{ locationKey: "drawer_b3", quantity: 20 }] },
+    { catalogNumber: "67996-240HLF", manufacturerKey: "amphenol", primaryCategoryKey: "wireHousings", attributes: [{ attributeKey: "pinCount", numberValue: 40 }, { attributeKey: "pitch", quantityBaseValue: 0.00254, displayValue: "2.54 mm" }, { attributeKey: "gender", choiceOptionKey: "gender_female" }] },
+    { catalogNumber: "MHRD1260T1", manufacturerKey: "amphenol", primaryCategoryKey: "boardHeaders", attributes: [{ attributeKey: "pinCount", numberValue: 6 }, { attributeKey: "pitch", quantityBaseValue: 0.00254, displayValue: "2.54 mm" }, { attributeKey: "mountingType", choiceOptionKey: "mount_tht" }, { attributeKey: "gender", choiceOptionKey: "gender_male" }] },
+    { catalogNumber: "10118194-0001LF", manufacturerKey: "amphenol", primaryCategoryKey: "boardHeaders", attributes: [{ attributeKey: "pinCount", numberValue: 5 }, { attributeKey: "pitch", quantityBaseValue: 0.00254, displayValue: "2.54 mm" }, { attributeKey: "mountingType", choiceOptionKey: "mount_tht" }, { attributeKey: "gender", choiceOptionKey: "gender_male" }] },
+    { catalogNumber: "0022232041", manufacturerKey: "molex", primaryCategoryKey: "wireHousings", attributes: [{ attributeKey: "pinCount", numberValue: 4 }, { attributeKey: "pitch", quantityBaseValue: 0.00254, displayValue: "2.54 mm" }, { attributeKey: "gender", choiceOptionKey: "gender_female" }], stockEntries: [{ locationKey: "drawer_b3", quantity: 25 }] },
+    { catalogNumber: "0022232051", manufacturerKey: "molex", primaryCategoryKey: "wireHousings", attributes: [{ attributeKey: "pinCount", numberValue: 5 }, { attributeKey: "pitch", quantityBaseValue: 0.00254, displayValue: "2.54 mm" }, { attributeKey: "gender", choiceOptionKey: "gender_female" }] },
+    { catalogNumber: "0022232061", manufacturerKey: "molex", primaryCategoryKey: "wireHousings", attributes: [{ attributeKey: "pinCount", numberValue: 6 }, { attributeKey: "pitch", quantityBaseValue: 0.00254, displayValue: "2.54 mm" }, { attributeKey: "gender", choiceOptionKey: "gender_female" }] },
+    { catalogNumber: "47589-0001", manufacturerKey: "molex", primaryCategoryKey: "boardHeaders", attributes: [{ attributeKey: "pinCount", numberValue: 5 }, { attributeKey: "pitch", quantityBaseValue: 0.00254, displayValue: "2.54 mm" }, { attributeKey: "mountingType", choiceOptionKey: "mount_tht" }, { attributeKey: "gender", choiceOptionKey: "gender_male" }] }
   ],
 
   shoppingLists: [

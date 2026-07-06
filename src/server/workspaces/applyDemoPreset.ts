@@ -30,44 +30,33 @@ function normalize(name: string): string {
   return name.toLowerCase().trim();
 }
 
-export async function applyDemoPreset(
+export type DictionaryFixtureResult = {
+  attributeIdByKey: Map<string, string>;
+  choiceOptionIdByKey: Map<string, string>;
+  categoryIdByKey: Map<string, string>;
+  organizationIdByKey: Map<string, string>;
+  attributesCreated: number;
+  categoriesCreated: number;
+  organizationsCreated: number;
+};
+
+/**
+ * Seeds the dictionary layer shared by every preset that uses `DemoPresetFixture`:
+ * attributes + choice options, categories + closures + attribute bindings, and
+ * manufacturer/supplier organizations. Idempotent via upsert-by-normalized-name.
+ */
+export async function applyDictionaryFixture(
   prisma: PrismaClient,
   workspaceId: string,
-  unitId: string,
-  preset: DemoPreset,
-  fixture: DemoPresetFixture,
-  primaryCurrency?: string
-): Promise<ApplyDemoPresetResult> {
-  if (preset === "empty") {
-    return {
-      attributesCreated: 0,
-      categoriesCreated: 0,
-      manufacturersCreated: 0,
-      locationsCreated: 0,
-      partsCreated: 0,
-      inventoryEntriesCreated: 0,
-      shoppingListsCreated: 0,
-      purchaseOrdersCreated: 0,
-      designsCreated: 0
-    };
-  }
-
-  const result: ApplyDemoPresetResult = {
-    attributesCreated: 0,
-    categoriesCreated: 0,
-    manufacturersCreated: 0,
-    locationsCreated: 0,
-    partsCreated: 0,
-    inventoryEntriesCreated: 0,
-    shoppingListsCreated: 0,
-    purchaseOrdersCreated: 0,
-    designsCreated: 0
-  };
+  fixture: DemoPresetFixture
+): Promise<DictionaryFixtureResult> {
+  let attributesCreated = 0;
+  let categoriesCreated = 0;
+  let organizationsCreated = 0;
 
   // ── Step 1: Attributes ─────────────────────────────────────────────────────
   const attributeIdByKey = new Map<string, string>();
   const choiceOptionIdByKey = new Map<string, string>();
-  const attributeFixtureByKey = new Map(fixture.attributes.map((attr) => [attr.key, attr]));
 
   for (const attr of fixture.attributes) {
     const normalizedName = normalize(attr.name);
@@ -84,7 +73,7 @@ export async function applyDemoPreset(
       select: { id: true }
     });
     attributeIdByKey.set(attr.key, record.id);
-    result.attributesCreated++;
+    attributesCreated++;
 
     if (attr.choices) {
       for (const choice of attr.choices) {
@@ -144,7 +133,7 @@ export async function applyDemoPreset(
         data: { workspaceId, name: cat.name, isAssignable: cat.isAssignable, parentId },
         select: { id: true }
       });
-      result.categoriesCreated++;
+      categoriesCreated++;
 
       // Self-closure
       await prisma.partCategoryClosure.create({
@@ -236,9 +225,66 @@ export async function applyDemoPreset(
     });
     if (!organizationIdByKey.has(org.key)) {
       organizationIdByKey.set(org.key, record.id);
-      result.manufacturersCreated++;
+      organizationsCreated++;
     }
   }
+
+  return {
+    attributeIdByKey,
+    choiceOptionIdByKey,
+    categoryIdByKey,
+    organizationIdByKey,
+    attributesCreated,
+    categoriesCreated,
+    organizationsCreated
+  };
+}
+
+export async function applyDemoPreset(
+  prisma: PrismaClient,
+  workspaceId: string,
+  unitId: string,
+  preset: DemoPreset,
+  fixture: DemoPresetFixture,
+  primaryCurrency?: string
+): Promise<ApplyDemoPresetResult> {
+  if (preset === "empty") {
+    return {
+      attributesCreated: 0,
+      categoriesCreated: 0,
+      manufacturersCreated: 0,
+      locationsCreated: 0,
+      partsCreated: 0,
+      inventoryEntriesCreated: 0,
+      shoppingListsCreated: 0,
+      purchaseOrdersCreated: 0,
+      designsCreated: 0
+    };
+  }
+
+  const attributeFixtureByKey = new Map(fixture.attributes.map((attr) => [attr.key, attr]));
+
+  const {
+    attributeIdByKey,
+    choiceOptionIdByKey,
+    categoryIdByKey,
+    organizationIdByKey,
+    attributesCreated,
+    categoriesCreated,
+    organizationsCreated
+  } = await applyDictionaryFixture(prisma, workspaceId, fixture);
+
+  const result: ApplyDemoPresetResult = {
+    attributesCreated,
+    categoriesCreated,
+    manufacturersCreated: organizationsCreated,
+    locationsCreated: 0,
+    partsCreated: 0,
+    inventoryEntriesCreated: 0,
+    shoppingListsCreated: 0,
+    purchaseOrdersCreated: 0,
+    designsCreated: 0
+  };
 
   // ── Step 4: Storage locations ─────────────────────────────────────────────
   const locationIdByKey = new Map<string, string>();

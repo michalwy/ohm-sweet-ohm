@@ -7,6 +7,7 @@ import { hasWorkspacePermission } from "@/server/access-control/authorize";
 import { prisma } from "@/server/db/prisma";
 import { ensureDefaultUnitsForWorkspace, getDefaultPartUnitId } from "@/server/units/defaultUnits";
 import { applyDemoPreset, type DemoPreset } from "@/server/workspaces/applyDemoPreset";
+import { applyStarterDictionaries } from "@/server/workspaces/applyStarterDictionaries";
 import {
   archiveWorkspace as archiveWorkspaceMutation,
   restoreWorkspace as restoreWorkspaceMutation
@@ -38,8 +39,10 @@ export async function createWorkspace(formData: FormData) {
   const name = getRequiredFormValue(formData, "name");
   const currency = getRequiredFormValue(formData, "currency").toUpperCase();
   const rawPreset = getRequiredFormValue(formData, "preset");
-  const preset: DemoPreset =
-    rawPreset === "parts-only" || rawPreset === "parts-and-orders" ? rawPreset : "empty";
+  const preset: DemoPreset | "starter-dictionaries" =
+    rawPreset === "parts-only" || rawPreset === "parts-and-orders" || rawPreset === "starter-dictionaries"
+      ? rawPreset
+      : "empty";
 
   if (!name) {
     redirect(`/workspaces?error=${workspaceCopy.missingName}`);
@@ -60,7 +63,9 @@ export async function createWorkspace(formData: FormData) {
 
     workspaceSlug = workspace.slug;
 
-    if (preset !== "empty") {
+    if (preset === "starter-dictionaries") {
+      await applyStarterDictionaries(prisma, workspace.id);
+    } else if (preset !== "empty") {
       const unitId = await getDefaultPartUnitId(prisma, workspace.id);
       await applyDemoPreset(prisma, workspace.id, unitId, preset, DEMO_PRESET_FIXTURE, workspace.primaryCurrency);
     }
@@ -235,6 +240,36 @@ export async function resetWorkspaceToDemoPreset(
     DEMO_PRESET_FIXTURE,
     context.workspace.primaryCurrency
   );
+
+  return { ok: true };
+}
+
+export async function loadStarterDictionaries(
+  workspaceSlug: string
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const session = await getCurrentSession();
+
+  if (!session) {
+    return { ok: false, error: "unauthenticated" };
+  }
+
+  const context = await getCurrentWorkspaceContextBySlug(workspaceSlug);
+
+  if (!context) {
+    return { ok: false, error: "workspace-not-found" };
+  }
+
+  const allowed = await hasWorkspacePermission({
+    userId: context.user.id,
+    workspaceId: context.workspace.id,
+    permission: "admin"
+  }).catch(() => false);
+
+  if (!allowed) {
+    return { ok: false, error: "workspace-permission-denied" };
+  }
+
+  await applyStarterDictionaries(prisma, context.workspace.id);
 
   return { ok: true };
 }

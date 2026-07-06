@@ -34,6 +34,9 @@ const copy = {
     "~250 real parts with categories, attributes, and stock, plus example designs with bills of materials.",
   presetPartsAndOrders: "Demo parts + orders",
   presetPartsAndOrdersHelp: "Everything above, plus shopping lists and purchase orders.",
+  presetStarterDictionaries: "Starter dictionaries only",
+  presetStarterDictionariesHelp:
+    "Categories, attributes, common manufacturers/suppliers, and extra stock units — no parts or stock.",
   create: "Create workspace",
   emptyTitle: "No workspaces yet",
   emptyBody: "Create a workspace to start tracking parts.",
@@ -219,6 +222,11 @@ export default async function WorkspacesPage({
                 {(
                   [
                     { value: "empty", label: copy.presetEmpty, help: copy.presetEmptyHelp },
+                    {
+                      value: "starter-dictionaries",
+                      label: copy.presetStarterDictionaries,
+                      help: copy.presetStarterDictionariesHelp
+                    },
                     { value: "parts-only", label: copy.presetPartsOnly, help: copy.presetPartsOnlyHelp },
                     { value: "parts-and-orders", label: copy.presetPartsAndOrders, help: copy.presetPartsAndOrdersHelp }
                   ] as const
