@@ -18,10 +18,11 @@ import { computeAllocatedUnitCosts } from "@/lib/purchaseOrderCostAllocation";
 
 export type PurchaseOrderItem = {
   id: string;
-  partId: string;
-  partCatalogNumber: string;
+  partId: string | null;
+  partCatalogNumber: string | null;
   partDescription: string | null;
-  manufacturerName: string;
+  manufacturerName: string | null;
+  description: string | null;
   sourceShoppingListItemId: string | null;
   quantity: string;
   receivedQuantity: string;
@@ -381,6 +382,7 @@ export async function getPurchaseOrderDetail(
         select: {
           id: true,
           partId: true,
+          description: true,
           sourceShoppingListItemId: true,
           quantity: true,
           receivedQuantity: true,
@@ -444,9 +446,10 @@ export async function getPurchaseOrderDetail(
     items: order.items.map((item) => ({
       id: item.id,
       partId: item.partId,
-      partCatalogNumber: item.part.catalogNumber,
-      partDescription: item.part.description,
-      manufacturerName: item.part.manufacturer.name,
+      partCatalogNumber: item.part?.catalogNumber ?? null,
+      partDescription: item.part?.description ?? null,
+      manufacturerName: item.part?.manufacturer.name ?? null,
+      description: item.description,
       sourceShoppingListItemId: item.sourceShoppingListItemId,
       quantity: item.quantity.toString(),
       receivedQuantity: item.receivedQuantity.toString(),
@@ -459,7 +462,7 @@ export async function getPurchaseOrderDetail(
       currency: item.currency,
       taxRate: item.taxRate?.toString() ?? null,
       notes: item.notes,
-      partDefaultLocationId: item.part.defaultLocationId ?? null
+      partDefaultLocationId: item.part?.defaultLocationId ?? null
     }))
   };
 }
@@ -582,7 +585,7 @@ export async function deletePurchaseOrder(input: {
 
     if (order.status === "DRAFT") {
       const deltaByPartId = sumQtyByPartId(
-        items.filter((item) => item.sourceShoppingListItemId === null)
+        items.filter((item) => item.partId !== null && item.sourceShoppingListItemId === null)
       );
       for (const [partId, delta] of deltaByPartId) {
         await tx.part.update({
@@ -591,8 +594,9 @@ export async function deletePurchaseOrder(input: {
         });
       }
     } else {
-      // ORDERED: decrement onOrderQty for all items; restore plannedQty for SL-sourced ones
+      // ORDERED: decrement onOrderQty for all inventory items; restore plannedQty for SL-sourced ones
       for (const item of items) {
+        if (!item.partId) continue;
         await tx.part.update({
           where: { id: item.partId },
           data: {
@@ -631,7 +635,7 @@ export async function revertOrderToDraft(input: {
       data: { status: "DRAFT", orderedAt: null }
     });
 
-    const deltaByPartId = sumQtyByPartId(items);
+    const deltaByPartId = sumQtyByPartId(items.filter((i) => i.partId !== null));
     for (const [partId, delta] of deltaByPartId) {
       await tx.part.update({
         where: { id: partId },
@@ -674,7 +678,8 @@ export async function getDraftPurchaseOrders(workspaceId: string): Promise<Draft
 export async function addOrderItem(input: {
   workspaceId: string;
   orderId: string;
-  partId: string;
+  partId?: string | null;
+  description?: string | null;
   quantity: string;
   supplierSku?: string | null;
   unitPrice?: string | null;
@@ -690,7 +695,14 @@ export async function addOrderItem(input: {
     throw new Error("order-already-received");
   }
 
-  await assertPartBelongsToWorkspace(input.workspaceId, input.partId);
+  const normalizedDescription = normalizeOptionalText(input.description);
+  if (!input.partId && !normalizedDescription) {
+    throw new Error("missing-required-fields");
+  }
+
+  if (input.partId) {
+    await assertPartBelongsToWorkspace(input.workspaceId, input.partId);
+  }
 
   const quantity = parseQuantity(input.quantity);
   const unitPrice = input.unitPrice ? parseUnitPrice(input.unitPrice) : null;
@@ -731,7 +743,8 @@ export async function addOrderItem(input: {
     const item = await tx.purchaseOrderItem.create({
       data: {
         purchaseOrderId: input.orderId,
-        partId: input.partId,
+        partId: input.partId ?? null,
+        description: normalizedDescription,
         quantity,
         supplierSku: normalizeOptionalText(input.supplierSku),
         unitPrice,
@@ -746,7 +759,7 @@ export async function addOrderItem(input: {
       }
     });
 
-    if (!input.sourceShoppingListItemId) {
+    if (input.partId && !input.sourceShoppingListItemId) {
       await tx.part.update({
         where: { id: input.partId },
         data: { plannedQty: { increment: quantity } }
@@ -763,6 +776,7 @@ export async function updateOrderItem(input: {
   orderId: string;
   itemId: string;
   quantity: string;
+  description?: string | null;
   supplierSku?: string | null;
   unitPrice?: string | null;
   lineNetTotal?: string | null;
@@ -820,6 +834,7 @@ export async function updateOrderItem(input: {
       where: { id: input.itemId },
       data: {
         quantity: newQuantity,
+        description: input.description !== undefined ? normalizeOptionalText(input.description) : undefined,
         supplierSku: normalizeOptionalText(input.supplierSku),
         unitPrice,
         lineNetValue,
@@ -832,7 +847,7 @@ export async function updateOrderItem(input: {
       }
     });
 
-    if (order.status === "DRAFT" && oldItem.sourceShoppingListItemId === null) {
+    if (order.status === "DRAFT" && oldItem.partId !== null && oldItem.sourceShoppingListItemId === null) {
       const delta = newQuantity.minus(oldItem.quantity);
       if (!delta.isZero()) {
         await tx.part.update({
@@ -867,12 +882,12 @@ export async function removeOrderItem(input: {
   await prisma.$transaction(async (tx) => {
     await tx.purchaseOrderItem.delete({ where: { id: input.itemId } });
 
-    if (order.status === "DRAFT" && item.sourceShoppingListItemId === null) {
+    if (order.status === "DRAFT" && item.partId !== null && item.sourceShoppingListItemId === null) {
       await tx.part.update({
         where: { id: item.partId },
         data: { plannedQty: { decrement: item.quantity } }
       });
-    } else if (order.status === "ORDERED") {
+    } else if (order.status === "ORDERED" && item.partId !== null) {
       await tx.part.update({
         where: { id: item.partId },
         data: {
@@ -1000,7 +1015,7 @@ export async function markOrdered(input: {
       data: { status: "ORDERED", orderedAt: now }
     });
 
-    const deltaByPartId = sumQtyByPartId(items);
+    const deltaByPartId = sumQtyByPartId(items.filter((i) => i.partId !== null));
     for (const [partId, delta] of deltaByPartId) {
       await tx.part.update({
         where: { id: partId },
@@ -1018,7 +1033,7 @@ export async function markOrdered(input: {
 export type ReceiveItemInput = {
   itemId: string;
   quantity: string;
-  locationId: string;
+  locationId: string | null;
 };
 
 export async function receiveItems(input: {
@@ -1117,7 +1132,7 @@ export async function receiveItems(input: {
       const receiveInput = receiveMap.get(orderItem.id)!;
       const qty = parseQuantity(receiveInput.quantity);
 
-      if (!orderItem.part.unit.allowsFraction && !qty.isInteger()) {
+      if (orderItem.partId && orderItem.part?.unit && !orderItem.part.unit.allowsFraction && !qty.isInteger()) {
         throw new Error("fractional-quantity-not-allowed");
       }
 
@@ -1176,29 +1191,31 @@ export async function receiveItems(input: {
         }
       }
 
-      // createInventoryEntry runs in its own nested transaction; call it BEFORE
-      // tx.part.update so both don't compete for a lock on the same Part row.
-      await createInventoryEntry({
-        workspaceId: input.workspaceId,
-        partId: orderItem.partId,
-        entryType: "RECEIPT",
-        quantity: qty.toString(),
-        toLocationId: receiveInput.locationId,
-        createdByUserId: input.createdByUserId,
-        unitCost,
-        costCurrency,
-        unitCostPrimary,
-        unitGrossCostPrimary
-      });
+      if (orderItem.partId !== null) {
+        // createInventoryEntry runs in its own nested transaction; call it BEFORE
+        // tx.part.update so both don't compete for a lock on the same Part row.
+        await createInventoryEntry({
+          workspaceId: input.workspaceId,
+          partId: orderItem.partId,
+          entryType: "RECEIPT",
+          quantity: qty.toString(),
+          toLocationId: receiveInput.locationId,
+          createdByUserId: input.createdByUserId,
+          unitCost,
+          costCurrency,
+          unitCostPrimary,
+          unitGrossCostPrimary
+        });
+
+        await tx.part.update({
+          where: { id: orderItem.partId },
+          data: { onOrderQty: { decrement: qty } }
+        });
+      }
 
       await tx.purchaseOrderItem.update({
         where: { id: orderItem.id },
         data: { receivedQuantity: { increment: qty } }
-      });
-
-      await tx.part.update({
-        where: { id: orderItem.partId },
-        data: { onOrderQty: { decrement: qty } }
       });
     }
 
@@ -1585,10 +1602,11 @@ function normalizeOptionalText(value?: string | null) {
 }
 
 function sumQtyByPartId(
-  items: Array<{ partId: string; quantity: Prisma.Decimal }>
+  items: Array<{ partId: string | null; quantity: Prisma.Decimal }>
 ): Map<string, Prisma.Decimal> {
   const result = new Map<string, Prisma.Decimal>();
   for (const item of items) {
+    if (!item.partId) continue;
     result.set(
       item.partId,
       (result.get(item.partId) ?? new Prisma.Decimal(0)).plus(item.quantity)

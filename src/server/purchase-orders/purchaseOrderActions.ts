@@ -205,7 +205,8 @@ export async function deletePurchaseOrderForWorkspace(input: {
 export async function addOrderItemForWorkspace(input: {
   workspaceSlug: string;
   orderId: string;
-  partId: string;
+  partId?: string | null;
+  description?: string | null;
   quantity: string;
   supplierSku?: string | null;
   unitPrice?: string | null;
@@ -221,6 +222,7 @@ export async function addOrderItemForWorkspace(input: {
       workspaceId: context.workspace.id,
       orderId: input.orderId,
       partId: input.partId,
+      description: input.description,
       quantity: input.quantity,
       supplierSku: input.supplierSku,
       unitPrice: input.unitPrice,
@@ -241,6 +243,7 @@ export async function updateOrderItemForWorkspace(input: {
   orderId: string;
   itemId: string;
   quantity: string;
+  description?: string | null;
   supplierSku?: string | null;
   unitPrice?: string | null;
   lineNetTotal?: string | null;
@@ -255,6 +258,7 @@ export async function updateOrderItemForWorkspace(input: {
       orderId: input.orderId,
       itemId: input.itemId,
       quantity: input.quantity,
+      description: input.description,
       supplierSku: input.supplierSku,
       unitPrice: input.unitPrice,
       lineNetTotal: input.lineNetTotal,

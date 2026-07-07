@@ -929,7 +929,8 @@ model PurchaseOrderAdditionalCost {
 model PurchaseOrderItem {
   id                       String   @id @default(cuid())
   purchaseOrderId          String
-  partId                   String
+  partId                   String?
+  description              String?
   sourceShoppingListItemId String?
   quantity                 Decimal
   receivedQuantity         Decimal  @default(0)
@@ -946,7 +947,7 @@ model PurchaseOrderItem {
   updatedAt                DateTime @updatedAt
 
   purchaseOrder          PurchaseOrder     @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
-  part                   Part              @relation(fields: [partId], references: [id], onDelete: Restrict)
+  part                   Part?             @relation(fields: [partId], references: [id], onDelete: Restrict)
   sourceShoppingListItem ShoppingListItem? @relation(fields: [sourceShoppingListItemId], references: [id], onDelete: SetNull)
 
   @@index([purchaseOrderId])

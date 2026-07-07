@@ -502,6 +502,13 @@ type Copy = {
   manualRateLabel: string;
   manualRateSubmit: string;
   multiAdd: MultiAddToPOCopy;
+  nonInventoryItem: string;
+  addOtherItem: string;
+  otherItemType: string;
+  itemDescription: string;
+  itemDescriptionPlaceholder: string;
+  descriptionRequired: string;
+  noInventoryEffect: string;
 };
 
 type PurchaseOrdersClientProps = {
@@ -518,7 +525,7 @@ type PurchaseOrdersClientProps = {
   workspaceDefaultTaxRate?: string | null;
 };
 
-type ReceiveRowState = { quantity: string; locationId: string };
+type ReceiveRowState = { quantity: string; locationId: string | null };
 
 const columnHelper = createColumnHelper<PurchaseOrderSummary>();
 
@@ -552,6 +559,8 @@ export function PurchaseOrdersClient({
   const [revertToDraftPending, setRevertToDraftPending] = useState(false);
   const [itemDialogMode, setItemDialogMode] = useState<"create" | "edit" | null>(null);
   const [editingItem, setEditingItem] = useState<PurchaseOrderItem | null>(null);
+  const [itemType, setItemType] = useState<"part" | "other">("part");
+  const [itemDescription, setItemDescription] = useState("");
   const [itemPendingRemove, setItemPendingRemove] = useState<PurchaseOrderItem | null>(null);
   const [receiveDialogOpen, setReceiveDialogOpen] = useState(false);
   const [receiveRows, setReceiveRows] = useState<Map<string, ReceiveRowState>>(new Map());
@@ -958,6 +967,8 @@ export function PurchaseOrdersClient({
   function openCreateItemDialog() {
     setEditingItem(null);
     setItemDialogMode("create");
+    setItemType("part");
+    setItemDescription("");
     setItemFormErrors({});
     setSelectedPartId(null);
     setPartSearchQuery("");
@@ -973,6 +984,8 @@ export function PurchaseOrdersClient({
   function openEditItemDialog(item: PurchaseOrderItem) {
     setEditingItem(item);
     setItemDialogMode("edit");
+    setItemType(item.partId !== null ? "part" : "other");
+    setItemDescription(item.description ?? "");
     setItemFormErrors({});
     setSelectedPartId(item.partId);
     setPartSearchQuery("");
@@ -1128,9 +1141,14 @@ export function PurchaseOrdersClient({
 
   function handleItemSubmit(formData: FormData) {
     const quantity = getString(formData, "quantity");
-    const partId = selectedPartId ?? editingItem?.partId ?? null;
 
-    if (!partId && itemDialogMode === "create") { setItemFormErrors({ part: copy.partRequired }); return; }
+    if (itemDialogMode === "create") {
+      if (itemType === "part") {
+        if (!selectedPartId) { setItemFormErrors({ part: copy.partRequired }); return; }
+      } else {
+        if (!itemDescription.trim()) { setItemFormErrors({ part: copy.descriptionRequired }); return; }
+      }
+    }
     if (!quantity) { setItemFormErrors({ quantity: copy.quantityRequired }); return; }
 
     // In gross mode the hidden unitPrice input already has net (back-calculated)
@@ -1138,24 +1156,39 @@ export function PurchaseOrdersClient({
     // lineNetTotal bypasses unitPrice * quantity computation to prevent rounding drift
     const lineNetTotal = getString(formData, "lineNetTotal") || null;
 
-    if (itemDialogMode === "create" && selectedOrderId && partId) {
-      addItemMutation.mutate({
-        workspaceSlug,
-        orderId: selectedOrderId,
-        partId,
-        quantity,
-        unitPrice,
-        lineNetTotal,
-        currency: getString(formData, "currency") || null,
-        taxRate: getString(formData, "taxRate") || null,
-        notes: getString(formData, "notes") || null
-      });
+    if (itemDialogMode === "create" && selectedOrderId) {
+      if (itemType === "part" && selectedPartId) {
+        addItemMutation.mutate({
+          workspaceSlug,
+          orderId: selectedOrderId,
+          partId: selectedPartId,
+          quantity,
+          unitPrice,
+          lineNetTotal,
+          currency: getString(formData, "currency") || null,
+          taxRate: getString(formData, "taxRate") || null,
+          notes: getString(formData, "notes") || null
+        });
+      } else if (itemType === "other") {
+        addItemMutation.mutate({
+          workspaceSlug,
+          orderId: selectedOrderId,
+          description: itemDescription.trim(),
+          quantity,
+          unitPrice,
+          lineNetTotal,
+          currency: getString(formData, "currency") || null,
+          taxRate: getString(formData, "taxRate") || null,
+          notes: getString(formData, "notes") || null
+        });
+      }
     } else if (editingItem && selectedOrderId) {
       updateItemMutation.mutate({
         workspaceSlug,
         orderId: selectedOrderId,
         itemId: editingItem.id,
         quantity,
+        description: editingItem.partId === null ? (itemDescription || null) : undefined,
         unitPrice,
         lineNetTotal,
         currency: getString(formData, "currency") || null,
@@ -1167,13 +1200,15 @@ export function PurchaseOrdersClient({
 
   function handleReceiveSubmit() {
     if (!selectedOrderId) return;
-    const itemsToReceive: Array<{ itemId: string; quantity: string; locationId: string }> = [];
+    const itemsToReceive: Array<{ itemId: string; quantity: string; locationId: string | null }> = [];
 
     const missingLocations = new Set<string>();
     for (const [itemId, row] of receiveRows) {
       if (!row.quantity || parseFloat(row.quantity) <= 0) continue;
-      if (!row.locationId) { missingLocations.add(itemId); continue; }
-      itemsToReceive.push({ itemId, quantity: row.quantity, locationId: row.locationId });
+      const item = unreceived.find((i) => i.id === itemId);
+      const isNonInventory = item?.partId === null || item?.partId === undefined;
+      if (!isNonInventory && !row.locationId) { missingLocations.add(itemId); continue; }
+      itemsToReceive.push({ itemId, quantity: row.quantity, locationId: row.locationId ?? null });
     }
 
     if (missingLocations.size > 0) {
@@ -1197,7 +1232,11 @@ export function PurchaseOrdersClient({
   const detail = orderDetail as PurchaseOrderDetail | null | undefined;
   const detailItems = useMemo(() => detail?.items ?? [], [detail]);
   const existingParts = useMemo(
-    () => new Map(detailItems.map((item) => [item.partId, item.quantity])),
+    () => new Map(
+      detailItems
+        .filter((item): item is typeof item & { partId: string } => item.partId !== null)
+        .map((item) => [item.partId, item.quantity])
+    ),
     [detailItems]
   );
   const unreceived = detailItems.filter(
@@ -1737,10 +1776,19 @@ export function PurchaseOrdersClient({
                         return (
                           <tr key={item.id} className={`group border-b border-[var(--color-border)] last:border-b-0 ${isFullyReceived ? "opacity-60" : ""}`}>
                             <td className="px-3 py-2">
-                              <div className="font-medium text-[var(--color-text-primary)]">
-                                <PartLink partId={item.partId} name={item.partCatalogNumber} />
-                              </div>
-                              <div className="text-xs text-[var(--color-text-muted)]">{item.manufacturerName}</div>
+                              {item.partId ? (
+                                <>
+                                  <div className="font-medium text-[var(--color-text-primary)]">
+                                    <PartLink partId={item.partId} name={item.partCatalogNumber ?? item.partId} />
+                                  </div>
+                                  <div className="text-xs text-[var(--color-text-muted)]">{item.manufacturerName}</div>
+                                </>
+                              ) : (
+                                <>
+                                  <div className="font-medium text-[var(--color-text-primary)]">{item.description ?? "—"}</div>
+                                  <div className="text-xs italic text-[var(--color-text-muted)]">{copy.nonInventoryItem}</div>
+                                </>
+                              )}
                             </td>
                             <InlinePriceCell
                               item={item}
@@ -2094,23 +2142,67 @@ export function PurchaseOrdersClient({
           <form key={dialogFormKey} action={handleItemSubmit} className="flex min-h-0 flex-1 flex-col overflow-hidden">
             <DialogBody className="grid gap-4">
               {itemDialogMode === "create" ? (
-                <div className="grid gap-2">
-                  <LabelWithError error={itemFormErrors.part}>{copy.part}</LabelWithError>
-                  <PartPickerCombobox
-                    workspaceSlug={workspaceSlug}
-                    inputValue={partSearchQuery}
-                    selectedPartId={selectedPartId}
-                    placeholder={copy.searchPartsPlaceholder}
-                    loadingLabel={copy.loadingParts}
-                    noMatchesLabel={copy.noMatchingParts}
-                    onInputChange={(value) => { setPartSearchQuery(value); setSelectedPartId(null); }}
-                    onSelect={(part: PartPickerOption) => { setSelectedPartId(part.id); setPartSearchQuery(`${part.catalogNumber} — ${part.manufacturerName}`); }}
-                  />
+                <div className="grid gap-3">
+                  <div className="flex gap-2 rounded-md border border-[var(--color-border)] p-1">
+                    <button
+                      type="button"
+                      onClick={() => { setItemType("part"); setItemFormErrors({}); setItemDescription(""); }}
+                      className={`flex-1 rounded px-3 py-1.5 text-sm font-medium transition ${itemType === "part" ? "bg-[var(--color-accent)] text-white" : "text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-subtle)]"}`}
+                    >
+                      {copy.part}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => { setItemType("other"); setItemFormErrors({}); setSelectedPartId(null); setPartSearchQuery(""); }}
+                      className={`flex-1 rounded px-3 py-1.5 text-sm font-medium transition ${itemType === "other" ? "bg-[var(--color-accent)] text-white" : "text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-subtle)]"}`}
+                    >
+                      {copy.addOtherItem}
+                    </button>
+                  </div>
+                  {itemType === "part" ? (
+                    <div className="grid gap-2">
+                      <LabelWithError error={itemFormErrors.part}>{copy.part}</LabelWithError>
+                      <PartPickerCombobox
+                        workspaceSlug={workspaceSlug}
+                        inputValue={partSearchQuery}
+                        selectedPartId={selectedPartId}
+                        placeholder={copy.searchPartsPlaceholder}
+                        loadingLabel={copy.loadingParts}
+                        noMatchesLabel={copy.noMatchingParts}
+                        onInputChange={(value) => { setPartSearchQuery(value); setSelectedPartId(null); }}
+                        onSelect={(part: PartPickerOption) => { setSelectedPartId(part.id); setPartSearchQuery(`${part.catalogNumber} — ${part.manufacturerName}`); }}
+                      />
+                    </div>
+                  ) : (
+                    <div className="grid gap-2">
+                      <LabelWithError error={itemFormErrors.part} htmlFor="po-item-description">{copy.itemDescription}</LabelWithError>
+                      <input
+                        id="po-item-description"
+                        type="text"
+                        value={itemDescription}
+                        onChange={(e) => setItemDescription(e.target.value)}
+                        placeholder={copy.itemDescriptionPlaceholder}
+                        className="rounded-md border border-[var(--color-border-strong)] bg-[var(--color-bg-elevated)] px-3 py-2 text-sm text-[var(--color-text-primary)] outline-none focus:border-[var(--color-border-hover)] focus:ring-2 focus:ring-[var(--color-ring)]"
+                      />
+                    </div>
+                  )}
                 </div>
-              ) : (
+              ) : editingItem?.partId !== null ? (
                 <div className="grid gap-1">
                   <p className="text-sm font-medium text-[var(--color-text-secondary)]">{copy.part}</p>
                   <p className="text-sm text-[var(--color-text-primary)]">{editingItem?.partCatalogNumber} — {editingItem?.manufacturerName}</p>
+                </div>
+              ) : (
+                <div className="grid gap-2">
+                  <LabelWithError error={itemFormErrors.part} htmlFor="po-item-description-edit">{copy.itemDescription}</LabelWithError>
+                  <input
+                    id="po-item-description-edit"
+                    type="text"
+                    value={itemDescription}
+                    onChange={(e) => setItemDescription(e.target.value)}
+                    placeholder={copy.itemDescriptionPlaceholder}
+                    className="rounded-md border border-[var(--color-border-strong)] bg-[var(--color-bg-elevated)] px-3 py-2 text-sm text-[var(--color-text-primary)] outline-none focus:border-[var(--color-border-hover)] focus:ring-2 focus:ring-[var(--color-ring)]"
+                  />
                 </div>
               )}
 
@@ -2359,13 +2451,23 @@ export function PurchaseOrdersClient({
                     </thead>
                     <tbody>
                       {unreceived.map((item) => {
-                        const row = receiveRows.get(item.id) ?? { quantity: "", locationId: "" };
+                        const row = receiveRows.get(item.id) ?? { quantity: "", locationId: null };
                         const remaining = parseFloat(item.quantity) - parseFloat(item.receivedQuantity);
+                        const isNonInventory = item.partId === null;
                         return (
                           <tr key={item.id} className="border-b border-[var(--color-border)] last:border-b-0">
                             <td className="px-3 py-2">
-                              <div className="font-medium text-[var(--color-text-primary)]">{item.partCatalogNumber}</div>
-                              <div className="text-xs text-[var(--color-text-muted)]">{item.manufacturerName}</div>
+                              {isNonInventory ? (
+                                <>
+                                  <div className="font-medium text-[var(--color-text-primary)]">{item.description ?? "—"}</div>
+                                  <div className="text-xs italic text-[var(--color-text-muted)]">{copy.nonInventoryItem}</div>
+                                </>
+                              ) : (
+                                <>
+                                  <div className="font-medium text-[var(--color-text-primary)]">{item.partCatalogNumber}</div>
+                                  <div className="text-xs text-[var(--color-text-muted)]">{item.manufacturerName}</div>
+                                </>
+                              )}
                             </td>
                             <td className="px-3 py-2 text-[var(--color-text-secondary)]">{remaining}</td>
                             <td className="px-3 py-2">
@@ -2382,28 +2484,32 @@ export function PurchaseOrdersClient({
                               />
                             </td>
                             <td className="px-3 py-2">
-                              <LocationTreeSelect
-                                locations={allLocations}
-                                locationTree={locationTree}
-                                copy={copy}
-                                name={`location-${item.id}`}
-                                selectedId={row.locationId}
-                                buttonClassName={receiveMissingLocationIds.has(item.id)
-                                  ? `flex-1 grid min-h-8 w-full grid-cols-[1fr_auto] items-center gap-2 rounded-md border bg-[var(--color-bg-elevated)] px-2 py-1 text-left text-sm text-[var(--color-text-primary)] outline-none transition border-[var(--color-error-border)] ring-1 ring-[var(--color-error-border)]`
-                                  : undefined}
-                                onSelectedIdChange={(locationId) => {
-                                  setReceiveMissingLocationIds((prev) => {
-                                    const next = new Set(prev);
-                                    next.delete(item.id);
-                                    return next;
-                                  });
-                                  setReceiveRows((prev) => {
-                                    const next = new Map(prev);
-                                    next.set(item.id, { ...row, locationId });
-                                    return next;
-                                  });
-                                }}
-                              />
+                              {isNonInventory ? (
+                                <span className="text-sm italic text-[var(--color-text-muted)]">{copy.noInventoryEffect}</span>
+                              ) : (
+                                <LocationTreeSelect
+                                  locations={allLocations}
+                                  locationTree={locationTree}
+                                  copy={copy}
+                                  name={`location-${item.id}`}
+                                  selectedId={row.locationId ?? ""}
+                                  buttonClassName={receiveMissingLocationIds.has(item.id)
+                                    ? `flex-1 grid min-h-8 w-full grid-cols-[1fr_auto] items-center gap-2 rounded-md border bg-[var(--color-bg-elevated)] px-2 py-1 text-left text-sm text-[var(--color-text-primary)] outline-none transition border-[var(--color-error-border)] ring-1 ring-[var(--color-error-border)]`
+                                    : undefined}
+                                  onSelectedIdChange={(locationId) => {
+                                    setReceiveMissingLocationIds((prev) => {
+                                      const next = new Set(prev);
+                                      next.delete(item.id);
+                                      return next;
+                                    });
+                                    setReceiveRows((prev) => {
+                                      const next = new Map(prev);
+                                      next.set(item.id, { ...row, locationId });
+                                      return next;
+                                    });
+                                  }}
+                                />
+                              )}
                             </td>
                           </tr>
                         );

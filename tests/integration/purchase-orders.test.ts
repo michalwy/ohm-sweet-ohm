@@ -982,3 +982,150 @@ describe("purchase orders — quick-add part flow", () => {
     assert.equal(detail?.items[0].quantity, "8");
   });
 });
+
+describe("purchase orders — non-inventory items", () => {
+  test("adds a non-inventory item with description and null partId", async () => {
+    const suffix = uniqueSuffix("ni-add");
+    const { workspaceId, supplierId } = await createFixture(suffix);
+
+    const order = await createPurchaseOrder({ workspaceId, supplierId });
+    const item = await addOrderItem({
+      workspaceId,
+      orderId: order.id,
+      description: "Oscilloscope XYZ-1000",
+      quantity: "1",
+      unitPrice: "450.00"
+    });
+
+    assert.equal(item.partId, null);
+
+    const detail = await getPurchaseOrderDetail(workspaceId, order.id);
+    assert.ok(detail);
+    assert.equal(detail.items.length, 1);
+    assert.equal(detail.items[0].partId, null);
+    assert.equal(detail.items[0].description, "Oscilloscope XYZ-1000");
+    assert.equal(detail.items[0].partCatalogNumber, null);
+    assert.equal(detail.items[0].manufacturerName, null);
+    assert.equal(detail.items[0].quantity, "1");
+  });
+
+  test("rejects non-inventory item with neither partId nor description", async () => {
+    const suffix = uniqueSuffix("ni-reject");
+    const { workspaceId, supplierId } = await createFixture(suffix);
+
+    const order = await createPurchaseOrder({ workspaceId, supplierId });
+    await assert.rejects(
+      () => addOrderItem({ workspaceId, orderId: order.id, quantity: "1" }),
+      { message: "missing-required-fields" }
+    );
+  });
+
+  test("receiving a non-inventory item does not create an InventoryEntry", async () => {
+    const suffix = uniqueSuffix("ni-receive");
+    const { workspaceId, supplierId, userId } = await createFixture(suffix);
+
+    const order = await createPurchaseOrder({ workspaceId, supplierId });
+    const item = await addOrderItem({
+      workspaceId,
+      orderId: order.id,
+      description: "USB hub",
+      quantity: "2"
+    });
+    await markOrdered({ workspaceId, orderId: order.id });
+
+    const entriesBefore = await prisma.inventoryEntry.count({ where: { workspaceId } });
+
+    await receiveItems({
+      workspaceId,
+      orderId: order.id,
+      createdByUserId: userId,
+      items: [{ itemId: item.id, quantity: "2", locationId: null }]
+    });
+
+    const entriesAfter = await prisma.inventoryEntry.count({ where: { workspaceId } });
+    assert.equal(entriesAfter, entriesBefore, "no InventoryEntry should be created for non-inventory item");
+
+    const detail = await getPurchaseOrderDetail(workspaceId, order.id);
+    assert.equal(detail?.items[0].receivedQuantity, "2");
+    assert.equal(detail?.status, "RECEIVED");
+  });
+
+  test("non-inventory item absorbs its share of additional costs, reducing allocation to tracked parts", async () => {
+    const suffix = uniqueSuffix("ni-alloc");
+    const { workspaceId, supplierId, partId, locationId, userId } = await createFixture(suffix);
+
+    // Order: tracked part €10, non-inventory item €90 → total €100
+    // Additional cost: €10 shipping
+    // Tracked part should absorb 10% = €1 allocated; non-inventory absorbs €9
+    const order = await createPurchaseOrder({ workspaceId, supplierId, currency: "EUR" });
+    const trackedItem = await addOrderItem({
+      workspaceId,
+      orderId: order.id,
+      partId,
+      quantity: "1",
+      unitPrice: "10.00"
+    });
+    await addOrderItem({
+      workspaceId,
+      orderId: order.id,
+      description: "Oscilloscope",
+      quantity: "1",
+      unitPrice: "90.00"
+    });
+    await addAdditionalCost({ workspaceId, orderId: order.id, label: "Shipping", amount: "10.00" });
+    await markOrdered({ workspaceId, orderId: order.id });
+
+    await receiveItems({
+      workspaceId,
+      orderId: order.id,
+      createdByUserId: userId,
+      items: [{ itemId: trackedItem.id, quantity: "1", locationId }]
+    });
+
+    // The tracked part should have received unitCost = 10 (base) + 1 (allocated) = 11
+    const entry = await prisma.inventoryEntry.findFirst({
+      where: { workspaceId, partId },
+      select: { unitCost: true }
+    });
+    assert.ok(entry, "InventoryEntry should exist for tracked part");
+    // unitCost is in the item's currency (EUR); base=10 + allocated share of 10 = 1 → 11
+    const unitCostNum = parseFloat(entry.unitCost!.toString());
+    assert.ok(Math.abs(unitCostNum - 11) < 0.01, `Expected unitCost ~11, got ${unitCostNum}`);
+  });
+
+  test("deleting a PO with non-inventory items does not crash and restores tracked part quantities", async () => {
+    const suffix = uniqueSuffix("ni-delete");
+    const { workspaceId, supplierId, partId } = await createFixture(suffix);
+
+    const order = await createPurchaseOrder({ workspaceId, supplierId });
+    await addOrderItem({ workspaceId, orderId: order.id, partId, quantity: "5" });
+    await addOrderItem({ workspaceId, orderId: order.id, description: "Multimeter", quantity: "1" });
+
+    const { plannedQty: plannedBefore } = await getPartQtys(partId);
+    assert.equal(plannedBefore, 5);
+
+    await deletePurchaseOrder({ workspaceId, orderId: order.id });
+
+    const { plannedQty: plannedAfter } = await getPartQtys(partId);
+    assert.equal(plannedAfter, 0, "tracked part plannedQty should be restored after PO deletion");
+  });
+
+  test("reverting a PO with non-inventory items to draft restores tracked part quantities", async () => {
+    const suffix = uniqueSuffix("ni-revert");
+    const { workspaceId, supplierId, partId } = await createFixture(suffix);
+
+    const order = await createPurchaseOrder({ workspaceId, supplierId });
+    await addOrderItem({ workspaceId, orderId: order.id, partId, quantity: "3" });
+    await addOrderItem({ workspaceId, orderId: order.id, description: "Power supply", quantity: "1" });
+    await markOrdered({ workspaceId, orderId: order.id });
+
+    const { onOrderQty } = await getPartQtys(partId);
+    assert.equal(onOrderQty, 3);
+
+    await revertOrderToDraft({ workspaceId, orderId: order.id });
+
+    const { plannedQty, onOrderQty: onOrderAfter } = await getPartQtys(partId);
+    assert.equal(plannedQty, 3);
+    assert.equal(onOrderAfter, 0);
+  });
+});

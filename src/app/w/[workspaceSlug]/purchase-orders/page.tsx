@@ -157,6 +157,13 @@ const copy = {
   exchangeRateUnavailableBody: "The exchange rate for {from} → {to} on {date} could not be fetched automatically. Please enter it manually to continue.",
   manualRateLabel: "1 {from} =",
   manualRateSubmit: "Save rate and continue",
+  nonInventoryItem: "Other item",
+  addOtherItem: "Other item",
+  otherItemType: "Other item",
+  itemDescription: "Description",
+  itemDescriptionPlaceholder: "e.g. Oscilloscope, cable reel",
+  descriptionRequired: "Enter a description.",
+  noInventoryEffect: "No inventory effect",
   multiAdd: {
     // picker step
     pickerTitle: "Add multiple items",
