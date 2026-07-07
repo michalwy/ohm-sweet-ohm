@@ -3,8 +3,10 @@
 import { authorizeWorkspacePermission } from "@/server/access-control/authorize";
 import { getCurrentWorkspaceContextBySlug } from "@/server/auth/currentContext";
 import {
+  addAdditionalCost,
   addOrderItem,
   createPurchaseOrder,
+  deleteAdditionalCost,
   deletePurchaseOrder,
   generateOrderNumber,
   getDraftPurchaseOrders,
@@ -16,6 +18,7 @@ import {
   receiveItems,
   removeOrderItem,
   revertOrderToDraft,
+  updateAdditionalCost,
   type DraftPurchaseOrderOption,
   type PartPurchaseOrderHistoryItem,
   type PurchaseOrderDetail,
@@ -276,6 +279,70 @@ export async function removeOrderItemForWorkspace(input: {
       workspaceId: context.workspace.id,
       orderId: input.orderId,
       itemId: input.itemId
+    });
+    return success(null);
+  } catch (error) {
+    return failure(error);
+  }
+}
+
+export async function addAdditionalCostForWorkspace(input: {
+  workspaceSlug: string;
+  orderId: string;
+  label: string;
+  amount: string;
+  taxRate?: string | null;
+}): Promise<PurchaseOrderActionResult<null>> {
+  try {
+    const context = await getAuthorizedContext(input.workspaceSlug, "purchase-orders:write");
+    await addAdditionalCost({
+      workspaceId: context.workspace.id,
+      orderId: input.orderId,
+      label: input.label,
+      amount: input.amount,
+      taxRate: input.taxRate
+    });
+    return success(null);
+  } catch (error) {
+    return failure(error);
+  }
+}
+
+export async function updateAdditionalCostForWorkspace(input: {
+  workspaceSlug: string;
+  orderId: string;
+  costId: string;
+  label: string;
+  amount: string;
+  taxRate?: string | null;
+}): Promise<PurchaseOrderActionResult<null>> {
+  try {
+    const context = await getAuthorizedContext(input.workspaceSlug, "purchase-orders:write");
+    await updateAdditionalCost({
+      workspaceId: context.workspace.id,
+      orderId: input.orderId,
+      costId: input.costId,
+      label: input.label,
+      amount: input.amount,
+      taxRate: input.taxRate
+    });
+    return success(null);
+  } catch (error) {
+    return failure(error);
+  }
+}
+
+export async function deleteAdditionalCostForWorkspace(input: {
+  workspaceSlug: string;
+  orderId: string;
+  costId: string;
+}): Promise<PurchaseOrderActionResult<null>> {
+  try {
+    const context = await getAuthorizedContext(input.workspaceSlug, "purchase-orders:write");
+    await deleteAdditionalCost({
+      workspaceId: context.workspace.id,
+      orderId: input.orderId,
+      costId: input.costId
     });
     return success(null);
   } catch (error) {

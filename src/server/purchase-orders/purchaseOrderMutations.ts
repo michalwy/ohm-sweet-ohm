@@ -14,6 +14,7 @@ import {
   getListPageSize,
   type ListPage
 } from "@/server/pagination";
+import { computeAllocatedUnitCosts } from "@/lib/purchaseOrderCostAllocation";
 
 export type PurchaseOrderItem = {
   id: string;
@@ -34,6 +35,16 @@ export type PurchaseOrderItem = {
   taxRate: string | null;
   notes: string | null;
   partDefaultLocationId: string | null;
+};
+
+export type PurchaseOrderAdditionalCost = {
+  id: string;
+  label: string;
+  amount: string;
+  taxRate: string | null;
+  grossAmount: string | null;
+  amountPrimary: string | null;
+  grossAmountPrimary: string | null;
 };
 
 export type PurchaseOrderDetail = {
@@ -57,6 +68,8 @@ export type PurchaseOrderDetail = {
   totalGrossValue: string | null;
   totalNetValuePrimary: string | null;
   totalGrossValuePrimary: string | null;
+  additionalCosts: PurchaseOrderAdditionalCost[];
+  additionalCostsLocked: boolean;
   items: PurchaseOrderItem[];
 };
 
@@ -351,6 +364,10 @@ export async function getPurchaseOrderDetail(
       totalGrossValue: true,
       totalNetValuePrimary: true,
       totalGrossValuePrimary: true,
+      additionalCosts: {
+        orderBy: { createdAt: "asc" },
+        select: { id: true, label: true, amount: true, taxRate: true, grossAmount: true, amountPrimary: true, grossAmountPrimary: true }
+      },
       supplier: {
         select: {
           id: true,
@@ -412,6 +429,18 @@ export async function getPurchaseOrderDetail(
     totalGrossValue: order.totalGrossValue?.toFixed(2) ?? null,
     totalNetValuePrimary: order.totalNetValuePrimary?.toFixed(2) ?? null,
     totalGrossValuePrimary: order.totalGrossValuePrimary?.toFixed(2) ?? null,
+    additionalCosts: order.additionalCosts.map((cost) => ({
+      id: cost.id,
+      label: cost.label,
+      amount: cost.amount.toFixed(2),
+      taxRate: cost.taxRate?.toString() ?? null,
+      grossAmount: cost.grossAmount?.toFixed(2) ?? null,
+      amountPrimary: cost.amountPrimary?.toFixed(2) ?? null,
+      grossAmountPrimary: cost.grossAmountPrimary?.toFixed(2) ?? null
+    })),
+    additionalCostsLocked: order.items.some((item) =>
+      new Prisma.Decimal(item.receivedQuantity).greaterThan(0)
+    ),
     items: order.items.map((item) => ({
       id: item.id,
       partId: item.partId,
@@ -859,6 +888,89 @@ export async function removeOrderItem(input: {
   });
 }
 
+export async function addAdditionalCost(input: {
+  workspaceId: string;
+  orderId: string;
+  label: string;
+  amount: string;
+  taxRate?: string | null;
+}) {
+  const order = await assertOrderBelongsToWorkspace(input.workspaceId, input.orderId);
+  await assertAdditionalCostsEditable(input.orderId);
+
+  const label = normalizeOptionalText(input.label);
+  if (!label) throw new Error("missing-required-fields");
+  const amount = parseAdditionalCostAmount(input.amount);
+  const taxRate = input.taxRate ? parseTaxRate(input.taxRate) : null;
+
+  // Effective tax rate cascade matches PO items: row override → order default → 0.
+  // (Supplier/workspace defaults only pre-fill order.taxRate at PO creation time.)
+  const effectiveTaxRate = taxRate ?? order.taxRate ?? new Prisma.Decimal(0);
+  const { grossAmount, amountPrimary, grossAmountPrimary } = await computeAdditionalCostAmounts(
+    input.workspaceId,
+    order,
+    amount,
+    effectiveTaxRate
+  );
+
+  return prisma.$transaction(async (tx) => {
+    const cost = await tx.purchaseOrderAdditionalCost.create({
+      data: { purchaseOrderId: input.orderId, label, amount, taxRate, grossAmount, amountPrimary, grossAmountPrimary }
+    });
+    await recomputeOrderTotalsFromItems(tx, input.orderId);
+    return cost;
+  });
+}
+
+export async function updateAdditionalCost(input: {
+  workspaceId: string;
+  orderId: string;
+  costId: string;
+  label: string;
+  amount: string;
+  taxRate?: string | null;
+}) {
+  const order = await assertOrderBelongsToWorkspace(input.workspaceId, input.orderId);
+  await assertAdditionalCostsEditable(input.orderId);
+  await assertAdditionalCostBelongsToOrder(input.orderId, input.costId);
+
+  const label = normalizeOptionalText(input.label);
+  if (!label) throw new Error("missing-required-fields");
+  const amount = parseAdditionalCostAmount(input.amount);
+  const taxRate = input.taxRate ? parseTaxRate(input.taxRate) : null;
+
+  const effectiveTaxRate = taxRate ?? order.taxRate ?? new Prisma.Decimal(0);
+  const { grossAmount, amountPrimary, grossAmountPrimary } = await computeAdditionalCostAmounts(
+    input.workspaceId,
+    order,
+    amount,
+    effectiveTaxRate
+  );
+
+  await prisma.$transaction(async (tx) => {
+    await tx.purchaseOrderAdditionalCost.update({
+      where: { id: input.costId },
+      data: { label, amount, taxRate, grossAmount, amountPrimary, grossAmountPrimary }
+    });
+    await recomputeOrderTotalsFromItems(tx, input.orderId);
+  });
+}
+
+export async function deleteAdditionalCost(input: {
+  workspaceId: string;
+  orderId: string;
+  costId: string;
+}) {
+  await assertOrderBelongsToWorkspace(input.workspaceId, input.orderId);
+  await assertAdditionalCostsEditable(input.orderId);
+  await assertAdditionalCostBelongsToOrder(input.orderId, input.costId);
+
+  await prisma.$transaction(async (tx) => {
+    await tx.purchaseOrderAdditionalCost.delete({ where: { id: input.costId } });
+    await recomputeOrderTotalsFromItems(tx, input.orderId);
+  });
+}
+
 export async function markOrdered(input: {
   workspaceId: string;
   orderId: string;
@@ -928,7 +1040,7 @@ export async function receiveItems(input: {
     throw new Error("order-already-received");
   }
 
-  const [orderPricing, workspacePrimary] = await Promise.all([
+  const [orderPricing, workspacePrimary, additionalCostRows, allOrderItemsForAllocation] = await Promise.all([
     prisma.purchaseOrder.findUniqueOrThrow({
       where: { id: input.orderId },
       select: { currency: true, orderedAt: true }
@@ -936,6 +1048,14 @@ export async function receiveItems(input: {
     prisma.workspace.findUniqueOrThrow({
       where: { id: input.workspaceId },
       select: { primaryCurrency: true }
+    }),
+    prisma.purchaseOrderAdditionalCost.findMany({
+      where: { purchaseOrderId: input.orderId },
+      select: { amount: true, grossAmount: true }
+    }),
+    prisma.purchaseOrderItem.findMany({
+      where: { purchaseOrderId: input.orderId },
+      select: { id: true, lineNetValue: true, quantity: true, currency: true }
     })
   ]);
   const primaryCurrency = workspacePrimary.primaryCurrency;
@@ -961,6 +1081,35 @@ export async function receiveItems(input: {
     throw new Error("items-not-found");
   }
 
+  // Additional costs (shipping, customs, etc.) are spread across the order's line
+  // items proportional to lineNetValue, computed from the full ordered quantity so
+  // the per-unit figure stays stable across partial receive sessions. Net and gross
+  // totals are allocated separately (using the same lineNetValue weights) so each
+  // cost row's own effective tax rate carries through to the gross unit cost. See
+  // docs/decisions/0015-po-pricing-and-costing.md.
+  const totalAdditionalCostsNet = additionalCostRows.reduce(
+    (acc, cost) => acc.plus(cost.amount),
+    new Prisma.Decimal(0)
+  );
+  const totalAdditionalCostsGross = additionalCostRows.reduce(
+    (acc, cost) => acc.plus(cost.grossAmount ?? cost.amount),
+    new Prisma.Decimal(0)
+  );
+  const allocationBase = allOrderItemsForAllocation
+    .filter((item) => item.lineNetValue !== null)
+    .map((item) => ({
+      itemId: item.id,
+      lineNetValue: item.lineNetValue!.toNumber(),
+      quantity: item.quantity.toNumber(),
+      eligible: (item.currency ?? orderPricing.currency) === orderPricing.currency
+    }));
+  const allocatedNetUnitCostByItemId = totalAdditionalCostsNet.isZero()
+    ? new Map<string, number>()
+    : computeAllocatedUnitCosts(allocationBase, totalAdditionalCostsNet.toNumber());
+  const allocatedGrossUnitCostByItemId = totalAdditionalCostsGross.isZero()
+    ? new Map<string, number>()
+    : computeAllocatedUnitCosts(allocationBase, totalAdditionalCostsGross.toNumber());
+
   const receiveMap = new Map(input.items.map((i) => [i.itemId, i]));
 
   return prisma.$transaction(async (tx) => {
@@ -980,13 +1129,22 @@ export async function receiveItems(input: {
         throw new Error("receive-exceeds-ordered-quantity");
       }
 
-      // Compute unit cost for inventory tracking
+      // Compute unit cost for inventory tracking, including this item's allocated
+      // share of the order's additional costs.
+      // toFixed(10) strips floating-point noise (e.g. 8.4/7 -> 1.2000000000000002)
+      // introduced by the plain-number ratio math in computeAllocatedUnitCosts.
+      const allocatedPerUnitNetRaw = allocatedNetUnitCostByItemId.get(orderItem.id) ?? 0;
+      const allocatedPerUnitGrossRaw = allocatedGrossUnitCostByItemId.get(orderItem.id) ?? 0;
+      const allocatedPerUnit = allocatedPerUnitNetRaw !== 0 ? new Prisma.Decimal(allocatedPerUnitNetRaw.toFixed(10)) : null;
+      const allocatedPerUnitGross = allocatedPerUnitGrossRaw !== 0 ? new Prisma.Decimal(allocatedPerUnitGrossRaw.toFixed(10)) : null;
+
       let unitCost: Prisma.Decimal | null = null;
       let costCurrency: string | null = null;
       let unitCostPrimary: Prisma.Decimal | null = null;
       let unitGrossCostPrimary: Prisma.Decimal | null = null;
-      if (orderItem.unitPrice != null) {
-        unitCost = orderItem.unitPrice;
+      let allocatedPerUnitGrossPrimary: Prisma.Decimal | null = null;
+      if (orderItem.unitPrice != null || allocatedPerUnit) {
+        unitCost = (orderItem.unitPrice ?? new Prisma.Decimal(0)).plus(allocatedPerUnit ?? new Prisma.Decimal(0));
         costCurrency = orderItem.currency ?? orderPricing.currency ?? null;
         if (costCurrency) {
           if (costCurrency === primaryCurrency) {
@@ -996,10 +1154,25 @@ export async function receiveItems(input: {
           }
         }
       }
-      if (orderItem.lineGrossValuePrimary != null) {
+      if (allocatedPerUnitGross) {
+        costCurrency = costCurrency ?? orderItem.currency ?? orderPricing.currency ?? null;
+        if (costCurrency) {
+          if (costCurrency === primaryCurrency) {
+            allocatedPerUnitGrossPrimary = allocatedPerUnitGross;
+          } else if (orderPricing.orderedAt) {
+            allocatedPerUnitGrossPrimary = await convertToWorkspacePrimary(allocatedPerUnitGross, costCurrency, primaryCurrency, orderPricing.orderedAt);
+          }
+        }
+      }
+      if (orderItem.lineGrossValuePrimary != null || allocatedPerUnitGrossPrimary) {
         const orderedQty = new Prisma.Decimal(orderItem.quantity);
         if (!orderedQty.isZero()) {
-          unitGrossCostPrimary = orderItem.lineGrossValuePrimary.div(orderedQty).toDecimalPlaces(8);
+          const baseGrossPerUnit = orderItem.lineGrossValuePrimary
+            ? orderItem.lineGrossValuePrimary.div(orderedQty)
+            : new Prisma.Decimal(0);
+          unitGrossCostPrimary = baseGrossPerUnit
+            .plus(allocatedPerUnitGrossPrimary ?? new Prisma.Decimal(0))
+            .toDecimalPlaces(8);
         }
       }
 
@@ -1119,35 +1292,60 @@ async function recomputeOrderTotalsFromItems(
     select: { currency: true }
   });
 
-  const items = await tx.purchaseOrderItem.findMany({
-    where: { purchaseOrderId: orderId },
-    select: {
-      currency: true,
-      lineNetValue: true,
-      lineGrossValue: true,
-      lineNetValuePrimary: true,
-      lineGrossValuePrimary: true
-    }
-  });
+  const [items, additionalCostRows] = await Promise.all([
+    tx.purchaseOrderItem.findMany({
+      where: { purchaseOrderId: orderId },
+      select: {
+        currency: true,
+        lineNetValue: true,
+        lineGrossValue: true,
+        lineNetValuePrimary: true,
+        lineGrossValuePrimary: true
+      }
+    }),
+    tx.purchaseOrderAdditionalCost.findMany({
+      where: { purchaseOrderId: orderId },
+      select: { amount: true, grossAmount: true, amountPrimary: true, grossAmountPrimary: true }
+    })
+  ]);
 
   const eligible = items.filter(
     (item) => (item.currency ?? order.currency) === order.currency
   );
-  const priced = eligible.filter((item) => item.lineNetValue !== null);
+  const pricedItems = eligible
+    .filter((item) => item.lineNetValue !== null)
+    .map((item) => ({
+      net: item.lineNetValue!,
+      gross: item.lineGrossValue!,
+      netPrimary: item.lineNetValuePrimary,
+      grossPrimary: item.lineGrossValuePrimary
+    }));
+
+  // Additional costs are always in the order's currency and priced the same way as
+  // items (net amount + tax cascade, computed and frozen at write time), so they're
+  // folded into totals as regular priced lines.
+  const costLines = additionalCostRows.map((cost) => ({
+    net: cost.amount,
+    gross: cost.grossAmount ?? cost.amount,
+    netPrimary: cost.amountPrimary,
+    grossPrimary: cost.grossAmountPrimary
+  }));
+
+  const lines = [...pricedItems, ...costLines];
 
   let totalNetValue: Prisma.Decimal | null = null;
   let totalGrossValue: Prisma.Decimal | null = null;
   let totalNetValuePrimary: Prisma.Decimal | null = null;
   let totalGrossValuePrimary: Prisma.Decimal | null = null;
 
-  if (priced.length > 0) {
-    totalNetValue = priced.reduce((acc, item) => acc.plus(item.lineNetValue!), new Prisma.Decimal(0)).toDecimalPlaces(2);
-    totalGrossValue = priced.reduce((acc, item) => acc.plus(item.lineGrossValue!), new Prisma.Decimal(0)).toDecimalPlaces(2);
+  if (lines.length > 0) {
+    totalNetValue = lines.reduce((acc, line) => acc.plus(line.net), new Prisma.Decimal(0)).toDecimalPlaces(2);
+    totalGrossValue = lines.reduce((acc, line) => acc.plus(line.gross), new Prisma.Decimal(0)).toDecimalPlaces(2);
 
-    const withPrimary = priced.filter((item) => item.lineNetValuePrimary !== null);
-    if (withPrimary.length === priced.length) {
-      totalNetValuePrimary = withPrimary.reduce((acc, item) => acc.plus(item.lineNetValuePrimary!), new Prisma.Decimal(0)).toDecimalPlaces(2);
-      totalGrossValuePrimary = withPrimary.reduce((acc, item) => acc.plus(item.lineGrossValuePrimary!), new Prisma.Decimal(0)).toDecimalPlaces(2);
+    const withPrimary = lines.filter((line) => line.netPrimary !== null);
+    if (withPrimary.length === lines.length) {
+      totalNetValuePrimary = withPrimary.reduce((acc, line) => acc.plus(line.netPrimary!), new Prisma.Decimal(0)).toDecimalPlaces(2);
+      totalGrossValuePrimary = withPrimary.reduce((acc, line) => acc.plus(line.grossPrimary!), new Prisma.Decimal(0)).toDecimalPlaces(2);
     }
   }
 
@@ -1173,6 +1371,21 @@ async function applyRateToAllItems(
       data: {
         lineNetValuePrimary: rate && item.lineNetValue ? item.lineNetValue.mul(rate).toDecimalPlaces(2) : null,
         lineGrossValuePrimary: rate && item.lineGrossValue ? item.lineGrossValue.mul(rate).toDecimalPlaces(2) : null
+      }
+    });
+  }
+
+  const additionalCosts = await tx.purchaseOrderAdditionalCost.findMany({
+    where: { purchaseOrderId: orderId },
+    select: { id: true, amount: true, grossAmount: true }
+  });
+
+  for (const cost of additionalCosts) {
+    await tx.purchaseOrderAdditionalCost.update({
+      where: { id: cost.id },
+      data: {
+        amountPrimary: rate ? cost.amount.mul(rate).toDecimalPlaces(2) : null,
+        grossAmountPrimary: rate && cost.grossAmount ? cost.grossAmount.mul(rate).toDecimalPlaces(2) : null
       }
     });
   }
@@ -1210,6 +1423,27 @@ function computeItemLineTotals(
     lineGrossValue,
     lineNetValuePrimary: primaryRate ? lineNetValue.mul(primaryRate).toDecimalPlaces(2) : null,
     lineGrossValuePrimary: primaryRate ? lineGrossValue.mul(primaryRate).toDecimalPlaces(2) : null
+  };
+}
+
+async function computeAdditionalCostAmounts(
+  workspaceId: string,
+  order: { currency: string | null; orderedAt: Date | null },
+  amount: Prisma.Decimal,
+  effectiveTaxRate: Prisma.Decimal
+): Promise<{
+  grossAmount: Prisma.Decimal;
+  amountPrimary: Prisma.Decimal | null;
+  grossAmountPrimary: Prisma.Decimal | null;
+}> {
+  const primaryCurrency = await getWorkspacePrimaryCurrency(workspaceId);
+  const rateDate = order.orderedAt ?? new Date();
+  const primaryRate = await resolvePrimaryRate(order.currency, primaryCurrency, rateDate, false);
+  const totals = computeItemLineTotals(amount, new Prisma.Decimal(1), effectiveTaxRate, primaryRate);
+  return {
+    grossAmount: totals.lineGrossValue,
+    amountPrimary: totals.lineNetValuePrimary,
+    grossAmountPrimary: totals.lineGrossValuePrimary
   };
 }
 
@@ -1254,6 +1488,22 @@ async function assertPartBelongsToWorkspace(workspaceId: string, partId: string)
   if (!part) throw new Error("part-not-found");
 }
 
+async function assertAdditionalCostBelongsToOrder(orderId: string, costId: string) {
+  const cost = await prisma.purchaseOrderAdditionalCost.findFirst({
+    where: { id: costId, purchaseOrderId: orderId },
+    select: { id: true }
+  });
+  if (!cost) throw new Error("additional-cost-not-found");
+}
+
+async function assertAdditionalCostsEditable(orderId: string) {
+  const receivedItem = await prisma.purchaseOrderItem.findFirst({
+    where: { purchaseOrderId: orderId, receivedQuantity: { gt: 0 } },
+    select: { id: true }
+  });
+  if (receivedItem) throw new Error("additional-costs-locked-after-receive");
+}
+
 function parseQuantity(rawValue: string) {
   const normalized = rawValue.trim();
   if (!normalized) throw new Error("missing-required-fields");
@@ -1296,6 +1546,21 @@ function parseLineNetTotal(rawValue: string): Prisma.Decimal {
   }
 
   if (value.lessThan(0)) throw new Error("invalid-line-total");
+  return value.toDecimalPlaces(2);
+}
+
+function parseAdditionalCostAmount(rawValue: string): Prisma.Decimal {
+  const normalized = rawValue.trim();
+  if (!normalized) throw new Error("invalid-additional-cost-amount");
+
+  let value: Prisma.Decimal;
+  try {
+    value = new Prisma.Decimal(normalized);
+  } catch {
+    throw new Error("invalid-additional-cost-amount");
+  }
+
+  if (value.lessThanOrEqualTo(0)) throw new Error("invalid-additional-cost-amount");
   return value.toDecimalPlaces(2);
 }
 

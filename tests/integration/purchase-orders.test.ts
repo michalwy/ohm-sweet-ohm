@@ -14,7 +14,10 @@ import {
   receiveItems,
   revertOrderToDraft,
   getPurchaseOrders,
-  getPurchaseOrderDetail
+  getPurchaseOrderDetail,
+  addAdditionalCost,
+  updateAdditionalCost,
+  deleteAdditionalCost
 } from "../../src/server/purchase-orders/purchaseOrderMutations";
 import {
   createShoppingList,
@@ -499,6 +502,176 @@ describe("purchase orders — receive flow", () => {
         }),
       { message: "order-not-ordered" }
     );
+  });
+});
+
+async function createSecondPart(workspaceId: string, manufacturerId: string, unitId: string, suffix: string) {
+  const normalized = `${suffix}-second`.toLowerCase().replace(/[^a-z0-9]+/g, "-");
+  const part = await prisma.part.create({
+    data: {
+      workspaceId,
+      unitId,
+      manufacturerId,
+      catalogNumber: `PO-PART-${normalized}`
+    }
+  });
+  return part.id;
+}
+
+describe("purchase orders — additional costs", () => {
+  test("adds, updates, and deletes an additional cost, folding it into order totals", async () => {
+    const suffix = uniqueSuffix("addl-crud");
+    const { workspaceId, supplierId, partId } = await createFixture(suffix);
+
+    const order = await createPurchaseOrder({ workspaceId, supplierId, currency: "EUR" });
+    await addOrderItem({ workspaceId, orderId: order.id, partId, quantity: "10", unitPrice: "1.00", currency: "EUR" });
+
+    const cost = await addAdditionalCost({ workspaceId, orderId: order.id, label: "Shipping", amount: "12.00" });
+
+    const detail = await getPurchaseOrderDetail(workspaceId, order.id);
+    assert.ok(detail);
+    assert.equal(detail.additionalCosts.length, 1);
+    assert.equal(detail.additionalCosts[0].label, "Shipping");
+    assert.equal(detail.additionalCosts[0].amount, "12.00");
+    // lineNetValue is 10.00, plus 12.00 shipping = 22.00
+    assert.equal(detail.totalNetValue, "22.00");
+    assert.equal(detail.totalGrossValue, "22.00");
+    assert.equal(detail.totalNetValuePrimary, "22.00");
+
+    await updateAdditionalCost({ workspaceId, orderId: order.id, costId: cost.id, label: "Customs", amount: "5.00" });
+    const afterUpdate = await getPurchaseOrderDetail(workspaceId, order.id);
+    assert.equal(afterUpdate?.additionalCosts[0].label, "Customs");
+    assert.equal(afterUpdate?.totalNetValue, "15.00");
+
+    await deleteAdditionalCost({ workspaceId, orderId: order.id, costId: cost.id });
+    const afterDelete = await getPurchaseOrderDetail(workspaceId, order.id);
+    assert.equal(afterDelete?.additionalCosts.length, 0);
+    assert.equal(afterDelete?.totalNetValue, "10.00");
+  });
+
+  test("locks additional costs once any item on the order has been received", async () => {
+    const suffix = uniqueSuffix("addl-locked");
+    const { workspaceId, supplierId, partId, locationId, userId } = await createFixture(suffix);
+
+    const order = await createPurchaseOrder({ workspaceId, supplierId, currency: "EUR" });
+    const item = await addOrderItem({ workspaceId, orderId: order.id, partId, quantity: "2", unitPrice: "1.00", currency: "EUR" });
+    const cost = await addAdditionalCost({ workspaceId, orderId: order.id, label: "Shipping", amount: "4.00" });
+    await markOrdered({ workspaceId, orderId: order.id });
+
+    await receiveItems({
+      workspaceId,
+      orderId: order.id,
+      createdByUserId: userId,
+      items: [{ itemId: item.id, quantity: "1", locationId }]
+    });
+
+    await assert.rejects(
+      () => addAdditionalCost({ workspaceId, orderId: order.id, label: "Customs", amount: "1.00" }),
+      { message: "additional-costs-locked-after-receive" }
+    );
+    await assert.rejects(
+      () => updateAdditionalCost({ workspaceId, orderId: order.id, costId: cost.id, label: "Shipping", amount: "9.00" }),
+      { message: "additional-costs-locked-after-receive" }
+    );
+    await assert.rejects(
+      () => deleteAdditionalCost({ workspaceId, orderId: order.id, costId: cost.id }),
+      { message: "additional-costs-locked-after-receive" }
+    );
+  });
+
+  test("allocates additional costs proportionally by line net value, stable across partial receives", async () => {
+    const suffix = uniqueSuffix("addl-allocate");
+    const { workspaceId, supplierId, partId: partAId, locationId, userId } = await createFixture(suffix);
+
+    const part = await prisma.part.findUniqueOrThrow({ where: { id: partAId }, select: { manufacturerId: true, unitId: true } });
+    const partBId = await createSecondPart(workspaceId, part.manufacturerId, part.unitId, suffix);
+
+    const order = await createPurchaseOrder({ workspaceId, supplierId, currency: "EUR" });
+    // Part A: 3 units @ 10.00 net => lineNetValue 30.00
+    const itemA = await addOrderItem({
+      workspaceId, orderId: order.id, partId: partAId, quantity: "3", unitPrice: "10.00", currency: "EUR"
+    });
+    // Part B: 7 units @ 10.00 net => lineNetValue 70.00
+    const itemB = await addOrderItem({
+      workspaceId, orderId: order.id, partId: partBId, quantity: "7", unitPrice: "10.00", currency: "EUR"
+    });
+    await addAdditionalCost({ workspaceId, orderId: order.id, label: "Shipping", amount: "12.00" });
+    await markOrdered({ workspaceId, orderId: order.id });
+
+    // Receive part A fully in one shot, part B split across two partial receives.
+    await receiveItems({
+      workspaceId,
+      orderId: order.id,
+      createdByUserId: userId,
+      items: [{ itemId: itemA.id, quantity: "3", locationId }]
+    });
+    await receiveItems({
+      workspaceId,
+      orderId: order.id,
+      createdByUserId: userId,
+      items: [{ itemId: itemB.id, quantity: "2", locationId }]
+    });
+    await receiveItems({
+      workspaceId,
+      orderId: order.id,
+      createdByUserId: userId,
+      items: [{ itemId: itemB.id, quantity: "5", locationId }]
+    });
+
+    const entriesA = await prisma.inventoryEntry.findMany({ where: { workspaceId, partId: partAId } });
+    const entriesB = await prisma.inventoryEntry.findMany({ where: { workspaceId, partId: partBId }, orderBy: { createdAt: "asc" } });
+
+    // Part A: share = 12 * (30/100) = 3.6, per unit = 3.6 / 3 = 1.2 → unitCost 10 + 1.2 = 11.2
+    assert.equal(entriesA.length, 1);
+    assert.equal(entriesA[0].unitCost?.toString(), "11.2");
+    assert.equal(entriesA[0].unitCostPrimary?.toString(), "11.2");
+
+    // Part B: share = 12 * (70/100) = 8.4, per unit = 8.4 / 7 = 1.2 → unitCost 10 + 1.2 = 11.2
+    // Stable across both partial receives (2 units then 5 units).
+    assert.equal(entriesB.length, 2);
+    assert.equal(entriesB[0].unitCost?.toString(), "11.2");
+    assert.equal(entriesB[1].unitCost?.toString(), "11.2");
+    assert.equal(entriesB[0].unitCostPrimary?.toString(), "11.2");
+    assert.equal(entriesB[1].unitCostPrimary?.toString(), "11.2");
+  });
+
+  test("additional cost lines carry their own tax rate, same as regular PO items", async () => {
+    const suffix = uniqueSuffix("addl-tax");
+    const { workspaceId, supplierId, partId, locationId, userId } = await createFixture(suffix);
+
+    const order = await createPurchaseOrder({ workspaceId, supplierId, currency: "EUR" });
+    // Tax-free item: qty 1 @ 100.00 net (no order/item tax rate).
+    const item = await addOrderItem({
+      workspaceId, orderId: order.id, partId, quantity: "1", unitPrice: "100.00", currency: "EUR"
+    });
+    // Shipping cost with its own 20% tax override.
+    await addAdditionalCost({ workspaceId, orderId: order.id, label: "Shipping", amount: "10.00", taxRate: "20" });
+
+    const detail = await getPurchaseOrderDetail(workspaceId, order.id);
+    assert.ok(detail);
+    assert.equal(detail.additionalCosts[0].amount, "10.00");
+    assert.equal(detail.additionalCosts[0].grossAmount, "12.00");
+    // Net total: 100 (item) + 10 (cost) = 110. Gross total: 100 (item, 0% tax) + 12 (cost, 20% tax) = 112.
+    assert.equal(detail.totalNetValue, "110.00");
+    assert.equal(detail.totalGrossValue, "112.00");
+    assert.equal(detail.totalNetValuePrimary, "110.00");
+    assert.equal(detail.totalGrossValuePrimary, "112.00");
+
+    await markOrdered({ workspaceId, orderId: order.id });
+    await receiveItems({
+      workspaceId,
+      orderId: order.id,
+      createdByUserId: userId,
+      items: [{ itemId: item.id, quantity: "1", locationId }]
+    });
+
+    const entries = await prisma.inventoryEntry.findMany({ where: { workspaceId, partId } });
+    assert.equal(entries.length, 1);
+    // Net unit cost: 100 (item) + 10 (full shipping share, single item) = 110.
+    assert.equal(entries[0].unitCost?.toString(), "110");
+    assert.equal(entries[0].unitCostPrimary?.toString(), "110");
+    // Gross unit cost: 100 (item base, 0% tax) + 12 (shipping share, 20% tax) = 112.
+    assert.equal(entries[0].unitGrossCostPrimary?.toString(), "112");
   });
 });
 

@@ -897,6 +897,7 @@ model PurchaseOrder {
   sourceShoppingList ShoppingList?       @relation(fields: [sourceShoppingListId], references: [id], onDelete: SetNull)
   createdByUser      User?               @relation(fields: [createdByUserId], references: [id], onDelete: SetNull)
   items              PurchaseOrderItem[]
+  additionalCosts    PurchaseOrderAdditionalCost[]
 
   @@index([workspaceId])
   @@index([workspaceId, supplierId])
@@ -906,6 +907,23 @@ model PurchaseOrder {
   @@index([workspaceId, totalGrossValue])
   @@index([workspaceId, totalNetValuePrimary])
   @@index([workspaceId, totalGrossValuePrimary])
+}
+
+model PurchaseOrderAdditionalCost {
+  id                 String   @id @default(cuid())
+  purchaseOrderId    String
+  label              String
+  amount             Decimal
+  taxRate            Decimal?
+  grossAmount        Decimal?
+  amountPrimary      Decimal?
+  grossAmountPrimary Decimal?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  purchaseOrder PurchaseOrder @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
+
+  @@index([purchaseOrderId])
 }
 
 model PurchaseOrderItem {

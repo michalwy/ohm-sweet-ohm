@@ -78,6 +78,26 @@ When a PO item is received:
 
 If the exchange rate is unavailable at receive time, `unitCostPrimary` is left `null`.
 
+### Additional Costs Allocation
+
+A purchase order may carry one or more `PurchaseOrderAdditionalCost` rows (label + net amount, in the order's currency) representing order-level costs not tied to a specific line — shipping being the most common, alongside customs, handling, etc.
+
+Each additional cost line is priced exactly like a PO item: an entered amount (net or gross depending on the order's `priceEntryMode`, mirroring the item price entry UI) plus an optional per-row `taxRate` override, with the same effective tax rate cascade as items (`row.taxRate → order.taxRate → 0`). `grossAmount`, `amountPrimary`, and `grossAmountPrimary` are computed and frozen the same way as `PurchaseOrderItem.lineGrossValue` / `lineNetValuePrimary` / `lineGrossValuePrimary`, and recomputed whenever the order's exchange rate is re-resolved (mark-ordered, revert-to-draft, `orderedAt` change). Order totals (`totalNetValue`, `totalGrossValue`, and their primary-currency equivalents) fold additional cost lines in as regular priced lines alongside items.
+
+At receive time, each additional cost is distributed across the order's line items proportionally to line net value, using the full ordered quantity (not the quantity received so far). Net and gross totals are allocated separately — using the same lineNetValue weights — so that each cost row's own effective tax rate carries through to the gross unit cost:
+
+```
+eligibleLineNetSum = Σ lineNetValue over items whose currency matches the order currency
+allocatedNetShare(item) = Σ(cost.amount) × (item.lineNetValue / eligibleLineNetSum)
+allocatedGrossShare(item) = Σ(cost.grossAmount) × (item.lineNetValue / eligibleLineNetSum)
+perUnitAllocatedNet(item) = allocatedNetShare(item) / item.quantity
+perUnitAllocatedGross(item) = allocatedGrossShare(item) / item.quantity
+```
+
+`perUnitAllocatedNet` is added to the item's `unitPrice` before deriving `InventoryEntry.unitCost` / `unitCostPrimary`. `perUnitAllocatedGross` (converted to the primary currency) is added to the item's per-unit gross primary cost before deriving `InventoryEntry.unitGrossCostPrimary`. Because the formula only depends on static order/line state, the per-unit figures are naturally stable across multiple partial receive sessions — no separate "locked at first receive" snapshot is needed.
+
+Once any item on the order has `receivedQuantity > 0`, additional costs become immutable (create/update/delete are rejected) — consistent with `unitCostPrimary` being frozen at receive time (see below).
+
 ### Average Part Cost
 
 A new **Avg. cost** column is available in the parts list (hidden by default, requires Purchase Orders read access). It shows the weighted-average net unit cost in the workspace primary currency:

@@ -72,6 +72,17 @@ OSO tracks net prices and computes gross amounts on the fly.
 
 **Average cost column** — the parts list has an **Avg. cost** column (hidden by default). It shows the weighted-average net receipt cost in your workspace primary currency, calculated from all received purchase order items that had a price at receive time.
 
+### Additional Costs (Shipping, Customs, Handling)
+
+A purchase order can carry one or more named additional costs — shipping, customs, handling, or anything else billed at the order level rather than per line item.
+
+- In the detail panel, the **Additional costs** section lists any costs already added. Use **Add cost** to add a new row, or the edit/remove icons next to an existing row to change or delete it.
+- Each cost line is priced the same way as a regular order item: enter a net or gross amount (depending on the order's price entry mode) and optionally override the tax rate for that line — otherwise it falls back to the order's tax rate.
+- Additional costs are folded into the **Order totals** footer as regular priced lines (their own tax rate contributes to the gross total, same as an item).
+- At receive time, each additional cost is spread across the order's line items **proportionally to each line's net value**, using the full ordered quantity. The allocated net share is added to that item's unit cost, and the allocated gross share (reflecting that cost line's own tax rate) is added to its gross unit cost, before being recorded on the **Receipt** inventory movement — so it flows into the part's **Avg. cost** column just like the line price itself.
+- The allocation is computed from the order's current items and costs, not from what has been received so far, so the per-unit figure stays the same across multiple partial receive sessions.
+- Once any item on the order has been received, additional costs are locked and can no longer be added, edited, or removed — this keeps already-recorded inventory costs consistent with what's shown on the order.
+
 ### Creating An Order
 
 1. Open **Purchase Orders** from the sidebar.

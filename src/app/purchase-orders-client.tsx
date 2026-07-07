@@ -21,7 +21,9 @@ import {
 } from "@tanstack/react-query";
 
 import {
+  addAdditionalCostForWorkspace,
   addOrderItemForWorkspace,
+  deleteAdditionalCostForWorkspace,
   deletePurchaseOrderForWorkspace,
   getPurchaseOrderDetailForWorkspace,
   getPurchaseOrdersForWorkspace,
@@ -30,6 +32,7 @@ import {
   removeOrderItemForWorkspace,
   revertOrderToDraftForWorkspace,
   saveManualExchangeRateForWorkspace,
+  updateAdditionalCostForWorkspace,
   updateOrderItemForWorkspace,
   updatePurchaseOrderForWorkspace
 } from "@/server/purchase-orders/purchaseOrderActions";
@@ -37,6 +40,7 @@ import { CreatePurchaseOrderDialog } from "@/app/create-purchase-order-dialog";
 import { SupplierPickerCombobox } from "@/app/supplier-picker-combobox";
 import { PartPickerCombobox, type PartPickerOption } from "@/app/part-picker-combobox";
 import type {
+  PurchaseOrderAdditionalCost,
   PurchaseOrderDetail,
   PurchaseOrderItem,
   PurchaseOrderSummary
@@ -355,6 +359,7 @@ function InlineLineTotalCell({
   );
 }
 
+
 type Copy = {
   title: string;
   intro: string;
@@ -460,6 +465,24 @@ type Copy = {
   totalNetValuePrimary: string;
   totalGrossValuePrimary: string;
   orderTotals: string;
+  additionalCosts: string;
+  additionalCostsEmpty: string;
+  additionalCostsLockedNotice: string;
+  addAdditionalCost: string;
+  addAdditionalCostTitle: string;
+  editAdditionalCost: string;
+  editAdditionalCostTitle: string;
+  costLabel: string;
+  costLabelPlaceholder: string;
+  costAmount: string;
+  costAmountGross: string;
+  removeCost: string;
+  removeAdditionalCostConfirmBody: string;
+  additionalCostAddedToast: string;
+  additionalCostUpdatedToast: string;
+  additionalCostRemovedToast: string;
+  labelRequired: string;
+  amountRequired: string;
   configureList: string;
   configureListTitle: string;
   configureListBody: string;
@@ -554,6 +577,14 @@ export function PurchaseOrdersClient({
   const receiveDialogRef = useRef<HTMLDialogElement>(null);
   const markOrderedDialogRef = useRef<HTMLDialogElement>(null);
   const revertToDraftDialogRef = useRef<HTMLDialogElement>(null);
+  const costDialogRef = useRef<HTMLDialogElement>(null);
+  const [costDialogMode, setCostDialogMode] = useState<"create" | "edit" | null>(null);
+  const [editingCost, setEditingCost] = useState<PurchaseOrderAdditionalCost | null>(null);
+  const [costLabel, setCostLabel] = useState("");
+  const [costAmount, setCostAmount] = useState("");
+  const [costTaxRate, setCostTaxRate] = useState("");
+  const [costFormErrors, setCostFormErrors] = useState<Record<string, string>>({});
+  const [costPendingRemove, setCostPendingRemove] = useState<PurchaseOrderAdditionalCost | null>(null);
 
   const locationTree = useMemo(() => buildTree(allLocations), [allLocations]);
 
@@ -824,6 +855,53 @@ export function PurchaseOrdersClient({
     }
   });
 
+  const addAdditionalCostMutation = useMutation({
+    mutationFn: addAdditionalCostForWorkspace,
+    onSuccess: (result, variables) => {
+      if (!result.ok) {
+        if (result.error === "exchange-rate-unavailable" && result.errorDetails) {
+          openRateDialog(result.errorDetails, () => addAdditionalCostMutation.mutate(variables));
+          return;
+        }
+        setCostFormErrors({ submit: getErrorMsg(copy, result.error) });
+        return;
+      }
+      closeCostDialog();
+      addToast(copy.additionalCostAddedToast);
+      refreshDetail(variables.orderId);
+      reloadOrders();
+    }
+  });
+
+  const updateAdditionalCostMutation = useMutation({
+    mutationFn: updateAdditionalCostForWorkspace,
+    onSuccess: (result, variables) => {
+      if (!result.ok) {
+        if (result.error === "exchange-rate-unavailable" && result.errorDetails) {
+          openRateDialog(result.errorDetails, () => updateAdditionalCostMutation.mutate(variables));
+          return;
+        }
+        setCostFormErrors({ submit: getErrorMsg(copy, result.error) });
+        return;
+      }
+      closeCostDialog();
+      addToast(copy.additionalCostUpdatedToast);
+      refreshDetail(variables.orderId);
+      reloadOrders();
+    }
+  });
+
+  const deleteAdditionalCostMutation = useMutation({
+    mutationFn: deleteAdditionalCostForWorkspace,
+    onSuccess: (result, variables) => {
+      if (!result.ok) { addToast(getErrorMsg(copy, result.error)); return; }
+      setCostPendingRemove(null);
+      addToast(copy.additionalCostRemovedToast);
+      refreshDetail(variables.orderId);
+      reloadOrders();
+    }
+  });
+
   // --- URL sync & panel ---
 
   function openOrderDetails(orderId: string) {
@@ -976,6 +1054,57 @@ export function PurchaseOrdersClient({
     setReceiveMissingLocationIds(new Set());
   }
 
+  function openCreateCostDialog() {
+    setCostDialogMode("create");
+    setEditingCost(null);
+    setCostFormErrors({});
+    setCostLabel("");
+    setCostAmount("");
+    setCostTaxRate("");
+    setDialogFormKey((k) => k + 1);
+    window.requestAnimationFrame(() => openDialog(costDialogRef.current));
+  }
+
+  function openEditCostDialog(cost: PurchaseOrderAdditionalCost) {
+    setCostDialogMode("edit");
+    setEditingCost(cost);
+    setCostFormErrors({});
+    setCostLabel(cost.label);
+    setCostTaxRate(cost.taxRate ?? "");
+    const mode = detail?.priceEntryMode ?? selectedOrder?.priceEntryMode ?? "net";
+    setCostAmount(mode === "gross" ? (cost.grossAmount ?? cost.amount) : cost.amount);
+    setDialogFormKey((k) => k + 1);
+    window.requestAnimationFrame(() => openDialog(costDialogRef.current));
+  }
+
+  function closeCostDialog() {
+    closeDialog(costDialogRef.current);
+    setCostDialogMode(null);
+    setEditingCost(null);
+    setCostFormErrors({});
+  }
+
+  function handleCostSubmit(formData: FormData) {
+    const label = getString(formData, "label");
+    if (!label.trim()) { setCostFormErrors({ label: copy.labelRequired }); return; }
+    const amount = getString(formData, "amount");
+    if (!amount || !(parseFloat(amount) > 0)) { setCostFormErrors({ amount: copy.amountRequired }); return; }
+    const taxRate = getString(formData, "taxRate") || null;
+
+    if (costDialogMode === "create" && selectedOrderId) {
+      addAdditionalCostMutation.mutate({ workspaceSlug, orderId: selectedOrderId, label, amount, taxRate });
+    } else if (editingCost && selectedOrderId) {
+      updateAdditionalCostMutation.mutate({
+        workspaceSlug,
+        orderId: selectedOrderId,
+        costId: editingCost.id,
+        label,
+        amount,
+        taxRate
+      });
+    }
+  }
+
   // --- Form handlers ---
 
   function handleOrderSubmit(formData: FormData) {
@@ -1094,6 +1223,19 @@ export function PurchaseOrdersClient({
       ? roundDisplay(isGrossMode ? _activeLineNum / itemPriceFactor : _activeLineNum * itemPriceFactor)
       : "";
 
+  const costEffectiveTaxRate = getEffectiveTaxRate(
+    costTaxRate,
+    detail?.taxRate,
+    detail?.supplierDefaultTaxRate,
+    workspaceDefaultTaxRate
+  );
+  const costPriceFactor = 1 + costEffectiveTaxRate / 100;
+  const _activeCostNum = parseFloat(costAmount);
+  const costComputedOpposite =
+    !isNaN(_activeCostNum) && _activeCostNum > 0
+      ? roundDisplay(isGrossMode ? _activeCostNum / costPriceFactor : _activeCostNum * costPriceFactor)
+      : "";
+
   const isMutating =
     updateOrderMutation.isPending ||
     addItemMutation.isPending ||
@@ -1101,7 +1243,9 @@ export function PurchaseOrdersClient({
     receiveItemsMutation.isPending ||
     markOrderedMutation.isPending ||
     revertToDraftMutation.isPending ||
-    saveManualRateMutation.isPending;
+    saveManualRateMutation.isPending ||
+    addAdditionalCostMutation.isPending ||
+    updateAdditionalCostMutation.isPending;
 
   function statusLabel(status: "DRAFT" | "ORDERED" | "RECEIVED") {
     if (status === "DRAFT") return copy.statusDraft;
@@ -1683,6 +1827,64 @@ export function PurchaseOrdersClient({
                 </div>
               )}
 
+              {detail ? (
+                <div className="mt-3 rounded-md border border-[var(--color-border)] bg-[var(--color-bg-subtle)] px-3 py-2.5 grid gap-1.5 text-sm">
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-[var(--color-text-muted)]">{copy.additionalCosts}</p>
+                    {canWrite && !detail.additionalCostsLocked ? (
+                      <button
+                        type="button"
+                        className="text-xs font-medium text-[var(--color-accent)] hover:underline"
+                        onClick={openCreateCostDialog}
+                      >
+                        {copy.addAdditionalCost}
+                      </button>
+                    ) : null}
+                  </div>
+                  {detail.additionalCosts.length === 0 ? (
+                    <p className="text-[var(--color-text-placeholder)]">{copy.additionalCostsEmpty}</p>
+                  ) : (
+                    detail.additionalCosts.map((cost) => (
+                      <div key={cost.id} className="flex items-center justify-between gap-4">
+                        <span className="text-[var(--color-text-secondary)]">{cost.label}</span>
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono text-[var(--color-text-primary)]">
+                            {isGrossMode ? (cost.grossAmount ?? cost.amount) : cost.amount}{detail.currency ? ` ${detail.currency}` : ""}
+                          </span>
+                          {canWrite && !detail.additionalCostsLocked ? (
+                            <div className="flex items-center gap-1">
+                              <button
+                                aria-label={copy.editAdditionalCost}
+                                className="min-h-6 rounded border border-[var(--color-border-strong)] bg-[var(--color-bg-elevated)] px-1.5 py-0.5 text-xs font-medium text-[var(--color-text-secondary)] transition hover:border-[var(--color-border-hover)] hover:bg-[var(--color-bg-subtle)]"
+                                type="button"
+                                onClick={() => openEditCostDialog(cost)}
+                              >
+                                <svg aria-hidden="true" className="h-3 w-3" fill="none" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+                                  <path d="M13.9 3.3a1.5 1.5 0 0 1 2.1 0l.7.7a1.5 1.5 0 0 1 0 2.1l-8.4 8.4-3.3.8.8-3.3 8.4-8.4Z" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" />
+                                </svg>
+                              </button>
+                              <button
+                                aria-label={copy.removeCost}
+                                className="min-h-6 rounded border border-[var(--color-error-border)] bg-[var(--color-bg-elevated)] px-1.5 py-0.5 text-xs font-medium text-[var(--color-error)] transition hover:bg-[var(--color-error-soft)]"
+                                type="button"
+                                onClick={() => setCostPendingRemove(cost)}
+                              >
+                                <svg aria-hidden="true" className="h-3 w-3" fill="none" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+                                  <path d="M5.5 6h9m-7.5 0V4.75A1.75 1.75 0 0 1 8.75 3h2.5A1.75 1.75 0 0 1 13 4.75V6m-6.5 0 .6 9.1A1.75 1.75 0 0 0 8.84 16.75h2.32a1.75 1.75 0 0 0 1.74-1.65L13.5 6M8.75 8.5v5m2.5-5v5" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" />
+                                </svg>
+                              </button>
+                            </div>
+                          ) : null}
+                        </div>
+                      </div>
+                    ))
+                  )}
+                  {detail.additionalCostsLocked ? (
+                    <p className="text-xs text-[var(--color-text-placeholder)]">{copy.additionalCostsLockedNotice}</p>
+                  ) : null}
+                </div>
+              ) : null}
+
               {(() => {
                 if (!detail) return null;
                 const { totalNetValue, totalGrossValue, totalNetValuePrimary, totalGrossValuePrimary } = detail;
@@ -2220,6 +2422,107 @@ export function PurchaseOrdersClient({
         ) : null}
       </DialogShell>
 
+      {/* Add / edit additional cost dialog */}
+      <DialogShell
+        ref={costDialogRef}
+        closeLabel={copy.close}
+        title={costDialogMode === "create" ? copy.addAdditionalCostTitle : copy.editAdditionalCostTitle}
+        titleId="additional-cost-dialog-title"
+        widthClassName="w-[min(28rem,calc(100vw-3rem))]"
+        onClose={closeCostDialog}
+      >
+        {costDialogMode ? (
+          <form key={dialogFormKey} action={handleCostSubmit} className="flex min-h-0 flex-1 flex-col overflow-hidden">
+            <DialogBody className="grid gap-3">
+              <div className="grid gap-2">
+                <LabelWithError error={costFormErrors.label} htmlFor="po-cost-label">{copy.costLabel}</LabelWithError>
+                <input
+                  id="po-cost-label"
+                  name="label"
+                  type="text"
+                  defaultValue={costLabel}
+                  onChange={(e) => setCostLabel(e.target.value)}
+                  placeholder={copy.costLabelPlaceholder}
+                  className={getFieldInputClassName("min-h-10 rounded-md border border-[var(--color-border-strong)] bg-[var(--color-bg-elevated)] px-3 py-1.5 text-sm text-[var(--color-text-primary)] outline-none transition hover:border-[var(--color-border-hover)] focus:border-[var(--color-border-hover)] focus:ring-2 focus:ring-[var(--color-ring)]", Boolean(costFormErrors.label))}
+                />
+              </div>
+
+              {/* Hidden amount submits net regardless of entry mode */}
+              <input
+                type="hidden"
+                name="amount"
+                value={
+                  isGrossMode && costAmount
+                    ? (parseFloat(costAmount) / costPriceFactor).toFixed(10)
+                    : costAmount
+                }
+              />
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="grid gap-2">
+                  <LabelWithError error={costFormErrors.amount} htmlFor="po-cost-amount">
+                    {isGrossMode ? copy.costAmountGross : copy.costAmount}
+                  </LabelWithError>
+                  <input
+                    id="po-cost-amount"
+                    type="text"
+                    inputMode="decimal"
+                    value={costAmount}
+                    onChange={(e) => setCostAmount(e.target.value)}
+                    className={getFieldInputClassName("min-h-10 rounded-md border border-[var(--color-border-strong)] bg-[var(--color-bg-elevated)] px-3 py-1.5 text-sm text-[var(--color-text-primary)] outline-none transition hover:border-[var(--color-border-hover)] focus:border-[var(--color-border-hover)] focus:ring-2 focus:ring-[var(--color-ring)]", Boolean(costFormErrors.amount))}
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <label className="text-sm font-medium text-[var(--color-text-secondary)]">
+                    {isGrossMode ? copy.costAmount : copy.costAmountGross}
+                  </label>
+                  <div className="min-h-10 rounded-md border border-[var(--color-border)] bg-[var(--color-bg-subtle)] px-3 py-1.5 text-sm text-[var(--color-text-muted)] flex items-center">
+                    {costComputedOpposite}
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid gap-2">
+                <label className="text-sm font-medium text-[var(--color-text-secondary)]" htmlFor="po-cost-tax-rate">{copy.taxRate}</label>
+                <input
+                  id="po-cost-tax-rate"
+                  name="taxRate"
+                  type="text"
+                  inputMode="decimal"
+                  value={costTaxRate}
+                  onChange={(e) => setCostTaxRate(e.target.value)}
+                  placeholder={detail?.taxRate ?? copy.taxRatePlaceholder}
+                  className="min-h-10 rounded-md border border-[var(--color-border-strong)] bg-[var(--color-bg-elevated)] px-3 py-1.5 text-sm text-[var(--color-text-primary)] outline-none transition hover:border-[var(--color-border-hover)] focus:border-[var(--color-border-hover)] focus:ring-2 focus:ring-[var(--color-ring)]"
+                />
+              </div>
+            </DialogBody>
+            <DialogActions
+              actionLabel={costDialogMode === "create" ? copy.addAdditionalCost : copy.saveChanges}
+              disabled={isMutating}
+              error={costFormErrors.submit}
+            />
+          </form>
+        ) : null}
+      </DialogShell>
+
+      {/* Remove additional cost confirmation */}
+      <DeleteConfirmationDialog
+        body={copy.removeAdditionalCostConfirmBody}
+        cancelLabel={copy.cancelDelete}
+        closeLabel={copy.close}
+        confirmLabel={copy.confirmDelete}
+        deleteLabel={copy.removeCost}
+        isPending={deleteAdditionalCostMutation.isPending}
+        itemName={costPendingRemove?.label ?? ""}
+        open={Boolean(costPendingRemove)}
+        onCancel={() => setCostPendingRemove(null)}
+        onConfirm={() => {
+          if (costPendingRemove && selectedOrderId) {
+            deleteAdditionalCostMutation.mutate({ workspaceSlug, orderId: selectedOrderId, costId: costPendingRemove.id });
+          }
+        }}
+      />
+
       {/* Mark as ordered confirmation dialog */}
       <DialogShell
         ref={markOrderedDialogRef}
@@ -2382,5 +2685,6 @@ function getString(formData: FormData, name: string) {
 function getErrorMsg(copy: Copy, error: string) {
   if (error === "workspace-permission-denied") return copy.permissionDenied;
   if (error === "database-unavailable") return copy.databaseUnavailable;
+  if (error === "additional-costs-locked-after-receive") return copy.additionalCostsLockedNotice;
   return copy.invalidInput;
 }
