@@ -238,13 +238,13 @@ export function BuildsClient({
 
   const buildColumns = useMemo<ListColumnDefinition[]>(
     () => [
-      { id: "design", label: copy.design, group: "base", defaultWidth: 220, minWidth: 140 },
-      { id: "revision", label: copy.revision, group: "base", defaultWidth: 100, minWidth: 80 },
-      { id: "targetQuantity", label: copy.targetQuantity, group: "base", defaultWidth: 110, minWidth: 80, align: "right" },
-      { id: "state", label: copy.state, group: "base", defaultWidth: 140, minWidth: 110 },
+      { id: "design", label: copy.design, group: "base", defaultWidth: 220, minWidth: 140, sortable: true },
+      { id: "revision", label: copy.revision, group: "base", defaultWidth: 100, minWidth: 80, sortable: true },
+      { id: "targetQuantity", label: copy.targetQuantity, group: "base", defaultWidth: 110, minWidth: 80, align: "right", sortable: true },
+      { id: "state", label: copy.state, group: "base", defaultWidth: 140, minWidth: 110, sortable: true },
       { id: "allocated", label: copy.allocated, group: "base", defaultWidth: 150, minWidth: 90, align: "right" },
       { id: "progress", label: copy.progress, group: "base", defaultWidth: 150, minWidth: 90, align: "right" },
-      { id: "createdAt", label: copy.createdAt, group: "base", defaultWidth: 160, minWidth: 100 }
+      { id: "createdAt", label: copy.createdAt, group: "base", defaultWidth: 160, minWidth: 100, sortable: true }
     ],
     [copy]
   );
@@ -272,7 +272,7 @@ export function BuildsClient({
   const { draggedColumnId, onDragEnd, onStartDrag, onDropOnto } = useColumnDragReorder(setColumnOrder);
 
   const { currentBuilds, totalCount, isLoading, isError, isFetchingNextPage, hasNextPage, fetchNextPage } =
-    useBuildsQuery({ workspaceSlug, initialPage, pinnedId: pinnedBuildId });
+    useBuildsQuery({ workspaceSlug, initialPage, pinnedId: pinnedBuildId, sorting });
 
   // --- Detail + create options ---
 

@@ -214,6 +214,8 @@ export type BuildAssemblyList = {
 
 type ActionResult<T> = { ok: true; data: T } | { ok: false; error: string };
 
+export type BuildSortBy = "design" | "revision" | "targetQuantity" | "state" | "createdAt";
+
 type BuildCursor = { key: string; id: string };
 
 // --- List query ---
@@ -279,7 +281,9 @@ export async function getBuildsForWorkspace({
   workspaceId,
   cursor,
   pageSize,
-  pinnedId
+  pinnedId,
+  sortBy = "createdAt",
+  sortDir = "desc"
 }: {
   userId: string;
   workspaceId: string;
@@ -287,6 +291,8 @@ export async function getBuildsForWorkspace({
   pageSize?: number | null;
   /** When set, ignore cursor/pagination and return only this build (navigated here via an entity link). */
   pinnedId?: string | null;
+  sortBy?: BuildSortBy;
+  sortDir?: "asc" | "desc";
 }): Promise<ListPage<BuildSummary>> {
   await authorizeWorkspacePermission({ userId, workspaceId, permission: "builds:read" });
 
@@ -304,22 +310,82 @@ export async function getBuildsForWorkspace({
   }
 
   const limit = getListPageSize(pageSize);
-
   const decoded = decodeListCursor<BuildCursor>(cursor);
+  const dir = sortDir === "asc" ? "asc" : "desc";
+  const asc = dir === "asc";
+
+  const orderBy: Prisma.BuildOrderByWithRelationInput[] =
+    sortBy === "design"
+      ? [{ designRevision: { design: { name: dir } } }, { id: dir }]
+      : sortBy === "revision"
+        ? [{ designRevision: { revisionNumber: dir } }, { id: dir }]
+        : sortBy === "targetQuantity"
+          ? [{ targetQuantity: dir }, { id: dir }]
+          : sortBy === "state"
+            ? [{ state: dir }, { id: dir }]
+            : [{ createdAt: dir }, { id: dir }];
+
+  function cursorWhere(c: BuildCursor): Prisma.BuildWhereInput {
+    if (sortBy === "design") {
+      return {
+        OR: [
+          { designRevision: { design: { name: asc ? { gt: c.key } : { lt: c.key } } } },
+          { designRevision: { design: { name: c.key } }, id: asc ? { gt: c.id } : { lt: c.id } }
+        ]
+      };
+    }
+    if (sortBy === "revision") {
+      const rev = parseInt(c.key, 10);
+      return {
+        OR: [
+          { designRevision: { revisionNumber: asc ? { gt: rev } : { lt: rev } } },
+          { designRevision: { revisionNumber: rev }, id: asc ? { gt: c.id } : { lt: c.id } }
+        ]
+      };
+    }
+    if (sortBy === "targetQuantity") {
+      const qty = parseInt(c.key, 10);
+      return {
+        OR: [
+          { targetQuantity: asc ? { gt: qty } : { lt: qty } },
+          { targetQuantity: qty, id: asc ? { gt: c.id } : { lt: c.id } }
+        ]
+      };
+    }
+    if (sortBy === "state") {
+      // Prisma enum filters don't support gt/lt, so simulate keyset pagination with `in`.
+      // Alphabetical order of states: ALLOCATING < CANCELLED < COMPLETED < IN_PROGRESS < STARTED.
+      const stateOrder: BuildState[] = ["ALLOCATING", "CANCELLED", "COMPLETED", "IN_PROGRESS", "STARTED"];
+      const idx = stateOrder.indexOf(c.key as BuildState);
+      const statesBeyond = asc ? stateOrder.slice(idx + 1) : stateOrder.slice(0, idx);
+      return {
+        OR: [
+          ...(statesBeyond.length > 0 ? [{ state: { in: statesBeyond } }] : []),
+          { state: c.key as BuildState, id: asc ? { gt: c.id } : { lt: c.id } }
+        ]
+      };
+    }
+    // createdAt (default)
+    const at = new Date(c.key);
+    return {
+      OR: [
+        { createdAt: asc ? { gt: at } : { lt: at } },
+        { createdAt: at, id: asc ? { gt: c.id } : { lt: c.id } }
+      ]
+    };
+  }
+
+  function cursorKey(item: BuildSummary): string {
+    if (sortBy === "design") return item.designName;
+    if (sortBy === "revision") return String(item.revisionNumber);
+    if (sortBy === "targetQuantity") return String(item.targetQuantity);
+    if (sortBy === "state") return item.state;
+    return item.createdAt.toISOString();
+  }
 
   const rows = await prisma.build.findMany({
-    where: {
-      workspaceId,
-      ...(decoded
-        ? {
-            OR: [
-              { createdAt: { lt: new Date(decoded.key) } },
-              { createdAt: new Date(decoded.key), id: { lt: decoded.id } }
-            ]
-          }
-        : {})
-    },
-    orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+    where: { workspaceId, ...(decoded ? cursorWhere(decoded) : {}) },
+    orderBy,
     take: limit + 1,
     select: buildSummarySelect
   });
@@ -330,7 +396,7 @@ export async function getBuildsForWorkspace({
   const last = items[items.length - 1];
   const nextCursor =
     hasMore && last
-      ? encodeListCursor<BuildCursor>({ key: last.createdAt.toISOString(), id: last.id })
+      ? encodeListCursor<BuildCursor>({ key: cursorKey(last), id: last.id })
       : null;
 
   return { items, nextCursor, totalCount, filteredCount: totalCount };

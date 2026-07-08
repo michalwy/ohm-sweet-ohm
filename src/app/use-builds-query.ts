@@ -3,9 +3,10 @@
 import { useMemo } from "react";
 
 import { keepPreviousData, useInfiniteQuery } from "@tanstack/react-query";
+import type { SortingState } from "@tanstack/react-table";
 
 import { getBuildsPageForWorkspace } from "@/server/builds/buildActions";
-import type { BuildSummary } from "@/server/builds/builds";
+import type { BuildSortBy, BuildSummary } from "@/server/builds/builds";
 import type { ListPage } from "@/server/pagination";
 
 export type { BuildSummary };
@@ -15,17 +16,23 @@ type UseBuildsQueryOpts = {
   initialPage?: ListPage<BuildSummary>;
   /** Pre-filter the list to a single build (set when navigating here via an entity link). */
   pinnedId?: string | null;
+  sorting?: SortingState;
 };
 
-export function useBuildsQuery({ workspaceSlug, initialPage, pinnedId }: UseBuildsQueryOpts) {
+export function useBuildsQuery({ workspaceSlug, initialPage, pinnedId, sorting }: UseBuildsQueryOpts) {
+  const sortBy = sorting?.[0]?.id as BuildSortBy | undefined;
+  const sortDir = sorting?.[0] ? (sorting[0].desc ? "desc" : "asc") : undefined;
+
   const query = useInfiniteQuery({
-    queryKey: ["builds", workspaceSlug, pinnedId] as const,
+    queryKey: ["builds", workspaceSlug, pinnedId, sortBy, sortDir] as const,
     initialPageParam: null as string | null,
     queryFn: async ({ pageParam }) => {
       const result = await getBuildsPageForWorkspace({
         workspaceSlug,
         cursor: pageParam,
-        pinnedId
+        pinnedId,
+        sortBy,
+        sortDir
       });
       if (!result.ok) throw new Error(result.error);
       return result.data;
@@ -33,7 +40,7 @@ export function useBuildsQuery({ workspaceSlug, initialPage, pinnedId }: UseBuil
     getNextPageParam: (lastPage) => lastPage.nextCursor,
     placeholderData: keepPreviousData,
     initialData:
-      initialPage && !pinnedId ? { pages: [initialPage], pageParams: [null] } : undefined
+      initialPage && !pinnedId && !sortBy ? { pages: [initialPage], pageParams: [null] } : undefined
   });
 
   const currentBuilds = useMemo(

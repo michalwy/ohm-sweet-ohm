@@ -18,6 +18,7 @@ import {
   startBuild,
   type BuildCreateOptions,
   type BuildDetail,
+  type BuildSortBy,
   type BuildSummary,
   type PartBuildAllocationItem
 } from "@/server/builds/builds";
@@ -33,6 +34,8 @@ export async function getBuildsPageForWorkspace(input: {
   cursor?: string | null;
   pageSize?: number | null;
   pinnedId?: string | null;
+  sortBy?: BuildSortBy;
+  sortDir?: "asc" | "desc";
 }): Promise<BuildActionResult<ListPage<BuildSummary>>> {
   try {
     const context = await getContext(input.workspaceSlug);
@@ -41,7 +44,9 @@ export async function getBuildsPageForWorkspace(input: {
       workspaceId: context.workspace.id,
       cursor: input.cursor,
       pageSize: input.pageSize,
-      pinnedId: input.pinnedId
+      pinnedId: input.pinnedId,
+      sortBy: input.sortBy,
+      sortDir: input.sortDir
     });
     return success(page);
   } catch (error) {
