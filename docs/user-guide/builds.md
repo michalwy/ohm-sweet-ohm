@@ -7,6 +7,12 @@ reservation, to actual consumption, and finally to producing the design's output
 Builds live under **Builds** in the workspace navigation. Reading builds requires the
 `builds:read` permission; creating and advancing builds requires `builds:write`.
 
+The builds list shows each build's **Allocated** progress (how many of the required designator-units
+have a `BuildLineAllocation` covering them, as a fraction and progress bar) and its **Assembled**
+progress (how many designator-units have been marked assembled). Both columns follow the same visual
+treatment: a numeric fraction and a progress bar. Columns can be shown, hidden, and reordered from
+*Configure list*.
+
 ## Stock terms
 
 - **On hand** — the stock you physically have (the Stock column on the parts list).

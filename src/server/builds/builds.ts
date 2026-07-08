@@ -43,6 +43,7 @@ export type BuildSummary = {
   targetQuantity: number;
   state: BuildState;
   unitsTotal: number;
+  unitsAllocated: number;
   unitsAssembled: number;
   createdAt: Date;
   updatedAt: Date;
@@ -237,18 +238,23 @@ const buildSummarySelect = {
   lineItems: {
     select: {
       designatorCount: true,
-      assignments: { select: { assembled: true } }
+      assignments: { select: { assembled: true } },
+      allocations: { select: { quantity: true } }
     }
   }
 } satisfies Prisma.BuildSelect;
 
 function mapBuildSummary(row: Prisma.BuildGetPayload<{ select: typeof buildSummarySelect }>): BuildSummary {
   let unitsTotal = 0;
+  let unitsAllocated = 0;
   let unitsAssembled = 0;
   for (const line of row.lineItems) {
     // Total is derived from the frozen BOM (designators × target qty) so it is known before the
     // build is started and the per-designator assignment rows exist.
     unitsTotal += line.designatorCount * row.targetQuantity;
+    for (const allocation of line.allocations) {
+      unitsAllocated += allocation.quantity;
+    }
     for (const assignment of line.assignments) {
       if (assignment.assembled) unitsAssembled += 1;
     }
@@ -261,6 +267,7 @@ function mapBuildSummary(row: Prisma.BuildGetPayload<{ select: typeof buildSumma
     targetQuantity: row.targetQuantity,
     state: row.state as BuildState,
     unitsTotal,
+    unitsAllocated,
     unitsAssembled,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt

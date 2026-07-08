@@ -22,6 +22,7 @@ const copy: BuildsCopy = {
   revision: "Revision",
   targetQuantity: "Target quantity",
   state: "State",
+  allocated: "Allocated",
   progress: "Assembled",
   unitsComplete: "units complete",
   partsAssembled: "parts assembled",

@@ -72,6 +72,7 @@ export type BuildsCopy = {
   revision: string;
   targetQuantity: string;
   state: string;
+  allocated: string;
   progress: string;
   unitsComplete: string;
   partsAssembled: string;
@@ -241,6 +242,7 @@ export function BuildsClient({
       { id: "revision", label: copy.revision, group: "base", defaultWidth: 100, minWidth: 80 },
       { id: "targetQuantity", label: copy.targetQuantity, group: "base", defaultWidth: 110, minWidth: 80, align: "right" },
       { id: "state", label: copy.state, group: "base", defaultWidth: 140, minWidth: 110 },
+      { id: "allocated", label: copy.allocated, group: "base", defaultWidth: 150, minWidth: 90, align: "right" },
       { id: "progress", label: copy.progress, group: "base", defaultWidth: 150, minWidth: 90, align: "right" },
       { id: "createdAt", label: copy.createdAt, group: "base", defaultWidth: 160, minWidth: 100 }
     ],
@@ -494,6 +496,25 @@ export function BuildsClient({
             >
               {copy.states[value] ?? value}
             </span>
+          );
+        }
+      }),
+      columnHelper.accessor((row) => row.unitsAllocated, {
+        id: "allocated",
+        header: copy.allocated,
+        cell: ({ row }) => {
+          const { unitsAllocated, unitsTotal } = row.original;
+          const percent = unitsTotal > 0 ? (unitsAllocated / unitsTotal) * 100 : 0;
+          return (
+            <div
+              className="grid justify-items-end gap-0.5"
+              title={`${unitsAllocated} / ${unitsTotal} ${copy.allocated.toLowerCase()}`}
+            >
+              <span className="text-xs text-[var(--color-text-secondary)]">
+                {unitsAllocated}/{unitsTotal}
+              </span>
+              <LinearProgressBar percent={percent} className="w-full" />
+            </div>
           );
         }
       }),
