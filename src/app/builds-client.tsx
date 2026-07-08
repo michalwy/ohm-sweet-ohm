@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import {
   createColumnHelper,
@@ -1722,81 +1722,83 @@ function AllocationEditor({
   return (
     <div className="grid gap-2">
       {entries.length > 0 && (
-        <div className="grid grid-cols-[1fr_1fr_auto_auto_auto] gap-2 text-xs text-[var(--color-text-muted)]">
-          <span>{copy.part}</span>
-          <span>{copy.sourceLocation}</span>
+        <div className="grid grid-cols-[1fr_1fr_auto_auto_auto] items-center gap-2">
+          {/* Header row — shares the same grid as data rows so columns are sized together. */}
+          <span className="text-xs text-[var(--color-text-muted)]">{copy.part}</span>
+          <span className="text-xs text-[var(--color-text-muted)]">{copy.sourceLocation}</span>
           <span aria-hidden="true" />
-          <span>{copy.quantity}</span>
+          <span className="text-xs text-[var(--color-text-muted)]">{copy.quantity}</span>
           <span aria-hidden="true" />
+          {/* Data rows — each Fragment contributes 5 cells to the same grid. */}
+          {entries.map((entry, index) => {
+            const narrowed = narrowLocationsToBalances(locations, balancesByPart.get(entry.partId) ?? []);
+            const overPart = rowOver(entry);
+            const overLocation = locationOver(entry.partId, entry.sourceLocationId);
+            // An entry with no source location plans against incoming stock (onOrderQty/inProductionQty,
+            // #185) — clearly labeled so the user knows why it can't make the build start-ready yet.
+            const isIncoming = Boolean(entry.partId) && !entry.sourceLocationId;
+            return (
+              <Fragment key={index}>
+                <BuildPartSelect
+                  name={`alloc-part-${line.id}-${index}`}
+                  options={selectablePartOptions.filter((p) => p.available > 0 || p.id === entry.partId)}
+                  value={entry.partId}
+                  placeholder={copy.unassigned}
+                  availableLabel={copy.available}
+                  noOptionsLabel={copy.noAvailableParts}
+                  invalid={overPart}
+                  onChange={(partId) =>
+                    update(index, { partId, sourceLocationId: partId ? suggestLocationForPart(partId, index) : null })
+                  }
+                />
+                <LocationTreeSelect
+                  locations={narrowed.items}
+                  locationTree={narrowed.tree}
+                  copy={locationTreeSelectCopy(copy)}
+                  name={`alloc-${line.id}-${index}`}
+                  selectedId={entry.sourceLocationId ?? ""}
+                  onSelectedIdChange={(locationId) => update(index, { sourceLocationId: locationId || null })}
+                  emptyLabel={isIncoming ? copy.incoming : copy.unassigned}
+                  describeLocation={describeLocationBalance(copy, narrowed.balanceById)}
+                  className="w-full"
+                  buttonClassName={`${formLocationSelectButtonClassName}${
+                    overLocation ? ` ${stockErrorBorder}` : ""
+                  }`}
+                />
+                {entry.partId ? (
+                  <span
+                    className={`whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-medium ${
+                      isIncoming
+                        ? "bg-[var(--color-success-soft)] text-[var(--color-success)]"
+                        : "bg-[var(--color-bg-subtle)] text-[var(--color-text-secondary)]"
+                    }`}
+                  >
+                    {isIncoming ? copy.incoming : copy.onHand}
+                  </span>
+                ) : (
+                  <span aria-hidden="true" />
+                )}
+                <input
+                  className={`${smallSelectClass} w-20${overPart || overLocation ? ` ${stockErrorBorder}` : ""}`}
+                  type="number"
+                  min={1}
+                  step={1}
+                  value={entry.quantity}
+                  onChange={(e) => update(index, { quantity: e.target.value })}
+                />
+                <button
+                  type="button"
+                  className={removeButtonClass}
+                  title={copy.removeEntry}
+                  onClick={() => onEntriesChange(entries.filter((_, i) => i !== index))}
+                >
+                  ✕
+                </button>
+              </Fragment>
+            );
+          })}
         </div>
       )}
-      {entries.map((entry, index) => {
-        const narrowed = narrowLocationsToBalances(locations, balancesByPart.get(entry.partId) ?? []);
-        const overPart = rowOver(entry);
-        const overLocation = locationOver(entry.partId, entry.sourceLocationId);
-        // An entry with no source location plans against incoming stock (onOrderQty/inProductionQty,
-        // #185) — clearly labeled so the user knows why it can't make the build start-ready yet.
-        const isIncoming = Boolean(entry.partId) && !entry.sourceLocationId;
-        return (
-          <div key={index} className="grid grid-cols-[1fr_1fr_auto_auto_auto] items-center gap-2">
-            <BuildPartSelect
-              name={`alloc-part-${line.id}-${index}`}
-              options={selectablePartOptions.filter((p) => p.available > 0 || p.id === entry.partId)}
-              value={entry.partId}
-              placeholder={copy.unassigned}
-              availableLabel={copy.available}
-              noOptionsLabel={copy.noAvailableParts}
-              invalid={overPart}
-              onChange={(partId) =>
-                update(index, { partId, sourceLocationId: partId ? suggestLocationForPart(partId, index) : null })
-              }
-            />
-            <LocationTreeSelect
-              locations={narrowed.items}
-              locationTree={narrowed.tree}
-              copy={locationTreeSelectCopy(copy)}
-              name={`alloc-${line.id}-${index}`}
-              selectedId={entry.sourceLocationId ?? ""}
-              onSelectedIdChange={(locationId) => update(index, { sourceLocationId: locationId || null })}
-              emptyLabel={isIncoming ? copy.incoming : copy.unassigned}
-              describeLocation={describeLocationBalance(copy, narrowed.balanceById)}
-              className="w-full"
-              buttonClassName={`${formLocationSelectButtonClassName}${
-                overLocation ? ` ${stockErrorBorder}` : ""
-              }`}
-            />
-            {entry.partId ? (
-              <span
-                className={`whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-medium ${
-                  isIncoming
-                    ? "bg-[var(--color-success-soft)] text-[var(--color-success)]"
-                    : "bg-[var(--color-bg-subtle)] text-[var(--color-text-secondary)]"
-                }`}
-              >
-                {isIncoming ? copy.incoming : copy.onHand}
-              </span>
-            ) : (
-              <span aria-hidden="true" />
-            )}
-            <input
-              className={`${smallSelectClass} w-20${overPart || overLocation ? ` ${stockErrorBorder}` : ""}`}
-              type="number"
-              min={1}
-              step={1}
-              value={entry.quantity}
-              onChange={(e) => update(index, { quantity: e.target.value })}
-            />
-            <button
-              type="button"
-              className={removeButtonClass}
-              title={copy.removeEntry}
-              onClick={() => onEntriesChange(entries.filter((_, i) => i !== index))}
-            >
-              ✕
-            </button>
-          </div>
-        );
-      })}
       {!stockOk && (
         <p className="text-xs text-[var(--color-error)]">
           {anyPartOver ? copy.insufficientAvailableStock : copy.insufficientLocationStock}
