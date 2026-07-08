@@ -28,6 +28,8 @@ export type LineShortage = {
   availableQty: number;
   gapQty: number;
   matchCount: number;
+  /** Design name when the shortage remainder is resolved by building this sub-assembly, else null. */
+  sourcingDesignName: string | null;
 };
 
 export type ProcurementCandidate = {
@@ -230,6 +232,12 @@ export async function analyzeShortage({
       }
 
       if (isRoot) {
+        // Determine sourcing design name for the badge before pushing line data.
+        const firstCandidate = candidates[0];
+        const sourcingDesignName =
+          remaining > 0 && firstCandidate
+            ? (outputDesignByPartId.get(firstCandidate.id)?.designName ?? null)
+            : null;
         lines.push({
           lineItemId: row.id,
           designators: row.designators,
@@ -237,7 +245,8 @@ export async function analyzeShortage({
           requiredQty: required,
           availableQty: required - remaining,
           gapQty: Math.max(remaining, 0),
-          matchCount: candidates.length
+          matchCount: candidates.length,
+          sourcingDesignName
         });
       }
 

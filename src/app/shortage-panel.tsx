@@ -33,6 +33,7 @@ export type ShortagePanelCopy = {
   manufacturer: string;
   shortageQty: string;
   cyclesHeading: string;
+  viaSubDesign: string;
   createShoppingListFromShortage: string;
   // Compact status + modal
   statusSelectDesign: string;
@@ -62,6 +63,7 @@ export const DEFAULT_SHORTAGE_COPY: ShortagePanelCopy = {
   manufacturer: "Manufacturer",
   shortageQty: "Shortage",
   cyclesHeading: "Design cycles detected",
+  viaSubDesign: "via",
   createShoppingListFromShortage: "Create shopping list",
   statusSelectDesign: "Select a design and revision to check stock.",
   statusFulfillable: "This build can be made from available stock.",
@@ -161,6 +163,11 @@ function ShortageResults({
                     {unmatched && (
                       <span className="ml-2 rounded bg-[var(--color-warning-soft)] px-1.5 py-0.5 text-xs text-[var(--color-warning)]">
                         {copy.noMatches}
+                      </span>
+                    )}
+                    {!unmatched && line.sourcingDesignName && (
+                      <span className="ml-2 rounded bg-[var(--color-accent-soft)] px-1.5 py-0.5 text-xs text-[var(--color-accent)]">
+                        {copy.viaSubDesign} {line.sourcingDesignName}
                       </span>
                     )}
                   </td>

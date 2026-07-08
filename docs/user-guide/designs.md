@@ -113,7 +113,10 @@ analysis reports what cannot be fulfilled from current stock.
 - **Line shortages** lists each BOM line with its required, available, and gap quantities.
   The required quantity is `designators × target quantity`. Available stock is **combined
   across all parts that match the line's spec**, so a line is short only when the matching
-  parts together cannot cover it. Lines with no matching part are flagged.
+  parts together cannot cover it. Lines with no matching part are flagged. Lines whose
+  shortage will be resolved by building a sub-assembly show a **"via [Design name]"** badge,
+  indicating the shortfall is covered by exploding into that Design's BOM rather than
+  purchasing the part.
 - **To acquire** is the exploded list of purchasable parts you need to obtain, with the
   total shortage quantity for each.
 
