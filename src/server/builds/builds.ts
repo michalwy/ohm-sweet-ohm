@@ -19,6 +19,7 @@ import {
   type ListPage
 } from "@/server/pagination";
 import { findMatchingParts, type MatchSpec } from "@/server/designs/matching";
+import { type MatcherOperator } from "@/server/designs/bomMatcherEvaluation";
 import {
   createInventoryEntryWithinTx,
   getPartLocationAvailableBalances,
@@ -95,6 +96,18 @@ export type BuildAssignmentDetail = {
   assembled: boolean;
 };
 
+export type BuildLineMatchSpecMatcher = {
+  attributeId: string;
+  attributeName: string;
+  operator: MatcherOperator;
+  displayValue: string | null;
+};
+
+export type BuildLineMatchSpec = {
+  pinnedPart: { id: string; catalogNumber: string } | null;
+  matchers: BuildLineMatchSpecMatcher[];
+};
+
 export type BuildLineDetail = {
   id: string;
   sourceBomLineItemId: string | null;
@@ -106,6 +119,8 @@ export type BuildLineDetail = {
   assignments: BuildAssignmentDetail[];
   matchCandidates: BuildMatchCandidate[];
   partBalances: BuildPartBalances[];
+  /** Match spec for read-only display; populated only when pickers are shown (ALLOCATING/STARTED/IN_PROGRESS). */
+  matchSpec: BuildLineMatchSpec | null;
 };
 
 /** One designator's row within a single physical unit — the per-unit assembly grain. */
@@ -595,14 +610,15 @@ export async function getBuildDetail({
   // part.
   const showPickers =
     build.state === "ALLOCATING" || build.state === "STARTED" || build.state === "IN_PROGRESS";
+  const sourceBomLineItemIds = build.lineItems
+    .map((line) => line.sourceBomLineItemId)
+    .filter((id): id is string => Boolean(id));
   const candidatesByLine = showPickers
-    ? await getMatchCandidatesForLines(
-        workspaceId,
-        build.lineItems
-          .map((line) => line.sourceBomLineItemId)
-          .filter((id): id is string => Boolean(id))
-      )
+    ? await getMatchCandidatesForLines(workspaceId, sourceBomLineItemIds)
     : new Map<string, BuildMatchCandidate[]>();
+  const matchSpecsByLine = showPickers
+    ? await loadLineMatchSpecDisplays(workspaceId, sourceBomLineItemIds)
+    : new Map<string, BuildLineMatchSpec>();
 
   // Per-part non-zero location balances, so a source-location picker can be narrowed to locations
   // that actually hold usable stock of the chosen part. Reservation-aware (refs #172): a location
@@ -725,7 +741,10 @@ export async function getBuildDetail({
         partBalances: [...partIdsForLine].map((partId) => ({
           partId,
           balances: balancesByPart.get(partId) ?? []
-        }))
+        })),
+        matchSpec: line.sourceBomLineItemId
+          ? (matchSpecsByLine.get(line.sourceBomLineItemId) ?? null)
+          : null
       };
     }),
     allocationWarnings
@@ -1103,6 +1122,44 @@ async function getAllocationWarnings(
  * Load each source BOM line's live match spec, so the allocation picker can offer candidate parts
  * and the creation-time suggestion can pre-fill. Returns a spec per BOM line item id.
  */
+async function loadLineMatchSpecDisplays(
+  workspaceId: string,
+  bomLineItemIds: string[]
+): Promise<Map<string, BuildLineMatchSpec>> {
+  const result = new Map<string, BuildLineMatchSpec>();
+  if (bomLineItemIds.length === 0) return result;
+
+  const bomLines = await prisma.bomLineItem.findMany({
+    where: { id: { in: bomLineItemIds }, workspaceId },
+    select: {
+      id: true,
+      pinnedPart: { select: { id: true, catalogNumber: true } },
+      matchers: {
+        select: {
+          attributeId: true,
+          operator: true,
+          displayValue: true,
+          attribute: { select: { name: true } }
+        }
+      }
+    }
+  });
+
+  for (const line of bomLines) {
+    result.set(line.id, {
+      pinnedPart: line.pinnedPart,
+      matchers: line.matchers.map((m) => ({
+        attributeId: m.attributeId,
+        attributeName: m.attribute.name,
+        operator: m.operator as MatcherOperator,
+        displayValue: m.displayValue
+      }))
+    });
+  }
+
+  return result;
+}
+
 async function loadLineSpecs(
   workspaceId: string,
   bomLineItemIds: string[]

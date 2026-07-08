@@ -23,6 +23,7 @@ import {
   startBuildAction
 } from "@/server/builds/buildActions";
 import type { BuildDetail, BuildSummary } from "@/server/builds/builds";
+import type { MatcherOperator } from "@/server/designs/bomMatcherEvaluation";
 import type { ListPage } from "@/server/pagination";
 import type { StorageLocationListItem } from "@/server/inventory/locationMutations";
 import {
@@ -1219,6 +1220,15 @@ function BuildDetailContent({
   );
 }
 
+const OPERATOR_LABELS: Record<MatcherOperator, string> = {
+  EQ: "=",
+  NEQ: "≠",
+  LT: "<",
+  LTE: "≤",
+  GT: ">",
+  GTE: "≥"
+};
+
 type BuildLine = NonNullable<BuildDetail["lines"]>[number];
 type BuildUnit = NonNullable<BuildDetail["units"]>[number];
 type BuildUnitDesignator = BuildUnit["designators"][number];
@@ -1379,6 +1389,9 @@ function BuildLineRow({
   onEntriesChange
 }: BuildLineRowProps) {
   const editing = editable && canWrite;
+  const [specOpen, setSpecOpen] = useState(false);
+  const hasSpec =
+    Boolean(line.matchSpec?.pinnedPart) || (line.matchSpec?.matchers.length ?? 0) > 0;
   const allocatedTotal = editing
     ? entries.reduce((sum, e) => sum + (Number.parseInt(e.quantity, 10) || 0), 0)
     : line.allocations.reduce((sum, a) => sum + a.quantity, 0);
@@ -1414,6 +1427,16 @@ function BuildLineRow({
               {line.categoryName}
             </span>
           )}
+          {hasSpec && (
+            <button
+              className="text-xs text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)]"
+              onClick={() => setSpecOpen((v) => !v)}
+              title={specOpen ? "Hide match spec" : "Show match spec"}
+              aria-expanded={specOpen}
+            >
+              {specOpen ? "▲ spec" : "▼ spec"}
+            </button>
+          )}
         </div>
         <div className="flex items-center gap-2">
           <span className="whitespace-nowrap text-xs text-[var(--color-text-muted)]">
@@ -1436,6 +1459,27 @@ function BuildLineRow({
           )}
         </div>
       </div>
+
+      {specOpen && line.matchSpec && (
+        <div className="rounded bg-[var(--color-bg-subtle)] px-2 py-1.5 text-xs text-[var(--color-text-secondary)]">
+          {line.matchSpec.pinnedPart ? (
+            <div>
+              <span className="text-[var(--color-text-muted)]">Pinned:</span>{" "}
+              <span className="font-mono">{line.matchSpec.pinnedPart.catalogNumber}</span>
+            </div>
+          ) : line.matchSpec.matchers.length > 0 ? (
+            <div className="flex flex-wrap gap-x-3 gap-y-0.5">
+              {line.matchSpec.matchers.map((m) => (
+                <span key={m.attributeId}>
+                  <span className="text-[var(--color-text-muted)]">{m.attributeName}</span>{" "}
+                  <span>{OPERATOR_LABELS[m.operator]}</span>{" "}
+                  <span>{m.displayValue ?? "—"}</span>
+                </span>
+              ))}
+            </div>
+          ) : null}
+        </div>
+      )}
 
       {editing ? (
         <AllocationEditor
