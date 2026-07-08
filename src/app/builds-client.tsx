@@ -725,6 +725,7 @@ export function BuildsClient({
         >
           <BuildDetailContent
             canWrite={canWrite}
+            canWriteShoppingLists={canWriteShoppingLists}
             copy={copy}
             detail={buildDetail ?? null}
             unitsAssembled={selectedBuild.unitsAssembled}
@@ -737,6 +738,7 @@ export function BuildsClient({
             onStart={(buildId) => startMutation.mutate(buildId)}
             onCancel={(buildId) => cancelMutation.mutate(buildId)}
             onDelete={(buildId) => setBuildPendingDeleteId(buildId)}
+            onToast={(msg) => pushToast(msg)}
           />
         </DetailPanel>
       ) : null}
@@ -887,6 +889,7 @@ type BuildAllocationsInput = {
 
 type BuildDetailContentProps = {
   canWrite: boolean;
+  canWriteShoppingLists: boolean;
   copy: BuildsCopy;
   detail: BuildDetail | null;
   unitsAssembled: number;
@@ -899,6 +902,7 @@ type BuildDetailContentProps = {
   onStart: (buildId: string) => void;
   onCancel: (buildId: string) => void;
   onDelete: (buildId: string) => void;
+  onToast: (msg: string) => void;
 };
 
 const actionButtonClass =
@@ -908,6 +912,7 @@ const primaryActionClass =
 
 function BuildDetailContent({
   canWrite,
+  canWriteShoppingLists,
   copy,
   detail,
   unitsAssembled,
@@ -919,8 +924,10 @@ function BuildDetailContent({
   onReassign,
   onStart,
   onCancel,
-  onDelete
+  onDelete,
+  onToast
 }: BuildDetailContentProps) {
+  const [shortageModalOpen, setShortageModalOpen] = useState(false);
   // Full per-line allocation drafts are owned here so a single build-wide Apply can persist every
   // line atomically — per-line saves could otherwise leave the build over-allocated.
   const [draftsByLine, setDraftsByLine] = useState<Record<string, AllocationDraft[]>>({});
@@ -1099,31 +1106,32 @@ function BuildDetailContent({
         detail.state === "STARTED" ||
         detail.state === "IN_PROGRESS" ||
         detail.state === "COMPLETED") && (
-        <section className="flex flex-wrap gap-2">
-          {canWrite && detail.state === "ALLOCATING" && (
-            <>
-              <button
-                className={primaryActionClass}
-                type="button"
-                disabled={!applyEnabled}
-                onClick={handleApply}
-              >
-                {copy.applyAllocation}
-              </button>
-              <button
-                className={primaryActionClass}
-                type="button"
-                disabled={!readyToStart}
-                onClick={() => onStart(detail.id)}
-              >
-                {copy.start}
-              </button>
-              <button className={actionButtonClass} type="button" onClick={() => onDelete(detail.id)}>
-                {copy.deleteBuild}
-              </button>
-            </>
-          )}
-          {canWrite && (detail.state === "STARTED" || detail.state === "IN_PROGRESS") && (
+        <section className="grid gap-2">
+          <div className="flex flex-wrap gap-2">
+            {canWrite && detail.state === "ALLOCATING" && (
+              <>
+                <button
+                  className={primaryActionClass}
+                  type="button"
+                  disabled={!applyEnabled}
+                  onClick={handleApply}
+                >
+                  {copy.applyAllocation}
+                </button>
+                <button
+                  className={primaryActionClass}
+                  type="button"
+                  disabled={!readyToStart}
+                  onClick={() => onStart(detail.id)}
+                >
+                  {copy.start}
+                </button>
+                <button className={actionButtonClass} type="button" onClick={() => onDelete(detail.id)}>
+                  {copy.deleteBuild}
+                </button>
+              </>
+            )}
+            {canWrite && (detail.state === "STARTED" || detail.state === "IN_PROGRESS") && (
             <button className={actionButtonClass} type="button" onClick={() => onCancel(detail.id)}>
               {copy.cancelBuild}
             </button>
@@ -1147,6 +1155,17 @@ function BuildDetailContent({
             >
               {copy.printAssemblyList}
             </Link>
+          )}
+          </div>
+          {detail.state === "ALLOCATING" && (
+            <div className="border-t border-[var(--color-border)] pt-1">
+              <ShortageStatus
+                workspaceSlug={workspaceSlug}
+                revisionId={detail.revisionId}
+                targetQuantity={detail.targetQuantity}
+                onOpen={() => setShortageModalOpen(true)}
+              />
+            </div>
           )}
         </section>
       )}
@@ -1186,6 +1205,16 @@ function BuildDetailContent({
           </div>
         )}
       </section>
+
+      <ShortageAnalysisModal
+        open={shortageModalOpen}
+        onClose={() => setShortageModalOpen(false)}
+        workspaceSlug={workspaceSlug}
+        revisionId={detail.revisionId}
+        targetQuantity={detail.targetQuantity}
+        canWriteShoppingLists={canWriteShoppingLists}
+        onToast={onToast}
+      />
     </>
   );
 }

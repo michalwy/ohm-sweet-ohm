@@ -85,7 +85,7 @@ export function isFulfillable(data: ShortageAnalysis): boolean {
   );
 }
 
-function useShortageAnalysis(
+export function useShortageAnalysis(
   workspaceSlug: string,
   revisionId: string | null,
   targetQuantity: number
@@ -379,17 +379,23 @@ export function ShortageStatus({
     }
   }
 
-  const canOpen = Boolean(revisionId) && Boolean(data) && !isError;
+  const hasShortage = Boolean(revisionId) && data != null && !isError && !isFulfillable(data);
 
   return (
-    <div className="flex h-9 items-center justify-between gap-3">
+    <div className="flex h-9 items-center gap-3">
       <span className={`flex min-w-0 items-center gap-2 text-sm ${toneClass}`}>
         <span className={`h-2 w-2 shrink-0 rounded-full ${dotClass}`} aria-hidden="true" />
         <span className="truncate">{text}</span>
       </span>
-      <DialogSecondaryButton type="button" disabled={!canOpen} onClick={onOpen}>
-        {copy.openAnalysis}
-      </DialogSecondaryButton>
+      {hasShortage && (
+        <button
+          type="button"
+          className="shrink-0 text-sm text-[var(--color-accent)] underline hover:no-underline"
+          onClick={onOpen}
+        >
+          {copy.openAnalysis}
+        </button>
+      )}
     </div>
   );
 }
