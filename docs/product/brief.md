@@ -39,7 +39,4 @@ BOM line-item specs and attribute-based matching are defined (see ADR-0020). The
 
 ## Open Questions
 
-- Should parts later include optional descriptive fields such as category, package, attributes, datasheets, or vendor links?
-- Should the app optimize for a single-user home lab first, or prepare for multi-user/team usage from the beginning?
 - Should OSO support offline-first usage?
-- Which deployment targets matter first?
