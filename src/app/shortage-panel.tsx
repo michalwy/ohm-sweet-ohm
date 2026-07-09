@@ -34,6 +34,7 @@ export type ShortagePanelCopy = {
   shortageQty: string;
   cyclesHeading: string;
   viaSubDesign: string;
+  createSubBuild: string;
   createShoppingListFromShortage: string;
   // Compact status + modal
   statusSelectDesign: string;
@@ -64,6 +65,7 @@ export const DEFAULT_SHORTAGE_COPY: ShortagePanelCopy = {
   shortageQty: "Shortage",
   cyclesHeading: "Design cycles detected",
   viaSubDesign: "via",
+  createSubBuild: "Create build",
   createShoppingListFromShortage: "Create shopping list",
   statusSelectDesign: "Select a design and revision to check stock.",
   statusFulfillable: "This build can be made from available stock.",
@@ -109,18 +111,22 @@ export function useShortageAnalysis(
 
 // --- Result tables (shared by the inline design panel and the modal) ---
 
+type SubBuildPrefill = { designId: string; revisionId: string; targetQuantity: number };
+
 function ShortageResults({
   data,
   copy,
   workspaceSlug,
   canWriteShoppingLists,
-  onToast
+  onToast,
+  onCreateSubBuild
 }: {
   data: ShortageAnalysis;
   copy: ShortagePanelCopy;
   workspaceSlug: string;
   canWriteShoppingLists: boolean;
   onToast: (msg: string) => void;
+  onCreateSubBuild?: (prefill: SubBuildPrefill) => void;
 }) {
   const [createSlDialogOpen, setCreateSlDialogOpen] = useState(false);
 
@@ -166,8 +172,25 @@ function ShortageResults({
                       </span>
                     )}
                     {!unmatched && line.sourcingDesignName && (
-                      <span className="ml-2 rounded bg-[var(--color-accent-soft)] px-1.5 py-0.5 text-xs text-[var(--color-accent)]">
-                        {copy.viaSubDesign} {line.sourcingDesignName}
+                      <span className="ml-2 inline-flex items-center gap-1.5">
+                        <span className="rounded bg-[var(--color-accent-soft)] px-1.5 py-0.5 text-xs text-[var(--color-accent)]">
+                          {copy.viaSubDesign} {line.sourcingDesignName}
+                        </span>
+                        {onCreateSubBuild && line.sourcingDesignId && line.sourcingLatestRevisionId && line.gapQty > 0 && (
+                          <button
+                            type="button"
+                            className="rounded border border-[var(--color-accent)] px-1.5 py-0.5 text-xs text-[var(--color-accent)] hover:bg-[var(--color-accent-soft)]"
+                            onClick={() =>
+                              onCreateSubBuild({
+                                designId: line.sourcingDesignId!,
+                                revisionId: line.sourcingLatestRevisionId!,
+                                targetQuantity: line.gapQty
+                              })
+                            }
+                          >
+                            {copy.createSubBuild}
+                          </button>
+                        )}
                       </span>
                     )}
                   </td>
@@ -249,7 +272,8 @@ function ShortageBody({
   copy,
   workspaceSlug,
   canWriteShoppingLists,
-  onToast
+  onToast,
+  onCreateSubBuild
 }: {
   query: UseQueryResult<ShortageAnalysis | null>;
   revisionId: string | null;
@@ -257,6 +281,7 @@ function ShortageBody({
   workspaceSlug: string;
   canWriteShoppingLists: boolean;
   onToast: (msg: string) => void;
+  onCreateSubBuild?: (prefill: SubBuildPrefill) => void;
 }) {
   const { data, isFetching, isError } = query;
   if (!revisionId) {
@@ -279,6 +304,7 @@ function ShortageBody({
       workspaceSlug={workspaceSlug}
       canWriteShoppingLists={canWriteShoppingLists}
       onToast={onToast}
+      onCreateSubBuild={onCreateSubBuild}
     />
   );
 }
@@ -417,6 +443,7 @@ type ShortageAnalysisModalProps = {
   targetQuantity: number;
   canWriteShoppingLists: boolean;
   onToast: (msg: string) => void;
+  onCreateSubBuild?: (prefill: SubBuildPrefill) => void;
   copy?: ShortagePanelCopy;
 };
 
@@ -428,6 +455,7 @@ export function ShortageAnalysisModal({
   targetQuantity,
   canWriteShoppingLists,
   onToast,
+  onCreateSubBuild,
   copy = DEFAULT_SHORTAGE_COPY
 }: ShortageAnalysisModalProps) {
   const dialogRef = useRef<HTMLDialogElement>(null);
@@ -461,6 +489,7 @@ export function ShortageAnalysisModal({
           workspaceSlug={workspaceSlug}
           canWriteShoppingLists={canWriteShoppingLists}
           onToast={onToast}
+          onCreateSubBuild={onCreateSubBuild}
         />
       </DialogBody>
       <DialogFooter>

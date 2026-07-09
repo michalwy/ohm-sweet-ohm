@@ -40,6 +40,13 @@ BOM lines cannot be fulfilled from available stock and which parts you would nee
 sub-build. This is informational and does not block creating the build. See
 [Shortage Analysis](designs.md#shortage-analysis) for how it is calculated.
 
+While a build is **Allocating**, the shortage analysis is also accessible from the build detail
+panel. For any shortage line sourced by a sub-assembly, a **Create build** button appears next to
+the sub-design name in the shortage modal. Clicking it closes the modal and opens the build
+creation dialog pre-filled with the sub-design's latest revision and the unmet quantity as the
+target quantity; you still need to choose an output location before creating. The resulting
+sub-build is independent — no parent/child link is stored.
+
 When the build is created, the chosen revision's bill of materials is **frozen** into the build:
 each BOM line becomes a build line. Each designator needs `target quantity` parts, so a line with
 designators `R1, R2, R3` and a target quantity of 2 requires 6 parts in total. The build also

@@ -430,6 +430,20 @@ export function BuildsClient({
     window.requestAnimationFrame(() => openDialog(createDialogRef.current));
   }, []);
 
+  const openCreateDialogPrefilled = useCallback(
+    (prefill: { designId: string; revisionId: string; targetQuantity: number }) => {
+      setFormDesignId(prefill.designId);
+      setFormRevisionId(prefill.revisionId);
+      setFormTargetQuantity(String(prefill.targetQuantity));
+      const design = createOptions?.designs.find((d) => d.id === prefill.designId) ?? null;
+      setFormOutputLocationId(design?.defaultLocationId ?? "");
+      setFormErrors({});
+      setFormKey((k) => k + 1);
+      window.requestAnimationFrame(() => openDialog(createDialogRef.current));
+    },
+    [createOptions]
+  );
+
   const selectedFormDesign = createOptions?.designs.find((d) => d.id === formDesignId) ?? null;
 
   function handleDesignChange(designId: string) {
@@ -740,6 +754,7 @@ export function BuildsClient({
             onCancel={(buildId) => cancelMutation.mutate(buildId)}
             onDelete={(buildId) => setBuildPendingDeleteId(buildId)}
             onToast={(msg) => pushToast(msg)}
+            onCreateSubBuild={canWrite ? openCreateDialogPrefilled : undefined}
           />
         </DetailPanel>
       ) : null}
@@ -904,6 +919,7 @@ type BuildDetailContentProps = {
   onCancel: (buildId: string) => void;
   onDelete: (buildId: string) => void;
   onToast: (msg: string) => void;
+  onCreateSubBuild?: (prefill: { designId: string; revisionId: string; targetQuantity: number }) => void;
 };
 
 const actionButtonClass =
@@ -926,7 +942,8 @@ function BuildDetailContent({
   onStart,
   onCancel,
   onDelete,
-  onToast
+  onToast,
+  onCreateSubBuild
 }: BuildDetailContentProps) {
   const [shortageModalOpen, setShortageModalOpen] = useState(false);
   // Full per-line allocation drafts are owned here so a single build-wide Apply can persist every
@@ -1215,6 +1232,14 @@ function BuildDetailContent({
         targetQuantity={detail.targetQuantity}
         canWriteShoppingLists={canWriteShoppingLists}
         onToast={onToast}
+        onCreateSubBuild={
+          onCreateSubBuild
+            ? (prefill) => {
+                setShortageModalOpen(false);
+                onCreateSubBuild(prefill);
+              }
+            : undefined
+        }
       />
     </>
   );
