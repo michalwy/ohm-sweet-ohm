@@ -81,6 +81,8 @@ const copy: BuildsCopy = {
   insufficientAvailableStock: "Not enough available stock to reserve for this build.",
   insufficientLocationStock: "The chosen source location does not hold enough stock.",
   allocationWarningHeading: "This allocation may no longer be valid — stock has changed since it was applied.",
+  partsArrivedSuggestion: "Parts have arrived — assign a location.",
+  assignLocation: "Assign location",
   allocationWarningPart: "{part}: not enough available stock for the {quantity} units allocated.",
   allocationWarningPartLocation: "{part} at {location}: not enough stock at this location for the {quantity} units allocated.",
   outputLocationRequired: "Set an output location before completing the build.",

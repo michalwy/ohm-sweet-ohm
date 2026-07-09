@@ -134,6 +134,8 @@ export type BuildsCopy = {
   allocationWarningHeading: string;
   allocationWarningPart: string;
   allocationWarningPartLocation: string;
+  partsArrivedSuggestion: string;
+  assignLocation: string;
   outputLocationRequired: string;
   chooseLocation: string;
   searchLocations: string;
@@ -1679,6 +1681,22 @@ function AllocationEditor({
     return map;
   }, [line.partBalances, externalUsage]);
 
+  // Parts whose saved incoming allocation can now be replaced with on-hand stock: the incoming pool
+  // can no longer cover the reserved quantity but on-hand stock is available in at least one location.
+  const incomingSuggestions = useMemo(() => {
+    const set = new Set<string>();
+    for (const alloc of line.allocations) {
+      if (alloc.sourceLocation !== null) continue;
+      if (
+        Number(alloc.part.incomingAvailableQuantity) < alloc.quantity &&
+        Number(alloc.part.onHandAvailableQuantity) > 0
+      ) {
+        set.add(alloc.part.id);
+      }
+    }
+    return set;
+  }, [line.allocations]);
+
   // Rich options for the part picker, carrying each part's net-available count.
   const selectablePartOptions = useMemo<BuildPartOption[]>(
     () => partOptions.map((part) => ({ ...part, available: availableByPart.get(part.id) ?? 0 })),
@@ -1892,6 +1910,23 @@ function AllocationEditor({
                 >
                   ✕
                 </button>
+                {isIncoming && incomingSuggestions.has(entry.partId) && (
+                  <div className="col-span-5 flex items-center gap-2 pl-1 -mt-1">
+                    <span className="text-xs text-[var(--color-warning)]">
+                      {copy.partsArrivedSuggestion}
+                    </span>
+                    <button
+                      type="button"
+                      className={actionButtonClass}
+                      onClick={() => {
+                        const locationId = suggestLocationForPart(entry.partId, index);
+                        if (locationId) update(index, { sourceLocationId: locationId });
+                      }}
+                    >
+                      {copy.assignLocation}
+                    </button>
+                  </div>
+                )}
               </Fragment>
             );
           })}
