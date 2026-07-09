@@ -57,6 +57,7 @@ import {
 import { useDesignsQuery } from "@/app/use-designs-query";
 import { DetailPanel, useDetailsPanelWidth } from "@/app/detail-panel";
 import { BomLineItemDialog } from "@/app/bom-line-item-dialog";
+import { DateDisplay } from "@/app/date-display";
 import { ShortagePanel } from "@/app/shortage-panel";
 
 type Copy = {
@@ -466,9 +467,7 @@ export function DesignsClient({
         size: 160,
         minSize: 100,
         cell: ({ getValue }) => (
-          <span className="text-[var(--color-text-secondary)]">
-            {new Date(getValue()).toLocaleDateString()}
-          </span>
+          <DateDisplay value={getValue()} className="text-[var(--color-text-secondary)]" />
         )
       }),
       columnHelper.display({

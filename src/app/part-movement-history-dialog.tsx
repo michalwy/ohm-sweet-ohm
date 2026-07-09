@@ -28,6 +28,7 @@ import {
   closeDialog,
   openDialog
 } from "@/app/dialog-shell";
+import { DateDisplay } from "@/app/date-display";
 
 type Copy = {
   close: string;
@@ -177,9 +178,7 @@ export function PartMovementHistoryDialog({
             new Date(rowA.original.createdAt).getTime() -
             new Date(rowB.original.createdAt).getTime(),
           cell: (info) => (
-            <span className="whitespace-nowrap text-[var(--color-text-secondary)]">
-              {new Date(info.getValue()).toLocaleDateString()}
-            </span>
+            <DateDisplay value={info.getValue()} className="whitespace-nowrap text-[var(--color-text-secondary)]" />
           )
         }),
         columnHelper.accessor((row) => row.authorName ?? "", {

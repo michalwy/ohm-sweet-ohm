@@ -69,6 +69,7 @@ import {
 import { ListPageToolbar, ListTableHeaderCell, useColumnDragReorder, useColumnResizeCursor } from "@/app/list-page-toolbar";
 import { DetailPanel, useDetailsPanelWidth } from "@/app/detail-panel";
 import { EmptyCell } from "@/app/list-table-cell";
+import { DateDisplay } from "@/app/date-display";
 import { MultiAddToPODialog, type MultiAddToPOCopy } from "@/app/multi-add-to-po-dialog";
 import { PartLink } from "@/app/entity-links";
 import { PinnedFilterBanner } from "@/app/pinned-filter-banner";
@@ -1360,7 +1361,7 @@ export function PurchaseOrdersClient({
         size: 160,
         minSize: 100,
         cell: ({ getValue }) => (
-          <span className="text-[var(--color-text-secondary)]">{new Date(getValue()).toLocaleDateString()}</span>
+          <DateDisplay value={getValue()} className="text-[var(--color-text-secondary)]" />
         )
       }),
       columnHelper.accessor("createdByName", {
@@ -1383,7 +1384,7 @@ export function PurchaseOrdersClient({
         cell: ({ getValue }) => {
           const v = getValue();
           return v
-            ? <span className="text-[var(--color-text-secondary)]">{new Date(v).toLocaleDateString()}</span>
+            ? <DateDisplay value={v} className="text-[var(--color-text-secondary)]" />
             : <EmptyCell />;
         }
       }),

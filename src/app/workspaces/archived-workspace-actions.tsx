@@ -11,6 +11,7 @@ import {
   closeDialog
 } from "@/app/dialog-shell";
 import { restoreWorkspaceFromPicker, scheduleWorkspaceDeletion } from "@/server/workspaces/actions";
+import { useDateFormat } from "@/app/date-display";
 
 type ArchivedWorkspaceActionsProps = {
   workspaceName: string;
@@ -47,6 +48,7 @@ export function ArchivedWorkspaceActions({
   const dialogRef = useRef<HTMLDialogElement>(null);
   const [confirmInput, setConfirmInput] = useState("");
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const formatDate = useDateFormat();
 
   const canConfirm = confirmInput.trim() === workspaceName;
 
@@ -83,9 +85,7 @@ export function ArchivedWorkspaceActions({
   const deletionDeadline = new Date(
     new Date(archivedAt).getTime() + retentionDays * 24 * 60 * 60 * 1000
   );
-  const deletionDeadlineFormatted = new Intl.DateTimeFormat("en-US", {
-    dateStyle: "medium"
-  }).format(deletionDeadline);
+  const deletionDeadlineFormatted = formatDate(deletionDeadline);
 
   if (deletionScheduledAt) {
     return (

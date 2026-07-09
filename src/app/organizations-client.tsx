@@ -43,6 +43,7 @@ import {
 } from "@/app/list-table-config";
 import { ListPageToolbar, ListTableHeaderCell, useColumnDragReorder, useColumnResizeCursor } from "@/app/list-page-toolbar";
 import { EmptyCell } from "@/app/list-table-cell";
+import { DateDisplay } from "@/app/date-display";
 
 type Copy = {
   title: string;
@@ -350,13 +351,7 @@ export function OrganizationsClient({
         minSize: 100,
         enableSorting: false,
         cell: ({ getValue }) => (
-          <span className="text-[var(--color-text-muted)]">
-            {new Date(getValue()).toLocaleDateString("en-US", {
-              year: "numeric",
-              month: "short",
-              day: "numeric"
-            })}
-          </span>
+          <DateDisplay value={getValue()} className="text-[var(--color-text-muted)]" />
         )
       }),
       columnHelper.display({

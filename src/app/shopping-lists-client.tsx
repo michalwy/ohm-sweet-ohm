@@ -63,6 +63,7 @@ import { CreatePurchaseOrderDialog } from "@/app/create-purchase-order-dialog";
 import { MultiAddToSLDialog, type MultiAddToSLCopy } from "@/app/multi-add-to-sl-dialog";
 import { PartLink } from "@/app/entity-links";
 import { PinnedFilterBanner } from "@/app/pinned-filter-banner";
+import { DateDisplay } from "@/app/date-display";
 
 
 type Copy = {
@@ -618,7 +619,7 @@ export function ShoppingListsClient({
         size: 160,
         minSize: 100,
         cell: ({ getValue }) => (
-          <span className="text-[var(--color-text-secondary)]">{new Date(getValue()).toLocaleDateString()}</span>
+          <DateDisplay value={getValue()} className="text-[var(--color-text-secondary)]" />
         )
       }),
       columnHelper.accessor("createdByName", {

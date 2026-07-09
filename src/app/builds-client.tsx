@@ -52,6 +52,7 @@ import { useBuildsQuery } from "@/app/use-builds-query";
 import { DetailPanel, useDetailsPanelWidth } from "@/app/detail-panel";
 import { buildTree } from "@/app/tree-picker-utils";
 import { PartLink } from "@/app/entity-links";
+import { DateDisplay } from "@/app/date-display";
 import { PinnedFilterBanner } from "@/app/pinned-filter-banner";
 import { BuildPartSelect, type BuildPartOption } from "@/app/build-part-select";
 import { ShortageAnalysisModal, ShortageStatus } from "@/app/shortage-panel";
@@ -558,9 +559,7 @@ export function BuildsClient({
         id: "createdAt",
         header: copy.createdAt,
         cell: ({ getValue }) => (
-          <span className="text-[var(--color-text-secondary)]">
-            {new Date(getValue()).toLocaleDateString()}
-          </span>
+          <DateDisplay value={getValue()} className="text-[var(--color-text-secondary)]" />
         )
       })
     ],

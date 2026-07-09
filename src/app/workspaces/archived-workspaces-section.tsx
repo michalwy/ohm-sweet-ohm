@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 
 import { ArchivedWorkspaceActions } from "@/app/workspaces/archived-workspace-actions";
+import { DateDisplay } from "@/app/date-display";
 
 const STORAGE_KEY = "oso:archived-workspaces-expanded";
 
@@ -92,10 +93,7 @@ export function ArchivedWorkspacesSection({
                   </p>
                   {workspace.archivedAt && (
                     <p className="mt-0.5 text-xs text-[var(--color-text-placeholder)]">
-                      Archived{" "}
-                      {new Intl.DateTimeFormat("en-US", {
-                        dateStyle: "medium"
-                      }).format(new Date(workspace.archivedAt))}
+                      Archived <DateDisplay value={workspace.archivedAt} />
                     </p>
                   )}
                 </div>

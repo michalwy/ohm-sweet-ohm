@@ -97,6 +97,7 @@ import type { PartBuildAllocationItem, PartProductionBuildItem } from "@/server/
 import { BUILD_STATE_BADGE_CLASS } from "@/app/builds-client";
 import { BuildLink, PoLink, SlLink } from "@/app/entity-links";
 import { PinnedFilterBanner } from "@/app/pinned-filter-banner";
+import { DateDisplay } from "@/app/date-display";
 
 type Copy = {
   title: string;
@@ -1692,7 +1693,7 @@ export function PartsListClient({
                             </td>
                             <td className="whitespace-nowrap px-3 py-2 align-middle text-xs text-[var(--color-text-placeholder)]">
                               {entry.orderedAt
-                                ? new Date(entry.orderedAt).toLocaleDateString()
+                                ? <DateDisplay value={entry.orderedAt} />
                                 : "—"}
                             </td>
                             <td className="px-3 py-2 align-middle text-right tabular-nums text-[var(--color-text-primary)]">
