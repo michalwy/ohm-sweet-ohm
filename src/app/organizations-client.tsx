@@ -4,7 +4,6 @@ import { useMemo, useRef, useState } from "react";
 import { CURRENCIES } from "@/app/currencies";
 import {
   createColumnHelper,
-  flexRender,
   getCoreRowModel,
   useReactTable
 } from "@tanstack/react-table";
@@ -36,12 +35,12 @@ import {
   openDialog
 } from "@/app/dialog-shell";
 import { getNextToastId, ToastNotice, type ToastMessage } from "@/app/toast-notice";
-import { InfiniteListViewport } from "@/app/infinite-list";
 import {
   useListTableConfiguration,
   type ListColumnDefinition
 } from "@/app/list-table-config";
-import { ListPageToolbar, ListTableHeaderCell, useColumnDragReorder, useColumnResizeCursor } from "@/app/list-page-toolbar";
+import { ListPageToolbar } from "@/app/list-page-toolbar";
+import { ListTable } from "@/app/list-table";
 import { EmptyCell } from "@/app/list-table-cell";
 import { DateDisplay } from "@/app/date-display";
 
@@ -141,7 +140,6 @@ export function OrganizationsClient({
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [dialogFormKey, setDialogFormKey] = useState(0);
   const [toastMessages, setToastMessages] = useState<ToastMessage[]>([]);
-  const { isResizingColumn, setIsResizingColumn, containerClassName } = useColumnResizeCursor();
 
   // --- Column configuration ---
 
@@ -174,8 +172,6 @@ export function OrganizationsClient({
     columns: orgColumns,
     fixedColumnIds
   });
-
-  const { draggedColumnId, onDragEnd, onStartDrag, onDropOnto } = useColumnDragReorder(setColumnOrder);
 
   // --- Data ---
 
@@ -422,104 +418,50 @@ export function OrganizationsClient({
 
   return (
     <>
-      <div className={`flex min-h-0 flex-1 flex-col overflow-hidden ${containerClassName}`}>
-        <section className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-elevated)] shadow-sm">
-          <ListPageToolbar
-            columnVisibility={columnVisibility}
-            configurableColumns={configurableColumns}
-            configureListLabel={copy.configureList}
-            filteredCount={orgsQuery.data?.pages[0]?.filteredCount}
-            formatCount={(visible, total) =>
-              copy.listCountSummary
-                .replace("{visible}", String(visible))
-                .replace("{total}", String(total))
-            }
-            totalCount={orgsQuery.data?.pages[0]?.totalCount}
-            visibleColumnsLabel={copy.visibleColumns}
-            setColumnVisible={setColumnVisible}
-            primaryAction={
-              <button
-                className="inline-flex min-h-9 items-center rounded-md bg-[var(--color-accent)] px-4 text-sm font-semibold text-white transition hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-60"
-                disabled={!canWrite}
-                type="button"
-                onClick={openCreateDialog}
-              >
-                {copy.addOrganization}
-              </button>
-            }
-          />
-
-          <InfiniteListViewport
-            emptyState={
-              <p className="px-4 py-10 text-sm text-[var(--color-text-muted)]">{copy.noOrganizations}</p>
-            }
-            errorState={
-              <p className="px-4 py-10 text-sm text-[var(--color-error)]">{copy.loadError}</p>
-            }
-            hasNextPage={orgsQuery.hasNextPage}
-            isEmpty={orgs.length === 0}
-            isError={orgsQuery.isError}
-            isFetchingNextPage={orgsQuery.isFetchingNextPage}
-            isInitialLoading={!isConfigLoaded || orgsQuery.isLoading}
-            loadMore={() => void orgsQuery.fetchNextPage()}
-            loadingLabel={copy.loadingOrganizations}
-            loadingMoreLabel={copy.loadingMore}
-          >
-            <table
-              className="table-fixed border-separate border-spacing-0 text-left text-sm"
-              style={{ width: table.getTotalSize() }}
+      <section className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-elevated)] shadow-sm">
+        <ListPageToolbar
+          columnVisibility={columnVisibility}
+          configurableColumns={configurableColumns}
+          configureListLabel={copy.configureList}
+          filteredCount={orgsQuery.data?.pages[0]?.filteredCount}
+          formatCount={(visible, total) =>
+            copy.listCountSummary
+              .replace("{visible}", String(visible))
+              .replace("{total}", String(total))
+          }
+          totalCount={orgsQuery.data?.pages[0]?.totalCount}
+          visibleColumnsLabel={copy.visibleColumns}
+          setColumnVisible={setColumnVisible}
+          primaryAction={
+            <button
+              className="inline-flex min-h-9 items-center rounded-md bg-[var(--color-accent)] px-4 text-sm font-semibold text-white transition hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-60"
+              disabled={!canWrite}
+              type="button"
+              onClick={openCreateDialog}
             >
-              <colgroup>
-                {table.getVisibleLeafColumns().map((col) => (
-                  <col key={col.id} style={{ width: col.getSize() }} />
-                ))}
-              </colgroup>
-              <thead className="sticky top-0 z-10 bg-[var(--color-bg-subtle)]">
-                {table.getHeaderGroups().map((headerGroup) => (
-                  <tr key={headerGroup.id}>
-                    {headerGroup.headers.map((header) => (
-                      <ListTableHeaderCell
-                        key={header.id}
-                        columnDefs={orgColumns}
-                        draggedColumnId={draggedColumnId}
-                        header={header}
-                        isResizingColumn={isResizingColumn}
-                        setColumnSorting={setColumnSorting}
-                        setColumnWidth={setColumnWidth}
-                        setIsResizingColumn={setIsResizingColumn}
-                        onDragEnd={onDragEnd}
-                        onDropOnto={onDropOnto}
-                        onStartDrag={onStartDrag}
-                      />
-                    ))}
-                  </tr>
-                ))}
-              </thead>
-              <tbody className="bg-[var(--color-bg-elevated)]">
-                {table.getRowModel().rows.map((row) => (
-                  <tr key={row.id} className="hover:bg-[var(--color-bg-subtle)]">
-                    {row.getVisibleCells().map((cell) => (
-                      <td
-                        key={cell.id}
-                        className={`overflow-hidden border-b border-[var(--color-border)] px-2 py-2 text-[var(--color-text-secondary)] ${
-                          cell.column.id === "actions"
-                            ? "sticky right-0 z-10 bg-[var(--color-bg-elevated)] px-1 py-1.5 hover:bg-[var(--color-bg-subtle)]"
-                            : ""
-                        }`}
-                        style={{ width: cell.column.getSize() }}
-                      >
-                        <div className="overflow-hidden text-ellipsis">
-                          {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                        </div>
-                      </td>
-                    ))}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </InfiniteListViewport>
-        </section>
-      </div>
+              {copy.addOrganization}
+            </button>
+          }
+        />
+
+        <ListTable
+          table={table}
+          columnDefs={orgColumns}
+          setColumnSorting={setColumnSorting}
+          setColumnWidth={setColumnWidth}
+          hasNextPage={orgsQuery.hasNextPage}
+          isEmpty={orgs.length === 0}
+          isError={orgsQuery.isError}
+          isFetchingNextPage={orgsQuery.isFetchingNextPage}
+          isInitialLoading={!isConfigLoaded || orgsQuery.isLoading}
+          loadMore={() => void orgsQuery.fetchNextPage()}
+          loadingLabel={copy.loadingOrganizations}
+          loadingMoreLabel={copy.loadingMore}
+          emptyState={<p className="px-4 py-10 text-sm text-[var(--color-text-muted)]">{copy.noOrganizations}</p>}
+          errorState={<p className="px-4 py-10 text-sm text-[var(--color-error)]">{copy.loadError}</p>}
+          setColumnOrder={setColumnOrder}
+        />
+      </section>
 
       {/* Create / Edit dialog */}
       <DialogShell

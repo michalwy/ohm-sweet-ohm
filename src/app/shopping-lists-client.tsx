@@ -3,7 +3,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   createColumnHelper,
-  flexRender,
   getCoreRowModel,
   useReactTable
 } from "@tanstack/react-table";
@@ -51,12 +50,12 @@ import {
   openDialog
 } from "@/app/dialog-shell";
 import { getNextToastId, ToastNotice, type ToastMessage } from "@/app/toast-notice";
-import { InfiniteListViewport } from "@/app/infinite-list";
 import {
   useListTableConfiguration,
   type ListColumnDefinition
 } from "@/app/list-table-config";
-import { ListPageToolbar, ListTableHeaderCell, useColumnDragReorder, useColumnResizeCursor } from "@/app/list-page-toolbar";
+import { ListPageToolbar } from "@/app/list-page-toolbar";
+import { ListTable } from "@/app/list-table";
 import { EmptyCell } from "@/app/list-table-cell";
 import { DetailPanel, useDetailsPanelWidth } from "@/app/detail-panel";
 import { CreatePurchaseOrderDialog } from "@/app/create-purchase-order-dialog";
@@ -191,7 +190,6 @@ export function ShoppingListsClient({
   const [pinnedListId, setPinnedListId] = useState<string | null>(
     initialPinnedListId ?? null
   );
-  const [hoveredListId, setHoveredListId] = useState<string | null>(null);
   const [listDialogMode, setListDialogMode] = useState<"create" | "edit" | null>(null);
   const [editingList, setEditingList] = useState<ShoppingListSummary | null>(null);
   const [listPendingDelete, setListPendingDelete] = useState<ShoppingListSummary | null>(null);
@@ -209,7 +207,6 @@ export function ShoppingListsClient({
   const [convertFormErrors, setConvertFormErrors] = useState<Record<string, string>>({});
   const [dialogFormKey, setDialogFormKey] = useState(0);
   const [multiAddSLOpen, setMultiAddSLOpen] = useState(false);
-  const { isResizingColumn, setIsResizingColumn, containerClassName } = useColumnResizeCursor();
   const [toastMessages, setToastMessages] = useState<ToastMessage[]>([]);
   const nextToastIdRef = useRef(0);
   const listDialogRef = useRef<HTMLDialogElement>(null);
@@ -387,8 +384,6 @@ export function ShoppingListsClient({
     },
     enabled: convertDialogOpen
   });
-
-  const { draggedColumnId, onDragEnd, onStartDrag, onDropOnto } = useColumnDragReorder(setColumnOrder);
 
   // --- URL sync & panel ---
 
@@ -748,9 +743,7 @@ export function ShoppingListsClient({
 
   return (
     <>
-      <div
-        className={`flex min-h-0 flex-1 gap-4 ${containerClassName}`}
-      >
+      <div className="flex min-h-0 flex-1 gap-4">
         {/* Main list */}
         <section className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-elevated)] shadow-sm">
           {/* Toolbar */}
@@ -793,13 +786,11 @@ export function ShoppingListsClient({
             />
           ) : null}
 
-          <InfiniteListViewport
-            emptyState={
-              <p className="px-4 py-10 text-sm text-[var(--color-text-muted)]">{copy.noLists}</p>
-            }
-            errorState={
-              <p className="px-4 py-10 text-sm text-[var(--color-error)]">{copy.loadError}</p>
-            }
+          <ListTable
+            table={listsTable}
+            columnDefs={listColumns}
+            setColumnSorting={setColumnSorting}
+            setColumnWidth={setColumnWidth}
             hasNextPage={listsQuery.hasNextPage}
             isEmpty={lists.length === 0}
             isError={listsQuery.isError}
@@ -808,88 +799,12 @@ export function ShoppingListsClient({
             loadMore={() => void listsQuery.fetchNextPage()}
             loadingLabel={copy.loadingLists}
             loadingMoreLabel={copy.loadingMoreLists}
-          >
-            <table
-              className="table-fixed border-separate border-spacing-0 text-left text-sm"
-              style={{ width: listsTable.getTotalSize() }}
-            >
-              <colgroup>
-                {listsTable.getVisibleLeafColumns().map((col) => (
-                  <col key={col.id} style={{ width: col.getSize() }} />
-                ))}
-              </colgroup>
-              <thead className="sticky top-0 z-10 bg-[var(--color-bg-subtle)]">
-                {listsTable.getHeaderGroups().map((headerGroup) => (
-                  <tr key={headerGroup.id}>
-                    {headerGroup.headers.map((header) => (
-                      <ListTableHeaderCell
-                        key={header.id}
-                        columnDefs={listColumns}
-                        draggedColumnId={draggedColumnId}
-                        header={header}
-                        isResizingColumn={isResizingColumn}
-                        setColumnSorting={setColumnSorting}
-                        setColumnWidth={setColumnWidth}
-                        setIsResizingColumn={setIsResizingColumn}
-                        onDragEnd={onDragEnd}
-                        onDropOnto={onDropOnto}
-                        onStartDrag={onStartDrag}
-                      />
-                    ))}
-                  </tr>
-                ))}
-              </thead>
-              <tbody className="bg-[var(--color-bg-elevated)]">
-                {listsTable.getRowModel().rows.map((row) => (
-                  <tr
-                    key={row.id}
-                    className={`border-b border-[var(--color-border)] ${
-                      row.original.id === selectedListId
-                        ? "bg-[var(--color-bg-muted)]"
-                        : row.original.id === hoveredListId
-                          ? "bg-[var(--color-bg-subtle)]"
-                          : ""
-                    }`}
-                    role="button"
-                    tabIndex={0}
-                    onClick={() => openListDetails(row.original)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" || e.key === " ") {
-                        e.preventDefault();
-                        openListDetails(row.original);
-                      }
-                    }}
-                    onMouseEnter={() => setHoveredListId(row.original.id)}
-                    onMouseLeave={() =>
-                      setHoveredListId((cur) =>
-                        cur === row.original.id ? null : cur
-                      )
-                    }
-                  >
-                    {row.getVisibleCells().map((cell) => (
-                      <td
-                        key={cell.id}
-                        className={`overflow-hidden border-b border-[var(--color-border)] px-2 py-2 text-[var(--color-text-secondary)] ${
-                          cell.column.id === "actions"
-                            ? row.original.id === selectedListId
-                              ? "sticky right-0 z-10 bg-[var(--color-bg-muted)] px-1 py-1.5"
-                              : row.original.id === hoveredListId
-                                ? "sticky right-0 z-10 bg-[var(--color-bg-subtle)] px-1 py-1.5"
-                                : "sticky right-0 z-10 bg-[var(--color-bg-elevated)] px-1 py-1.5"
-                            : ""
-                        }`}
-                        style={{ width: cell.column.getSize() }}
-                      >
-                        <div className="overflow-hidden text-ellipsis">
-                          {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                        </div>
-                      </td>
-                    ))}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </InfiniteListViewport>
+            emptyState={<p className="px-4 py-10 text-sm text-[var(--color-text-muted)]">{copy.noLists}</p>}
+            errorState={<p className="px-4 py-10 text-sm text-[var(--color-error)]">{copy.loadError}</p>}
+            onRowClick={openListDetails}
+            getRowHighlightClass={(list) => list.id === selectedListId ? "bg-[var(--color-bg-muted)]" : ""}
+            setColumnOrder={setColumnOrder}
+          />
         </section>
 
         {/* Detail panel */}

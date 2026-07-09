@@ -3,7 +3,6 @@
 import { useMemo, useRef, useState } from "react";
 import {
   createColumnHelper,
-  flexRender,
   getCoreRowModel,
   useReactTable
 } from "@tanstack/react-table";
@@ -22,17 +21,12 @@ import {
 } from "@/server/units/unitActions";
 import type { UnitListItem } from "@/server/units/unitMutations";
 import type { ListPage } from "@/server/pagination";
-import { InfiniteListViewport } from "@/app/infinite-list";
 import {
   useListTableConfiguration,
   type ListColumnDefinition
 } from "@/app/list-table-config";
-import {
-  ListPageToolbar,
-  ListTableHeaderCell,
-  useColumnDragReorder,
-  useColumnResizeCursor
-} from "@/app/list-page-toolbar";
+import { ListPageToolbar } from "@/app/list-page-toolbar";
+import { ListTable } from "@/app/list-table";
 import {
   getNextToastId,
   ToastNotice,
@@ -120,8 +114,6 @@ export function UnitsClient({
   const [unitFieldErrors, setUnitFieldErrors] = useState<UnitFormErrors>({});
   const [dialogFormKey, setDialogFormKey] = useState(0);
   const [toastMessages, setToastMessages] = useState<ToastMessage[]>([]);
-  const { isResizingColumn, setIsResizingColumn, containerClassName } =
-    useColumnResizeCursor();
 
   // --- Column configuration ---
 
@@ -154,9 +146,6 @@ export function UnitsClient({
     columns: unitColumns,
     fixedColumnIds
   });
-
-  const { draggedColumnId, onDragEnd, onStartDrag, onDropOnto } =
-    useColumnDragReorder(setColumnOrder);
 
   // --- Data ---
 
@@ -482,107 +471,51 @@ export function UnitsClient({
 
   return (
     <>
-      <div className={`flex min-h-0 flex-1 flex-col overflow-hidden ${containerClassName}`}>
-        <section className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-elevated)] shadow-sm">
-          <ListPageToolbar
-            columnVisibility={columnVisibility}
-            configurableColumns={configurableColumns}
-            configureListLabel={copy.configureList}
-            filteredCount={unitsQuery.data?.pages[0]?.filteredCount}
-            formatCount={(visible, total) =>
-              copy.listCountSummary
-                .replace("{visible}", String(visible))
-                .replace("{total}", String(total))
-            }
-            totalCount={unitsQuery.data?.pages[0]?.totalCount}
-            visibleColumnsLabel={copy.visibleColumns}
-            setColumnVisible={setColumnVisible}
-            primaryAction={
-              <button
-                className="inline-flex min-h-9 items-center rounded-md bg-[var(--color-accent)] px-4 text-sm font-semibold text-white transition hover:brightness-95 focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
-                type="button"
-                disabled={!canWriteUnits || !isDatabaseAvailable}
-                onClick={openCreateDialog}
-              >
-                {copy.addUnit}
-              </button>
-            }
-          />
-
-          <InfiniteListViewport
-            emptyState={
-              <p className="px-4 py-10 text-sm text-[var(--color-text-muted)]">{copy.noUnits}</p>
-            }
-            errorState={
-              <p className="px-4 py-10 text-sm text-[var(--color-text-muted)]">{copy.loadError}</p>
-            }
-            hasNextPage={Boolean(unitsQuery.hasNextPage)}
-            isEmpty={units.length === 0}
-            isError={unitsQuery.isError}
-            isFetchingNextPage={unitsQuery.isFetchingNextPage}
-            isInitialLoading={!isConfigLoaded || unitsQuery.isLoading}
-            loadingLabel={copy.loadingUnits}
-            loadingMoreLabel={copy.loadingMore}
-            loadMore={() => {
-              void unitsQuery.fetchNextPage();
-            }}
-            testId="units-list-viewport"
-          >
-            <table
-              className="table-fixed border-separate border-spacing-0 text-left text-sm"
-              style={{ width: table.getTotalSize() }}
+      <section className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-elevated)] shadow-sm">
+        <ListPageToolbar
+          columnVisibility={columnVisibility}
+          configurableColumns={configurableColumns}
+          configureListLabel={copy.configureList}
+          filteredCount={unitsQuery.data?.pages[0]?.filteredCount}
+          formatCount={(visible, total) =>
+            copy.listCountSummary
+              .replace("{visible}", String(visible))
+              .replace("{total}", String(total))
+          }
+          totalCount={unitsQuery.data?.pages[0]?.totalCount}
+          visibleColumnsLabel={copy.visibleColumns}
+          setColumnVisible={setColumnVisible}
+          primaryAction={
+            <button
+              className="inline-flex min-h-9 items-center rounded-md bg-[var(--color-accent)] px-4 text-sm font-semibold text-white transition hover:brightness-95 focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
+              type="button"
+              disabled={!canWriteUnits || !isDatabaseAvailable}
+              onClick={openCreateDialog}
             >
-              <colgroup>
-                {table.getVisibleLeafColumns().map((col) => (
-                  <col key={col.id} style={{ width: col.getSize() }} />
-                ))}
-              </colgroup>
-              <thead className="sticky top-0 z-10 bg-[var(--color-bg-subtle)]">
-                {table.getHeaderGroups().map((headerGroup) => (
-                  <tr key={headerGroup.id}>
-                    {headerGroup.headers.map((header) => (
-                      <ListTableHeaderCell
-                        key={header.id}
-                        columnDefs={unitColumns}
-                        draggedColumnId={draggedColumnId}
-                        header={header}
-                        isResizingColumn={isResizingColumn}
-                        setColumnSorting={setColumnSorting}
-                        setColumnWidth={setColumnWidth}
-                        setIsResizingColumn={setIsResizingColumn}
-                        onDragEnd={onDragEnd}
-                        onDropOnto={onDropOnto}
-                        onStartDrag={onStartDrag}
-                      />
-                    ))}
-                  </tr>
-                ))}
-              </thead>
-              <tbody className="bg-[var(--color-bg-elevated)]">
-                {table.getRowModel().rows.map((row) => (
-                  <tr key={row.id} className="hover:bg-[var(--color-bg-subtle)]">
-                    {row.getVisibleCells().map((cell) => (
-                      <td
-                        key={cell.id}
-                        className={`overflow-hidden border-b border-[var(--color-border)] px-2 py-2 text-[var(--color-text-secondary)] ${
-                          cell.column.id === "actions"
-                            ? "sticky right-0 z-10 bg-[var(--color-bg-elevated)] px-1 py-1.5 hover:bg-[var(--color-bg-subtle)]"
-                            : ""
-                        }`}
-                        style={{ width: cell.column.getSize() }}
-                      >
-                        <div className="overflow-hidden text-ellipsis">
-                          {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                        </div>
-                      </td>
-                    ))}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </InfiniteListViewport>
-        </section>
-      </div>
+              {copy.addUnit}
+            </button>
+          }
+        />
+
+        <ListTable
+          table={table}
+          columnDefs={unitColumns}
+          setColumnSorting={setColumnSorting}
+          setColumnWidth={setColumnWidth}
+          hasNextPage={Boolean(unitsQuery.hasNextPage)}
+          isEmpty={units.length === 0}
+          isError={unitsQuery.isError}
+          isFetchingNextPage={unitsQuery.isFetchingNextPage}
+          isInitialLoading={!isConfigLoaded || unitsQuery.isLoading}
+          loadMore={() => { void unitsQuery.fetchNextPage(); }}
+          loadingLabel={copy.loadingUnits}
+          loadingMoreLabel={copy.loadingMore}
+          emptyState={<p className="px-4 py-10 text-sm text-[var(--color-text-muted)]">{copy.noUnits}</p>}
+          errorState={<p className="px-4 py-10 text-sm text-[var(--color-text-muted)]">{copy.loadError}</p>}
+          testId="units-list-viewport"
+          setColumnOrder={setColumnOrder}
+        />
+      </section>
       {unitFieldErrors.delete ? (
         <div className="mt-3">
           <ErrorBubble align="start">{unitFieldErrors.delete}</ErrorBubble>

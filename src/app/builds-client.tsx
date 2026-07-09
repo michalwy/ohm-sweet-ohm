@@ -4,7 +4,6 @@ import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "rea
 import Link from "next/link";
 import {
   createColumnHelper,
-  flexRender,
   getCoreRowModel,
   useReactTable
 } from "@tanstack/react-table";
@@ -36,18 +35,13 @@ import {
   openDialog
 } from "@/app/dialog-shell";
 import { getNextToastId, ToastNotice, type ToastMessage } from "@/app/toast-notice";
-import { InfiniteListViewport } from "@/app/infinite-list";
 import { EmptyCell } from "@/app/list-table-cell";
 import {
   useListTableConfiguration,
   type ListColumnDefinition
 } from "@/app/list-table-config";
-import {
-  ListPageToolbar,
-  ListTableHeaderCell,
-  useColumnDragReorder,
-  useColumnResizeCursor
-} from "@/app/list-page-toolbar";
+import { ListPageToolbar } from "@/app/list-page-toolbar";
+import { ListTable } from "@/app/list-table";
 import { useBuildsQuery } from "@/app/use-builds-query";
 import { DetailPanel, useDetailsPanelWidth } from "@/app/detail-panel";
 import { buildTree } from "@/app/tree-picker-utils";
@@ -217,7 +211,6 @@ export function BuildsClient({
   const [pinnedBuildId, setPinnedBuildId] = useState<string | null>(
     initialPinnedBuildId ?? null
   );
-  const [hoveredBuildId, setHoveredBuildId] = useState<string | null>(null);
   const [buildPendingDeleteId, setBuildPendingDeleteId] = useState<string | null>(null);
   const [toastMessages, setToastMessages] = useState<ToastMessage[]>([]);
 
@@ -271,9 +264,6 @@ export function BuildsClient({
     storageKey: `oso:list-config:builds:${workspaceSlug}`,
     columns: buildColumns
   });
-
-  const { isResizingColumn, setIsResizingColumn, containerClassName } = useColumnResizeCursor();
-  const { draggedColumnId, onDragEnd, onStartDrag, onDropOnto } = useColumnDragReorder(setColumnOrder);
 
   const { currentBuilds, totalCount, isLoading, isError, isFetchingNextPage, hasNextPage, fetchNextPage } =
     useBuildsQuery({ workspaceSlug, initialPage, pinnedId: pinnedBuildId, sorting });
@@ -594,7 +584,7 @@ export function BuildsClient({
     : null;
 
   return (
-    <div className={`flex min-h-0 flex-1 gap-4 overflow-hidden ${containerClassName}`}>
+    <div className="flex min-h-0 flex-1 gap-4 overflow-hidden">
       <section className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-elevated)] shadow-sm">
         <ListPageToolbar
           totalCount={totalCount}
@@ -631,7 +621,11 @@ export function BuildsClient({
           />
         ) : null}
 
-        <InfiniteListViewport
+        <ListTable
+          table={table}
+          columnDefs={buildColumns}
+          setColumnSorting={setColumnSorting}
+          setColumnWidth={setColumnWidth}
           isEmpty={currentBuilds.length === 0}
           isInitialLoading={!isConfigLoaded || isLoading}
           isError={isError}
@@ -647,78 +641,10 @@ export function BuildsClient({
             </div>
           }
           errorState={<p className="px-4 py-10 text-sm text-[var(--color-error)]">{copy.loadError}</p>}
-        >
-          <table
-            className="table-fixed border-separate border-spacing-0 text-left text-sm"
-            style={{ width: table.getTotalSize() }}
-          >
-            <colgroup>
-              {table.getVisibleLeafColumns().map((col) => (
-                <col key={col.id} style={{ width: col.getSize() }} />
-              ))}
-            </colgroup>
-            <thead className="sticky top-0 z-10 bg-[var(--color-bg-subtle)]">
-              {table.getHeaderGroups().map((headerGroup) => (
-                <tr key={headerGroup.id}>
-                  {headerGroup.headers.map((header) => (
-                    <ListTableHeaderCell
-                      key={header.id}
-                      columnDefs={buildColumns}
-                      draggedColumnId={draggedColumnId}
-                      header={header}
-                      isResizingColumn={isResizingColumn}
-                      setColumnSorting={setColumnSorting}
-                      setColumnWidth={setColumnWidth}
-                      setIsResizingColumn={setIsResizingColumn}
-                      onDragEnd={onDragEnd}
-                      onDropOnto={onDropOnto}
-                      onStartDrag={onStartDrag}
-                    />
-                  ))}
-                </tr>
-              ))}
-            </thead>
-            <tbody className="bg-[var(--color-bg-elevated)]">
-              {table.getRowModel().rows.map((row) => (
-                <tr
-                  key={row.id}
-                  className={`cursor-pointer border-b border-[var(--color-border)] ${
-                    row.original.id === selectedBuildId
-                      ? "bg-[var(--color-bg-muted)]"
-                      : row.original.id === hoveredBuildId
-                        ? "bg-[var(--color-bg-subtle)]"
-                        : ""
-                  }`}
-                  role="button"
-                  tabIndex={0}
-                  onClick={() => setSelectedBuildId(row.original.id)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" || e.key === " ") {
-                      e.preventDefault();
-                      setSelectedBuildId(row.original.id);
-                    }
-                  }}
-                  onMouseEnter={() => setHoveredBuildId(row.original.id)}
-                  onMouseLeave={() =>
-                    setHoveredBuildId((cur) => (cur === row.original.id ? null : cur))
-                  }
-                >
-                  {row.getVisibleCells().map((cell) => (
-                    <td
-                      key={cell.id}
-                      className="overflow-hidden border-b border-[var(--color-border)] px-2 py-2 text-[var(--color-text-secondary)]"
-                      style={{ width: cell.column.getSize() }}
-                    >
-                      <div className="overflow-hidden text-ellipsis">
-                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                      </div>
-                    </td>
-                  ))}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </InfiniteListViewport>
+          onRowClick={(build) => setSelectedBuildId(build.id)}
+          getRowHighlightClass={(build) => build.id === selectedBuildId ? "bg-[var(--color-bg-muted)]" : ""}
+          setColumnOrder={setColumnOrder}
+        />
       </section>
 
       {selectedBuild && hasLoadedDetailsPanelWidth ? (

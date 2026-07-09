@@ -2,7 +2,6 @@
 
 import {
   createColumnHelper,
-  flexRender,
   getCoreRowModel,
   useReactTable
 } from "@tanstack/react-table";
@@ -22,17 +21,12 @@ import {
 } from "@/server/parts/attributeActions";
 import type { AttributeListItem } from "@/server/parts/attributeMutations";
 import type { AttributeValueType } from "@/server/parts/attributeValues";
-import { InfiniteListViewport } from "@/app/infinite-list";
 import {
   useListTableConfiguration,
   type ListColumnDefinition
 } from "@/app/list-table-config";
-import {
-  ListPageToolbar,
-  ListTableHeaderCell,
-  useColumnDragReorder,
-  useColumnResizeCursor
-} from "@/app/list-page-toolbar";
+import { ListPageToolbar } from "@/app/list-page-toolbar";
+import { ListTable } from "@/app/list-table";
 import { EmptyCell } from "@/app/list-table-cell";
 import {
   getNextToastId,
@@ -141,8 +135,6 @@ export function AttributesClient({
     useState<AttributeFormErrors>({});
   const [dialogFormKey, setDialogFormKey] = useState(0);
   const [toastMessages, setToastMessages] = useState<ToastMessage[]>([]);
-  const { isResizingColumn, setIsResizingColumn, containerClassName } =
-    useColumnResizeCursor();
 
   // --- Column configuration ---
 
@@ -177,9 +169,6 @@ export function AttributesClient({
     columns: attributeColumns,
     fixedColumnIds
   });
-
-  const { draggedColumnId, onDragEnd, onStartDrag, onDropOnto } =
-    useColumnDragReorder(setColumnOrder);
 
   // --- Data ---
 
@@ -543,112 +532,56 @@ export function AttributesClient({
 
   return (
     <>
-      <div className={`flex min-h-0 flex-1 flex-col overflow-hidden ${containerClassName}`}>
-        <section
-          aria-labelledby="attributes-heading"
-          className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-elevated)] shadow-sm"
-        >
-          <h2 id="attributes-heading" className="sr-only">
-            {copy.title}
-          </h2>
-          <ListPageToolbar
-            columnVisibility={columnVisibility}
-            configurableColumns={configurableColumns}
-            configureListLabel={copy.configureList}
-            filteredCount={attributesQuery.data?.pages[0]?.filteredCount}
-            formatCount={(visible, total) =>
-              copy.listCountSummary
-                .replace("{visible}", String(visible))
-                .replace("{total}", String(total))
-            }
-            totalCount={attributesQuery.data?.pages[0]?.totalCount}
-            visibleColumnsLabel={copy.visibleColumns}
-            setColumnVisible={setColumnVisible}
-            primaryAction={
-              <button
-                className={primaryButtonClassName}
-                disabled={!isDatabaseAvailable || !canWriteAttributes}
-                type="button"
-                onClick={openCreateDialog}
-              >
-                {copy.addAttribute}
-              </button>
-            }
-          />
-          <InfiniteListViewport
-            emptyState={<p className="px-4 py-10 text-sm text-[var(--color-text-muted)]">{copy.noAttributes}</p>}
-            errorState={
-              <p className="px-4 py-10 text-sm text-[var(--color-text-muted)]">
-                {copy.databaseUnavailable}
-              </p>
-            }
-            hasNextPage={Boolean(attributesQuery.hasNextPage)}
-            isEmpty={currentAttributes.length === 0}
-            isError={attributesQuery.isError}
-            isFetchingNextPage={attributesQuery.isFetchingNextPage}
-            isInitialLoading={!isConfigLoaded || attributesQuery.isLoading}
-            loadingLabel={copy.loadingAttributes}
-            loadingMoreLabel={copy.loadingMoreAttributes}
-            loadMore={() => {
-              void attributesQuery.fetchNextPage();
-            }}
-            testId="attributes-list-viewport"
-          >
-            <table
-              className="table-fixed border-separate border-spacing-0 text-left text-sm"
-              style={{ width: table.getTotalSize() }}
+      <section
+        aria-labelledby="attributes-heading"
+        className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-elevated)] shadow-sm"
+      >
+        <h2 id="attributes-heading" className="sr-only">
+          {copy.title}
+        </h2>
+        <ListPageToolbar
+          columnVisibility={columnVisibility}
+          configurableColumns={configurableColumns}
+          configureListLabel={copy.configureList}
+          filteredCount={attributesQuery.data?.pages[0]?.filteredCount}
+          formatCount={(visible, total) =>
+            copy.listCountSummary
+              .replace("{visible}", String(visible))
+              .replace("{total}", String(total))
+          }
+          totalCount={attributesQuery.data?.pages[0]?.totalCount}
+          visibleColumnsLabel={copy.visibleColumns}
+          setColumnVisible={setColumnVisible}
+          primaryAction={
+            <button
+              className={primaryButtonClassName}
+              disabled={!isDatabaseAvailable || !canWriteAttributes}
+              type="button"
+              onClick={openCreateDialog}
             >
-              <colgroup>
-                {table.getVisibleLeafColumns().map((col) => (
-                  <col key={col.id} style={{ width: col.getSize() }} />
-                ))}
-              </colgroup>
-              <thead className="sticky top-0 z-10 bg-[var(--color-bg-subtle)]">
-                {table.getHeaderGroups().map((headerGroup) => (
-                  <tr key={headerGroup.id}>
-                    {headerGroup.headers.map((header) => (
-                      <ListTableHeaderCell
-                        key={header.id}
-                        columnDefs={attributeColumns}
-                        draggedColumnId={draggedColumnId}
-                        header={header}
-                        isResizingColumn={isResizingColumn}
-                        setColumnSorting={setColumnSorting}
-                        setColumnWidth={setColumnWidth}
-                        setIsResizingColumn={setIsResizingColumn}
-                        onDragEnd={onDragEnd}
-                        onDropOnto={onDropOnto}
-                        onStartDrag={onStartDrag}
-                      />
-                    ))}
-                  </tr>
-                ))}
-              </thead>
-              <tbody className="bg-[var(--color-bg-elevated)]">
-                {table.getRowModel().rows.map((row) => (
-                  <tr key={row.id} className="hover:bg-[var(--color-bg-subtle)]">
-                    {row.getVisibleCells().map((cell) => (
-                      <td
-                        key={cell.id}
-                        className={`overflow-hidden border-b border-[var(--color-border)] px-2 py-2 text-[var(--color-text-secondary)] ${
-                          cell.column.id === "actions"
-                            ? "sticky right-0 z-10 bg-[var(--color-bg-elevated)] px-1 py-1.5 hover:bg-[var(--color-bg-subtle)]"
-                            : ""
-                        }`}
-                        style={{ width: cell.column.getSize() }}
-                      >
-                        <div className="overflow-hidden text-ellipsis">
-                          {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                        </div>
-                      </td>
-                    ))}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </InfiniteListViewport>
-        </section>
-      </div>
+              {copy.addAttribute}
+            </button>
+          }
+        />
+        <ListTable
+          table={table}
+          columnDefs={attributeColumns}
+          setColumnSorting={setColumnSorting}
+          setColumnWidth={setColumnWidth}
+          hasNextPage={Boolean(attributesQuery.hasNextPage)}
+          isEmpty={currentAttributes.length === 0}
+          isError={attributesQuery.isError}
+          isFetchingNextPage={attributesQuery.isFetchingNextPage}
+          isInitialLoading={!isConfigLoaded || attributesQuery.isLoading}
+          loadMore={() => { void attributesQuery.fetchNextPage(); }}
+          loadingLabel={copy.loadingAttributes}
+          loadingMoreLabel={copy.loadingMoreAttributes}
+          emptyState={<p className="px-4 py-10 text-sm text-[var(--color-text-muted)]">{copy.noAttributes}</p>}
+          errorState={<p className="px-4 py-10 text-sm text-[var(--color-text-muted)]">{copy.databaseUnavailable}</p>}
+          testId="attributes-list-viewport"
+          setColumnOrder={setColumnOrder}
+        />
+      </section>
       {attributeFieldErrors.delete ? (
         <div className="mt-3">
           <ErrorBubble align="start">{attributeFieldErrors.delete}</ErrorBubble>
