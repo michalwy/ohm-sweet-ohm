@@ -134,7 +134,8 @@ export function buildPartsListColumnDefs({
       label: copy.categories,
       group: "base" as const,
       defaultWidth: 300,
-      minWidth: 120
+      minWidth: 120,
+      sortable: true
     },
     {
       id: "manufacturerName",
@@ -375,6 +376,7 @@ export function buildPartsListColumns(
       header: copy.categories,
       size: 300,
       minSize: 120,
+      enableSorting: true,
       cell: ({ row }) => (
         <PartCategoriesSummary copy={copy} part={row.original} />
       )

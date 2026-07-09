@@ -2,6 +2,7 @@ import "server-only";
 
 import { Prisma, type PrismaClient } from "@/generated/prisma/client";
 import { prisma } from "@/server/db/prisma";
+import { updatePartValueSortNumber } from "@/server/parts/createPart";
 import {
   decodeListCursor,
   encodeListCursor,
@@ -434,12 +435,30 @@ export async function setCategoryValueAttribute({
     });
   }
 
-  return prisma.partCategory.update({
-    where: {
-      id: category.id
-    },
-    data: {
-      valueAttributeId: attributeId
+  return prisma.$transaction(async (tx) => {
+    await tx.partCategory.update({
+      where: {
+        id: category.id
+      },
+      data: {
+        valueAttributeId: attributeId
+      }
+    });
+
+    // Recompute valueSortNumber for all parts whose primary category is this one,
+    // since the value attribute definition just changed.
+    const affectedParts = await tx.part.findMany({
+      where: { primaryCategoryId: category.id },
+      select: { id: true }
+    });
+
+    for (const part of affectedParts) {
+      await updatePartValueSortNumber({
+        tx,
+        workspaceId,
+        partId: part.id,
+        primaryCategoryId: category.id
+      });
     }
   });
 }

@@ -168,6 +168,7 @@ export async function createPartCategory(input: PartCategoryInput) {
     });
 
     await rebuildPartCategoryClosures(tx, input.workspaceId);
+    await rebuildPartCategorySortPaths(tx, input.workspaceId);
 
     return category;
   });
@@ -206,6 +207,7 @@ export async function createPartCategoryPath({
     });
 
     await rebuildPartCategoryClosures(tx, workspaceId);
+    await rebuildPartCategorySortPaths(tx, workspaceId);
 
     return category;
   });
@@ -369,6 +371,7 @@ export async function updatePartCategory({
     });
 
     await rebuildPartCategoryClosures(tx, input.workspaceId);
+    await rebuildPartCategorySortPaths(tx, input.workspaceId);
 
     return updatedCategory;
   });
@@ -426,6 +429,7 @@ export async function deletePartCategory({
     });
 
     await rebuildPartCategoryClosures(tx, workspaceId);
+    await rebuildPartCategorySortPaths(tx, workspaceId);
   });
 }
 
@@ -454,6 +458,24 @@ async function validateParentCategory({
 
   if (!parent) {
     throw new Error("invalid-parent-category");
+  }
+}
+
+async function rebuildPartCategorySortPaths(
+  tx: PrismaTransaction,
+  workspaceId: string
+) {
+  const categories = await tx.partCategory.findMany({
+    where: { workspaceId },
+    select: { id: true, parentId: true, name: true }
+  });
+  const pathsById = buildPartCategoryPaths(categories);
+
+  for (const [id, path] of pathsById) {
+    await tx.partCategory.update({
+      where: { id },
+      data: { sortPath: path.toLocaleLowerCase("en") }
+    });
   }
 }
 

@@ -103,12 +103,8 @@ type PartListCursor = {
 };
 
 type DecimalFieldCursor = {
-  value: string;
+  value: string | null;
   id: string;
-};
-
-type SortedPartsCursor = {
-  offset: number;
 };
 
 export async function getPartsListPage(
@@ -299,16 +295,39 @@ export async function getPartsListPage(
       totalCount,
       workspaceId: context.workspace.id,
     });
-  } else if (activeSortBy) {
-    page = await getSortedPartsListPage({
+  } else if (activeSortBy === "categories") {
+    page = await getStringFieldSortedPartsListPage({
+      field: "categories",
       baseWhere,
       categoryPathsById,
+      cursor: input.cursor,
       pageSize,
-      sortBy: activeSortBy,
       sortDirection: activeSortDirection,
       totalCount,
       workspaceId: context.workspace.id,
+    });
+  } else if (activeSortBy === "valueDisplayValue") {
+    page = await getDecimalFieldSortedPartsListPage({
+      field: "valueSortNumber",
+      baseWhere,
+      categoryPathsById,
       cursor: input.cursor,
+      pageSize,
+      sortDirection: activeSortDirection,
+      totalCount,
+      workspaceId: context.workspace.id,
+    });
+  } else if (activeSortBy.startsWith("attribute:")) {
+    const attributeId = activeSortBy.slice("attribute:".length);
+    page = await getAttributeFieldSortedPartsListPage({
+      attributeId,
+      baseWhere,
+      categoryPathsById,
+      cursor: input.cursor,
+      pageSize,
+      sortDirection: activeSortDirection,
+      totalCount,
+      workspaceId: context.workspace.id,
     });
   } else {
     const cursor = decodeListCursor<PartListCursor>(input.cursor);
@@ -375,6 +394,7 @@ const partListSelect = {
   inProductionQty: true,
   avgNetCostPrimary: true,
   avgGrossCostPrimary: true,
+  valueSortNumber: true,
   manufacturer: {
     select: {
       name: true,
@@ -385,6 +405,7 @@ const partListSelect = {
     select: { id: true }
   },
   primaryCategoryId: true,
+  primaryCategory: { select: { sortPath: true } },
   secondaryCategoryId: true,
   defaultLocation: {
     select: {
@@ -407,11 +428,6 @@ type SelectedPartListItem = Prisma.PartGetPayload<{
   select: typeof partListSelect;
 }>;
 
-type SortablePartRecord = {
-  item: PartsListItem;
-  part: SelectedPartListItem;
-  valueAttributeId: string | null;
-};
 
 async function getDecimalFieldSortedPartsListPage({
   field,
@@ -433,7 +449,8 @@ async function getDecimalFieldSortedPartsListPage({
     | "onOrderQty"
     | "inProductionQty"
     | "avgNetCostPrimary"
-    | "avgGrossCostPrimary";
+    | "avgGrossCostPrimary"
+    | "valueSortNumber";
   baseWhere: Prisma.PartWhereInput;
   categoryPathsById: Map<string, string>;
   cursor?: string | null;
@@ -474,9 +491,13 @@ async function getDecimalFieldSortedPartsListPage({
       })
     ),
     nextCursor:
-      parts.length > pageSize && lastPart && lastPart[field] != null
+      parts.length > pageSize && lastPart
         ? encodeListCursor<DecimalFieldCursor>({
-            value: lastPart[field]!.toString(),
+            // Non-nullable fields always produce a string here. Nullable fields
+            // (avgNetCostPrimary, avgGrossCostPrimary, valueSortNumber) may produce
+            // null when the last page part has no value, which getDecimalFieldCursorWhere
+            // handles via the isNullable path (NULLS LAST tail).
+            value: lastPart[field]?.toString() ?? null,
             id: lastPart.id
           })
         : null,
@@ -485,17 +506,13 @@ async function getDecimalFieldSortedPartsListPage({
   };
 }
 
-type StringSortField = "manufacturerName" | "catalogNumber" | "description";
+type StringSortField = "manufacturerName" | "catalogNumber" | "description" | "categories";
 
 type StringFieldCursor = {
   value: string | null;
   id: string;
 };
 
-// DB-level keyset pagination for plain string columns. The in-memory
-// getSortedPartsListPage path is reserved for sort keys that are computed in
-// application code (category paths, per-category value column, attribute values)
-// and cannot be expressed as a plain ORDER BY.
 async function getStringFieldSortedPartsListPage({
   field,
   baseWhere,
@@ -576,6 +593,12 @@ function getStringFieldOrderBy({
     // regardless of direction so keyset pagination stays consistent.
     case "description":
       return [{ description: { sort: sortDirection, nulls: "last" } }, tiebreak];
+    // Nullable via optional relation: parts with no primary category or null sortPath sort last.
+    case "categories":
+      return [
+        { primaryCategory: { sortPath: { sort: sortDirection, nulls: "last" } } },
+        tiebreak
+      ];
   }
 }
 
@@ -587,6 +610,8 @@ function getStringFieldValue(part: SelectedPartListItem, field: StringSortField)
       return part.catalogNumber;
     case "description":
       return part.description;
+    case "categories":
+      return part.primaryCategory?.sortPath ?? null;
   }
 }
 
@@ -622,238 +647,264 @@ function getStringFieldCursorWhere({
   }
 
   // description is nullable and ordered NULLS LAST in both directions.
+  if (field === "description") {
+    if (cursor.value === null) {
+      // Already inside the trailing block of null descriptions: page by id only.
+      return { description: null, id: { gt: cursor.id } };
+    }
+
+    return {
+      OR: [
+        { description: { [op]: cursor.value } },
+        { description: cursor.value, id: { gt: cursor.id } },
+        // All null-description rows sort after any non-null value.
+        { description: null }
+      ]
+    };
+  }
+
+  // categories sorts by primaryCategory.sortPath NULLS LAST.
+  // Parts with no primary category, or a primary category with null sortPath, sort last.
   if (cursor.value === null) {
-    // Already inside the trailing block of null descriptions: page by id only.
-    return { description: null, id: { gt: cursor.id } };
+    // Already in the null-sortPath tail; page by id only.
+    return {
+      OR: [
+        { primaryCategoryId: null },
+        { primaryCategory: { sortPath: null }, id: { gt: cursor.id } }
+      ]
+    };
   }
 
   return {
     OR: [
-      { description: { [op]: cursor.value } },
-      { description: cursor.value, id: { gt: cursor.id } },
-      // All null-description rows sort after any non-null value.
-      { description: null }
+      { primaryCategory: { sortPath: { [op]: cursor.value } } },
+      { primaryCategory: { sortPath: cursor.value }, id: { gt: cursor.id } },
+      { primaryCategoryId: null },
+      { primaryCategory: { sortPath: null } }
     ]
   };
 }
 
-async function getSortedPartsListPage({
+type AttributeSortCursor = {
+  value: string | null;
+  id: string;
+};
+
+async function getAttributeFieldSortedPartsListPage({
+  attributeId,
   baseWhere,
   categoryPathsById,
   cursor,
   pageSize,
-  sortBy,
   sortDirection,
   totalCount,
   workspaceId,
 }: {
+  attributeId: string;
   baseWhere: Prisma.PartWhereInput;
   categoryPathsById: Map<string, string>;
   cursor?: string | null;
   pageSize: number;
-  sortBy: string;
   sortDirection: PartsListSortDirection;
   totalCount: number;
   workspaceId: string;
 }): Promise<ListPage<PartsListItem>> {
-  const [filteredParts, filteredCount] = await Promise.all([
-    prisma.part.findMany({
-      where: baseWhere,
-      orderBy: [{ id: "asc" }],
-      select: partListSelect
-    }),
+  const attribute = await prisma.attribute.findFirst({
+    where: { id: attributeId, workspaceId },
+    select: { type: true }
+  });
+
+  if (!attribute) {
+    return {
+      items: [],
+      nextCursor: null,
+      totalCount,
+      filteredCount: 0
+    };
+  }
+
+  const sortCol =
+    attribute.type === "QUANTITY"
+      ? "quantityBaseValue"
+      : attribute.type === "NUMBER"
+        ? "numberValue"
+        : "displayValue";
+
+  const [filteredIds, filteredCount] = await Promise.all([
+    prisma.part.findMany({ where: baseWhere, select: { id: true }, orderBy: [{ id: "asc" }] }),
     prisma.part.count({ where: baseWhere })
   ]);
+
+  const ids = filteredIds.map((p) => p.id);
+
+  const decodedCursor = decodeListCursor<AttributeSortCursor>(cursor);
+
+  type RawRow = { id: string; sort_val: string | null };
+
+  let rows: RawRow[];
+
+  if (ids.length === 0) {
+    rows = [];
+  } else if (sortCol === "quantityBaseValue" || sortCol === "numberValue") {
+    const colSql = Prisma.raw(`pav."${sortCol}"`);
+    const dirSql = Prisma.raw(sortDirection === "desc" ? "DESC" : "ASC");
+
+    if (!decodedCursor) {
+      rows = await prisma.$queryRaw<RawRow[]>`
+        SELECT p.id, ${colSql}::text AS sort_val
+        FROM "Part" p
+        LEFT JOIN "PartAttributeValue" pav
+          ON pav."partId" = p.id AND pav."attributeId" = ${attributeId}
+        WHERE p.id = ANY(${ids})
+        ORDER BY ${colSql} ${dirSql} NULLS LAST, p.id ASC
+        LIMIT ${pageSize + 1}
+      `;
+    } else if (decodedCursor.value === null) {
+      rows = await prisma.$queryRaw<RawRow[]>`
+        SELECT p.id, ${colSql}::text AS sort_val
+        FROM "Part" p
+        LEFT JOIN "PartAttributeValue" pav
+          ON pav."partId" = p.id AND pav."attributeId" = ${attributeId}
+        WHERE p.id = ANY(${ids})
+          AND ${colSql} IS NULL
+          AND p.id > ${decodedCursor.id}
+        ORDER BY p.id ASC
+        LIMIT ${pageSize + 1}
+      `;
+    } else {
+      const cursorVal = new Prisma.Decimal(decodedCursor.value);
+      if (sortDirection === "asc") {
+        rows = await prisma.$queryRaw<RawRow[]>`
+          SELECT p.id, ${colSql}::text AS sort_val
+          FROM "Part" p
+          LEFT JOIN "PartAttributeValue" pav
+            ON pav."partId" = p.id AND pav."attributeId" = ${attributeId}
+          WHERE p.id = ANY(${ids})
+            AND (
+              ${colSql} > ${cursorVal}
+              OR (${colSql} = ${cursorVal} AND p.id > ${decodedCursor.id})
+              OR ${colSql} IS NULL
+            )
+          ORDER BY ${colSql} ASC NULLS LAST, p.id ASC
+          LIMIT ${pageSize + 1}
+        `;
+      } else {
+        rows = await prisma.$queryRaw<RawRow[]>`
+          SELECT p.id, ${colSql}::text AS sort_val
+          FROM "Part" p
+          LEFT JOIN "PartAttributeValue" pav
+            ON pav."partId" = p.id AND pav."attributeId" = ${attributeId}
+          WHERE p.id = ANY(${ids})
+            AND (
+              ${colSql} < ${cursorVal}
+              OR (${colSql} = ${cursorVal} AND p.id > ${decodedCursor.id})
+              OR ${colSql} IS NULL
+            )
+          ORDER BY ${colSql} DESC NULLS LAST, p.id ASC
+          LIMIT ${pageSize + 1}
+        `;
+      }
+    }
+  } else {
+    // TEXT / CHOICE / BOOLEAN: sort by displayValue as text
+    const colSql = Prisma.raw(`pav."displayValue"`);
+    const dirSql = Prisma.raw(sortDirection === "desc" ? "DESC" : "ASC");
+
+    if (!decodedCursor) {
+      rows = await prisma.$queryRaw<RawRow[]>`
+        SELECT p.id, ${colSql} AS sort_val
+        FROM "Part" p
+        LEFT JOIN "PartAttributeValue" pav
+          ON pav."partId" = p.id AND pav."attributeId" = ${attributeId}
+        WHERE p.id = ANY(${ids})
+        ORDER BY ${colSql} ${dirSql} NULLS LAST, p.id ASC
+        LIMIT ${pageSize + 1}
+      `;
+    } else if (decodedCursor.value === null) {
+      rows = await prisma.$queryRaw<RawRow[]>`
+        SELECT p.id, ${colSql} AS sort_val
+        FROM "Part" p
+        LEFT JOIN "PartAttributeValue" pav
+          ON pav."partId" = p.id AND pav."attributeId" = ${attributeId}
+        WHERE p.id = ANY(${ids})
+          AND ${colSql} IS NULL
+          AND p.id > ${decodedCursor.id}
+        ORDER BY p.id ASC
+        LIMIT ${pageSize + 1}
+      `;
+    } else {
+      const cv = decodedCursor.value;
+      if (sortDirection === "asc") {
+        rows = await prisma.$queryRaw<RawRow[]>`
+          SELECT p.id, ${colSql} AS sort_val
+          FROM "Part" p
+          LEFT JOIN "PartAttributeValue" pav
+            ON pav."partId" = p.id AND pav."attributeId" = ${attributeId}
+          WHERE p.id = ANY(${ids})
+            AND (
+              ${colSql} > ${cv}
+              OR (${colSql} = ${cv} AND p.id > ${decodedCursor.id})
+              OR ${colSql} IS NULL
+            )
+          ORDER BY ${colSql} ASC NULLS LAST, p.id ASC
+          LIMIT ${pageSize + 1}
+        `;
+      } else {
+        rows = await prisma.$queryRaw<RawRow[]>`
+          SELECT p.id, ${colSql} AS sort_val
+          FROM "Part" p
+          LEFT JOIN "PartAttributeValue" pav
+            ON pav."partId" = p.id AND pav."attributeId" = ${attributeId}
+          WHERE p.id = ANY(${ids})
+            AND (
+              ${colSql} < ${cv}
+              OR (${colSql} = ${cv} AND p.id > ${decodedCursor.id})
+              OR ${colSql} IS NULL
+            )
+          ORDER BY ${colSql} DESC NULLS LAST, p.id ASC
+          LIMIT ${pageSize + 1}
+        `;
+      }
+    }
+  }
+
+  const pageRows = rows.slice(0, pageSize);
+  const pageIds = pageRows.map((r) => r.id);
+
+  const pageParts = await prisma.part.findMany({
+    where: { id: { in: pageIds } },
+    select: partListSelect
+  });
+
+  // Restore the sort order returned by raw SQL (Prisma IN doesn't preserve order)
+  const orderMap = new Map(pageIds.map((id, i) => [id, i]));
+  const orderedParts = [...pageParts].sort(
+    (a, b) => (orderMap.get(a.id) ?? 0) - (orderMap.get(b.id) ?? 0)
+  );
+
   const valueAttributeIdsByCategoryId = await getValueAttributeIdsByCategoryId({
     workspaceId,
-    categoryIds: filteredParts
+    categoryIds: orderedParts
       .map((part) => part.primaryCategoryId)
-      .filter((categoryId): categoryId is string => Boolean(categoryId))
-  });
-  const sortableRecords: SortablePartRecord[] = filteredParts.map((part) => {
-    const item = mapPartListItem({
-      part,
-      categoryPathsById,
-      valueAttributeIdsByCategoryId,
-    });
-    const valueAttributeId = part.primaryCategoryId
-      ? valueAttributeIdsByCategoryId.get(part.primaryCategoryId) ?? null
-      : null;
-
-    return {
-      item,
-      part,
-      valueAttributeId
-    };
+      .filter((id): id is string => Boolean(id))
   });
 
-  sortableRecords.sort((left, right) => {
-    const comparison = comparePartsBySort({
-      left,
-      right,
-      sortBy
-    });
-
-    if (comparison !== 0) {
-      return sortDirection === "desc" ? -comparison : comparison;
-    }
-
-    return left.item.id.localeCompare(right.item.id, "en", {
-      sensitivity: "base"
-    });
-  });
-
-  const sortedCursor = decodeListCursor<SortedPartsCursor>(cursor);
-  const offset = sortedCursor?.offset ?? 0;
-  const pageItems = sortableRecords.slice(offset, offset + pageSize);
-  const nextOffset = offset + pageItems.length;
-  const nextCursor =
-    nextOffset < sortableRecords.length
-      ? encodeListCursor<SortedPartsCursor>({ offset: nextOffset })
-      : null;
+  const lastRow = pageRows.at(-1);
 
   return {
-    items: pageItems.map((record) => record.item),
-    nextCursor,
+    items: orderedParts.map((part) =>
+      mapPartListItem({ part, categoryPathsById, valueAttributeIdsByCategoryId })
+    ),
+    nextCursor:
+      rows.length > pageSize && lastRow
+        ? encodeListCursor<AttributeSortCursor>({
+            value: lastRow.sort_val,
+            id: lastRow.id
+          })
+        : null,
     totalCount,
     filteredCount
   };
-}
-
-function comparePartsBySort({
-  left,
-  right,
-  sortBy
-}: {
-  left: SortablePartRecord;
-  right: SortablePartRecord;
-  sortBy: string;
-}) {
-  // Note: manufacturerName, catalogNumber, and description are sorted at the
-  // database level (getStringFieldSortedPartsListPage) and never reach here.
-  if (sortBy === "categories") {
-    return compareText(left.item.primaryCategoryPath ?? "", right.item.primaryCategoryPath ?? "");
-  }
-
-  if (sortBy === "valueDisplayValue") {
-    const leftValue = getSortableValueForAttribute(left.part, left.valueAttributeId);
-    const rightValue = getSortableValueForAttribute(right.part, right.valueAttributeId);
-
-    return compareSortableValues(leftValue, rightValue);
-  }
-
-  if (sortBy === "currentStock") {
-    const leftValue = Number(left.part.currentStock);
-    const rightValue = Number(right.part.currentStock);
-    return leftValue === rightValue ? 0 : leftValue < rightValue ? -1 : 1;
-  }
-
-  if (sortBy === "plannedQuantity") {
-    const leftValue = Number(left.part.plannedQty);
-    const rightValue = Number(right.part.plannedQty);
-    return leftValue === rightValue ? 0 : leftValue < rightValue ? -1 : 1;
-  }
-
-  if (sortBy === "onOrderQuantity") {
-    const leftValue = Number(left.part.onOrderQty);
-    const rightValue = Number(right.part.onOrderQty);
-    return leftValue === rightValue ? 0 : leftValue < rightValue ? -1 : 1;
-  }
-
-  if (sortBy === "inProductionQuantity") {
-    const leftValue = Number(left.part.inProductionQty);
-    const rightValue = Number(right.part.inProductionQty);
-    return leftValue === rightValue ? 0 : leftValue < rightValue ? -1 : 1;
-  }
-
-  if (sortBy.startsWith("attribute:")) {
-    const attributeId = sortBy.replace("attribute:", "");
-    const leftValue = getSortableValueForAttribute(left.part, attributeId);
-    const rightValue = getSortableValueForAttribute(right.part, attributeId);
-
-    return compareSortableValues(leftValue, rightValue);
-  }
-
-  return 0;
-}
-
-type SortableValue =
-  | { kind: "quantity"; value: number }
-  | { kind: "number"; value: number }
-  | { kind: "text"; value: string }
-  | null;
-
-function getSortableValueForAttribute(
-  part: SelectedPartListItem,
-  attributeId: string | null
-): SortableValue {
-  if (!attributeId) {
-    return null;
-  }
-
-  const attributeValue = part.attributeValues.find(
-    (value) => value.attributeId === attributeId
-  );
-
-  if (!attributeValue) {
-    return null;
-  }
-
-  if (attributeValue.quantityBaseValue !== null) {
-    return {
-      kind: "quantity",
-      value: Number(attributeValue.quantityBaseValue)
-    };
-  }
-
-  if (attributeValue.numberValue !== null) {
-    return {
-      kind: "number",
-      value: Number(attributeValue.numberValue)
-    };
-  }
-
-  return {
-    kind: "text",
-    value: attributeValue.displayValue ?? ""
-  };
-}
-
-function compareSortableValues(left: SortableValue, right: SortableValue) {
-  if (left === null && right === null) {
-    return 0;
-  }
-
-  if (left === null) {
-    return 1;
-  }
-
-  if (right === null) {
-    return -1;
-  }
-
-  if ((left.kind === "quantity" || left.kind === "number") && right.kind === left.kind) {
-    if (left.value < right.value) {
-      return -1;
-    }
-    if (left.value > right.value) {
-      return 1;
-    }
-    return 0;
-  }
-
-  if (left.kind === "text" && right.kind === "text") {
-    return compareText(left.value, right.value);
-  }
-
-  return compareText(String(left.value), String(right.value));
-}
-
-function compareText(left: string, right: string) {
-  return left.localeCompare(right, "en", {
-    sensitivity: "base",
-    numeric: true
-  });
 }
 
 function mapPartListItem({
@@ -1044,17 +1095,32 @@ function getDecimalFieldCursorWhere({
     | "onOrderQty"
     | "inProductionQty"
     | "avgNetCostPrimary"
-    | "avgGrossCostPrimary";
+    | "avgGrossCostPrimary"
+    | "valueSortNumber";
   cursor: DecimalFieldCursor;
   sortDirection: PartsListSortDirection;
 }): Prisma.PartWhereInput {
-  const decimalValue = new Prisma.Decimal(cursor.value);
+  // Only these fields are nullable Decimals; others have NOT NULL constraints.
+  const isNullable =
+    field === "avgNetCostPrimary" ||
+    field === "avgGrossCostPrimary" ||
+    field === "valueSortNumber";
+
+  // Null values sort last in both directions (nullable fields only).
+  if (cursor.value === null && isNullable) {
+    // Already in the null-value tail; page by id only.
+    return { [field]: null, id: { gt: cursor.id } };
+  }
+
+  const decimalValue = new Prisma.Decimal(cursor.value ?? "0");
 
   if (sortDirection === "desc") {
     return {
       OR: [
         { [field]: { lt: decimalValue } },
-        { [field]: decimalValue, id: { gt: cursor.id } }
+        { [field]: decimalValue, id: { gt: cursor.id } },
+        // Null values always sort after any non-null value (nullable fields only)
+        ...(isNullable ? [{ [field]: null } as Prisma.PartWhereInput] : [])
       ]
     };
   }
@@ -1062,7 +1128,9 @@ function getDecimalFieldCursorWhere({
   return {
     OR: [
       { [field]: { gt: decimalValue } },
-      { [field]: decimalValue, id: { gt: cursor.id } }
+      { [field]: decimalValue, id: { gt: cursor.id } },
+      // Null values always sort after any non-null value (nullable fields only)
+      ...(isNullable ? [{ [field]: null } as Prisma.PartWhereInput] : [])
     ]
   };
 }

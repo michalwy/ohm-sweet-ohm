@@ -289,13 +289,12 @@ export function ListTableHeaderCell({
     >
       {!isActionsColumn && !header.isPlaceholder ? (
         <div className={`flex items-center gap-1 overflow-hidden ${flexJustify}`}>
-          {header.column.getCanSort() ? (
+          {colDef?.sortable ? (
             <button
               className="flex items-center gap-1 overflow-hidden text-left hover:text-[var(--color-text-primary)]"
               type="button"
               onClick={() => {
                 const current = header.column.getIsSorted();
-                if (!colDef?.sortable) return;
                 if (!current) {
                   setColumnSorting(columnId, "asc");
                 } else if (current === "asc") {

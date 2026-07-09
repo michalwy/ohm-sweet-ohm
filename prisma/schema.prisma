@@ -22,6 +22,7 @@ model Part {
   balanceQty          Decimal  @default(dbgenerated())
   avgNetCostPrimary   Decimal?
   avgGrossCostPrimary Decimal?
+  valueSortNumber     Decimal?
   catalogNumber       String
   description         String?
   manufacturerId      String
@@ -59,6 +60,7 @@ model Part {
   @@index([workspaceId, balanceQty, id])
   @@index([workspaceId, avgNetCostPrimary, id])
   @@index([workspaceId, avgGrossCostPrimary, id])
+  @@index([workspaceId, valueSortNumber, id])
   @@index([workspaceId, manufacturerId])
   @@index([workspaceId, primaryCategoryId])
   @@index([workspaceId, secondaryCategoryId])
@@ -449,10 +451,13 @@ model PartCategory {
   descendantClosures PartCategoryClosure[] @relation("PartCategoryClosureDescendant")
   bomLineItems       BomLineItem[]
 
+  sortPath           String?
+
   @@index([workspaceId])
   @@index([workspaceId, parentId])
   @@index([workspaceId, valueAttributeId])
   @@index([workspaceId, name])
+  @@index([workspaceId, sortPath])
 }
 
 model CategoryAttribute {
@@ -530,6 +535,9 @@ model PartAttributeValue {
   @@index([workspaceId, attributeId])
   @@index([attributeId])
   @@index([choiceOptionId])
+  @@index([attributeId, quantityBaseValue])
+  @@index([attributeId, numberValue])
+  @@index([attributeId, displayValue])
 }
 
 model PartCategoryClosure {

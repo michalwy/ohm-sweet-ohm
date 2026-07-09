@@ -149,6 +149,13 @@ export async function createPart(
                 attributeValueWrites
               });
 
+              await updatePartValueSortNumber({
+                tx,
+                workspaceId: context.workspace.id,
+                partId: nextPart.id,
+                primaryCategoryId: primaryCategoryId ?? null
+              });
+
               if (supplierMatchingPayload?.mode === "create-from-suggestion") {
                 await learnSupplierMatching({
                   tx,
@@ -295,6 +302,13 @@ export async function updatePart(
                   workspaceId: context.workspace.id,
                   partId: id,
                   attributeValueWrites
+                });
+
+                await updatePartValueSortNumber({
+                  tx,
+                  workspaceId: context.workspace.id,
+                  partId: id,
+                  primaryCategoryId: primaryCategoryId ?? null
                 });
               }
 
@@ -713,6 +727,44 @@ function getPartAttributeValueData({
         displayValue: parsedValue.displayValue
       };
   }
+}
+
+export async function updatePartValueSortNumber({
+  tx,
+  workspaceId,
+  partId,
+  primaryCategoryId,
+}: {
+  tx: Prisma.TransactionClient;
+  workspaceId: string;
+  partId: string;
+  primaryCategoryId: string | null;
+}) {
+  if (!primaryCategoryId) {
+    await tx.part.update({ where: { id: partId }, data: { valueSortNumber: null } });
+    return;
+  }
+
+  const effectiveAttrs = await getEffectivePartCategoryAttributes({
+    workspaceId,
+    categoryId: primaryCategoryId
+  });
+  const valueAttr = effectiveAttrs.find((a) => a.isValue);
+
+  if (!valueAttr) {
+    await tx.part.update({ where: { id: partId }, data: { valueSortNumber: null } });
+    return;
+  }
+
+  const attrValue = await tx.partAttributeValue.findUnique({
+    where: { partId_attributeId: { partId, attributeId: valueAttr.attribute.id } },
+    select: { quantityBaseValue: true, numberValue: true }
+  });
+
+  await tx.part.update({
+    where: { id: partId },
+    data: { valueSortNumber: attrValue?.quantityBaseValue ?? attrValue?.numberValue ?? null }
+  });
 }
 
 async function syncPartAttributeValues({
