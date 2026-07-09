@@ -1,24 +1,24 @@
 # OhmSweetOhm
 
-OhmSweetOhm, or OSO, is a web application for managing a home electronics workshop. It is intended to start small and grow into a larger product over time.
-
-The application language is English by default, with the project structured so additional languages can be added later.
+OhmSweetOhm (OSO) is a self-hosted web app for managing a home electronics workshop — parts, inventory, builds, and purchasing in one place.
 
 ## Start Here (Non-Technical User)
 
 If you want to use OSO (not develop it), start with the user documentation:
 
-- **[OSO User Guide](docs/user-guide/index.md)** <- first stop for everyday usage
+- **[OSO User Guide](docs/user-guide/index.md)** — first stop for everyday usage
 
-The user guide includes a simple local run section for regular users and a walkthrough of current app features.
+The user guide includes a simple local run section and a walkthrough of all current features.
 
-## Project Status
+## What OSO Can Do
 
-This repository contains a working OSO application slice with authentication, workspace routing, workspace-scoped access control, parts, manufacturer organizations, part categories, attributes, units, storage locations, stock movements, and supplier integration settings (DigiKey and TME).
-
-For location lifecycle safety, archived locations cannot be used in new stock movements, and locations with non-zero stock cannot be archived until stock is moved or adjusted to zero.
-
-Design revisions carry a bill of materials of attribute-based line-item specs that resolve against live inventory (see ADR 0020). Builds turn a design revision into a production run for a target quantity, advancing through allocating → started → in_progress → completed/cancelled with allocated/reserved/available stock tracking and automatic output-part receipt (see ADR 0021, superseded in part by ADR 0025). A single BOM line can be split across multiple matching parts, each with its own quantity and source location, and distributed across designators for the assembly list (see ADR 0023). Allocation is continuously editable while a build is `allocating` and can plan against incoming (on-order/in-production) stock in addition to on-hand stock, though starting a build still requires the real stock to be on hand (see ADR 0025). Shortage analysis, import pipelines, and broader project behavior remain intentionally undefined until product decisions are made.
+- **Parts catalogue** — track electronic parts by manufacturer and catalog number, with custom categories, attributes, and units
+- **Inventory** — manage stock across named storage locations; record receipts, issues, transfers, and adjustments
+- **Designs & BOMs** — create designs with revision history; each revision carries a bill of materials that resolves against live inventory
+- **Builds** — run a design revision for a target quantity; allocate parts, reserve stock on start, consume per assembled unit, and automatically receive the output part on completion; plan against incoming (on-order or in-production) stock when on-hand stock is short
+- **Purchasing** — collect parts to buy on shopping lists, convert them to formal per-supplier purchase orders, and receive deliveries to update inventory automatically
+- **Supplier integrations** — look up parts and pricing directly from DigiKey and TME when adding items to a purchase order
+- **Workspaces** — all data is workspace-scoped; create multiple isolated workshop contexts under one account
 
 ## Tech Direction
 
