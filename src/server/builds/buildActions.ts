@@ -12,6 +12,7 @@ import {
   getBuildDetail,
   getBuildsForWorkspace,
   getPartBuildAllocations,
+  getPartProductionBuilds,
   reassignDesignatorAssignment,
   setBuildAllocations,
   setBuildLineAllocations,
@@ -20,7 +21,8 @@ import {
   type BuildDetail,
   type BuildSortBy,
   type BuildSummary,
-  type PartBuildAllocationItem
+  type PartBuildAllocationItem,
+  type PartProductionBuildItem
 } from "@/server/builds/builds";
 
 export type BuildActionResult<T> =
@@ -61,6 +63,23 @@ export async function getPartBuildAllocationsForWorkspace(input: {
   try {
     const context = await getContext(input.workspaceSlug);
     const items = await getPartBuildAllocations({
+      userId: context.user.id,
+      workspaceId: context.workspace.id,
+      partId: input.partId
+    });
+    return success(items);
+  } catch (error) {
+    return failure(error);
+  }
+}
+
+export async function getPartProductionBuildsForWorkspace(input: {
+  workspaceSlug: string;
+  partId: string;
+}): Promise<BuildActionResult<PartProductionBuildItem[]>> {
+  try {
+    const context = await getContext(input.workspaceSlug);
+    const items = await getPartProductionBuilds({
       userId: context.user.id,
       workspaceId: context.workspace.id,
       partId: input.partId

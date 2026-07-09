@@ -81,7 +81,18 @@ const copy = {
   deleteLineItemBody: "This will remove the line item and its attribute matchers.",
   lineItemCreatedToast: "Line item added",
   lineItemUpdatedToast: "Line item updated",
-  lineItemDeletedToast: "Line item removed"
+  lineItemDeletedToast: "Line item removed",
+  productionBuilds: "In Production",
+  productionBuildsColBuild: "Build",
+  productionBuildsColState: "State",
+  productionBuildsColQty: "Qty",
+  buildStates: {
+    ALLOCATING: "Allocating",
+    STARTED: "Started",
+    IN_PROGRESS: "In progress",
+    COMPLETED: "Completed",
+    CANCELLED: "Cancelled"
+  }
 };
 
 type DesignsPageProps = {
@@ -104,7 +115,7 @@ export default async function DesignsPage({ params }: DesignsPageProps) {
 
   const emptyPage = { items: [], nextCursor: null, totalCount: 0, filteredCount: 0 };
 
-  const [initialPage, canWrite, canWriteShoppingLists] = await Promise.all([
+  const [initialPage, canWrite, canWriteShoppingLists, canReadBuilds] = await Promise.all([
     getDesignsForWorkspace({
       userId: context.user.id,
       workspaceId: context.workspace.id
@@ -118,6 +129,11 @@ export default async function DesignsPage({ params }: DesignsPageProps) {
       userId: context.user.id,
       workspaceId: context.workspace.id,
       permission: "shopping-lists:write"
+    }).catch(() => false),
+    hasWorkspacePermission({
+      userId: context.user.id,
+      workspaceId: context.workspace.id,
+      permission: "builds:read"
     }).catch(() => false)
   ]);
 
@@ -131,6 +147,7 @@ export default async function DesignsPage({ params }: DesignsPageProps) {
       workspaceSlug={workspaceSlug}
     >
       <DesignsClient
+        canReadBuilds={canReadBuilds}
         canWrite={canWrite}
         canWriteShoppingLists={canWriteShoppingLists}
         copy={copy}

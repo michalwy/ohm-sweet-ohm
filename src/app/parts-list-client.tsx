@@ -89,8 +89,11 @@ import { getPartPurchaseOrderHistoryForWorkspace } from "@/server/purchase-order
 import type { PartPurchaseOrderHistoryItem } from "@/server/purchase-orders/purchaseOrderMutations";
 import { getPartShoppingListMembershipForWorkspace } from "@/server/shopping-lists/shoppingListActions";
 import type { PartShoppingListMembershipItem } from "@/server/shopping-lists/shoppingListMutations";
-import { getPartBuildAllocationsForWorkspace } from "@/server/builds/buildActions";
-import type { PartBuildAllocationItem } from "@/server/builds/builds";
+import {
+  getPartBuildAllocationsForWorkspace,
+  getPartProductionBuildsForWorkspace
+} from "@/server/builds/buildActions";
+import type { PartBuildAllocationItem, PartProductionBuildItem } from "@/server/builds/builds";
 import { BUILD_STATE_BADGE_CLASS } from "@/app/builds-client";
 import { BuildLink, PoLink, SlLink } from "@/app/entity-links";
 import { PinnedFilterBanner } from "@/app/pinned-filter-banner";
@@ -277,6 +280,10 @@ type Copy = {
   buildAllocationsColState: string;
   buildAllocationsColAllocated: string;
   buildAllocationsColReserved: string;
+  productionBuilds: string;
+  productionBuildsColBuild: string;
+  productionBuildsColState: string;
+  productionBuildsColQty: string;
   buildStates: Record<string, string>;
   addToPurchaseOrder: string;
   addToShoppingList: string;
@@ -947,6 +954,19 @@ export function PartsListClient({
     enabled: Boolean(selectedPartId) && canReadBuilds,
     queryFn: async () => {
       const result = await getPartBuildAllocationsForWorkspace({
+        workspaceSlug,
+        partId: selectedPartId as string
+      });
+      if (!result.ok) throw new Error(result.error);
+      return result.data;
+    }
+  });
+
+  const partProductionBuildsQuery = useQuery({
+    queryKey: ["part-production-builds", workspaceSlug, selectedPartId],
+    enabled: Boolean(selectedPartId) && canReadBuilds,
+    queryFn: async () => {
+      const result = await getPartProductionBuildsForWorkspace({
         workspaceSlug,
         partId: selectedPartId as string
       });
@@ -1784,6 +1804,49 @@ export function PartsListClient({
                             </td>
                             <td className="px-3 py-2 align-middle text-right tabular-nums text-[var(--color-text-primary)]">
                               {entry.reservedQty > 0 ? entry.reservedQty : "—"}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </section>
+              ) : null}
+              {canReadBuilds &&
+               !partProductionBuildsQuery.isLoading &&
+               !partProductionBuildsQuery.isError &&
+               (partProductionBuildsQuery.data ?? []).length > 0 ? (
+                <section className="grid gap-2">
+                  <h3 className="text-sm font-semibold text-[var(--color-text-primary)]">
+                    {copy.productionBuilds}
+                  </h3>
+                  <div className="max-h-64 overflow-y-auto rounded-md border border-[var(--color-border)]">
+                    <table className="w-full text-left text-sm">
+                      <thead className="sticky top-0 bg-[var(--color-bg-subtle)] text-[var(--color-text-secondary)]">
+                        <tr>
+                          <th className="px-3 py-2 font-semibold">{copy.productionBuildsColBuild}</th>
+                          <th className="px-3 py-2 font-semibold">{copy.productionBuildsColState}</th>
+                          <th className="px-3 py-2 text-right font-semibold">{copy.productionBuildsColQty}</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {(partProductionBuildsQuery.data ?? []).map((entry: PartProductionBuildItem) => (
+                          <tr key={entry.buildId} className="group border-t border-[var(--color-border)] first:border-t-0">
+                            <td className="px-3 py-2 align-middle">
+                              <BuildLink
+                                buildId={entry.buildId}
+                                label={`${entry.designName} r${entry.revisionNumber} ×${entry.targetQuantity}`}
+                              />
+                            </td>
+                            <td className="px-3 py-2 align-middle">
+                              <span
+                                className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${BUILD_STATE_BADGE_CLASS[entry.state] ?? ""}`}
+                              >
+                                {copy.buildStates[entry.state] ?? entry.state}
+                              </span>
+                            </td>
+                            <td className="px-3 py-2 align-middle text-right tabular-nums text-[var(--color-text-primary)]">
+                              {entry.inProductionQty}
                             </td>
                           </tr>
                         ))}

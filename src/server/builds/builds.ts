@@ -525,6 +525,59 @@ export async function getPartBuildAllocations({
     .map((entry) => entry.item);
 }
 
+// --- Part detail: builds currently producing a part as output ---
+
+export type PartProductionBuildItem = {
+  buildId: string;
+  designName: string;
+  revisionNumber: number;
+  targetQuantity: number;
+  state: BuildState;
+  inProductionQty: number;
+};
+
+export async function getPartProductionBuilds({
+  userId,
+  workspaceId,
+  partId
+}: {
+  userId: string;
+  workspaceId: string;
+  partId: string;
+}): Promise<PartProductionBuildItem[]> {
+  await authorizeWorkspacePermission({ userId, workspaceId, permission: "builds:read" });
+
+  const rows = await prisma.build.findMany({
+    where: {
+      workspaceId,
+      state: { in: ["STARTED", "IN_PROGRESS"] },
+      designRevision: { design: { outputPartId: partId } }
+    },
+    select: {
+      id: true,
+      targetQuantity: true,
+      state: true,
+      createdAt: true,
+      designRevision: {
+        select: {
+          revisionNumber: true,
+          design: { select: { name: true } }
+        }
+      }
+    },
+    orderBy: [{ createdAt: "desc" }, { id: "desc" }]
+  });
+
+  return rows.map((row) => ({
+    buildId: row.id,
+    designName: row.designRevision.design.name,
+    revisionNumber: row.designRevision.revisionNumber,
+    targetQuantity: row.targetQuantity,
+    state: row.state as BuildState,
+    inProductionQty: row.targetQuantity
+  }));
+}
+
 // --- Detail query ---
 
 export async function getBuildDetail({

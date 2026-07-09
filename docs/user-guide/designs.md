@@ -44,6 +44,8 @@ Click a design row to open its **details panel** on the right. The panel shows:
 - The **output part** catalog number.
 - The **revision history**.
 - The **bill of materials** for the currently selected revision.
+- An **In Production** section listing each Started or In Progress build currently producing this design's output part (hidden when none are active). Shows build reference (design name, revision, target quantity; click to open that build), state, and quantity in production. Requires Builds read access.
+- A **Shortage analysis** for the currently selected revision.
 
 #### Revisions
 

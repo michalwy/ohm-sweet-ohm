@@ -18,6 +18,10 @@ import {
   updateDesignAction,
   updateDesignRevisionAction
 } from "@/server/designs/designActions";
+import { getPartProductionBuildsForWorkspace } from "@/server/builds/buildActions";
+import type { PartProductionBuildItem } from "@/server/builds/builds";
+import { BuildLink } from "@/app/entity-links";
+import { BUILD_STATE_BADGE_CLASS } from "@/app/builds-client";
 import type { DesignSummary } from "@/server/designs/designs";
 import {
   createBomLineItemAction,
@@ -126,9 +130,15 @@ type Copy = {
   lineItemCreatedToast: string;
   lineItemUpdatedToast: string;
   lineItemDeletedToast: string;
+  productionBuilds: string;
+  productionBuildsColBuild: string;
+  productionBuildsColState: string;
+  productionBuildsColQty: string;
+  buildStates: Record<string, string>;
 };
 
 type DesignsClientProps = {
+  canReadBuilds: boolean;
   canWrite: boolean;
   canWriteShoppingLists: boolean;
   copy: Copy;
@@ -162,6 +172,7 @@ function getErrorMsg(copy: Copy, error: string): string {
 }
 
 export function DesignsClient({
+  canReadBuilds,
   canWrite,
   canWriteShoppingLists,
   copy,
@@ -342,6 +353,19 @@ export function DesignsClient({
   const selectedDesign = selectedDesignId
     ? (currentDesigns.find((d) => d.id === selectedDesignId) ?? null)
     : null;
+
+  const designProductionBuildsQuery = useQuery({
+    queryKey: ["part-production-builds", workspaceSlug, selectedDesign?.outputPart.id],
+    enabled: Boolean(selectedDesign) && canReadBuilds,
+    queryFn: async () => {
+      const result = await getPartProductionBuildsForWorkspace({
+        workspaceSlug,
+        partId: selectedDesign!.outputPart.id
+      });
+      if (!result.ok) throw new Error(result.error);
+      return result.data;
+    }
+  });
 
   function openDesignDetails(design: DesignSummary) {
     setSelectedDesignId(design.id);
@@ -988,6 +1012,50 @@ export function DesignsClient({
               </table>
             )}
           </section>
+
+          {canReadBuilds &&
+           !designProductionBuildsQuery.isLoading &&
+           !designProductionBuildsQuery.isError &&
+           (designProductionBuildsQuery.data ?? []).length > 0 ? (
+            <section className="grid gap-2">
+              <p className="text-xs font-semibold uppercase tracking-wide text-[var(--color-text-muted)]">
+                {copy.productionBuilds}
+              </p>
+              <div className="max-h-64 overflow-y-auto rounded-md border border-[var(--color-border)]">
+                <table className="w-full text-left text-sm">
+                  <thead className="sticky top-0 bg-[var(--color-bg-subtle)] text-[var(--color-text-secondary)]">
+                    <tr>
+                      <th className="px-3 py-2 font-semibold">{copy.productionBuildsColBuild}</th>
+                      <th className="px-3 py-2 font-semibold">{copy.productionBuildsColState}</th>
+                      <th className="px-3 py-2 text-right font-semibold">{copy.productionBuildsColQty}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(designProductionBuildsQuery.data ?? []).map((entry: PartProductionBuildItem) => (
+                      <tr key={entry.buildId} className="group border-t border-[var(--color-border)] first:border-t-0">
+                        <td className="px-3 py-2 align-middle">
+                          <BuildLink
+                            buildId={entry.buildId}
+                            label={`${entry.designName} r${entry.revisionNumber} ×${entry.targetQuantity}`}
+                          />
+                        </td>
+                        <td className="px-3 py-2 align-middle">
+                          <span
+                            className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${BUILD_STATE_BADGE_CLASS[entry.state] ?? ""}`}
+                          >
+                            {copy.buildStates[entry.state] ?? entry.state}
+                          </span>
+                        </td>
+                        <td className="px-3 py-2 align-middle text-right tabular-nums text-[var(--color-text-primary)]">
+                          {entry.inProductionQty}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </section>
+          ) : null}
 
           {/* Shortage analysis for the selected revision */}
           <ShortagePanel
