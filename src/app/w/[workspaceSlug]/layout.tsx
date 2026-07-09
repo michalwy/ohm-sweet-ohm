@@ -5,6 +5,7 @@ import {
   getCurrentSession,
   getCurrentWorkspaceContextBySlug
 } from "@/server/auth/currentContext";
+import { DateFormatProvider } from "@/app/date-format-context";
 
 export default async function WorkspaceLayout({
   params,
@@ -30,5 +31,13 @@ export default async function WorkspaceLayout({
     redirect("/workspaces?notice=workspace-archived");
   }
 
-  return <>{children}</>;
+  return (
+    <DateFormatProvider
+      dateFormat={context.user.dateFormat}
+      timeFormat={context.user.timeFormat}
+      relativeFormat={context.user.relativeFormat}
+    >
+      {children}
+    </DateFormatProvider>
+  );
 }

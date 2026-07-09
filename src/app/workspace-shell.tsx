@@ -19,7 +19,8 @@ type WorkspaceNavItem =
   | "units"
   | "settings-general"
   | "settings-integrations"
-  | "settings-ordering";
+  | "settings-ordering"
+  | "settings-display";
 
 type WorkspaceShellProps = {
   workspaceSlug: string;
@@ -52,7 +53,8 @@ const copy = {
   units: "Units",
   general: "General",
   integrations: "Integrations",
-  ordering: "Ordering"
+  ordering: "Ordering",
+  display: "Display"
 };
 
 function getNavLinkClass(isActive: boolean) {
@@ -200,6 +202,15 @@ export function WorkspaceShell({
               }
             >
               {copy.ordering}
+            </Link>
+            <Link
+              className={getNavLinkClass(activeNavItem === "settings-display")}
+              href={`/w/${workspaceSlug}/settings/display`}
+              aria-current={
+                activeNavItem === "settings-display" ? "page" : undefined
+              }
+            >
+              {copy.display}
             </Link>
           </nav>
           <div className="border-t border-[var(--color-border)] p-3">
