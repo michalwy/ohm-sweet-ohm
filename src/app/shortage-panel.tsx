@@ -22,6 +22,7 @@ export type ShortagePanelCopy = {
   loading: string;
   error: string;
   allInStock: string;
+  allInStockViaProduction: string;
   lineShortagesHeading: string;
   designators: string;
   required: string;
@@ -39,6 +40,7 @@ export type ShortagePanelCopy = {
   // Compact status + modal
   statusSelectDesign: string;
   statusFulfillable: string;
+  statusInProduction: string;
   statusShortage: string;
   statusPending: string;
   openAnalysis: string;
@@ -53,6 +55,7 @@ export const DEFAULT_SHORTAGE_COPY: ShortagePanelCopy = {
   loading: "Analyzing…",
   error: "Failed to analyze shortages.",
   allInStock: "All components can be fulfilled from available stock.",
+  allInStockViaProduction: "All components can be fulfilled, but some rely on incoming stock (on order or in production).",
   lineShortagesHeading: "Line shortages",
   designators: "Designators",
   required: "Required",
@@ -69,6 +72,7 @@ export const DEFAULT_SHORTAGE_COPY: ShortagePanelCopy = {
   createShoppingListFromShortage: "Create shopping list",
   statusSelectDesign: "Select a design and revision to check stock.",
   statusFulfillable: "This build can be made from available stock.",
+  statusInProduction: "This build relies on incoming stock (on order or in production).",
   statusShortage: "This build cannot be fully made from available stock.",
   statusPending: "Checking stock…",
   openAnalysis: "Shortage analysis",
@@ -295,6 +299,9 @@ function ShortageBody({
   }
   if (!data) return null;
   if (isFulfillable(data)) {
+    if (data.requiresIncoming) {
+      return <p className="text-sm text-[var(--color-warning)]">{copy.allInStockViaProduction}</p>;
+    }
     return <p className="text-sm text-[var(--color-success)]">{copy.allInStock}</p>;
   }
   return (
@@ -402,9 +409,15 @@ export function ShortageStatus({
     } else if (!data || isFetching) {
       text = copy.statusPending;
     } else if (isFulfillable(data)) {
-      text = copy.statusFulfillable;
-      toneClass = "text-[var(--color-success)]";
-      dotClass = "bg-[var(--color-success)]";
+      if (data.requiresIncoming) {
+        text = copy.statusInProduction;
+        toneClass = "text-[var(--color-warning)]";
+        dotClass = "bg-[var(--color-warning)]";
+      } else {
+        text = copy.statusFulfillable;
+        toneClass = "text-[var(--color-success)]";
+        dotClass = "bg-[var(--color-success)]";
+      }
     } else {
       text = copy.statusShortage;
       toneClass = "text-[var(--color-error)]";

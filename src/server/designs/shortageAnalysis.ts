@@ -66,6 +66,8 @@ export type ShortageAnalysis = {
   lines: LineShortage[];
   procurement: ProcurementItem[];
   cycles: CycleReport[];
+  /** True when all lines are covered but at least one relies on incoming stock (on order or in production, not yet on hand). */
+  requiresIncoming: boolean;
 };
 
 type OutputDesign = {
@@ -153,25 +155,34 @@ export async function analyzeShortage({
     });
   }
 
-  // Shared availability pool, lazily seeded per part from `currentStock - reservedQty`.
+  // Shared availability pools, lazily seeded per part.
+  // `pool` includes in-production stock; `onHandPool` is on-hand only (currentStock - reservedQty).
   const pool = new Map<string, number>();
+  const onHandPool = new Map<string, number>();
   async function ensurePool(partIds: string[]): Promise<void> {
     const missing = partIds.filter((id) => !pool.has(id));
     if (missing.length === 0) return;
     const parts = await prisma.part.findMany({
       where: { workspaceId, id: { in: missing } },
-      select: { id: true, currentStock: true, reservedQty: true }
+      select: { id: true, currentStock: true, reservedQty: true, inProductionQty: true, onOrderQty: true }
     });
     const found = new Set<string>();
     for (const part of parts) {
-      pool.set(part.id, Number(part.currentStock) - Number(part.reservedQty));
+      const onHand = Number(part.currentStock) - Number(part.reservedQty);
+      onHandPool.set(part.id, onHand);
+      pool.set(part.id, onHand + Number(part.inProductionQty) + Number(part.onOrderQty));
       found.add(part.id);
     }
     // A pinned part that no longer exists still counts as zero available.
     for (const id of missing) {
-      if (!found.has(id)) pool.set(id, 0);
+      if (!found.has(id)) {
+        pool.set(id, 0);
+        onHandPool.set(id, 0);
+      }
     }
   }
+
+  let incomingConsumed = 0;
 
   const lines: LineShortage[] = [];
   const procurement = new Map<string, ProcurementItem>();
@@ -224,13 +235,18 @@ export async function analyzeShortage({
       // Consume shared available stock across all matching parts in a deterministic order
       // (findMatchingParts returns candidates by catalogNumber asc), netting each part's
       // own stock — including a sub-design output part's stock — before any sourcing.
+      // Also drain the on-hand-only pool in parallel to detect reliance on in-production stock.
       let remaining = required;
       for (const candidate of candidates) {
         if (remaining <= 0) break;
         const available = pool.get(candidate.id) ?? 0;
         const take = Math.min(available, remaining);
         if (take > 0) {
+          const onHandAvailable = onHandPool.get(candidate.id) ?? 0;
+          const fromOnHand = Math.min(take, onHandAvailable);
+          incomingConsumed += take - fromOnHand;
           pool.set(candidate.id, available - take);
+          onHandPool.set(candidate.id, onHandAvailable - fromOnHand);
           remaining -= take;
         }
       }
@@ -328,6 +344,7 @@ export async function analyzeShortage({
         )
       }))
       .sort((a, b) => a.catalogNumber.localeCompare(b.catalogNumber)),
-    cycles
+    cycles,
+    requiresIncoming: incomingConsumed > 0
   };
 }
