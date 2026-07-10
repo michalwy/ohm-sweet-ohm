@@ -115,6 +115,7 @@ const copy = {
   permissionDenied: "You do not have permission to perform this action.",
   databaseUnavailable: "Database is not available.",
   orderedAt: "Ordered",
+  receivedAt: "Received",
   noAttribute: "—",
   totalNetValue: "Net value",
   totalGrossValue: "Gross value",

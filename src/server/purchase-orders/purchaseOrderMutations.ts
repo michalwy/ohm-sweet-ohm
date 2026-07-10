@@ -85,6 +85,7 @@ export type PurchaseOrderSummary = {
   taxRate: string | null;
   priceEntryMode: "net" | "gross";
   orderedAt: string | null;
+  receivedAt: string | null;
   notes: string | null;
   createdByName: string | null;
   itemCount: number;
@@ -105,7 +106,8 @@ export type PurchaseOrderSortBy =
   | "totalNetValue"
   | "totalGrossValue"
   | "totalNetValuePrimary"
-  | "totalGrossValuePrimary";
+  | "totalGrossValuePrimary"
+  | "receivedAt";
 export type PurchaseOrderSortDirection = "asc" | "desc";
 
 export type PurchaseOrdersPageInput = {
@@ -133,6 +135,7 @@ const orderSelectShape = {
   taxRate: true,
   priceEntryMode: true,
   orderedAt: true,
+  receivedAt: true,
   notes: true,
   createdAt: true,
   updatedAt: true,
@@ -154,6 +157,7 @@ function toOrderSummary(order: {
   taxRate: Prisma.Decimal | null;
   priceEntryMode: string;
   orderedAt: Date | null;
+  receivedAt: Date | null;
   notes: string | null;
   createdAt: Date;
   updatedAt: Date;
@@ -176,6 +180,7 @@ function toOrderSummary(order: {
     taxRate: order.taxRate?.toString() ?? null,
     priceEntryMode: (order.priceEntryMode === "gross" ? "gross" : "net") as "net" | "gross",
     orderedAt: order.orderedAt?.toISOString() ?? null,
+    receivedAt: order.receivedAt?.toISOString() ?? null,
     notes: order.notes,
     createdByName: order.createdByUser?.name ?? null,
     itemCount: order._count.items,
@@ -245,6 +250,25 @@ export async function getPurchaseOrders(
     const rows = await prisma.purchaseOrder.findMany({
       where: { workspaceId },
       orderBy: [{ [col]: { sort: dir === "asc" ? "asc" : "desc", nulls: "last" } }, { id: "asc" }],
+      skip: offset,
+      take: size + 1,
+      select: orderSelectShape
+    });
+
+    const hasMore = rows.length > size;
+    const page = rows.slice(0, size);
+    const items = page.map(toOrderSummary);
+    const nextCursor = hasMore ? encodeListCursor<OffsetCursor>({ offset: offset + size }) : null;
+    return { items, nextCursor, totalCount, filteredCount: totalCount };
+  }
+
+  if (sortBy === "receivedAt") {
+    const cursor = decodeListCursor<OffsetCursor>(input.cursor);
+    const offset = cursor?.offset ?? 0;
+
+    const rows = await prisma.purchaseOrder.findMany({
+      where: { workspaceId },
+      orderBy: [{ receivedAt: { sort: dir === "asc" ? "asc" : "desc", nulls: "last" } }, { id: "asc" }],
       skip: offset,
       take: size + 1,
       select: orderSelectShape
@@ -1233,7 +1257,7 @@ export async function receiveItems(input: {
     if (allReceived) {
       await tx.purchaseOrder.update({
         where: { id: input.orderId },
-        data: { status: "RECEIVED" }
+        data: { status: "RECEIVED", receivedAt: new Date() }
       });
     }
   });

@@ -455,6 +455,7 @@ type Copy = {
   permissionDenied: string;
   databaseUnavailable: string;
   orderedAt: string;
+  receivedAt: string;
   created: string;
   createdBy: string;
   supplierOrderNumber: string;
@@ -607,6 +608,7 @@ export function PurchaseOrdersClient({
       { id: "createdAt", label: copy.created, group: "base", defaultWidth: 160, minWidth: 100, defaultVisible: false, sortable: true },
       { id: "createdBy", label: copy.createdBy, group: "base", defaultWidth: 160, minWidth: 100, defaultVisible: false },
       { id: "orderedAt", label: copy.orderedAt, group: "base", defaultWidth: 160, minWidth: 100, defaultVisible: false },
+      { id: "receivedAt", label: copy.receivedAt, group: "base", defaultWidth: 160, minWidth: 100, defaultVisible: false, sortable: true },
       { id: "currency", label: copy.currency, group: "base", defaultWidth: 90, minWidth: 64, defaultVisible: false },
       { id: "totalNetValue", label: copy.totalNetValue, group: "base", defaultWidth: 150, minWidth: 100, defaultVisible: false, align: "right" as const, sortable: true },
       { id: "totalGrossValue", label: copy.totalGrossValue, group: "base", defaultWidth: 150, minWidth: 100, defaultVisible: false, align: "right" as const, sortable: true },
@@ -1376,6 +1378,18 @@ export function PurchaseOrdersClient({
       columnHelper.accessor("orderedAt", {
         id: "orderedAt",
         header: copy.orderedAt,
+        size: 160,
+        minSize: 100,
+        cell: ({ getValue }) => {
+          const v = getValue();
+          return v
+            ? <DateDisplay value={v} className="text-[var(--color-text-secondary)]" />
+            : <EmptyCell />;
+        }
+      }),
+      columnHelper.accessor("receivedAt", {
+        id: "receivedAt",
+        header: copy.receivedAt,
         size: 160,
         minSize: 100,
         cell: ({ getValue }) => {

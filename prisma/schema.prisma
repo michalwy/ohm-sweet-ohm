@@ -895,6 +895,7 @@ model PurchaseOrder {
   taxRate              Decimal?
   priceEntryMode       String    @default("net")
   orderedAt            DateTime?
+  receivedAt           DateTime?
   totalNetValue        Decimal?
   totalGrossValue      Decimal?
   totalNetValuePrimary    Decimal?
@@ -914,6 +915,7 @@ model PurchaseOrder {
   @@index([workspaceId, supplierId])
   @@index([workspaceId, status])
   @@index([workspaceId, sourceShoppingListId])
+  @@index([workspaceId, receivedAt])
   @@index([workspaceId, totalNetValue])
   @@index([workspaceId, totalGrossValue])
   @@index([workspaceId, totalNetValuePrimary])
