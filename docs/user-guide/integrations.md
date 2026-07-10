@@ -1,4 +1,6 @@
-# Integrations
+---
+title: Integrations
+---
 
 ## Configure Supplier Integrations
 

@@ -1,4 +1,6 @@
-# Settings & Permissions
+---
+title: Settings & Permissions
+---
 
 ## Permissions And Read-Only Behavior
 

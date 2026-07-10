@@ -1,4 +1,6 @@
-# Parts, Categories, Attributes, and Units
+---
+title: Parts, Categories, Attributes, and Units
+---
 
 ## Work With Parts
 

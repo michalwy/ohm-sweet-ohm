@@ -1,4 +1,6 @@
-# OSO User Guide
+---
+title: OSO User Guide
+---
 
 Welcome to OhmSweetOhm (OSO).
 

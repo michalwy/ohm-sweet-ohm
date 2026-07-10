@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - 'site/**'
+      - 'docs/user-guide/**'
       - '.github/workflows/site.yml'
   workflow_dispatch:
 

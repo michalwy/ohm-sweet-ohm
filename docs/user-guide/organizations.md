@@ -1,4 +1,6 @@
-# Organizations
+---
+title: Organizations
+---
 
 Use **Organizations** to manage the manufacturers, suppliers, and other external entities you work with. Each organization can hold one or more roles:
 

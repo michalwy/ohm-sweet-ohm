@@ -18,7 +18,19 @@ export default defineConfig({
       sidebar: [
         {
           label: 'User Guide',
-          items: [{ autogenerate: { directory: 'guides' } }],
+          items: [
+            { label: 'Overview',      slug: 'guides' },
+            { label: 'Workspaces',    slug: 'guides/workspaces' },
+            { label: 'Organizations', slug: 'guides/organizations' },
+            { label: 'Parts',         slug: 'guides/parts' },
+            { label: 'Inventory',     slug: 'guides/inventory' },
+            { label: 'Designs',       slug: 'guides/designs' },
+            { label: 'Builds',        slug: 'guides/builds' },
+            { label: 'Purchasing',    slug: 'guides/purchasing' },
+            { label: 'Integrations',  slug: 'guides/integrations' },
+            { label: 'Settings',      slug: 'guides/settings' },
+            { label: 'Deployment',    slug: 'guides/deployment' },
+          ],
         },
       ],
     }),

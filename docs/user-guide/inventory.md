@@ -1,4 +1,6 @@
-# Inventory
+---
+title: Inventory
+---
 
 ## Build Storage Locations
 

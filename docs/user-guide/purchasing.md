@@ -1,4 +1,6 @@
-# Purchasing
+---
+title: Purchasing
+---
 
 ## Manage Shopping Lists
 

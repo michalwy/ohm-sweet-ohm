@@ -1,4 +1,6 @@
-# Builds
+---
+title: Builds
+---
 
 A **build** is a concrete production run of a design revision for a target quantity. A build
 walks through a series of states, and each state change moves stock: from planning, to a hard

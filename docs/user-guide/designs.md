@@ -1,4 +1,6 @@
-# Designs
+---
+title: Designs
+---
 
 ## What Is a Design?
 

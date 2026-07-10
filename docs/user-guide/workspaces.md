@@ -1,4 +1,6 @@
-# Workspaces
+---
+title: Workspaces
+---
 
 ## Sign In And Enter A Workspace
 

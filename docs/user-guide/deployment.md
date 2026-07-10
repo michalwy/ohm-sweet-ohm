@@ -1,4 +1,6 @@
-# Deploying OSO on Your Own Server
+---
+title: Deploying OSO on Your Own Server
+---
 
 This page is for running OhmSweetOhm (OSO) on an always-on server you control — for
 example a Raspberry Pi or a small home/VPS box — as opposed to the
