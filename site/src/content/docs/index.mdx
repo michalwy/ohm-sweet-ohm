@@ -9,8 +9,66 @@ hero:
       link: /ohm-sweet-ohm/guides/
       icon: right-arrow
       variant: primary
-    - text: GitHub
+    - text: View on GitHub
       link: https://github.com/michalwy/ohm-sweet-ohm
       icon: github
-      variant: minimal
+      attrs:
+        rel: me
 ---
+
+import { Card, CardGrid, LinkCard } from '@astrojs/starlight/components';
+
+## What is OhmSweetOhm?
+
+OhmSweetOhm (OSO) is a self-hosted web application for managing a home electronics
+workshop. Keep track of your parts library, component inventory, build projects, and
+supplier orders — all in one place, on hardware you own.
+
+## Features
+
+<CardGrid>
+  <Card title="Parts library" icon="list-format">
+    Organize components by manufacturer and catalog number. Add custom categories,
+    attributes, and units to describe any part type precisely.
+  </Card>
+  <Card title="Inventory tracking" icon="document">
+    Manage stock across hierarchical storage locations. Record receipts, issues,
+    transfers, and adjustments with a full audit trail.
+  </Card>
+  <Card title="Designs & BOM" icon="puzzle">
+    Create reusable build recipes with a spec-based bill of materials. Match parts by
+    attribute values and get automatic shortage analysis.
+  </Card>
+  <Card title="Build tracking" icon="rocket">
+    Run concrete production builds from your designs. Track allocations, assembly
+    progress per designator, and complete with automatic stock receipt.
+  </Card>
+  <Card title="Purchasing" icon="open-book">
+    Manage purchase orders from draft to received. Inline price editing, partial
+    receives, and proportional cost allocation across line items.
+  </Card>
+  <Card title="Supplier integrations" icon="external">
+    Look up parts and pricing directly from DigiKey and TME without leaving the app.
+  </Card>
+</CardGrid>
+
+## Self-hosted & open source
+
+OhmSweetOhm runs on hardware you own — a Raspberry Pi, a home server, or any machine
+with Docker. No cloud subscription, no data leaving your network. Deploy with
+a single `curl` command and a Docker Compose stack.
+
+The source code is MIT-licensed and available on GitHub.
+
+<CardGrid>
+  <LinkCard
+    title="Self-hosting guide"
+    href="/ohm-sweet-ohm/guides/"
+    description="Install OSO on your own hardware with Docker Compose."
+  />
+  <LinkCard
+    title="GitHub repository"
+    href="https://github.com/michalwy/ohm-sweet-ohm"
+    description="Source code, issues, and releases."
+  />
+</CardGrid>
