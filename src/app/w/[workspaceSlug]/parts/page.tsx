@@ -59,6 +59,7 @@ const copy = {
   allCategories: "All categories",
   filterByManufacturer: "Manufacturer",
   allManufacturers: "All manufacturers",
+  filterByStock: "Current stock",
   clearFilters: "Clear filters",
   configureFilters: "Configure filters",
   availableFilters: "Filters",

@@ -155,6 +155,7 @@ type Copy = {
   allCategories: string;
   filterByManufacturer: string;
   allManufacturers: string;
+  filterByStock: string;
   clearFilters: string;
   configureFilters: string;
   availableFilters: string;
@@ -559,13 +560,20 @@ export function PartsListClient({
             onValueChange={onChange}
           />
         )
+      },
+      {
+        id: "stockQty",
+        label: copy.filterByStock,
+        type: "numeric",
+        urlParam: "stock",
+        defaultVisible: false
       }
     ],
     // copy, partCategories, categoryTree, and currentManufacturerSuggestions are
     // the actual data deps; including all filter def inline functions would cause
     // re-renders on every render — useMemo stabilizes the array.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [copy.searchParts, copy.filterByCategory, copy.allCategories, copy.filterByManufacturer, copy.allManufacturers, copy.noMatchingManufacturers, partCategories, categoryTree, currentManufacturerSuggestions]
+    [copy.searchParts, copy.filterByCategory, copy.allCategories, copy.filterByManufacturer, copy.allManufacturers, copy.noMatchingManufacturers, copy.filterByStock, partCategories, categoryTree, currentManufacturerSuggestions]
   );
 
   const {

@@ -30,11 +30,47 @@ All of these columns support sorting with cursor-based pagination so they work e
 The filter bar above the parts list lets you narrow down which parts are shown.
 
 - The **search** input is always visible and matches across catalog number, manufacturer name, category, and value.
-- **Filter by category** and **Filter by manufacturer** are toggleable filters. Use the **Add filter** button in the filter bar to show or hide them.
-- The order of visible filters can be changed using the up/down arrows in the **Add filter** panel.
+- **Category** and **Manufacturer** are toggleable filters shown by default.
+- **Current stock** is a numeric filter — enable it via the **Configure filters** button.
+- The order of visible filters can be changed by dragging items in the **Configure filters** panel.
 - Filter configuration (which filters are shown and in what order) is saved per browser, so it persists across page reloads.
 - Active filter values are reflected in the URL, making filtered views deep-linkable and navigable with the browser back/forward buttons.
 - Click **Clear filters** to reset all active filter values at once.
+
+#### Numeric Filters
+
+Numeric filters (such as **Current stock**) let you choose a comparison operator before entering a value:
+
+| Operator | Meaning |
+|---|---|
+| `≥` | greater than or equal (default) |
+| `≤` | less than or equal |
+| `>` | strictly greater than |
+| `<` | strictly less than |
+| `=` | exactly equal |
+| `≠` | not equal |
+| `between` | within a range (inclusive) |
+| `not between` | outside a range |
+
+For **between** and **not between**, two value inputs appear — a minimum and a maximum.
+
+#### Unit-Aware Input For Quantity Attributes
+
+When a numeric filter applies to a quantity attribute (one that carries a physical unit such as resistance, capacitance, or voltage), the input accepts standard SI-prefixed forms:
+
+| Input | Interpreted as |
+|---|---|
+| `100` | 100 Ω (base unit, no prefix) |
+| `1k`, `1kΩ`, `1 kΩ` | 1 000 Ω |
+| `10M`, `10MΩ` | 10 000 000 Ω |
+| `100µF`, `100uF` | 0.0001 F |
+| `470nF` | 0.00000047 F |
+| `1mV`, `1 mV` | 0.001 V |
+| `1kohm`, `1kohms` | 1 000 Ω (unit aliases) |
+
+Supported SI prefixes: `p` (pico), `n` (nano), `µ`/`u` (micro), `m` (milli), `k`/`K` (kilo), `M` (mega), `G` (giga).
+
+If the input cannot be parsed, an error message appears below the input and the filter is not applied until the value is corrected.
 
 ### Adding A Part
 

@@ -11,6 +11,8 @@ import {
   getListPageSize,
   type ListPage
 } from "@/server/pagination";
+import { deserializeNumericFilter } from "@/app/numeric-filter-value";
+import { parseNumberValue } from "@/lib/quantityParsing";
 
 export type PartsListItem = {
   id: string;
@@ -54,6 +56,8 @@ export type PartsListFilters = {
   categoryFilterId?: string | null;
   manufacturerFilter?: string | null;
   pinnedId?: string | null;
+  /** Serialized NumericFilter for the Part.currentStock field, e.g. "gte:5". */
+  stockQuantityFilter?: string | null;
 };
 
 export type PartsListSortDirection = "asc" | "desc";
@@ -962,6 +966,51 @@ function mapPartListItem({
   };
 }
 
+/**
+ * Build a Prisma WHERE condition for a direct Decimal field on Part using a
+ * serialized NumericFilter string (e.g. "gte:5", "between:0:10").
+ * Returns null when the filter string is absent or unparseable (no-op).
+ */
+function applyDirectDecimalFilter(
+  field: "currentStock",
+  serializedFilter: string | null | undefined
+): Prisma.PartWhereInput | null {
+  if (!serializedFilter?.trim()) return null;
+
+  const parsed = deserializeNumericFilter(serializedFilter);
+  if (!parsed) return null;
+
+  function parseDecimal(raw: string): Prisma.Decimal | null {
+    const result = parseNumberValue({ rawValue: raw });
+    return result.ok ? new Prisma.Decimal(result.value) : null;
+  }
+
+  if ("rawMin" in parsed) {
+    const min = parseDecimal(parsed.rawMin);
+    const max = parseDecimal(parsed.rawMax);
+    if (!min || !max) return null;
+
+    if (parsed.op === "between") {
+      return { [field]: { gte: min, lte: max } };
+    }
+    // not-between
+    return { NOT: { [field]: { gte: min, lte: max } } };
+  }
+
+  const val = parseDecimal(parsed.rawValue);
+  if (!val) return null;
+
+  const { op } = parsed;
+  if (op === "eq") return { [field]: val };
+  if (op === "neq") return { NOT: { [field]: val } };
+  if (op === "gt") return { [field]: { gt: val } };
+  if (op === "gte") return { [field]: { gte: val } };
+  if (op === "lt") return { [field]: { lt: val } };
+  if (op === "lte") return { [field]: { lte: val } };
+
+  return null;
+}
+
 function getPartsListWhere({
   workspaceId,
   filters,
@@ -1042,6 +1091,14 @@ function getPartsListWhere({
           : [])
       ]
     });
+  }
+
+  const stockQtyCondition = applyDirectDecimalFilter(
+    "currentStock",
+    filters.stockQuantityFilter
+  );
+  if (stockQtyCondition) {
+    conditions.push(stockQtyCondition);
   }
 
   return {

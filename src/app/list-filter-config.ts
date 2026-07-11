@@ -14,8 +14,12 @@ export type FilterControlProps<TValue = string> = {
 export type FilterDefinition<TValue = string> = {
   id: string;
   label: string;
-  /** Drives which built-in chrome is used; "text" renders a plain text input, all others use renderControl. */
+  /** Drives which built-in chrome is used; "text" renders a plain text input, "numeric" renders the
+   *  built-in NumericFilterControl, all others use renderControl. */
   type: "text" | "select" | "tree" | "numeric" | string;
+  /** For type "numeric": the SI base unit symbol (e.g. "Ω", "V", "F").
+   *  Absent for plain counts or NUMBER attributes. */
+  baseUnitSymbol?: string;
   /** URL search-param key for this filter's value; omit to skip URL state. */
   urlParam?: string;
   /** When set, useFilterUrlState debounces the URL write by this many ms. */

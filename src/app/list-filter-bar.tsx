@@ -5,6 +5,7 @@ import { useRef, useMemo, useState } from "react";
 
 import type { FilterDefinition } from "@/app/list-filter-config";
 import type { FilterValues } from "@/app/use-filter-url-state";
+import { NumericFilterControl } from "@/app/numeric-filter-control";
 import {
   DialogBody,
   DialogFooter,
@@ -225,6 +226,18 @@ function FilterControl({ filter, value, onChange, disabled }: FilterControlProps
           onChange={(e) => onChange(e.currentTarget.value)}
         />
       </label>
+    );
+  }
+
+  if (filter.type === "numeric") {
+    return (
+      <NumericFilterControl
+        baseUnitSymbol={filter.baseUnitSymbol}
+        disabled={disabled}
+        label={filter.label}
+        value={value}
+        onChange={onChange}
+      />
     );
   }
 
