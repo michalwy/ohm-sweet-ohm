@@ -30,6 +30,7 @@ export async function getDesignsPageForWorkspace(input: {
   pageSize?: number | null;
   sortBy?: DesignSortBy;
   sortDir?: "asc" | "desc";
+  searchQuery?: string | null;
 }): Promise<DesignActionResult<ListPage<DesignSummary>>> {
   try {
     const context = await getContext(input.workspaceSlug);
@@ -39,7 +40,8 @@ export async function getDesignsPageForWorkspace(input: {
       cursor: input.cursor,
       pageSize: input.pageSize,
       sortBy: input.sortBy,
-      sortDir: input.sortDir
+      sortDir: input.sortDir,
+      searchQuery: input.searchQuery
     });
     return success(page);
   } catch (error) {

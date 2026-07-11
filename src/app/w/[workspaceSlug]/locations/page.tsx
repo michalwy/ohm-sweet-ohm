@@ -52,6 +52,7 @@ const copy = {
   expandLocation: "Expand",
   collapseLocation: "Collapse",
   noLocations: "No locations yet.",
+  clearFilters: "Clear",
   actions: "Actions",
   invalidInput: "Check the location fields and try again.",
   duplicateLocationName: "A sibling location with this name already exists.",

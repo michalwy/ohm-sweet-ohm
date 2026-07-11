@@ -38,6 +38,7 @@ export async function getBuildsPageForWorkspace(input: {
   pinnedId?: string | null;
   sortBy?: BuildSortBy;
   sortDir?: "asc" | "desc";
+  searchQuery?: string | null;
 }): Promise<BuildActionResult<ListPage<BuildSummary>>> {
   try {
     const context = await getContext(input.workspaceSlug);
@@ -48,7 +49,8 @@ export async function getBuildsPageForWorkspace(input: {
       pageSize: input.pageSize,
       pinnedId: input.pinnedId,
       sortBy: input.sortBy,
-      sortDir: input.sortDir
+      sortDir: input.sortDir,
+      searchQuery: input.searchQuery
     });
     return success(page);
   } catch (error) {

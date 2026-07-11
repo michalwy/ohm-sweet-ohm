@@ -45,7 +45,7 @@ function syncUrl(
       url.searchParams.delete(filter.urlParam);
     }
   }
-  window.history.replaceState(null, "", url.toString());
+  window.history.replaceState(window.history.state, "", url.toString());
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any

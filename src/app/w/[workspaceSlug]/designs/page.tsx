@@ -92,7 +92,12 @@ const copy = {
     IN_PROGRESS: "In progress",
     COMPLETED: "Completed",
     CANCELLED: "Cancelled"
-  }
+  },
+  designCountSummary: "{visible} of {total} designs",
+  searchDesigns: "Search designs",
+  configureFilters: "Filters",
+  clearFilters: "Clear filters",
+  availableFilters: "Available filters"
 };
 
 type DesignsPageProps = {

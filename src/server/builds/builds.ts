@@ -298,7 +298,8 @@ export async function getBuildsForWorkspace({
   pageSize,
   pinnedId,
   sortBy = "createdAt",
-  sortDir = "desc"
+  sortDir = "desc",
+  searchQuery
 }: {
   userId: string;
   workspaceId: string;
@@ -308,10 +309,15 @@ export async function getBuildsForWorkspace({
   pinnedId?: string | null;
   sortBy?: BuildSortBy;
   sortDir?: "asc" | "desc";
+  searchQuery?: string | null;
 }): Promise<ListPage<BuildSummary>> {
   await authorizeWorkspacePermission({ userId, workspaceId, permission: "builds:read" });
 
   const totalCount = await prisma.build.count({ where: { workspaceId } });
+
+  const searchWhere: Prisma.BuildWhereInput = searchQuery
+    ? { designRevision: { design: { name: { contains: searchQuery, mode: "insensitive" } } } }
+    : {};
 
   if (pinnedId) {
     const row = await prisma.build.findFirst({
@@ -323,6 +329,10 @@ export async function getBuildsForWorkspace({
     }
     return { items: [mapBuildSummary(row)], nextCursor: null, totalCount, filteredCount: 1 };
   }
+
+  const filteredCount = searchQuery
+    ? await prisma.build.count({ where: { workspaceId, ...searchWhere } })
+    : totalCount;
 
   const limit = getListPageSize(pageSize);
   const decoded = decodeListCursor<BuildCursor>(cursor);
@@ -399,7 +409,7 @@ export async function getBuildsForWorkspace({
   }
 
   const rows = await prisma.build.findMany({
-    where: { workspaceId, ...(decoded ? cursorWhere(decoded) : {}) },
+    where: { workspaceId, ...searchWhere, ...(decoded ? cursorWhere(decoded) : {}) },
     orderBy,
     take: limit + 1,
     select: buildSummarySelect
@@ -414,7 +424,7 @@ export async function getBuildsForWorkspace({
       ? encodeListCursor<BuildCursor>({ key: cursorKey(last), id: last.id })
       : null;
 
-  return { items, nextCursor, totalCount, filteredCount: totalCount };
+  return { items, nextCursor, totalCount, filteredCount };
 }
 
 // --- Part detail: builds allocating/reserving a part ---

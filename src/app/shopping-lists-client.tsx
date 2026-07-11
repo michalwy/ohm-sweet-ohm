@@ -1,6 +1,11 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { FilterBar } from "@/app/list-filter-bar";
+import type { FilterDefinition } from "@/app/list-filter-config";
+import { useListFilterConfiguration } from "@/app/list-filter-config";
+import { useFilterUrlState } from "@/app/use-filter-url-state";
+import { useDebouncedValue } from "@/app/use-debounced-value";
 import {
   createColumnHelper,
   getCoreRowModel,
@@ -154,6 +159,10 @@ type Copy = {
   clearSorting: string;
   resetListConfiguration: string;
   listCountSummary: string;
+  searchLists: string;
+  configureFilters: string;
+  clearFilters: string;
+  availableFilters: string;
   multiAdd: MultiAddToSLCopy;
 };
 
@@ -249,12 +258,39 @@ export function ShoppingListsClient({
     fixedColumnIds: fixedListColumnIds
   });
 
+  // --- Filters ---
+
+  const slFilterDefs = useMemo<FilterDefinition[]>(
+    () => [
+      {
+        id: "search",
+        label: copy.searchLists,
+        type: "text",
+        urlParam: "q",
+        debounceMs: 300,
+        alwaysVisible: true
+      }
+    ],
+    [copy.searchLists]
+  );
+
+  const { filterValues, setFilterValue, clearFilterValues, hasActiveFilters } =
+    useFilterUrlState(slFilterDefs);
+
+  const { filterVisibility, filterOrder, configurableFilters, setFilterVisible, setFilterOrder } =
+    useListFilterConfiguration({
+      storageKey: `oso:filter-config:shopping-lists:${workspaceSlug}`,
+      filters: slFilterDefs
+    });
+
+  const debouncedSearch = useDebouncedValue(filterValues.search ?? "", 300);
+
   // --- Lists data ---
 
   const activeSorting = sorting[0] ?? null;
 
   const listsQuery = useInfiniteQuery({
-    queryKey: ["shopping-lists", workspaceSlug, { sorting, pinnedListId }] as const,
+    queryKey: ["shopping-lists", workspaceSlug, { sorting, pinnedListId, search: debouncedSearch }] as const,
     enabled: isListConfigLoaded,
     initialPageParam: null as string | null,
     queryFn: async ({ pageParam }) => {
@@ -263,7 +299,8 @@ export function ShoppingListsClient({
         cursor: pageParam,
         sortBy: (activeSorting?.id ?? null) as ShoppingListSortBy | null,
         sortDirection: activeSorting ? (activeSorting.desc ? "desc" : "asc") : null,
-        pinnedId: pinnedListId
+        pinnedId: pinnedListId,
+        searchQuery: debouncedSearch || null
       });
       if (!result.ok) throw new Error(result.error);
       return result.data;
@@ -271,7 +308,7 @@ export function ShoppingListsClient({
     getNextPageParam: (lastPage) => lastPage.nextCursor,
     placeholderData: keepPreviousData,
     initialData:
-      sorting.length === 0 && !pinnedListId
+      sorting.length === 0 && !pinnedListId && !debouncedSearch
         ? { pages: [initialPage], pageParams: [null] }
         : undefined
   });
@@ -392,7 +429,7 @@ export function ShoppingListsClient({
     setSelectedItemIds(new Set());
     const url = new URL(window.location.href);
     url.searchParams.set("selectedListId", list.id);
-    window.history.replaceState(null, "", url.toString());
+    window.history.replaceState(window.history.state, "", url.toString());
   }
 
   function closeListDetails() {
@@ -400,7 +437,7 @@ export function ShoppingListsClient({
     setSelectedItemIds(new Set());
     const url = new URL(window.location.href);
     url.searchParams.delete("selectedListId");
-    window.history.replaceState(null, "", url.toString());
+    window.history.replaceState(window.history.state, "", url.toString());
   }
 
   const {
@@ -757,9 +794,30 @@ export function ShoppingListsClient({
                 .replace("{visible}", String(visible))
                 .replace("{total}", String(total))
             }
+            hasActiveFilters={hasActiveFilters}
+            onClearFilters={clearFilterValues}
+            clearFiltersLabel={copy.clearFilters}
             totalCount={listsQuery.data?.pages[0]?.totalCount}
             visibleColumnsLabel={copy.visibleColumns}
             setColumnVisible={setColumnVisible}
+            filterContent={
+              <FilterBar
+                availableFiltersLabel={copy.availableFilters}
+                clearFiltersLabel={copy.clearFilters}
+                configureFiltersLabel={copy.configureFilters}
+                configurableFilters={configurableFilters}
+                disabled={listsQuery.isLoading}
+                filterOrder={filterOrder}
+                filterValues={filterValues}
+                filterVisibility={filterVisibility}
+                filters={slFilterDefs}
+                hasActiveFilters={hasActiveFilters}
+                onClearFilters={clearFilterValues}
+                onFilterChange={setFilterValue}
+                setFilterOrder={setFilterOrder}
+                setFilterVisible={setFilterVisible}
+              />
+            }
             primaryAction={
               <button
                 className="inline-flex min-h-9 items-center rounded-md bg-[var(--color-accent)] px-4 text-sm font-semibold text-white transition hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-60"
@@ -781,7 +839,7 @@ export function ShoppingListsClient({
                 const url = new URL(window.location.href);
                 url.searchParams.delete("selectedListId");
                 url.searchParams.delete("pinnedId");
-                window.history.replaceState(null, "", url.toString());
+                window.history.replaceState(window.history.state, "", url.toString());
               }}
             />
           ) : null}

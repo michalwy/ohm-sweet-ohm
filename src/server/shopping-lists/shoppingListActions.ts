@@ -36,7 +36,8 @@ export async function getShoppingListsForWorkspace(
       pageSize: input.pageSize,
       sortBy: input.sortBy,
       sortDirection: input.sortDirection,
-      pinnedId: input.pinnedId
+      pinnedId: input.pinnedId,
+      searchQuery: input.searchQuery
     });
     return success(page);
   } catch (error) {

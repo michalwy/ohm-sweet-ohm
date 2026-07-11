@@ -50,6 +50,7 @@ export type ShoppingListsPageInput = {
   sortBy?: ShoppingListSortBy | null;
   sortDirection?: ShoppingListSortDirection | null;
   pinnedId?: string | null;
+  searchQuery?: string | null;
 };
 
 type NameCursor = { name: string; id: string };
@@ -74,7 +75,16 @@ export async function getShoppingLists(
     _count: { select: { items: true } }
   } as const;
 
-  const totalCount = await prisma.shoppingList.count({ where: { workspaceId } });
+  const baseWhere: Prisma.ShoppingListWhereInput = { workspaceId };
+  const searchWhere: Prisma.ShoppingListWhereInput = input.searchQuery
+    ? { name: { contains: input.searchQuery, mode: "insensitive" } }
+    : {};
+  const filteredWhere: Prisma.ShoppingListWhereInput = { ...baseWhere, ...searchWhere };
+
+  const totalCount = await prisma.shoppingList.count({ where: baseWhere });
+  const filteredCount = input.searchQuery
+    ? await prisma.shoppingList.count({ where: filteredWhere })
+    : totalCount;
 
   if (input.pinnedId) {
     const list = await prisma.shoppingList.findFirst({
@@ -110,12 +120,12 @@ export async function getShoppingLists(
   }
 
   if (sortBy === "itemCount") {
-    // Load all, sort in-memory, slice with offset cursor
+    // Load all matching, sort in-memory, slice with offset cursor
     const cursor = decodeListCursor<OffsetCursor>(input.cursor);
     const offset = cursor?.offset ?? 0;
 
     const all = await prisma.shoppingList.findMany({
-      where: { workspaceId },
+      where: filteredWhere,
       select: selectShape
     });
 
@@ -131,7 +141,7 @@ export async function getShoppingLists(
       ? encodeListCursor<OffsetCursor>({ offset: offset + size })
       : null;
 
-    return { items, nextCursor, totalCount, filteredCount: totalCount };
+    return { items, nextCursor, totalCount, filteredCount };
   }
 
   if (sortBy === "name") {
@@ -139,7 +149,7 @@ export async function getShoppingLists(
 
     const rows = await prisma.shoppingList.findMany({
       where: {
-        workspaceId,
+        ...filteredWhere,
         ...(cursor
           ? {
               OR: [
@@ -162,7 +172,7 @@ export async function getShoppingLists(
         ? encodeListCursor<NameCursor>({ name: last.name, id: last.id })
         : null;
 
-    return { items, nextCursor, totalCount, filteredCount: totalCount };
+    return { items, nextCursor, totalCount, filteredCount };
   }
 
   // Default: createdAt sort
@@ -171,7 +181,7 @@ export async function getShoppingLists(
 
   const rows = await prisma.shoppingList.findMany({
     where: {
-      workspaceId,
+      ...filteredWhere,
       ...(cursor
         ? {
             OR: [
@@ -202,7 +212,7 @@ export async function getShoppingLists(
       ? encodeListCursor<CreatedAtCursor>({ createdAt: last.createdAt, id: last.id })
       : null;
 
-  return { items, nextCursor, totalCount, filteredCount: totalCount };
+  return { items, nextCursor, totalCount, filteredCount };
 }
 
 export async function getShoppingListDetail(

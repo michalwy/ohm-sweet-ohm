@@ -979,7 +979,7 @@ export function PartsListClient({
     } else {
       url.searchParams.delete("selectedPartId");
     }
-    window.history.replaceState(null, "", url.toString());
+    window.history.replaceState(window.history.state, "", url.toString());
   }
 
   function openPartDetails(part: PartsListItem) {
@@ -1531,7 +1531,7 @@ export function PartsListClient({
               const url = new URL(window.location.href);
               url.searchParams.delete("selectedPartId");
               url.searchParams.delete("pinnedId");
-              window.history.replaceState(null, "", url.toString());
+              window.history.replaceState(window.history.state, "", url.toString());
             }}
           />
         ) : null}

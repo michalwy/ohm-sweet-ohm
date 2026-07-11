@@ -15,6 +15,7 @@ type UseDesignsQueryOpts = {
   workspaceSlug: string;
   initialPage?: ListPage<DesignSummary>;
   sorting: SortingState;
+  searchQuery?: string | null;
 };
 
 const SORT_COLUMN_TO_SORT_BY: Record<string, DesignSortBy> = {
@@ -23,7 +24,7 @@ const SORT_COLUMN_TO_SORT_BY: Record<string, DesignSortBy> = {
   createdAt: "createdAt"
 };
 
-export function useDesignsQuery({ workspaceSlug, initialPage, sorting }: UseDesignsQueryOpts) {
+export function useDesignsQuery({ workspaceSlug, initialPage, sorting, searchQuery }: UseDesignsQueryOpts) {
   const activeSort = sorting[0];
   const sortBy: DesignSortBy = activeSort
     ? (SORT_COLUMN_TO_SORT_BY[activeSort.id] ?? "name")
@@ -31,14 +32,15 @@ export function useDesignsQuery({ workspaceSlug, initialPage, sorting }: UseDesi
   const sortDir = activeSort?.desc ? "desc" : "asc";
 
   const query = useInfiniteQuery({
-    queryKey: ["designs", workspaceSlug, { sorting }] as const,
+    queryKey: ["designs", workspaceSlug, { sorting, search: searchQuery }] as const,
     initialPageParam: null as string | null,
     queryFn: async ({ pageParam }) => {
       const result = await getDesignsPageForWorkspace({
         workspaceSlug,
         cursor: pageParam,
         sortBy,
-        sortDir
+        sortDir,
+        searchQuery
       });
       if (!result.ok) throw new Error(result.error);
       return result.data;
@@ -46,7 +48,7 @@ export function useDesignsQuery({ workspaceSlug, initialPage, sorting }: UseDesi
     getNextPageParam: (lastPage) => lastPage.nextCursor,
     placeholderData: keepPreviousData,
     initialData:
-      sorting.length === 0 && initialPage
+      sorting.length === 0 && !searchQuery && initialPage
         ? { pages: [initialPage], pageParams: [null] }
         : undefined
   });
@@ -56,11 +58,13 @@ export function useDesignsQuery({ workspaceSlug, initialPage, sorting }: UseDesi
     [query.data]
   );
   const totalCount = query.data?.pages[0]?.totalCount ?? 0;
+  const filteredCount = query.data?.pages[0]?.filteredCount;
 
   return {
     query,
     currentDesigns,
     totalCount,
+    filteredCount,
     isLoading: query.isLoading,
     isError: query.isError,
     isFetchingNextPage: query.isFetchingNextPage,

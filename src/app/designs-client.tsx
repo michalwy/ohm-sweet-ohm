@@ -1,6 +1,11 @@
 "use client";
 
 import { useCallback, useMemo, useRef, useState } from "react";
+import { FilterBar } from "@/app/list-filter-bar";
+import type { FilterDefinition } from "@/app/list-filter-config";
+import { useListFilterConfiguration } from "@/app/list-filter-config";
+import { useFilterUrlState } from "@/app/use-filter-url-state";
+import { useDebouncedValue } from "@/app/use-debounced-value";
 import {
   createColumnHelper,
   getCoreRowModel,
@@ -130,6 +135,11 @@ type Copy = {
   productionBuildsColState: string;
   productionBuildsColQty: string;
   buildStates: Record<string, string>;
+  designCountSummary: string;
+  searchDesigns: string;
+  configureFilters: string;
+  clearFilters: string;
+  availableFilters: string;
 };
 
 type DesignsClientProps = {
@@ -244,8 +254,37 @@ export function DesignsClient({
   });
 
 
-  const { currentDesigns, totalCount, isLoading, isError, isFetchingNextPage, hasNextPage, fetchNextPage } =
-    useDesignsQuery({ workspaceSlug, initialPage, sorting });
+  // --- Filters ---
+
+  const designFilterDefs = useMemo<FilterDefinition[]>(
+    () => [
+      {
+        id: "search",
+        label: copy.searchDesigns,
+        type: "text",
+        urlParam: "q",
+        debounceMs: 300,
+        alwaysVisible: true
+      }
+    ],
+    [copy.searchDesigns]
+  );
+
+  const { filterValues, setFilterValue, clearFilterValues, hasActiveFilters } =
+    useFilterUrlState(designFilterDefs);
+
+  const { filterVisibility, filterOrder, configurableFilters, setFilterVisible, setFilterOrder } =
+    useListFilterConfiguration({
+      storageKey: `oso:filter-config:designs:${workspaceSlug}`,
+      filters: designFilterDefs
+    });
+
+  const debouncedSearch = useDebouncedValue(filterValues.search ?? "", 300);
+
+  // --- Data ---
+
+  const { currentDesigns, totalCount, filteredCount, isLoading, isError, isFetchingNextPage, hasNextPage, fetchNextPage } =
+    useDesignsQuery({ workspaceSlug, initialPage, sorting, searchQuery: debouncedSearch || null });
 
   // --- Detail panel ---
 
@@ -365,7 +404,7 @@ export function DesignsClient({
     setSelectedRevisionId(null);
     const url = new URL(window.location.href);
     url.searchParams.set("selectedDesignId", design.id);
-    window.history.replaceState(null, "", url.toString());
+    window.history.replaceState(window.history.state, "", url.toString());
   }
 
   function closeDesignDetails() {
@@ -374,7 +413,7 @@ export function DesignsClient({
     setSelectedRevisionId(null);
     const url = new URL(window.location.href);
     url.searchParams.delete("selectedDesignId");
-    window.history.replaceState(null, "", url.toString());
+    window.history.replaceState(window.history.state, "", url.toString());
   }
 
   function openRevisionDialog(revisionId: string | null, currentNotes: string | null) {
@@ -669,12 +708,38 @@ export function DesignsClient({
       <section className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-elevated)] shadow-sm">
         <ListPageToolbar
           totalCount={totalCount}
-          formatCount={(_visible, total) => `${total} ${total === 1 ? "design" : "designs"}`}
+          filteredCount={filteredCount}
+          formatCount={(visible, total) =>
+            copy.designCountSummary
+              .replace("{visible}", String(visible))
+              .replace("{total}", String(total))
+          }
           configurableColumns={configurableColumns}
           columnVisibility={columnVisibility}
           setColumnVisible={setColumnVisible}
           configureListLabel={copy.configureList}
           visibleColumnsLabel={copy.visibleColumns}
+          hasActiveFilters={hasActiveFilters}
+          onClearFilters={clearFilterValues}
+          clearFiltersLabel={copy.clearFilters}
+          filterContent={
+            <FilterBar
+              availableFiltersLabel={copy.availableFilters}
+              clearFiltersLabel={copy.clearFilters}
+              configureFiltersLabel={copy.configureFilters}
+              configurableFilters={configurableFilters}
+              disabled={isLoading}
+              filterOrder={filterOrder}
+              filterValues={filterValues}
+              filterVisibility={filterVisibility}
+              filters={designFilterDefs}
+              hasActiveFilters={hasActiveFilters}
+              onClearFilters={clearFilterValues}
+              onFilterChange={setFilterValue}
+              setFilterOrder={setFilterOrder}
+              setFilterVisible={setFilterVisible}
+            />
+          }
           primaryAction={
             canWrite ? (
               <button

@@ -94,13 +94,15 @@ export async function getOrganizationsForWorkspace({
   workspaceId,
   cursor,
   pageSize,
-  sortDir = "asc"
+  sortDir = "asc",
+  searchQuery
 }: {
   userId: string;
   workspaceId: string;
   cursor?: string | null;
   pageSize?: number | null;
   sortDir?: "asc" | "desc";
+  searchQuery?: string | null;
 }): Promise<ListPage<OrganizationSummary>> {
   await authorizeWorkspacePermission({
     userId,
@@ -109,15 +111,23 @@ export async function getOrganizationsForWorkspace({
   });
 
   const limit = getListPageSize(pageSize);
-  const totalCount = await prisma.organization.count({ where: { workspaceId, isInternal: false } });
+  const baseWhere: Prisma.OrganizationWhereInput = { workspaceId, isInternal: false };
+  const searchWhere: Prisma.OrganizationWhereInput = searchQuery
+    ? { name: { contains: searchQuery, mode: "insensitive" } }
+    : {};
+
+  const totalCount = await prisma.organization.count({ where: baseWhere });
+  const filteredCount = searchQuery
+    ? await prisma.organization.count({ where: { ...baseWhere, ...searchWhere } })
+    : totalCount;
 
   const decoded = decodeListCursor<NameCursor>(cursor);
   const dir = sortDir === "asc" ? "asc" : "desc";
 
   const rows = await prisma.organization.findMany({
     where: {
-      workspaceId,
-      isInternal: false,
+      ...baseWhere,
+      ...searchWhere,
       ...(decoded
         ? {
             OR: [
@@ -155,7 +165,7 @@ export async function getOrganizationsForWorkspace({
   const nextCursor =
     hasMore && last ? encodeListCursor<NameCursor>({ name: last.name, id: last.id }) : null;
 
-  return { items, nextCursor, totalCount, filteredCount: totalCount };
+  return { items, nextCursor, totalCount, filteredCount };
 }
 
 export async function createOrganizationForWorkspace({

@@ -53,7 +53,8 @@ export async function getDesignsForWorkspace({
   cursor,
   pageSize,
   sortBy = "name",
-  sortDir = "asc"
+  sortDir = "asc",
+  searchQuery
 }: {
   userId: string;
   workspaceId: string;
@@ -61,11 +62,26 @@ export async function getDesignsForWorkspace({
   pageSize?: number | null;
   sortBy?: DesignSortBy;
   sortDir?: "asc" | "desc";
+  searchQuery?: string | null;
 }): Promise<ListPage<DesignSummary>> {
   await authorizeWorkspacePermission({ userId, workspaceId, permission: "designs:read" });
 
   const limit = getListPageSize(pageSize);
   const totalCount = await prisma.design.count({ where: { workspaceId } });
+
+  const searchWhere: Prisma.DesignWhereInput = searchQuery
+    ? {
+        OR: [
+          { name: { contains: searchQuery, mode: "insensitive" } },
+          { description: { contains: searchQuery, mode: "insensitive" } },
+          { outputPart: { catalogNumber: { contains: searchQuery, mode: "insensitive" } } }
+        ]
+      }
+    : {};
+
+  const filteredCount = searchQuery
+    ? await prisma.design.count({ where: { workspaceId, ...searchWhere } })
+    : totalCount;
 
   const decoded = decodeListCursor<DesignCursor>(cursor);
   const dir = sortDir === "asc" ? "asc" : "desc";
@@ -105,10 +121,11 @@ export async function getDesignsForWorkspace({
   }
 
   const rows = await prisma.design.findMany({
-    where: {
-      workspaceId,
-      ...(decoded ? cursorWhere(decoded) : {})
-    },
+    where: decoded
+      ? searchQuery
+        ? { workspaceId, AND: [searchWhere, cursorWhere(decoded)] }
+        : { workspaceId, ...cursorWhere(decoded) }
+      : { workspaceId, ...searchWhere },
     orderBy,
     take: limit + 1,
     select: {
@@ -162,7 +179,7 @@ export async function getDesignsForWorkspace({
       ? encodeListCursor<DesignCursor>({ key: lastKey, id: last.id })
       : null;
 
-  return { items, nextCursor, totalCount, filteredCount: totalCount };
+  return { items, nextCursor, totalCount, filteredCount };
 }
 
 export async function getDesignDetail({

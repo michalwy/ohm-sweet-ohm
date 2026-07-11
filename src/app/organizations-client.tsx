@@ -1,6 +1,11 @@
 "use client";
 
 import { useMemo, useRef, useState } from "react";
+import { FilterBar } from "@/app/list-filter-bar";
+import type { FilterDefinition } from "@/app/list-filter-config";
+import { useListFilterConfiguration } from "@/app/list-filter-config";
+import { useFilterUrlState } from "@/app/use-filter-url-state";
+import { useDebouncedValue } from "@/app/use-debounced-value";
 import { CURRENCIES } from "@/app/currencies";
 import {
   createColumnHelper,
@@ -86,6 +91,10 @@ type Copy = {
   configureList: string;
   visibleColumns: string;
   listCountSummary: string;
+  searchOrganizations: string;
+  configureFilters: string;
+  clearFilters: string;
+  availableFilters: string;
   currency: string;
   chooseCurrency: string;
   defaultPriceEntryMode: string;
@@ -173,19 +182,47 @@ export function OrganizationsClient({
     fixedColumnIds
   });
 
+  // --- Filters ---
+
+  const orgFilterDefs = useMemo<FilterDefinition[]>(
+    () => [
+      {
+        id: "search",
+        label: copy.searchOrganizations,
+        type: "text",
+        urlParam: "q",
+        debounceMs: 300,
+        alwaysVisible: true
+      }
+    ],
+    [copy.searchOrganizations]
+  );
+
+  const { filterValues, setFilterValue, clearFilterValues, hasActiveFilters } =
+    useFilterUrlState(orgFilterDefs);
+
+  const { filterVisibility, filterOrder, configurableFilters, setFilterVisible, setFilterOrder } =
+    useListFilterConfiguration({
+      storageKey: `oso:filter-config:organizations:${workspaceSlug}`,
+      filters: orgFilterDefs
+    });
+
+  const debouncedSearch = useDebouncedValue(filterValues.search ?? "", 300);
+
   // --- Data ---
 
   const activeSorting = sorting[0] ?? null;
   const sortDir = activeSorting?.desc ? "desc" : "asc";
 
   const orgsQuery = useInfiniteQuery({
-    queryKey: ["organizations", workspaceSlug, { sorting }] as const,
+    queryKey: ["organizations", workspaceSlug, { sorting, search: debouncedSearch }] as const,
     initialPageParam: null as string | null,
     queryFn: async ({ pageParam }) => {
       const result = await getOrganizationsPageForWorkspace({
         workspaceSlug,
         cursor: pageParam,
-        sortDir
+        sortDir,
+        searchQuery: debouncedSearch || null
       });
       if (!result.ok) throw new Error(result.error);
       return result.data;
@@ -193,7 +230,7 @@ export function OrganizationsClient({
     getNextPageParam: (lastPage) => lastPage.nextCursor,
     placeholderData: keepPreviousData,
     initialData:
-      sorting.length === 0
+      sorting.length === 0 && !debouncedSearch
         ? { pages: [initialPage], pageParams: [null] }
         : undefined
   });
@@ -429,9 +466,30 @@ export function OrganizationsClient({
               .replace("{visible}", String(visible))
               .replace("{total}", String(total))
           }
+          hasActiveFilters={hasActiveFilters}
+          onClearFilters={clearFilterValues}
+          clearFiltersLabel={copy.clearFilters}
           totalCount={orgsQuery.data?.pages[0]?.totalCount}
           visibleColumnsLabel={copy.visibleColumns}
           setColumnVisible={setColumnVisible}
+          filterContent={
+            <FilterBar
+              availableFiltersLabel={copy.availableFilters}
+              clearFiltersLabel={copy.clearFilters}
+              configureFiltersLabel={copy.configureFilters}
+              configurableFilters={configurableFilters}
+              disabled={orgsQuery.isLoading}
+              filterOrder={filterOrder}
+              filterValues={filterValues}
+              filterVisibility={filterVisibility}
+              filters={orgFilterDefs}
+              hasActiveFilters={hasActiveFilters}
+              onClearFilters={clearFilterValues}
+              onFilterChange={setFilterValue}
+              setFilterOrder={setFilterOrder}
+              setFilterVisible={setFilterVisible}
+            />
+          }
           primaryAction={
             <button
               className="inline-flex min-h-9 items-center rounded-md bg-[var(--color-accent)] px-4 text-sm font-semibold text-white transition hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-60"

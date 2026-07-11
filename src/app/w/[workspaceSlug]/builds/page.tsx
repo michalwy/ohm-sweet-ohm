@@ -99,7 +99,12 @@ const copy: BuildsCopy = {
     CANCELLED: "Cancelled"
   },
   pinnedFilterLabel: "Showing 1 pinned build",
-  clearPinnedFilter: "Show all builds"
+  clearPinnedFilter: "Show all builds",
+  buildCountSummary: "{visible} of {total} builds",
+  searchBuilds: "Search builds",
+  configureFilters: "Filters",
+  clearFilters: "Clear filters",
+  availableFilters: "Available filters"
 };
 
 type BuildsPageProps = {

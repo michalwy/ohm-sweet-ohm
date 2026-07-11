@@ -6,6 +6,11 @@ import {
   useRef,
   useState
 } from "react";
+import { FilterBar } from "@/app/list-filter-bar";
+import type { FilterDefinition } from "@/app/list-filter-config";
+import { useListFilterConfiguration } from "@/app/list-filter-config";
+import { useFilterUrlState } from "@/app/use-filter-url-state";
+import { useDebouncedValue } from "@/app/use-debounced-value";
 import {
   createColumnHelper,
   getCoreRowModel,
@@ -495,6 +500,10 @@ type Copy = {
   clearSorting: string;
   resetListConfiguration: string;
   orderCountSummary: string;
+  searchOrders: string;
+  configureFilters: string;
+  clearFilters: string;
+  availableFilters: string;
   priceEntryMode: string;
   priceEntryModeNet: string;
   priceEntryModeGross: string;
@@ -639,12 +648,39 @@ export function PurchaseOrdersClient({
     fixedColumnIds: fixedOrderColumnIds
   });
 
+  // --- Filters ---
+
+  const poFilterDefs = useMemo<FilterDefinition[]>(
+    () => [
+      {
+        id: "search",
+        label: copy.searchOrders,
+        type: "text",
+        urlParam: "q",
+        debounceMs: 300,
+        alwaysVisible: true
+      }
+    ],
+    [copy.searchOrders]
+  );
+
+  const { filterValues, setFilterValue, clearFilterValues, hasActiveFilters } =
+    useFilterUrlState(poFilterDefs);
+
+  const { filterVisibility, filterOrder, configurableFilters, setFilterVisible, setFilterOrder } =
+    useListFilterConfiguration({
+      storageKey: `oso:filter-config:purchase-orders:${workspaceSlug}`,
+      filters: poFilterDefs
+    });
+
+  const debouncedSearch = useDebouncedValue(filterValues.search ?? "", 300);
+
   // --- Orders data ---
 
   const activeSorting = sorting[0] ?? null;
 
   const ordersQuery = useInfiniteQuery({
-    queryKey: ["purchase-orders", workspaceSlug, { sorting, pinnedOrderId }] as const,
+    queryKey: ["purchase-orders", workspaceSlug, { sorting, pinnedOrderId, search: debouncedSearch }] as const,
     enabled: isOrderConfigLoaded,
     initialPageParam: null as string | null,
     queryFn: async ({ pageParam }) => {
@@ -653,7 +689,8 @@ export function PurchaseOrdersClient({
         cursor: pageParam,
         sortBy: (activeSorting?.id ?? null) as PurchaseOrderSortBy | null,
         sortDirection: activeSorting ? (activeSorting.desc ? "desc" : "asc") : null,
-        pinnedId: pinnedOrderId
+        pinnedId: pinnedOrderId,
+        searchQuery: debouncedSearch || null
       });
       if (!result.ok) throw new Error(result.error);
       return result.data;
@@ -661,7 +698,7 @@ export function PurchaseOrdersClient({
     getNextPageParam: (lastPage) => lastPage.nextCursor,
     placeholderData: keepPreviousData,
     initialData:
-      sorting.length === 0 && !pinnedOrderId
+      sorting.length === 0 && !pinnedOrderId && !debouncedSearch
         ? { pages: [initialPage], pageParams: [null] }
         : undefined
   });
@@ -917,14 +954,14 @@ export function PurchaseOrdersClient({
     setSelectedOrderId(orderId);
     const url = new URL(window.location.href);
     url.searchParams.set("selectedOrderId", orderId);
-    window.history.replaceState(null, "", url.toString());
+    window.history.replaceState(window.history.state, "", url.toString());
   }
 
   function closeOrderDetails() {
     setSelectedOrderId(null);
     const url = new URL(window.location.href);
     url.searchParams.delete("selectedOrderId");
-    window.history.replaceState(null, "", url.toString());
+    window.history.replaceState(window.history.state, "", url.toString());
   }
 
   const {
@@ -1544,9 +1581,30 @@ export function PurchaseOrdersClient({
                 .replace("{visible}", String(visible))
                 .replace("{total}", String(total))
             }
+            hasActiveFilters={hasActiveFilters}
+            onClearFilters={clearFilterValues}
+            clearFiltersLabel={copy.clearFilters}
             totalCount={ordersQuery.data?.pages[0]?.totalCount}
             visibleColumnsLabel={copy.visibleColumns}
             setColumnVisible={setColumnVisible}
+            filterContent={
+              <FilterBar
+                availableFiltersLabel={copy.availableFilters}
+                clearFiltersLabel={copy.clearFilters}
+                configureFiltersLabel={copy.configureFilters}
+                configurableFilters={configurableFilters}
+                disabled={ordersQuery.isLoading}
+                filterOrder={filterOrder}
+                filterValues={filterValues}
+                filterVisibility={filterVisibility}
+                filters={poFilterDefs}
+                hasActiveFilters={hasActiveFilters}
+                onClearFilters={clearFilterValues}
+                onFilterChange={setFilterValue}
+                setFilterOrder={setFilterOrder}
+                setFilterVisible={setFilterVisible}
+              />
+            }
             primaryAction={
               <button
                 className="inline-flex min-h-9 items-center rounded-md bg-[var(--color-accent)] px-4 text-sm font-semibold text-white transition hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-60"
@@ -1568,7 +1626,7 @@ export function PurchaseOrdersClient({
                 const url = new URL(window.location.href);
                 url.searchParams.delete("selectedOrderId");
                 url.searchParams.delete("pinnedId");
-                window.history.replaceState(null, "", url.toString());
+                window.history.replaceState(window.history.state, "", url.toString());
               }}
             />
           ) : null}

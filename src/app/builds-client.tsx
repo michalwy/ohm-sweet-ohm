@@ -1,6 +1,11 @@
 "use client";
 
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { FilterBar } from "@/app/list-filter-bar";
+import type { FilterDefinition } from "@/app/list-filter-config";
+import { useListFilterConfiguration } from "@/app/list-filter-config";
+import { useFilterUrlState } from "@/app/use-filter-url-state";
+import { useDebouncedValue } from "@/app/use-debounced-value";
 import Link from "next/link";
 import {
   createColumnHelper,
@@ -140,6 +145,11 @@ export type BuildsCopy = {
   states: Record<string, string>;
   pinnedFilterLabel: string;
   clearPinnedFilter: string;
+  buildCountSummary: string;
+  searchBuilds: string;
+  configureFilters: string;
+  clearFilters: string;
+  availableFilters: string;
 };
 
 type BuildsClientProps = {
@@ -265,8 +275,37 @@ export function BuildsClient({
     columns: buildColumns
   });
 
-  const { currentBuilds, totalCount, isLoading, isError, isFetchingNextPage, hasNextPage, fetchNextPage } =
-    useBuildsQuery({ workspaceSlug, initialPage, pinnedId: pinnedBuildId, sorting });
+  // --- Filters ---
+
+  const buildFilterDefs = useMemo<FilterDefinition[]>(
+    () => [
+      {
+        id: "search",
+        label: copy.searchBuilds,
+        type: "text",
+        urlParam: "q",
+        debounceMs: 300,
+        alwaysVisible: true
+      }
+    ],
+    [copy.searchBuilds]
+  );
+
+  const { filterValues, setFilterValue, clearFilterValues, hasActiveFilters } =
+    useFilterUrlState(buildFilterDefs);
+
+  const { filterVisibility, filterOrder, configurableFilters, setFilterVisible, setFilterOrder } =
+    useListFilterConfiguration({
+      storageKey: `oso:filter-config:builds:${workspaceSlug}`,
+      filters: buildFilterDefs
+    });
+
+  const debouncedSearch = useDebouncedValue(filterValues.search ?? "", 300);
+
+  // --- Data ---
+
+  const { currentBuilds, totalCount, filteredCount, isLoading, isError, isFetchingNextPage, hasNextPage, fetchNextPage } =
+    useBuildsQuery({ workspaceSlug, initialPage, pinnedId: pinnedBuildId, sorting, searchQuery: debouncedSearch || null });
 
   // --- Detail + create options ---
 
@@ -588,12 +627,38 @@ export function BuildsClient({
       <section className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-elevated)] shadow-sm">
         <ListPageToolbar
           totalCount={totalCount}
-          formatCount={(_visible, total) => `${total} ${total === 1 ? "build" : "builds"}`}
+          filteredCount={filteredCount}
+          formatCount={(visible, total) =>
+            copy.buildCountSummary
+              .replace("{visible}", String(visible))
+              .replace("{total}", String(total))
+          }
           configurableColumns={configurableColumns}
           columnVisibility={columnVisibility}
           setColumnVisible={setColumnVisible}
           configureListLabel={copy.configureList}
           visibleColumnsLabel={copy.visibleColumns}
+          hasActiveFilters={hasActiveFilters}
+          onClearFilters={clearFilterValues}
+          clearFiltersLabel={copy.clearFilters}
+          filterContent={
+            <FilterBar
+              availableFiltersLabel={copy.availableFilters}
+              clearFiltersLabel={copy.clearFilters}
+              configureFiltersLabel={copy.configureFilters}
+              configurableFilters={configurableFilters}
+              disabled={isLoading}
+              filterOrder={filterOrder}
+              filterValues={filterValues}
+              filterVisibility={filterVisibility}
+              filters={buildFilterDefs}
+              hasActiveFilters={hasActiveFilters}
+              onClearFilters={clearFilterValues}
+              onFilterChange={setFilterValue}
+              setFilterOrder={setFilterOrder}
+              setFilterVisible={setFilterVisible}
+            />
+          }
           primaryAction={
             canWrite ? (
               <button
@@ -616,7 +681,7 @@ export function BuildsClient({
               const url = new URL(window.location.href);
               url.searchParams.delete("selectedBuildId");
               url.searchParams.delete("pinnedId");
-              window.history.replaceState(null, "", url.toString());
+              window.history.replaceState(window.history.state, "", url.toString());
             }}
           />
         ) : null}

@@ -100,6 +100,10 @@ const copy = {
   clearSorting: "None",
   resetListConfiguration: "Reset defaults",
   listCountSummary: "{visible} of {total} lists",
+  searchLists: "Search lists",
+  configureFilters: "Filters",
+  clearFilters: "Clear filters",
+  availableFilters: "Available filters",
   multiAdd: {
     // picker step
     pickerTitle: "Add multiple items",

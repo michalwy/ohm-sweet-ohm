@@ -1,6 +1,8 @@
 "use client";
 
 import { useMemo, useRef, useState } from "react";
+import type { FilterDefinition } from "@/app/list-filter-config";
+import { useFilterUrlState } from "@/app/use-filter-url-state";
 import { useMutation } from "@tanstack/react-query";
 
 import {
@@ -61,6 +63,7 @@ type Copy = {
   locationInUse: string;
   locationHasChildren: string;
   locationHasStock: string;
+  clearFilters: string;
 };
 
 type LocationFormErrors = Partial<
@@ -144,6 +147,33 @@ export function LocationsClient({
     () => locations.filter((l) => !editingLocation || l.id !== editingLocation.id),
     [locations, editingLocation]
   );
+
+  // --- Search filter ---
+
+  const locationFilterDefs = useMemo<FilterDefinition[]>(
+    () => [
+      {
+        id: "search",
+        label: copy.searchLocations,
+        type: "text",
+        urlParam: "q",
+        debounceMs: 300,
+        alwaysVisible: true
+      }
+    ],
+    [copy.searchLocations]
+  );
+
+  const { filterValues, setFilterValue, clearFilterValues, hasActiveFilters } =
+    useFilterUrlState(locationFilterDefs);
+
+  const searchQuery = filterValues.search ?? "";
+
+  const filteredLocations = useMemo(() => {
+    if (!searchQuery.trim()) return null;
+    const q = searchQuery.trim().toLowerCase();
+    return locations.filter((l) => l.name.toLowerCase().includes(q));
+  }, [locations, searchQuery]);
   const parentPickerTree = useMemo(() => buildTree(parentPickerLocations), [parentPickerLocations]);
 
   function openCreateForm(parentId = "") {
@@ -210,19 +240,66 @@ export function LocationsClient({
 
   return (
     <section className="flex min-h-0 flex-1 flex-col">
-      <div className="mb-3 flex justify-end">
-        <button
-          className="inline-flex min-h-10 items-center rounded-md bg-[var(--color-accent)] px-4 text-sm font-semibold text-white transition hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-60"
-          type="button"
-          disabled={!isDatabaseAvailable || !canWriteLocations}
-          onClick={() => openCreateForm()}
-        >
-          {copy.addLocation}
-        </button>
+      <div className="mb-3 flex items-end gap-3">
+        <label className="grid min-w-72 gap-1.5 text-sm font-medium text-[var(--color-text-secondary)]">
+          {copy.searchLocations}
+          <input
+            className="min-h-9 rounded-md border border-[var(--color-border-strong)] bg-[var(--color-bg-elevated)] px-3 py-1.5 text-sm text-[var(--color-text-primary)] outline-none transition placeholder:text-[var(--color-text-placeholder)] hover:border-[var(--color-border-hover)] focus:border-[var(--color-border-hover)] focus:ring-2 focus:ring-[var(--color-ring)]"
+            type="search"
+            value={searchQuery}
+            onChange={(e) => setFilterValue("search", e.currentTarget.value)}
+          />
+        </label>
+        {hasActiveFilters ? (
+          <button
+            className="min-h-9 text-sm font-medium text-[var(--color-accent)] hover:underline focus:outline-none focus:ring-2 focus:ring-[var(--color-ring)] focus:ring-offset-2"
+            type="button"
+            onClick={clearFilterValues}
+          >
+            {copy.clearFilters}
+          </button>
+        ) : null}
+        <div className="ml-auto">
+          <button
+            className="inline-flex min-h-10 items-center rounded-md bg-[var(--color-accent)] px-4 text-sm font-semibold text-white transition hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-60"
+            type="button"
+            disabled={!isDatabaseAvailable || !canWriteLocations}
+            onClick={() => openCreateForm()}
+          >
+            {copy.addLocation}
+          </button>
+        </div>
       </div>
       <div className="min-h-0 flex-1 overflow-auto rounded-md border border-[var(--color-border)] bg-[var(--color-bg-elevated)]">
         {locations.length === 0 ? (
           <p className="px-4 py-6 text-sm text-[var(--color-text-secondary)]">{copy.noLocations}</p>
+        ) : filteredLocations !== null ? (
+          <div className="p-4">
+            {filteredLocations.length === 0 ? (
+              <p className="text-sm text-[var(--color-text-muted)]">{copy.noMatchingLocations}</p>
+            ) : (
+              <ol className="grid gap-1">
+                {filteredLocations.map((location) => (
+                  <LocationNode
+                    canWriteLocations={canWriteLocations}
+                    key={location.id}
+                    copy={copy}
+                    expandedLocationIds={expandedLocationIds}
+                    isDatabaseAvailable={isDatabaseAvailable}
+                    level={0}
+                    location={{ ...location, children: [] }}
+                    onAddChild={(parentId) => openCreateForm(parentId)}
+                    onDelete={(locationToDelete) => {
+                      setErrors({});
+                      setLocationPendingDelete(locationToDelete);
+                    }}
+                    onEdit={openEditForm}
+                    onToggleExpanded={() => undefined}
+                  />
+                ))}
+              </ol>
+            )}
+          </div>
         ) : (
           <div className="p-4">
             <div className="mb-4 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-[var(--color-text-muted)]">
