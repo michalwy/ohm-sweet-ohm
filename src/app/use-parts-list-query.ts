@@ -7,11 +7,13 @@ import type { SortingState } from "@tanstack/react-table";
 import { getPartsListPageForWorkspace } from "@/server/parts/listActions";
 import type { PartsListItem } from "@/server/parts/getParts";
 import type { ListPage } from "@/server/pagination";
+import type { FilterValues } from "@/app/use-filter-url-state";
 import { useDebouncedValue } from "@/app/use-debounced-value";
 
 export type PartsListQueryOpts = {
   workspaceSlug: string;
   sorting: SortingState;
+  filterValues: FilterValues;
   /** SSR initial page — used as initialData when no filters/sort are active. */
   initialPage?: ListPage<PartsListItem>;
   /** When false the query is disabled (e.g. database unavailable). Defaults to true. */
@@ -23,14 +25,16 @@ export type PartsListQueryOpts = {
 export function usePartsListQuery({
   workspaceSlug,
   sorting,
+  filterValues,
   initialPage,
   enabled = true,
   initialPinnedId
 }: PartsListQueryOpts) {
-  const [searchQuery, setSearchQuery] = useState("");
-  const [categoryFilterId, setCategoryFilterId] = useState("");
-  const [manufacturerFilter, setManufacturerFilter] = useState("");
   const [pinnedId, setPinnedId] = useState<string | null>(initialPinnedId ?? null);
+
+  const searchQuery = filterValues["search"] ?? "";
+  const categoryFilterId = filterValues["category"] ?? "";
+  const manufacturerFilter = filterValues["manufacturer"] ?? "";
 
   const debouncedSearchQuery = useDebouncedValue(searchQuery, 300);
   const debouncedManufacturerFilter = useDebouncedValue(manufacturerFilter, 300);
@@ -100,12 +104,6 @@ export function usePartsListQuery({
   const partsCounts = partsQuery.data?.pages[0] ??
     initialPage ?? { totalCount: 0, filteredCount: 0, items: [], nextCursor: null };
 
-  function clearFilters() {
-    setSearchQuery("");
-    setCategoryFilterId("");
-    setManufacturerFilter("");
-  }
-
   function clearPinnedId() {
     setPinnedId(null);
   }
@@ -121,14 +119,6 @@ export function usePartsListQuery({
     isFetchingNextPage: partsQuery.isFetchingNextPage,
     hasNextPage: Boolean(partsQuery.hasNextPage),
     fetchNextPage: () => { void partsQuery.fetchNextPage(); },
-    // Filter state
-    searchQuery,
-    setSearchQuery,
-    categoryFilterId,
-    setCategoryFilterId,
-    manufacturerFilter,
-    setManufacturerFilter,
-    clearFilters,
     // Pinned (navigate-to) state
     pinnedId,
     clearPinnedId

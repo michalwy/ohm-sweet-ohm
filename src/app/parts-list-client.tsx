@@ -64,13 +64,17 @@ import { QuickAddToPODialog } from "@/app/part-quick-add-po-dialog";
 import { QuickAddToSLDialog } from "@/app/part-quick-add-sl-dialog";
 import { useDebouncedValue } from "@/app/use-debounced-value";
 import { usePartsListQuery } from "@/app/use-parts-list-query";
-import { PartsListFilters } from "@/app/parts-list-filters";
+import { useListFilterConfiguration } from "@/app/list-filter-config";
+import type { FilterDefinition } from "@/app/list-filter-config";
+import { useFilterUrlState } from "@/app/use-filter-url-state";
+import { FilterBar } from "@/app/list-filter-bar";
 import { buildPartsListColumnDefs, buildPartsListColumns } from "@/app/parts-list-columns";
 import { PartsListTable } from "@/app/parts-list-table";
 import { formatFilteredPartsSummary } from "@/app/parts-list-sort-utils";
 import {
   CategoryTreeSelect,
   buildCategoryTree,
+  compactCategorySelectButtonClassName,
   getCreatePrimaryCategoryFromFilter,
   getFloatingPanelStyle,
   type CategoryTreeItem
@@ -152,6 +156,8 @@ type Copy = {
   filterByManufacturer: string;
   allManufacturers: string;
   clearFilters: string;
+  configureFilters: string;
+  availableFilters: string;
   pinnedFilterLabel: string;
   clearPinnedFilter: string;
   configureList: string;
@@ -495,6 +501,91 @@ export function PartsListClient({
     columns: listColumns,
     fixedColumnIds: fixedListColumnIds
   });
+  // Build filter definitions for the parts list.
+  // renderControl for category and manufacturer close over props data via useMemo.
+  const partsFilterDefs = useMemo<FilterDefinition[]>(
+    () => [
+      {
+        id: "search",
+        label: copy.searchParts,
+        type: "text",
+        urlParam: "q",
+        debounceMs: 300,
+        alwaysVisible: true
+      },
+      {
+        id: "category",
+        label: copy.filterByCategory,
+        type: "tree",
+        urlParam: "categoryId",
+        defaultVisible: true,
+        renderControl: ({ value, onChange, disabled: controlDisabled }) =>
+          partCategories.length > 0 ? (
+            <div className="min-w-56">
+              <CategoryTreeSelect
+                allowOrganizationalCategories
+                buttonClassName={compactCategorySelectButtonClassName}
+                categories={partCategories}
+                categoryTree={categoryTree}
+                copy={copy}
+                disabled={controlDisabled ?? false}
+                label={copy.filterByCategory}
+                name="categoryFilterId"
+                noSelectionLabel={copy.allCategories}
+                selectedId={value}
+                onSelectedIdChange={onChange}
+              />
+            </div>
+          ) : null
+      },
+      {
+        id: "manufacturer",
+        label: copy.filterByManufacturer,
+        type: "select",
+        urlParam: "manufacturer",
+        debounceMs: 300,
+        defaultVisible: true,
+        renderControl: ({ value, onChange, disabled: controlDisabled }) => (
+          <ManufacturerAutocomplete
+            compact
+            disabled={controlDisabled ?? false}
+            inputId="manufacturer-filter"
+            label={copy.filterByManufacturer}
+            noMatchingLabel={copy.noMatchingManufacturers}
+            name="manufacturerFilter"
+            placeholder={copy.allManufacturers}
+            suggestions={currentManufacturerSuggestions}
+            value={value}
+            onValueChange={onChange}
+          />
+        )
+      }
+    ],
+    // copy, partCategories, categoryTree, and currentManufacturerSuggestions are
+    // the actual data deps; including all filter def inline functions would cause
+    // re-renders on every render — useMemo stabilizes the array.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [copy.searchParts, copy.filterByCategory, copy.allCategories, copy.filterByManufacturer, copy.allManufacturers, copy.noMatchingManufacturers, partCategories, categoryTree, currentManufacturerSuggestions]
+  );
+
+  const {
+    filterValues,
+    setFilterValue,
+    clearFilterValues,
+    hasActiveFilters: filterHasActiveFilters
+  } = useFilterUrlState(partsFilterDefs);
+
+  const {
+    filterVisibility,
+    filterOrder,
+    configurableFilters,
+    setFilterVisible,
+    setFilterOrder
+  } = useListFilterConfiguration({
+    storageKey: `oso:filter-config:parts:${workspaceSlug}`,
+    filters: partsFilterDefs
+  });
+
   const {
     currentParts,
     partsCounts,
@@ -505,18 +596,12 @@ export function PartsListClient({
     isFetchingNextPage: partsQueryIsFetchingNextPage,
     hasNextPage: partsQueryHasNextPage,
     fetchNextPage: partsQueryFetchNextPage,
-    searchQuery,
-    setSearchQuery,
-    categoryFilterId,
-    setCategoryFilterId,
-    manufacturerFilter,
-    setManufacturerFilter,
-    clearFilters,
     pinnedId,
     clearPinnedId
   } = usePartsListQuery({
     workspaceSlug,
     sorting,
+    filterValues,
     initialPage,
     enabled: isDatabaseAvailable && isListConfigurationLoaded,
     initialPinnedId: initialPinnedId
@@ -713,7 +798,7 @@ export function PartsListClient({
     } else {
       const defaultPrimaryCategoryId = getCreatePrimaryCategoryFromFilter({
         categories: partCategories,
-        categoryFilterId
+        categoryFilterId: filterValues["category"] ?? ""
       });
 
       setEditingPart(null);
@@ -731,7 +816,7 @@ export function PartsListClient({
       setDialogFormResetKey((currentKey) => currentKey + 1);
       openDialog(partDialogRef.current);
     }
-  }, [categoryFilterId, partCategories]);
+  }, [filterValues, partCategories]);
 
   const columns = useMemo(() => buildPartsListColumns({
     mode: "full",
@@ -1402,23 +1487,27 @@ export function PartsListClient({
           formatCount={(visible, total) =>
             formatFilteredPartsSummary(copy, { visible, total })
           }
-          hasActiveFilters={hasActiveFilters}
+          hasActiveFilters={hasActiveFilters || filterHasActiveFilters}
           totalCount={partsCounts.totalCount}
           visibleColumnsLabel={copy.visibleColumns}
           setColumnVisible={setColumnVisible}
-          onClearFilters={clearFilters}
+          onClearFilters={clearFilterValues}
           filterContent={
-            <PartsListFilters
-              copy={copy}
-              searchQuery={searchQuery}
-              onSearchChange={setSearchQuery}
-              categoryFilterId={categoryFilterId}
-              onCategoryChange={setCategoryFilterId}
-              manufacturerFilter={manufacturerFilter}
-              onManufacturerChange={setManufacturerFilter}
-              partCategories={partCategories}
-              manufacturerOptions={currentManufacturerSuggestions}
+            <FilterBar
+              filters={partsFilterDefs}
+              filterVisibility={filterVisibility}
+              filterOrder={filterOrder}
+              configurableFilters={configurableFilters}
+              setFilterVisible={setFilterVisible}
+              setFilterOrder={setFilterOrder}
+              filterValues={filterValues}
+              onFilterChange={setFilterValue}
+              onClearFilters={clearFilterValues}
+              hasActiveFilters={filterHasActiveFilters}
               disabled={!isDatabaseAvailable}
+              configureFiltersLabel={copy.configureFilters}
+              clearFiltersLabel={copy.clearFilters}
+              availableFiltersLabel={copy.availableFilters}
             />
           }
           primaryAction={

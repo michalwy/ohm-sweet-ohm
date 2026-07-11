@@ -140,6 +140,21 @@ export function PartPickerListModal({
     fixedColumnIds: fixedListColumnIds
   });
 
+  const [searchQuery, setSearchQuery] = useState("");
+  const [categoryFilterId, setCategoryFilterId] = useState("");
+  const [manufacturerFilter, setManufacturerFilter] = useState("");
+
+  const pickerFilterValues = useMemo(
+    () => ({ search: searchQuery, category: categoryFilterId, manufacturer: manufacturerFilter }),
+    [searchQuery, categoryFilterId, manufacturerFilter]
+  );
+
+  function clearFilters() {
+    setSearchQuery("");
+    setCategoryFilterId("");
+    setManufacturerFilter("");
+  }
+
   const {
     currentParts,
     partsCounts,
@@ -148,15 +163,8 @@ export function PartPickerListModal({
     isError,
     isFetchingNextPage,
     hasNextPage,
-    fetchNextPage,
-    searchQuery,
-    setSearchQuery,
-    categoryFilterId,
-    setCategoryFilterId,
-    manufacturerFilter,
-    setManufacturerFilter,
-    clearFilters
-  } = usePartsListQuery({ workspaceSlug, sorting, enabled: open });
+    fetchNextPage
+  } = usePartsListQuery({ workspaceSlug, sorting, filterValues: pickerFilterValues, enabled: open });
 
   function handleToggle(partId: string) {
     const part = currentParts.find((p) => p.id === partId);

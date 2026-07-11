@@ -11,8 +11,8 @@ Here you can create, update, and remove parts. Each part is identified by manufa
 You can also:
 
 - search by text
-- filter by category
-- filter by manufacturer
+- filter by category or manufacturer
+- configure which filters are visible and in what order
 - configure visible columns in the list
 - scroll through large datasets with endless loading
 
@@ -24,6 +24,17 @@ Several optional columns can be enabled via **Configure list**:
 - **Balance** — a single at-a-glance figure combining everything already in motion, net of what's already earmarked: `Available + On order + In production − Allocated`. Requires Inventory, Purchase Orders, and Builds read access (all three); the column is omitted entirely if any is missing, since a partial figure would be misleading. Hidden by default. Also shown on the part details panel when those same permissions are held.
 
 All of these columns support sorting with cursor-based pagination so they work efficiently across large datasets.
+
+### Filtering The Parts List
+
+The filter bar above the parts list lets you narrow down which parts are shown.
+
+- The **search** input is always visible and matches across catalog number, manufacturer name, category, and value.
+- **Filter by category** and **Filter by manufacturer** are toggleable filters. Use the **Add filter** button in the filter bar to show or hide them.
+- The order of visible filters can be changed using the up/down arrows in the **Add filter** panel.
+- Filter configuration (which filters are shown and in what order) is saved per browser, so it persists across page reloads.
+- Active filter values are reflected in the URL, making filtered views deep-linkable and navigable with the browser back/forward buttons.
+- Click **Clear filters** to reset all active filter values at once.
 
 ### Adding A Part
 
