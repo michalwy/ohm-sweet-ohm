@@ -7,6 +7,7 @@ import {
   useState
 } from "react";
 import { FilterBar } from "@/app/list-filter-bar";
+import type { FilterBarHandle } from "@/app/list-filter-bar";
 import type { FilterDefinition } from "@/app/list-filter-config";
 import { useListFilterConfiguration } from "@/app/list-filter-config";
 import { useFilterUrlState } from "@/app/use-filter-url-state";
@@ -587,6 +588,7 @@ export function PurchaseOrdersClient({
   const [dialogFormKey, setDialogFormKey] = useState(0);
   const [multiAddPOOpen, setMultiAddPOOpen] = useState(false);
   const [toastMessages, setToastMessages] = useState<ToastMessage[]>([]);
+  const filterBarRef = useRef<FilterBarHandle>(null);
   const nextToastIdRef = useRef(0);
   const orderDialogRef = useRef<HTMLDialogElement>(null);
   const createOrderDialogRef = useRef<HTMLDialogElement>(null);
@@ -1584,22 +1586,21 @@ export function PurchaseOrdersClient({
             hasActiveFilters={hasActiveFilters}
             onClearFilters={clearFilterValues}
             clearFiltersLabel={copy.clearFilters}
+            configureFiltersLabel={copy.configureFilters}
+            onConfigureFilters={() => filterBarRef.current?.openConfigure()}
             totalCount={ordersQuery.data?.pages[0]?.totalCount}
             visibleColumnsLabel={copy.visibleColumns}
             setColumnVisible={setColumnVisible}
             filterContent={
               <FilterBar
+                ref={filterBarRef}
                 availableFiltersLabel={copy.availableFilters}
-                clearFiltersLabel={copy.clearFilters}
-                configureFiltersLabel={copy.configureFilters}
                 configurableFilters={configurableFilters}
                 disabled={ordersQuery.isLoading}
                 filterOrder={filterOrder}
                 filterValues={filterValues}
                 filterVisibility={filterVisibility}
                 filters={poFilterDefs}
-                hasActiveFilters={hasActiveFilters}
-                onClearFilters={clearFilterValues}
                 onFilterChange={setFilterValue}
                 setFilterOrder={setFilterOrder}
                 setFilterVisible={setFilterVisible}

@@ -68,6 +68,7 @@ import { useListFilterConfiguration } from "@/app/list-filter-config";
 import type { FilterDefinition } from "@/app/list-filter-config";
 import { useFilterUrlState } from "@/app/use-filter-url-state";
 import { FilterBar } from "@/app/list-filter-bar";
+import type { FilterBarHandle } from "@/app/list-filter-bar";
 import { buildPartsListColumnDefs, buildPartsListColumns } from "@/app/parts-list-columns";
 import { PartsListTable } from "@/app/parts-list-table";
 import { formatFilteredPartsSummary } from "@/app/parts-list-sort-utils";
@@ -408,6 +409,7 @@ export function PartsListClient({
   initialPinnedId
 }: PartsListClientProps) {
   const queryClient = useQueryClient();
+  const filterBarRef = useRef<FilterBarHandle>(null);
   const partDialogRef = useRef<HTMLDialogElement>(null);
   const matchingDialogRef = useRef<HTMLDialogElement>(null);
   const dialogDetailsContentRef = useRef<HTMLDivElement>(null);
@@ -1549,6 +1551,8 @@ export function PartsListClient({
           columnVisibility={columnVisibility}
           configurableColumns={configurableColumns}
           configureListLabel={copy.configureList}
+          configureFiltersLabel={copy.configureFilters}
+          onConfigureFilters={() => filterBarRef.current?.openConfigure()}
           filteredCount={partsCounts.filteredCount}
           formatCount={(visible, total) =>
             formatFilteredPartsSummary(copy, { visible, total })
@@ -1560,6 +1564,7 @@ export function PartsListClient({
           onClearFilters={clearFilterValues}
           filterContent={
             <FilterBar
+              ref={filterBarRef}
               filters={partsFilterDefs}
               filterVisibility={filterVisibility}
               filterOrder={filterOrder}
@@ -1568,11 +1573,7 @@ export function PartsListClient({
               setFilterOrder={setFilterOrder}
               filterValues={filterValues}
               onFilterChange={setFilterValue}
-              onClearFilters={clearFilterValues}
-              hasActiveFilters={filterHasActiveFilters}
               disabled={!isDatabaseAvailable}
-              configureFiltersLabel={copy.configureFilters}
-              clearFiltersLabel={copy.clearFilters}
               availableFiltersLabel={copy.availableFilters}
             />
           }

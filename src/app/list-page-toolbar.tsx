@@ -75,6 +75,8 @@ type ListPageToolbarProps = {
   configureListLabel: string;
   visibleColumnsLabel: string;
   columnGroups?: ColumnGroup[];
+  configureFiltersLabel?: string;
+  onConfigureFilters?: () => void;
   primaryAction: ReactNode;
 };
 
@@ -92,6 +94,8 @@ export function ListPageToolbar({
   configureListLabel,
   visibleColumnsLabel,
   columnGroups,
+  configureFiltersLabel,
+  onConfigureFilters,
   primaryAction
 }: ListPageToolbarProps) {
   const [isColumnsMenuOpen, setIsColumnsMenuOpen] = useState(false);
@@ -150,18 +154,28 @@ export function ListPageToolbar({
     <div
       className={`flex items-${hasFilters ? "end" : "center"} gap-3 border-b border-[var(--color-border)] bg-[var(--color-bg-elevated)] px-4 py-3`}
     >
-      {filterContent}
-      <div className="ml-auto flex min-h-9 items-center gap-3">
+      {filterContent ? <div className="min-w-0 flex-1">{filterContent}</div> : null}
+      <div className="ml-auto flex min-h-9 flex-shrink-0 items-center gap-3">
         {countText != null ? (
           <p className="min-w-28 text-sm text-[var(--color-text-muted)]">{countText}</p>
         ) : null}
-        {hasActiveFilters && onClearFilters ? (
+        {clearFiltersLabel && onClearFilters ? (
           <button
-            className="min-h-9 rounded-md border border-[var(--color-border-strong)] bg-[var(--color-bg-elevated)] px-3 py-1.5 text-sm font-medium text-[var(--color-text-secondary)] transition hover:border-[var(--color-border-hover)] hover:bg-[var(--color-bg-subtle)] focus:outline-none focus:ring-2 focus:ring-[var(--color-ring-strong)] focus:ring-offset-2"
+            className="min-h-9 rounded-md border border-[var(--color-border-strong)] bg-[var(--color-bg-elevated)] px-3 py-1.5 text-sm font-medium text-[var(--color-text-secondary)] transition hover:border-[var(--color-border-hover)] hover:bg-[var(--color-bg-subtle)] focus:outline-none focus:ring-2 focus:ring-[var(--color-ring-strong)] focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-40"
+            disabled={!hasActiveFilters}
             type="button"
             onClick={onClearFilters}
           >
             {clearFiltersLabel}
+          </button>
+        ) : null}
+        {configureFiltersLabel && onConfigureFilters ? (
+          <button
+            className="min-h-9 rounded-md border border-[var(--color-border-strong)] bg-[var(--color-bg-elevated)] px-3 py-1.5 text-sm font-medium text-[var(--color-text-secondary)] transition hover:border-[var(--color-border-hover)] hover:bg-[var(--color-bg-subtle)] focus:outline-none focus:ring-2 focus:ring-[var(--color-ring-strong)] focus:ring-offset-2"
+            type="button"
+            onClick={onConfigureFilters}
+          >
+            {configureFiltersLabel}
           </button>
         ) : null}
         <div ref={columnsMenuRef} className="relative">

@@ -2,6 +2,7 @@
 
 import { useMemo, useRef, useState } from "react";
 import { FilterBar } from "@/app/list-filter-bar";
+import type { FilterBarHandle } from "@/app/list-filter-bar";
 import type { FilterDefinition } from "@/app/list-filter-config";
 import { useListFilterConfiguration } from "@/app/list-filter-config";
 import { useFilterUrlState } from "@/app/use-filter-url-state";
@@ -141,6 +142,7 @@ export function OrganizationsClient({
   workspaceSlug
 }: OrganizationsClientProps) {
   const queryClient = useQueryClient();
+  const filterBarRef = useRef<FilterBarHandle>(null);
   const dialogRef = useRef<HTMLDialogElement>(null);
   const nextToastIdRef = useRef(0);
   const [dialogMode, setDialogMode] = useState<"create" | "edit" | null>(null);
@@ -469,22 +471,21 @@ export function OrganizationsClient({
           hasActiveFilters={hasActiveFilters}
           onClearFilters={clearFilterValues}
           clearFiltersLabel={copy.clearFilters}
+          configureFiltersLabel={copy.configureFilters}
+          onConfigureFilters={() => filterBarRef.current?.openConfigure()}
           totalCount={orgsQuery.data?.pages[0]?.totalCount}
           visibleColumnsLabel={copy.visibleColumns}
           setColumnVisible={setColumnVisible}
           filterContent={
             <FilterBar
+              ref={filterBarRef}
               availableFiltersLabel={copy.availableFilters}
-              clearFiltersLabel={copy.clearFilters}
-              configureFiltersLabel={copy.configureFilters}
               configurableFilters={configurableFilters}
               disabled={orgsQuery.isLoading}
               filterOrder={filterOrder}
               filterValues={filterValues}
               filterVisibility={filterVisibility}
               filters={orgFilterDefs}
-              hasActiveFilters={hasActiveFilters}
-              onClearFilters={clearFilterValues}
               onFilterChange={setFilterValue}
               setFilterOrder={setFilterOrder}
               setFilterVisible={setFilterVisible}

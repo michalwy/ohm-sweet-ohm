@@ -1,7 +1,7 @@
 "use client";
 
 import type { Dispatch, SetStateAction } from "react";
-import { useRef, useMemo, useState } from "react";
+import { forwardRef, useRef, useMemo, useImperativeHandle, useState } from "react";
 
 import type { FilterDefinition } from "@/app/list-filter-config";
 import type { FilterValues } from "@/app/use-filter-url-state";
@@ -17,6 +17,10 @@ import {
   openDialog
 } from "@/app/dialog-shell";
 
+export type FilterBarHandle = {
+  openConfigure: () => void;
+};
+
 type FilterBarProps = {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   filters: FilterDefinition<any>[];
@@ -28,15 +32,11 @@ type FilterBarProps = {
   setFilterOrder: Dispatch<SetStateAction<string[]>>;
   filterValues: FilterValues;
   onFilterChange: (id: string, value: string) => void;
-  onClearFilters: () => void;
-  hasActiveFilters: boolean;
   disabled?: boolean;
-  configureFiltersLabel: string;
-  clearFiltersLabel: string;
   availableFiltersLabel: string;
 };
 
-export function FilterBar({
+export const FilterBar = forwardRef<FilterBarHandle, FilterBarProps>(function FilterBar({
   filters,
   filterVisibility,
   filterOrder,
@@ -45,14 +45,14 @@ export function FilterBar({
   setFilterOrder,
   filterValues,
   onFilterChange,
-  onClearFilters,
-  hasActiveFilters,
   disabled = false,
-  configureFiltersLabel,
-  clearFiltersLabel,
   availableFiltersLabel
-}: FilterBarProps) {
+}: FilterBarProps, ref) {
   const dialogRef = useRef<HTMLDialogElement>(null);
+
+  useImperativeHandle(ref, () => ({
+    openConfigure: () => openDialog(dialogRef.current)
+  }));
 
   const filterById = useMemo(
     () => new Map(filters.map((f) => [f.id, f])),
@@ -75,22 +75,36 @@ export function FilterBar({
     return ordered;
   }, [filters, filterOrder, filterVisibility, filterById]);
 
-  // Configurable filters ordered by filterOrder (for the modal list).
-  const orderedConfigurableFilters = useMemo(() => {
+  // Disabled configurable filters in definition order (left column).
+  const availableFilters = useMemo(
+    () => configurableFilters.filter((f) => filterVisibility[f.id] === false),
+    [configurableFilters, filterVisibility]
+  );
+
+  // Enabled configurable filters in filterOrder (right column).
+  const enabledFilters = useMemo(() => {
     const configurableById = new Map(configurableFilters.map((f) => [f.id, f]));
     const ordered: FilterDefinition[] = [];
     for (const id of filterOrder) {
       const f = configurableById.get(id);
-      if (f) ordered.push(f);
+      if (f && filterVisibility[f.id] !== false) ordered.push(f);
     }
-    // Append any that aren't in filterOrder yet (new filters added after initial load).
     for (const f of configurableFilters) {
-      if (!ordered.includes(f)) ordered.push(f);
+      if (filterVisibility[f.id] !== false && !ordered.includes(f)) ordered.push(f);
     }
     return ordered;
-  }, [configurableFilters, filterOrder]);
+  }, [configurableFilters, filterOrder, filterVisibility]);
 
-  // Drag-and-drop reorder within the modal list.
+  function addFilter(id: string) {
+    setFilterVisible(id, true);
+    setFilterOrder((current) => [...current.filter((existingId) => existingId !== id), id]);
+  }
+
+  function removeFilter(id: string) {
+    setFilterVisible(id, false);
+  }
+
+  // Drag-and-drop reorder within the enabled (right) list.
   const [draggedFilterId, setDraggedFilterId] = useState<string | null>(null);
 
   function handleDragStart(id: string) {
@@ -115,7 +129,7 @@ export function FilterBar({
   }
 
   return (
-    <div className="flex items-end gap-3">
+    <div className="flex flex-wrap items-end gap-x-3 gap-y-2">
       {visibleFilters.map((filter) => (
         <FilterControl
           key={filter.id}
@@ -126,84 +140,79 @@ export function FilterBar({
         />
       ))}
 
-      {hasActiveFilters ? (
-        <button
-          className="min-h-9 text-sm font-medium text-[var(--color-accent)] hover:underline focus:outline-none focus:ring-2 focus:ring-[var(--color-ring)] focus:ring-offset-2"
-          type="button"
-          onClick={onClearFilters}
-        >
-          {clearFiltersLabel}
-        </button>
-      ) : null}
-
       {configurableFilters.length > 0 ? (
-        <>
-          <button
-            className="min-h-9 self-end rounded-md border border-[var(--color-border-strong)] bg-[var(--color-bg-elevated)] px-3 py-1.5 text-sm font-medium text-[var(--color-text-secondary)] transition hover:border-[var(--color-border-hover)] hover:bg-[var(--color-bg-subtle)] focus:outline-none focus:ring-2 focus:ring-[var(--color-ring-strong)] focus:ring-offset-2"
-            type="button"
-            onClick={() => openDialog(dialogRef.current)}
-          >
-            {configureFiltersLabel}
-          </button>
-
-          <DialogShell
-            ref={dialogRef}
-            closeLabel="Close"
-            title={availableFiltersLabel}
-            titleId="configure-filters-title"
-            widthClassName="w-[min(24rem,calc(100vw-3rem))]"
-            onCancel={(e) => { e.preventDefault(); closeDialog(dialogRef.current); }}
-            onCloseClick={() => closeDialog(dialogRef.current)}
-          >
-            <DialogBody>
-              <ul className="grid gap-2" role="list">
-                {orderedConfigurableFilters.map((filter) => {
-                  const isVisible = filterVisibility[filter.id] !== false;
-                  const isDragging = draggedFilterId === filter.id;
-
-                  return (
+        <DialogShell
+          ref={dialogRef}
+          closeLabel="Close"
+          title={availableFiltersLabel}
+          titleId="configure-filters-title"
+          widthClassName="w-[min(44rem,calc(100vw-3rem))]"
+          onCancel={(e) => { e.preventDefault(); closeDialog(dialogRef.current); }}
+          onCloseClick={() => closeDialog(dialogRef.current)}
+        >
+          <DialogBody>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="flex flex-col gap-2">
+                <p className="text-xs font-semibold uppercase tracking-wide text-[var(--color-text-muted)]">
+                  Available
+                </p>
+                <ul className="grid max-h-96 gap-1 overflow-y-auto" role="list">
+                  {availableFilters.map((filter) => (
                     <li
                       key={filter.id}
-                      draggable
-                      className={`flex items-center gap-3 rounded-md border border-[var(--color-border)] bg-[var(--color-bg-subtle)] px-3 py-2 text-sm transition${isDragging ? " opacity-40" : " hover:border-[var(--color-border-hover)] hover:bg-[var(--color-bg-elevated)]"}`}
-                      onDragEnd={handleDragEnd}
-                      onDragOver={(e) => {
-                        if (draggedFilterId != null) e.preventDefault();
-                      }}
-                      onDragStart={() => handleDragStart(filter.id)}
-                      onDrop={() => handleDropOnto(filter.id)}
+                      className="flex cursor-pointer items-center gap-2 rounded-md border border-[var(--color-border)] bg-[var(--color-bg-subtle)] px-3 py-2 text-sm text-[var(--color-text-secondary)] transition hover:border-[var(--color-border-hover)] hover:bg-[var(--color-bg-elevated)]"
+                      onClick={() => addFilter(filter.id)}
                     >
-                      {/* Drag grip */}
-                      <span
-                        aria-hidden
-                        className="flex-shrink-0 cursor-grab select-none text-base leading-none text-[var(--color-text-placeholder)]"
-                      >
-                        ⠿
-                      </span>
-                      <label className="inline-flex flex-1 cursor-pointer items-center gap-2 text-[var(--color-text-secondary)]">
-                        <input
-                          checked={isVisible}
-                          type="checkbox"
-                          onChange={(e) => setFilterVisible(filter.id, e.currentTarget.checked)}
-                        />
-                        <span>{filter.label}</span>
-                      </label>
+                      <span className="flex-1">{filter.label}</span>
+                      <span aria-hidden className="text-[var(--color-text-placeholder)]">+</span>
                     </li>
-                  );
-                })}
-              </ul>
-            </DialogBody>
-            <DialogFooter>
-              <DialogSecondaryButton onClick={() => closeDialog(dialogRef.current)}>
-                Close
-              </DialogSecondaryButton>
-            </DialogFooter>
-          </DialogShell>
-        </>
+                  ))}
+                </ul>
+              </div>
+              <div className="flex flex-col gap-2">
+                <p className="text-xs font-semibold uppercase tracking-wide text-[var(--color-text-muted)]">
+                  Active
+                </p>
+                <ul className="grid max-h-96 gap-1 overflow-y-auto" role="list">
+                  {enabledFilters.map((filter) => {
+                    const isDragging = draggedFilterId === filter.id;
+                    return (
+                      <li
+                        key={filter.id}
+                        draggable
+                        className={`flex items-center gap-2 rounded-md border border-[var(--color-border)] bg-[var(--color-bg-subtle)] px-3 py-2 text-sm transition${isDragging ? " opacity-40" : " hover:border-[var(--color-border-hover)] hover:bg-[var(--color-bg-elevated)]"}`}
+                        onDragEnd={handleDragEnd}
+                        onDragOver={(e) => { if (draggedFilterId != null) e.preventDefault(); }}
+                        onDragStart={() => handleDragStart(filter.id)}
+                        onDrop={() => handleDropOnto(filter.id)}
+                      >
+                        <span aria-hidden className="flex-shrink-0 cursor-grab select-none text-base leading-none text-[var(--color-text-placeholder)]">⠿</span>
+                        <span className="flex-1 text-[var(--color-text-secondary)]">{filter.label}</span>
+                        <button
+                          aria-label={`Remove ${filter.label}`}
+                          className="flex-shrink-0 text-[var(--color-text-placeholder)] transition hover:text-[var(--color-text-secondary)]"
+                          type="button"
+                          onClick={() => removeFilter(filter.id)}
+                        >
+                          ×
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
+            </div>
+          </DialogBody>
+          <DialogFooter>
+            <DialogSecondaryButton onClick={() => closeDialog(dialogRef.current)}>
+              Close
+            </DialogSecondaryButton>
+          </DialogFooter>
+        </DialogShell>
       ) : null}
     </div>
   );
-}
+});
 
 // ─── Per-filter control ────────────────────────────────────────────────────────
 

@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { FilterBar } from "@/app/list-filter-bar";
+import type { FilterBarHandle } from "@/app/list-filter-bar";
 import type { FilterDefinition } from "@/app/list-filter-config";
 import { useListFilterConfiguration } from "@/app/list-filter-config";
 import { useFilterUrlState } from "@/app/use-filter-url-state";
@@ -217,6 +218,7 @@ export function ShoppingListsClient({
   const [dialogFormKey, setDialogFormKey] = useState(0);
   const [multiAddSLOpen, setMultiAddSLOpen] = useState(false);
   const [toastMessages, setToastMessages] = useState<ToastMessage[]>([]);
+  const filterBarRef = useRef<FilterBarHandle>(null);
   const nextToastIdRef = useRef(0);
   const listDialogRef = useRef<HTMLDialogElement>(null);
   const itemDialogRef = useRef<HTMLDialogElement>(null);
@@ -797,22 +799,21 @@ export function ShoppingListsClient({
             hasActiveFilters={hasActiveFilters}
             onClearFilters={clearFilterValues}
             clearFiltersLabel={copy.clearFilters}
+            configureFiltersLabel={copy.configureFilters}
+            onConfigureFilters={() => filterBarRef.current?.openConfigure()}
             totalCount={listsQuery.data?.pages[0]?.totalCount}
             visibleColumnsLabel={copy.visibleColumns}
             setColumnVisible={setColumnVisible}
             filterContent={
               <FilterBar
+                ref={filterBarRef}
                 availableFiltersLabel={copy.availableFilters}
-                clearFiltersLabel={copy.clearFilters}
-                configureFiltersLabel={copy.configureFilters}
                 configurableFilters={configurableFilters}
                 disabled={listsQuery.isLoading}
                 filterOrder={filterOrder}
                 filterValues={filterValues}
                 filterVisibility={filterVisibility}
                 filters={slFilterDefs}
-                hasActiveFilters={hasActiveFilters}
-                onClearFilters={clearFilterValues}
                 onFilterChange={setFilterValue}
                 setFilterOrder={setFilterOrder}
                 setFilterVisible={setFilterVisible}

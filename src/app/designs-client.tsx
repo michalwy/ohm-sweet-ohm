@@ -2,6 +2,7 @@
 
 import { useCallback, useMemo, useRef, useState } from "react";
 import { FilterBar } from "@/app/list-filter-bar";
+import type { FilterBarHandle } from "@/app/list-filter-bar";
 import type { FilterDefinition } from "@/app/list-filter-config";
 import { useListFilterConfiguration } from "@/app/list-filter-config";
 import { useFilterUrlState } from "@/app/use-filter-url-state";
@@ -185,6 +186,7 @@ export function DesignsClient({
   workspaceSlug
 }: DesignsClientProps) {
   const queryClient = useQueryClient();
+  const filterBarRef = useRef<FilterBarHandle>(null);
   const designDialogRef = useRef<HTMLDialogElement>(null);
   const revisionDialogRef = useRef<HTMLDialogElement>(null);
   const nextToastIdRef = useRef(0);
@@ -722,19 +724,18 @@ export function DesignsClient({
           hasActiveFilters={hasActiveFilters}
           onClearFilters={clearFilterValues}
           clearFiltersLabel={copy.clearFilters}
+          configureFiltersLabel={copy.configureFilters}
+          onConfigureFilters={() => filterBarRef.current?.openConfigure()}
           filterContent={
             <FilterBar
+              ref={filterBarRef}
               availableFiltersLabel={copy.availableFilters}
-              clearFiltersLabel={copy.clearFilters}
-              configureFiltersLabel={copy.configureFilters}
               configurableFilters={configurableFilters}
               disabled={isLoading}
               filterOrder={filterOrder}
               filterValues={filterValues}
               filterVisibility={filterVisibility}
               filters={designFilterDefs}
-              hasActiveFilters={hasActiveFilters}
-              onClearFilters={clearFilterValues}
               onFilterChange={setFilterValue}
               setFilterOrder={setFilterOrder}
               setFilterVisible={setFilterVisible}
