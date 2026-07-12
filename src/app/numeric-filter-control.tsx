@@ -19,7 +19,7 @@ type NumericFilterControlProps = FilterControlProps<string> & {
 };
 
 const inputClassName =
-  "min-h-9 w-28 rounded-md border border-[var(--color-border-strong)] bg-[var(--color-bg-elevated)] px-3 py-1.5 text-sm text-[var(--color-text-primary)] outline-none transition placeholder:text-[var(--color-text-placeholder)] hover:border-[var(--color-border-hover)] focus:border-[var(--color-border-hover)] focus:ring-2 focus:ring-[var(--color-ring)]";
+  "min-h-9 w-40 rounded-md border border-[var(--color-border-strong)] bg-[var(--color-bg-elevated)] px-3 py-1.5 text-sm text-[var(--color-text-primary)] outline-none transition placeholder:text-[var(--color-text-placeholder)] hover:border-[var(--color-border-hover)] focus:border-[var(--color-border-hover)] focus:ring-2 focus:ring-[var(--color-ring)]";
 
 const selectClassName =
   "min-h-9 rounded-md border border-[var(--color-border-strong)] bg-[var(--color-bg-elevated)] px-2 py-1.5 text-sm text-[var(--color-text-primary)] outline-none transition hover:border-[var(--color-border-hover)] focus:border-[var(--color-border-hover)] focus:ring-2 focus:ring-[var(--color-ring)]";
@@ -35,6 +35,20 @@ function tryParseValue(
   return parseNumberValue({ rawValue });
 }
 
+// Splits "min..max" or "min...max" into { min, max }.
+// Returns { min: raw, max: "" } when no separator is found (incomplete input).
+function splitRangeInput(raw: string): { min: string; max: string } {
+  const sep3 = raw.indexOf("...");
+  if (sep3 >= 0) {
+    return { min: raw.slice(0, sep3).trim(), max: raw.slice(sep3 + 3).trim() };
+  }
+  const sep2 = raw.indexOf("..");
+  if (sep2 >= 0) {
+    return { min: raw.slice(0, sep2).trim(), max: raw.slice(sep2 + 2).trim() };
+  }
+  return { min: raw.trim(), max: "" };
+}
+
 export function NumericFilterControl({
   label,
   baseUnitSymbol,
@@ -45,6 +59,8 @@ export function NumericFilterControl({
   const [localOp, setLocalOp] = useState<NumericFilterOp>("gte");
   const [localV1, setLocalV1] = useState("");
   const [localV2, setLocalV2] = useState("");
+  // Single raw string for range inputs ("min..max" as the user types it).
+  const [localRangeRaw, setLocalRangeRaw] = useState("");
   const [parseError, setParseError] = useState<string | null>(null);
 
   // Track the last value we emitted so we can distinguish external prop changes
@@ -52,7 +68,6 @@ export function NumericFilterControl({
   const lastEmittedRef = useRef(value);
 
   useEffect(() => {
-    // If the incoming value is what we last emitted, it came from us — skip sync.
     if (value === lastEmittedRef.current) return;
     lastEmittedRef.current = value;
 
@@ -62,6 +77,7 @@ export function NumericFilterControl({
       setLocalOp("gte");
       setLocalV1("");
       setLocalV2("");
+      setLocalRangeRaw("");
       setParseError(null);
       return;
     }
@@ -70,9 +86,11 @@ export function NumericFilterControl({
     if ("rawMin" in parsed) {
       setLocalV1(parsed.rawMin);
       setLocalV2(parsed.rawMax);
+      setLocalRangeRaw(`${parsed.rawMin}..${parsed.rawMax}`);
     } else {
       setLocalV1(parsed.rawValue);
       setLocalV2("");
+      setLocalRangeRaw("");
     }
     setParseError(null);
   }, [value]);
@@ -86,6 +104,12 @@ export function NumericFilterControl({
 
     if (range ? v1Empty && v2Empty : v1Empty) {
       setParseError(null);
+      emitExternal("");
+      return;
+    }
+
+    // Incomplete range — one bound missing; don't emit, don't show an error yet.
+    if (range && (v1Empty || v2Empty)) {
       emitExternal("");
       return;
     }
@@ -104,10 +128,6 @@ export function NumericFilterControl({
 
     let serialized: string;
     if (op === "between" || op === "not-between") {
-      if (v1Empty || v2Empty) {
-        emitExternal("");
-        return;
-      }
       serialized = serializeNumericFilter({ op, rawMin: v1, rawMax: v2 });
     } else {
       serialized = serializeNumericFilter({
@@ -125,6 +145,11 @@ export function NumericFilterControl({
   }
 
   function handleOpChange(newOp: NumericFilterOp) {
+    // When switching from a single-value op to a range op, seed localRangeRaw
+    // from whatever is already in localV1 so the user doesn't lose their input.
+    if (RANGE_OPS.has(newOp) && !RANGE_OPS.has(localOp)) {
+      setLocalRangeRaw(localV1 && localV2 ? `${localV1}..${localV2}` : localV1);
+    }
     setLocalOp(newOp);
     computeAndEmit(newOp, localV1, localV2);
   }
@@ -134,12 +159,16 @@ export function NumericFilterControl({
     computeAndEmit(localOp, raw, localV2);
   }
 
-  function handleV2Change(raw: string) {
-    setLocalV2(raw);
-    computeAndEmit(localOp, localV1, raw);
+  function handleRangeChange(raw: string) {
+    setLocalRangeRaw(raw);
+    const { min, max } = splitRangeInput(raw);
+    setLocalV1(min);
+    setLocalV2(max);
+    computeAndEmit(localOp, min, max);
   }
 
   const placeholder = baseUnitSymbol ? `e.g. 10 ${baseUnitSymbol}` : "value";
+  const rangePlaceholder = baseUnitSymbol ? `min..max ${baseUnitSymbol}` : "min..max";
   const errorId = `numeric-filter-error-${label.replace(/\s+/g, "-").toLowerCase()}`;
 
   return (
@@ -162,30 +191,18 @@ export function NumericFilterControl({
 
         <input
           aria-describedby={parseError ? errorId : undefined}
-          aria-label={isRange ? `${label} minimum` : label}
+          aria-label={isRange ? `${label} range` : label}
           className={inputClassName}
           disabled={disabled}
-          placeholder={isRange ? `min (${placeholder})` : placeholder}
+          placeholder={isRange ? rangePlaceholder : placeholder}
           type="text"
-          value={localV1}
-          onChange={(e) => handleV1Change(e.currentTarget.value)}
+          value={isRange ? localRangeRaw : localV1}
+          onChange={(e) =>
+            isRange
+              ? handleRangeChange(e.currentTarget.value)
+              : handleV1Change(e.currentTarget.value)
+          }
         />
-
-        {isRange && (
-          <>
-            <span className="text-sm text-[var(--color-text-secondary)]">to</span>
-            <input
-              aria-describedby={parseError ? errorId : undefined}
-              aria-label={`${label} maximum`}
-              className={inputClassName}
-              disabled={disabled}
-              placeholder={`max (${placeholder})`}
-              type="text"
-              value={localV2}
-              onChange={(e) => handleV2Change(e.currentTarget.value)}
-            />
-          </>
-        )}
       </div>
 
       {parseError && (

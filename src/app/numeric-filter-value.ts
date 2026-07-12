@@ -28,8 +28,8 @@ export const NUMERIC_OP_LABELS: Record<NumericFilterOp, string> = {
   gte: "≥",
   lt: "<",
   lte: "≤",
-  between: "between",
-  "not-between": "not between"
+  between: "∈",
+  "not-between": "∉"
 };
 
 export const NUMERIC_OPS_IN_ORDER: NumericFilterOp[] = [

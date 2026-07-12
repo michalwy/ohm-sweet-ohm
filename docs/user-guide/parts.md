@@ -60,10 +60,10 @@ Numeric filters (such as **Current stock**) let you choose a comparison operator
 | `<` | strictly less than |
 | `=` | exactly equal |
 | `≠` | not equal |
-| `between` | within a range (inclusive) |
-| `not between` | outside a range |
+| `∈` | within a range (inclusive) |
+| `∉` | outside a range |
 
-For **between** and **not between**, two value inputs appear — a minimum and a maximum.
+For **∈** and **∉**, two value inputs appear — a minimum and a maximum.
 
 #### Unit-Aware Input For Quantity Attributes
 
