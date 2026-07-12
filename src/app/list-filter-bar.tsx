@@ -6,6 +6,7 @@ import { useRef, useMemo, useState } from "react";
 import type { FilterDefinition } from "@/app/list-filter-config";
 import type { FilterValues } from "@/app/use-filter-url-state";
 import { NumericFilterControl } from "@/app/numeric-filter-control";
+import { DateRangeFilterControl } from "@/app/date-range-filter-control";
 import {
   DialogBody,
   DialogFooter,
@@ -233,6 +234,17 @@ function FilterControl({ filter, value, onChange, disabled }: FilterControlProps
     return (
       <NumericFilterControl
         baseUnitSymbol={filter.baseUnitSymbol}
+        disabled={disabled}
+        label={filter.label}
+        value={value}
+        onChange={onChange}
+      />
+    );
+  }
+
+  if (filter.type === "date-range") {
+    return (
+      <DateRangeFilterControl
         disabled={disabled}
         label={filter.label}
         value={value}
