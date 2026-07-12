@@ -7,6 +7,7 @@ import type { FilterDefinition } from "@/app/list-filter-config";
 import type { FilterValues } from "@/app/use-filter-url-state";
 import { NumericFilterControl } from "@/app/numeric-filter-control";
 import { DateRangeFilterControl } from "@/app/date-range-filter-control";
+import { BooleanFilterControl } from "@/app/boolean-filter-control";
 import {
   DialogBody,
   DialogFooter,
@@ -253,9 +254,70 @@ function FilterControl({ filter, value, onChange, disabled }: FilterControlProps
     );
   }
 
+  if (filter.type === "boolean") {
+    return (
+      <BooleanFilterControl
+        disabled={disabled}
+        label={filter.label}
+        value={value}
+        onChange={onChange}
+      />
+    );
+  }
+
+  if (filter.type === "choice") {
+    return (
+      <ChoiceFilterControl
+        choiceOptions={filter.choiceOptions ?? []}
+        disabled={disabled}
+        label={filter.label}
+        value={value}
+        onChange={onChange}
+      />
+    );
+  }
+
   if (filter.renderControl) {
     return <>{filter.renderControl({ value, onChange, disabled })}</>;
   }
 
   return null;
+}
+
+// ─── Choice filter control ────────────────────────────────────────────────────
+
+type ChoiceFilterControlProps = {
+  choiceOptions: Array<{ id: string; label: string }>;
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  disabled: boolean;
+};
+
+function ChoiceFilterControl({
+  choiceOptions,
+  label,
+  value,
+  onChange,
+  disabled
+}: ChoiceFilterControlProps) {
+  return (
+    <label className="grid gap-1.5 text-sm font-medium text-[var(--color-text-secondary)]">
+      {label}
+      <select
+        className="min-h-9 rounded-md border border-[var(--color-border-strong)] bg-[var(--color-bg-elevated)] px-3 py-1.5 text-sm text-[var(--color-text-primary)] outline-none transition hover:border-[var(--color-border-hover)] focus:border-[var(--color-border-hover)] focus:ring-2 focus:ring-[var(--color-ring)]"
+        disabled={disabled}
+        value={value}
+        onChange={(e) => onChange(e.currentTarget.value)}
+      >
+        <option value="">All</option>
+        <option value="__none__">No value</option>
+        {choiceOptions.map((opt) => (
+          <option key={opt.id} value={opt.id}>
+            {opt.label}
+          </option>
+        ))}
+      </select>
+    </label>
+  );
 }

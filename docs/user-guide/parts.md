@@ -83,6 +83,18 @@ Supported SI prefixes: `p` (pico), `n` (nano), `µ`/`u` (micro), `m` (milli), `k
 
 If the input cannot be parsed, an error message appears below the input and the filter is not applied until the value is corrected.
 
+#### Attribute Filters
+
+Every workspace attribute can be filtered independently. All attribute filters are hidden by default — enable them via **Configure filters**.
+
+- **Text attributes** — substring match (case-insensitive).
+- **Numeric attributes** (NUMBER type) — same numeric operator controls as Current stock.
+- **Quantity attributes** (QUANTITY type with a physical unit) — same numeric operators with full SI-prefix support (e.g. enter `≥ 1kΩ` to filter a resistance column).
+- **Boolean attributes** — three-way select: **Any** (no filter), **Yes**, **No**.
+- **Choice attributes** — select a specific option from the attribute's defined values, or **No value** to show only parts where that attribute has not been set.
+
+Attribute filter values are reflected in the URL and persist across page reloads.
+
 ### Adding A Part
 
 1. Open the add-part dialog.

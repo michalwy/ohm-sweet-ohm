@@ -13,7 +13,7 @@ import {
   type ListPage
 } from "@/server/pagination";
 import { deserializeNumericFilter } from "@/app/numeric-filter-value";
-import { parseNumberValue } from "@/lib/quantityParsing";
+import { parseNumberValue, parseQuantityValue } from "@/lib/quantityParsing";
 
 export type PartsListItem = {
   id: string;
@@ -63,6 +63,10 @@ export type PartsListFilters = {
   pinnedId?: string | null;
   /** Serialized NumericFilter for the Part.currentStock field, e.g. "gte:5". */
   stockQuantityFilter?: string | null;
+  /** Per-attribute filter values keyed by attributeId.
+   *  Value format: text string for TEXT, serialized NumericFilter for NUMBER/QUANTITY,
+   *  "true"/"false" for BOOLEAN, choiceOptionId or FILTER_NONE_SENTINEL for CHOICE. */
+  attributeFilters?: Record<string, string> | null;
 };
 
 export type PartsListSortDirection = "asc" | "desc";
@@ -176,13 +180,21 @@ export async function getPartsListPage(
     categories,
     searchQuery: input.searchQuery
   });
-  const baseWhere = getPartsListWhere({
+  const baseWhereBase = getPartsListWhere({
     workspaceId: context.workspace.id,
     filters: input,
     filterCategoryIds,
     filterLocationIds,
     searchCategoryIds
   });
+  const attributeFilterConditions = await buildAttributeFilterConditions({
+    workspaceId: context.workspace.id,
+    attributeFilters: input.attributeFilters ?? {}
+  });
+  const baseWhere: Prisma.PartWhereInput =
+    attributeFilterConditions.length > 0
+      ? { AND: [baseWhereBase, ...attributeFilterConditions] }
+      : baseWhereBase;
   const activeSortBy = input.sortBy?.trim() ?? "";
   const activeSortDirection: PartsListSortDirection =
     input.sortDirection === "desc" ? "desc" : "asc";
@@ -1022,6 +1034,109 @@ function applyDirectDecimalFilter(
   if (op === "gte") return { [field]: { gte: val } };
   if (op === "lt") return { [field]: { lt: val } };
   if (op === "lte") return { [field]: { lte: val } };
+
+  return null;
+}
+
+async function buildAttributeFilterConditions({
+  workspaceId,
+  attributeFilters
+}: {
+  workspaceId: string;
+  attributeFilters: Record<string, string>;
+}): Promise<Prisma.PartWhereInput[]> {
+  const entries = Object.entries(attributeFilters).filter(([, v]) => v?.trim());
+  if (!entries.length) return [];
+
+  const attributes = await prisma.attribute.findMany({
+    where: { id: { in: entries.map(([id]) => id) }, workspaceId },
+    select: { id: true, type: true, baseUnitSymbol: true }
+  });
+  const attrById = new Map(attributes.map((a) => [a.id, a]));
+
+  const conditions: (Prisma.PartWhereInput | null)[] = entries.map(([attributeId, value]) => {
+    const attr = attrById.get(attributeId);
+    if (!attr || !value.trim()) return null;
+
+    switch (attr.type) {
+      case "TEXT":
+        return {
+          attributeValues: {
+            some: { attributeId, displayValue: { contains: value.trim(), mode: "insensitive" } }
+          }
+        };
+
+      case "NUMBER":
+      case "QUANTITY":
+        return buildNumericAttributeCondition({ attributeId, attr, serializedFilter: value });
+
+      case "BOOLEAN":
+        if (value === "true") return { attributeValues: { some: { attributeId, booleanValue: true } } };
+        if (value === "false") return { attributeValues: { some: { attributeId, booleanValue: false } } };
+        return null;
+
+      case "CHOICE":
+        if (value === FILTER_NONE_SENTINEL) {
+          return { NOT: { attributeValues: { some: { attributeId } } } };
+        }
+        if (value) {
+          return { attributeValues: { some: { attributeId, choiceOptionId: value } } };
+        }
+        return null;
+
+      default:
+        return null;
+    }
+  });
+
+  return conditions.filter((c): c is Prisma.PartWhereInput => c !== null);
+}
+
+function buildNumericAttributeCondition({
+  attributeId,
+  attr,
+  serializedFilter
+}: {
+  attributeId: string;
+  attr: { type: string; baseUnitSymbol: string | null };
+  serializedFilter: string;
+}): Prisma.PartWhereInput | null {
+  if (!serializedFilter?.trim()) return null;
+  const parsed = deserializeNumericFilter(serializedFilter);
+  if (!parsed) return null;
+
+  const col = attr.type === "QUANTITY" ? "quantityBaseValue" : "numberValue";
+
+  function parseDecimal(raw: string): Prisma.Decimal | null {
+    const result =
+      attr.type === "QUANTITY" && attr.baseUnitSymbol
+        ? parseQuantityValue({ rawValue: raw, baseUnitSymbol: attr.baseUnitSymbol })
+        : parseNumberValue({ rawValue: raw });
+    if (!result.ok) return null;
+    const value = "baseValue" in result ? result.baseValue : result.value;
+    return new Prisma.Decimal(value);
+  }
+
+  if ("rawMin" in parsed) {
+    const min = parseDecimal(parsed.rawMin);
+    const max = parseDecimal(parsed.rawMax);
+    if (!min || !max) return null;
+    if (parsed.op === "between") {
+      return { attributeValues: { some: { attributeId, [col]: { gte: min, lte: max } } } };
+    }
+    return { NOT: { attributeValues: { some: { attributeId, [col]: { gte: min, lte: max } } } } };
+  }
+
+  const val = parseDecimal(parsed.rawValue);
+  if (!val) return null;
+  const { op } = parsed;
+
+  if (op === "eq") return { attributeValues: { some: { attributeId, [col]: val } } };
+  if (op === "neq") return { NOT: { attributeValues: { some: { attributeId, [col]: val } } } };
+  if (op === "gt") return { attributeValues: { some: { attributeId, [col]: { gt: val } } } };
+  if (op === "gte") return { attributeValues: { some: { attributeId, [col]: { gte: val } } } };
+  if (op === "lt") return { attributeValues: { some: { attributeId, [col]: { lt: val } } } };
+  if (op === "lte") return { attributeValues: { some: { attributeId, [col]: { lte: val } } } };
 
   return null;
 }

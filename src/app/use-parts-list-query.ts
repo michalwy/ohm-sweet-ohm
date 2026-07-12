@@ -38,6 +38,16 @@ export function usePartsListQuery({
   const locationFilterId = filterValues["location"] ?? "";
   const stockQuantityFilter = filterValues["stockQty"] ?? "";
 
+  const attributeFilters = useMemo(() => {
+    const result: Record<string, string> = {};
+    for (const [key, value] of Object.entries(filterValues)) {
+      if (key.startsWith("attr:") && value) {
+        result[key.slice("attr:".length)] = value;
+      }
+    }
+    return result;
+  }, [filterValues]);
+
   const debouncedSearchQuery = useDebouncedValue(searchQuery, 300);
   const debouncedManufacturerFilter = useDebouncedValue(manufacturerFilter, 300);
 
@@ -52,6 +62,7 @@ export function usePartsListQuery({
       manufacturerFilter: debouncedManufacturerFilter,
       locationFilterId,
       stockQuantityFilter,
+      attributeFilters,
       sorting,
       pinnedId
     }
@@ -70,6 +81,7 @@ export function usePartsListQuery({
         manufacturerFilter: debouncedManufacturerFilter,
         locationFilterId: locationFilterId || null,
         stockQuantityFilter: stockQuantityFilter || null,
+        attributeFilters: Object.keys(attributeFilters).length > 0 ? attributeFilters : null,
         sortBy: activeSorting?.id ?? null,
         sortDirection: activeSorting?.desc ? "desc" : "asc",
         pinnedId
@@ -90,6 +102,7 @@ export function usePartsListQuery({
       !debouncedManufacturerFilter &&
       !locationFilterId &&
       !stockQuantityFilter &&
+      Object.keys(attributeFilters).length === 0 &&
       !pinnedId &&
       sorting.length === 0
         ? {
@@ -109,7 +122,8 @@ export function usePartsListQuery({
     Boolean(categoryFilterId) ||
     Boolean(manufacturerFilter) ||
     Boolean(locationFilterId) ||
-    Boolean(stockQuantityFilter);
+    Boolean(stockQuantityFilter) ||
+    Object.keys(attributeFilters).length > 0;
 
   const partsCounts = partsQuery.data?.pages[0] ??
     initialPage ?? { totalCount: 0, filteredCount: 0, items: [], nextCursor: null };

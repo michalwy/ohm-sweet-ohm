@@ -15,11 +15,14 @@ export type FilterDefinition<TValue = string> = {
   id: string;
   label: string;
   /** Drives which built-in chrome is used; "text" renders a plain text input, "numeric" renders the
-   *  built-in NumericFilterControl, all others use renderControl. */
-  type: "text" | "select" | "tree" | "numeric" | string;
+   *  built-in NumericFilterControl, "boolean" renders a 3-way yes/no toggle,
+   *  "choice" renders a select with predefined options, all others use renderControl. */
+  type: "text" | "select" | "tree" | "numeric" | "boolean" | "choice" | string;
   /** For type "numeric": the SI base unit symbol (e.g. "Ω", "V", "F").
    *  Absent for plain counts or NUMBER attributes. */
   baseUnitSymbol?: string;
+  /** For type "choice": the available options. */
+  choiceOptions?: Array<{ id: string; label: string }>;
   /** URL search-param key for this filter's value; omit to skip URL state. */
   urlParam?: string;
   /** When set, useFilterUrlState debounces the URL write by this many ms. */

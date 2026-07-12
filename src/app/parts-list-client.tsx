@@ -605,13 +605,33 @@ export function PartsListClient({
         type: "numeric",
         urlParam: "stock",
         defaultVisible: false
-      }
+      },
+      ...workspaceAttributes.map((attr): FilterDefinition => {
+        const base = {
+          id: `attr:${attr.id}`,
+          label: attr.name,
+          urlParam: `attr_${attr.id}`,
+          defaultVisible: false
+        };
+        if (attr.type === "TEXT") return { ...base, type: "text" };
+        if (attr.type === "NUMBER") return { ...base, type: "numeric" };
+        if (attr.type === "QUANTITY") {
+          return { ...base, type: "numeric", baseUnitSymbol: attr.baseUnitSymbol ?? undefined };
+        }
+        if (attr.type === "BOOLEAN") return { ...base, type: "boolean" };
+        // CHOICE
+        return {
+          ...base,
+          type: "choice",
+          choiceOptions: attr.choiceOptions.map((o) => ({ id: o.id, label: o.label }))
+        };
+      })
     ],
-    // copy, partCategories, categoryTree, currentManufacturerSuggestions, locations, locationTree
-    // are the actual data deps; including all filter def inline functions would cause
-    // re-renders on every render — useMemo stabilizes the array.
+    // copy, partCategories, categoryTree, currentManufacturerSuggestions, locations, locationTree,
+    // workspaceAttributes are the actual data deps; including all filter def inline functions would
+    // cause re-renders on every render — useMemo stabilizes the array.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [copy.searchParts, copy.filterByCategory, copy.allCategories, copy.noCategoryFilter, copy.filterByManufacturer, copy.allManufacturers, copy.noMatchingManufacturers, copy.filterByLocation, copy.allLocations, copy.noDefaultLocation, copy.filterByStock, partCategories, categoryTree, currentManufacturerSuggestions, locations, locationTree]
+    [copy.searchParts, copy.filterByCategory, copy.allCategories, copy.noCategoryFilter, copy.filterByManufacturer, copy.allManufacturers, copy.noMatchingManufacturers, copy.filterByLocation, copy.allLocations, copy.noDefaultLocation, copy.filterByStock, partCategories, categoryTree, currentManufacturerSuggestions, locations, locationTree, workspaceAttributes]
   );
 
   const {
