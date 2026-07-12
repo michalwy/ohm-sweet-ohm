@@ -85,6 +85,7 @@ import type { StorageLocationListItem } from "@/server/inventory/locationMutatio
 import { buildTree } from "@/app/tree-picker-utils";
 import {
   LocationTreeSelect,
+  compactLocationSelectButtonClassName,
   formLocationSelectButtonClassName,
   type LocationTreeItem,
   type LocationTreeSelectCopy
@@ -153,8 +154,12 @@ type Copy = {
   searchPartsPlaceholder: string;
   filterByCategory: string;
   allCategories: string;
+  noCategoryFilter: string;
   filterByManufacturer: string;
   allManufacturers: string;
+  filterByLocation: string;
+  allLocations: string;
+  noDefaultLocation: string;
   filterByStock: string;
   clearFilters: string;
   configureFilters: string;
@@ -355,6 +360,7 @@ type PartsListClientProps = {
   partDialogOpen: boolean;
   partEditDialog?: string;
   partCategories: PartCategoryListItem[];
+  locations: StorageLocationListItem[];
   units: UnitListItem[];
   categoryAttributesByCategoryId: Record<string, EffectiveCategoryAttribute[]>;
   manufacturerSuggestions: ManufacturerSuggestion[];
@@ -381,6 +387,7 @@ export function PartsListClient({
   partDialogOpen,
   partEditDialog,
   partCategories,
+  locations,
   units,
   categoryAttributesByCategoryId,
   manufacturerSuggestions,
@@ -406,6 +413,7 @@ export function PartsListClient({
   const dialogDetailsContentRef = useRef<HTMLDivElement>(null);
   const nextToastIdRef = useRef(0);
   const categoryTree = buildCategoryTree(partCategories);
+  const locationTree = useMemo(() => buildTree(locations), [locations]);
   const [currentManufacturerSuggestions, setCurrentManufacturerSuggestions] =
     useState(manufacturerSuggestions);
   const [toastMessages, setToastMessages] = useState<ToastMessage[]>([]);
@@ -503,7 +511,7 @@ export function PartsListClient({
     fixedColumnIds: fixedListColumnIds
   });
   // Build filter definitions for the parts list.
-  // renderControl for category and manufacturer close over props data via useMemo.
+  // renderControl for category, manufacturer, and location close over props data via useMemo.
   const partsFilterDefs = useMemo<FilterDefinition[]>(
     () => [
       {
@@ -533,6 +541,7 @@ export function PartsListClient({
                 label={copy.filterByCategory}
                 name="categoryFilterId"
                 noSelectionLabel={copy.allCategories}
+                noneOptionLabel={copy.noCategoryFilter}
                 selectedId={value}
                 onSelectedIdChange={onChange}
               />
@@ -562,6 +571,35 @@ export function PartsListClient({
         )
       },
       {
+        id: "location",
+        label: copy.filterByLocation,
+        type: "tree",
+        urlParam: "locationId",
+        defaultVisible: false,
+        renderControl: ({ value, onChange, disabled: controlDisabled }) =>
+          locations.length > 0 ? (
+            <div className="grid w-56 gap-1.5">
+              <span className="text-sm font-medium text-[var(--color-text-secondary)]">
+                {copy.filterByLocation}
+              </span>
+              <LocationTreeSelect
+                buttonClassName={compactLocationSelectButtonClassName}
+                className="w-full"
+                copy={copy}
+                disabled={controlDisabled ?? false}
+                emptyLabel={copy.allLocations}
+                locations={locations}
+                locationTree={locationTree}
+                name="locationFilter"
+                noneOptionLabel={copy.noDefaultLocation}
+                disableItem={(loc) => loc.isArchived}
+                selectedId={value}
+                onSelectedIdChange={onChange}
+              />
+            </div>
+          ) : null
+      },
+      {
         id: "stockQty",
         label: copy.filterByStock,
         type: "numeric",
@@ -569,11 +607,11 @@ export function PartsListClient({
         defaultVisible: false
       }
     ],
-    // copy, partCategories, categoryTree, and currentManufacturerSuggestions are
-    // the actual data deps; including all filter def inline functions would cause
+    // copy, partCategories, categoryTree, currentManufacturerSuggestions, locations, locationTree
+    // are the actual data deps; including all filter def inline functions would cause
     // re-renders on every render — useMemo stabilizes the array.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [copy.searchParts, copy.filterByCategory, copy.allCategories, copy.filterByManufacturer, copy.allManufacturers, copy.noMatchingManufacturers, copy.filterByStock, partCategories, categoryTree, currentManufacturerSuggestions]
+    [copy.searchParts, copy.filterByCategory, copy.allCategories, copy.noCategoryFilter, copy.filterByManufacturer, copy.allManufacturers, copy.noMatchingManufacturers, copy.filterByLocation, copy.allLocations, copy.noDefaultLocation, copy.filterByStock, partCategories, categoryTree, currentManufacturerSuggestions, locations, locationTree]
   );
 
   const {

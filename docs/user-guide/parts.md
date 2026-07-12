@@ -11,7 +11,7 @@ Here you can create, update, and remove parts. Each part is identified by manufa
 You can also:
 
 - search by text
-- filter by category or manufacturer
+- filter by category, manufacturer, or default location (tree pickers and autocomplete)
 - configure which filters are visible and in what order
 - configure visible columns in the list
 - scroll through large datasets with endless loading
@@ -31,11 +31,22 @@ The filter bar above the parts list lets you narrow down which parts are shown.
 
 - The **search** input is always visible and matches across catalog number, manufacturer name, category, and value.
 - **Category** and **Manufacturer** are toggleable filters shown by default.
-- **Current stock** is a numeric filter — enable it via the **Configure filters** button.
+- **Default location** and **Current stock** are optional filters — enable them via the **Configure filters** button.
 - The order of visible filters can be changed by dragging items in the **Configure filters** panel.
 - Filter configuration (which filters are shown and in what order) is saved per browser, so it persists across page reloads.
 - Active filter values are reflected in the URL, making filtered views deep-linkable and navigable with the browser back/forward buttons.
 - Click **Clear filters** to reset all active filter values at once.
+
+#### Tree Filters (Category and Default Location)
+
+**Category** and **Default location** use tree-picker controls that reflect your workspace's hierarchy.
+
+- Selecting a node matches parts assigned to that node **or any of its descendants**. For example, selecting "Passives" returns all parts in Passives, Capacitors, Resistors, etc.
+- The first option in the dropdown is **All [categories / locations]** — select it to remove the filter.
+- The second option is **No category** / **No default location** — select it to show only parts where that field is unset.
+- Archived locations appear in the picker but cannot be selected as a filter.
+
+**Manufacturer** uses a type-ahead autocomplete: start typing a name and choose from the matching suggestions.
 
 #### Numeric Filters
 

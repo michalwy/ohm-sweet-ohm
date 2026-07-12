@@ -2,7 +2,7 @@
 
 import type { StorageLocationListItem } from "@/server/inventory/locationMutations";
 import { type TreeNode } from "@/app/tree-picker-utils";
-import { TreeSelectButton, TreeSelectPanel, defaultTreeSelectButtonClassName, useTreeSelect } from "@/app/tree-select";
+import { TREE_SELECT_NONE_ID, TreeSelectButton, TreeSelectPanel, defaultTreeSelectButtonClassName, useTreeSelect } from "@/app/tree-select";
 
 export type LocationTreeItem = TreeNode<StorageLocationListItem>;
 
@@ -37,6 +37,9 @@ export const defaultLocationSelectButtonClassName = `flex-1 ${defaultTreeSelectB
 export const formLocationSelectButtonClassName =
   "flex-1 grid min-h-10 w-full grid-cols-[1fr_auto] items-center gap-2 rounded-md border border-[var(--color-border-strong)] bg-[var(--color-bg-elevated)] px-3 py-1.5 text-left text-sm text-[var(--color-text-primary)] outline-none transition hover:border-[var(--color-border-hover)] focus:border-[var(--color-border-hover)] focus:ring-2 focus:ring-[var(--color-ring)] disabled:cursor-not-allowed disabled:bg-[var(--color-bg-subtle)] disabled:text-[var(--color-text-placeholder)]";
 
+export const compactLocationSelectButtonClassName =
+  "flex-1 grid min-h-9 w-full grid-cols-[1fr_auto] items-center gap-3 rounded-md border border-[var(--color-border-strong)] bg-[var(--color-bg-elevated)] px-3 py-1.5 text-left text-sm text-[var(--color-text-primary)] outline-none transition hover:border-[var(--color-border-hover)] focus:border-[var(--color-border-hover)] focus:ring-2 focus:ring-[var(--color-ring)] disabled:cursor-not-allowed disabled:bg-[var(--color-bg-subtle)] disabled:text-[var(--color-text-placeholder)]";
+
 export function LocationTreeSelect({
   locations,
   locationTree,
@@ -47,7 +50,9 @@ export function LocationTreeSelect({
   clearable,
   onClear,
   emptyLabel,
+  noneOptionLabel,
   disabled,
+  disableItem,
   describeLocation,
   className = "w-44",
   buttonClassName = defaultLocationSelectButtonClassName
@@ -61,7 +66,11 @@ export function LocationTreeSelect({
   clearable?: boolean;
   onClear?: () => void;
   emptyLabel?: string;
+  /** When set, shows a "no value" option in the dropdown that calls onSelectedIdChange("__none__"). */
+  noneOptionLabel?: string;
   disabled?: boolean;
+  /** When provided, items returning true are shown but cannot be selected. */
+  disableItem?: (location: StorageLocationListItem) => boolean;
   describeLocation?: (location: StorageLocationListItem) => string | undefined;
   className?: string;
   buttonClassName?: string;
@@ -69,6 +78,7 @@ export function LocationTreeSelect({
   const buttonId = `${name}-button`;
   const searchId = `${name}-search`;
   const currentSelectedLocation = locations.find((loc) => loc.id === selectedId);
+  const isNoneSelected = selectedId === TREE_SELECT_NONE_ID;
 
   const {
     containerRef,
@@ -95,10 +105,21 @@ export function LocationTreeSelect({
     selectedId,
     filterTree: filterLocationTree,
     onSelectedIdChange,
+    includeEmptyOption: Boolean(emptyLabel),
+    noneOptionLabel,
   });
 
   function commitActive() {
+    if (activeId === TREE_SELECT_NONE_ID) {
+      setSelectedLocation(TREE_SELECT_NONE_ID);
+      return;
+    }
+    if (activeId === "") {
+      setSelectedLocation("");
+      return;
+    }
     if (!activeLocation?.isAssignable) return;
+    if (disableItem?.(activeLocation)) return;
     setSelectedLocation(activeId);
   }
 
@@ -107,11 +128,14 @@ export function LocationTreeSelect({
   const selectedDescription = currentSelectedLocation
     ? describeLocation?.(currentSelectedLocation)
     : undefined;
-  const triggerLabel = currentSelectedLocation
+  const triggerLabel = isNoneSelected
+    ? (noneOptionLabel ?? copy.chooseLocation)
+    : currentSelectedLocation
     ? selectedDescription
       ? `${currentSelectedLocation.name} — ${selectedDescription}`
       : currentSelectedLocation.name
     : emptyLabel ?? copy.chooseLocation;
+  const hasSelection = isNoneSelected || Boolean(currentSelectedLocation);
   const showClear = clearable && Boolean(selectedId);
 
   return (
@@ -121,7 +145,7 @@ export function LocationTreeSelect({
         buttonClassName={buttonClassName}
         buttonId={buttonId}
         disabled={disabled}
-        hasSelection={Boolean(currentSelectedLocation)}
+        hasSelection={hasSelection}
         selectedLabel={triggerLabel}
         onKeyDown={handleKeyDown}
         onToggle={() => (isOpen ? setIsOpen(false) : openSelect())}
@@ -142,7 +166,9 @@ export function LocationTreeSelect({
       ) : null}
       {isOpen ? (
         <TreeSelectPanel
+          activeId={activeId}
           listboxAriaLabelledby={buttonId}
+          noneOptionLabel={noneOptionLabel}
           panelMinWidth={240}
           panelRef={panelRef}
           panelStyle={panelStyle}
@@ -151,8 +177,24 @@ export function LocationTreeSelect({
           searchLabel={copy.searchLocations}
           searchQuery={searchQuery}
           onKeyDown={handleKeyDown}
+          onNoneSelect={() => setSelectedLocation(TREE_SELECT_NONE_ID)}
           onSearchChange={setSearchQuery}
         >
+          {emptyLabel ? (
+            <button
+              aria-selected={selectedId === ""}
+              className={`mb-1 min-h-8 w-full rounded-md px-2 py-1 text-left text-sm transition focus:outline-none focus:ring-2 focus:ring-[var(--color-ring-strong)] ${
+                activeId === ""
+                  ? "bg-[var(--color-accent-soft)] font-semibold text-[var(--color-text-primary)] hover:bg-[var(--color-accent-soft)]"
+                  : "text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-subtle)]"
+              }`}
+              role="option"
+              type="button"
+              onClick={() => setSelectedLocation("")}
+            >
+              {emptyLabel}
+            </button>
+          ) : null}
           {visibleTree.length > 0 ? (
             <ol className="grid gap-1">
               {visibleTree.map((location) => (
@@ -161,6 +203,7 @@ export function LocationTreeSelect({
                   location={location}
                   copy={copy}
                   describeLocation={describeLocation}
+                  disableItem={disableItem}
                   expandedIds={effectiveExpandedIds}
                   activeId={activeId}
                   level={0}
@@ -185,6 +228,7 @@ function LocationTreeSelectNode({
   location,
   copy,
   describeLocation,
+  disableItem,
   expandedIds,
   activeId,
   level,
@@ -195,6 +239,7 @@ function LocationTreeSelectNode({
   location: LocationTreeItem;
   copy: LocationTreeSelectCopy;
   describeLocation?: (location: StorageLocationListItem) => string | undefined;
+  disableItem?: (location: StorageLocationListItem) => boolean;
   expandedIds: Set<string>;
   activeId: string;
   level: number;
@@ -206,7 +251,8 @@ function LocationTreeSelectNode({
   const isExpanded = expandedIds.has(location.id);
   const isSelected = selectedId === location.id;
   const isActive = activeId === location.id;
-  const canSelect = location.isAssignable;
+  const isDisabled = disableItem?.(location) ?? false;
+  const canSelect = location.isAssignable && !isDisabled;
   const description = describeLocation?.(location);
   const toggleLabel = isExpanded
     ? `${copy.collapseLocation} ${location.name}`
@@ -254,7 +300,7 @@ function LocationTreeSelectNode({
             ) : null}
           </button>
         ) : (
-          <span className="truncate px-2 py-1.5 text-sm text-[var(--color-text-placeholder)]">{location.name}</span>
+          <span className={`truncate px-2 py-1.5 text-sm ${isDisabled ? "text-[var(--color-text-placeholder)] line-through" : "text-[var(--color-text-placeholder)]"}`}>{location.name}</span>
         )}
       </div>
       {hasChildren && isExpanded ? (
@@ -265,6 +311,7 @@ function LocationTreeSelectNode({
               location={child}
               copy={copy}
               describeLocation={describeLocation}
+              disableItem={disableItem}
               expandedIds={expandedIds}
               activeId={activeId}
               level={level + 1}

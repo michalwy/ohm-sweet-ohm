@@ -71,9 +71,13 @@ export function TreeSelectButton({
   );
 }
 
+export const TREE_SELECT_NONE_ID = "__none__";
+
 export function TreeSelectPanel({
+  activeId,
   children,
   listboxAriaLabelledby,
+  noneOptionLabel,
   panelMinWidth,
   panelRef,
   panelStyle,
@@ -82,10 +86,13 @@ export function TreeSelectPanel({
   searchLabel,
   searchQuery,
   onKeyDown,
+  onNoneSelect,
   onSearchChange
 }: {
+  activeId?: string;
   children: ReactNode;
   listboxAriaLabelledby?: string;
+  noneOptionLabel?: string;
   panelMinWidth?: number;
   panelRef: RefObject<HTMLDivElement | null>;
   panelStyle: CSSProperties;
@@ -94,8 +101,10 @@ export function TreeSelectPanel({
   searchLabel: string;
   searchQuery: string;
   onKeyDown: (event: ReactKeyboardEvent) => void;
+  onNoneSelect?: () => void;
   onSearchChange: (query: string) => void;
 }) {
+  const noneIsActive = activeId === TREE_SELECT_NONE_ID;
   return createPortal(
     <div
       ref={panelRef}
@@ -124,6 +133,21 @@ export function TreeSelectPanel({
           className="min-h-0 overflow-auto p-2"
           role="listbox"
         >
+          {noneOptionLabel ? (
+            <button
+              aria-selected={noneIsActive}
+              className={`mb-1 min-h-8 w-full rounded-md px-2 py-1 text-left text-sm italic transition ${
+                noneIsActive
+                  ? "bg-[var(--color-accent-soft)] font-semibold text-[var(--color-text-primary)]"
+                  : "text-[var(--color-text-placeholder)] hover:bg-[var(--color-bg-subtle)]"
+              }`}
+              role="option"
+              type="button"
+              onClick={onNoneSelect}
+            >
+              {noneOptionLabel}
+            </button>
+          ) : null}
           {children}
         </div>
       </div>
@@ -139,6 +163,7 @@ export function useTreeSelect<T extends { id: string; parentId: string | null; n
   filterTree,
   onSelectedIdChange,
   includeEmptyOption = false,
+  noneOptionLabel,
 }: {
   items: T[];
   tree: TreeNode<T>[];
@@ -146,6 +171,7 @@ export function useTreeSelect<T extends { id: string; parentId: string | null; n
   filterTree: (tree: TreeNode<T>[], normalizedQuery: string) => TreeNode<T>[];
   onSelectedIdChange: (id: string) => void;
   includeEmptyOption?: boolean;
+  noneOptionLabel?: string;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
@@ -167,9 +193,12 @@ export function useTreeSelect<T extends { id: string; parentId: string | null; n
     : expandedIds;
   const visibleOptions = getVisibleOptions(visibleTree, effectiveExpandedIds);
   const activeItem = visibleOptions.find((item) => item.id === activeId);
-  const keyboardOptionIds = includeEmptyOption
+  const baseOptionIds = includeEmptyOption
     ? ["", ...visibleOptions.map((item) => item.id)]
     : visibleOptions.map((item) => item.id);
+  const keyboardOptionIds = noneOptionLabel
+    ? [TREE_SELECT_NONE_ID, ...baseOptionIds]
+    : baseOptionIds;
 
   useEffect(() => {
     if (!isOpen) return;
@@ -299,6 +328,7 @@ export function useTreeSelect<T extends { id: string; parentId: string | null; n
     visibleOptions,
     activeItem,
     keyboardOptionIds,
+    noneOptionLabel,
     openSelect,
     setSelected,
     selectInPlace,

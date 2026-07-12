@@ -5,6 +5,7 @@ import { authorizeWorkspacePermission } from "@/server/access-control/authorize"
 import { prisma } from "@/server/db/prisma";
 import { getPartCategories } from "@/server/parts/categories";
 import { getEffectivePartCategoryAttributes } from "@/server/parts/attributes";
+import { getStorageLocations } from "@/server/inventory/locationMutations";
 import {
   decodeListCursor,
   encodeListCursor,
@@ -51,10 +52,14 @@ export type PartsListResult = {
   isDatabaseAvailable: boolean;
 };
 
+/** Sentinel used in filter URL params to mean "no value assigned" (IS NULL). */
+export const FILTER_NONE_SENTINEL = "__none__";
+
 export type PartsListFilters = {
   searchQuery?: string | null;
   categoryFilterId?: string | null;
   manufacturerFilter?: string | null;
+  locationFilterId?: string | null;
   pinnedId?: string | null;
   /** Serialized NumericFilter for the Part.currentStock field, e.g. "gte:5". */
   stockQuantityFilter?: string | null;
@@ -154,9 +159,18 @@ export async function getPartsListPage(
     };
   }
 
+  const locations =
+    input.locationFilterId
+      ? await getStorageLocations(context.workspace.id)
+      : [];
+
   const filterCategoryIds = getCategoryFilterIds({
     categories,
     categoryId: input.categoryFilterId
+  });
+  const filterLocationIds = getLocationFilterIds({
+    locations,
+    locationId: input.locationFilterId
   });
   const searchCategoryIds = getSearchCategoryIds({
     categories,
@@ -166,6 +180,7 @@ export async function getPartsListPage(
     workspaceId: context.workspace.id,
     filters: input,
     filterCategoryIds,
+    filterLocationIds,
     searchCategoryIds
   });
   const activeSortBy = input.sortBy?.trim() ?? "";
@@ -1015,24 +1030,34 @@ function getPartsListWhere({
   workspaceId,
   filters,
   filterCategoryIds,
+  filterLocationIds,
   searchCategoryIds
 }: {
   workspaceId: string;
   filters: PartsListFilters;
   filterCategoryIds: string[];
+  filterLocationIds: string[];
   searchCategoryIds: string[];
 }): Prisma.PartWhereInput {
   const conditions: Prisma.PartWhereInput[] = [{ workspaceId }];
   const manufacturerFilter = normalizeSearchText(filters.manufacturerFilter);
   const searchQuery = normalizeSearchText(filters.searchQuery);
 
-  if (filterCategoryIds.length > 0) {
+  if (filters.categoryFilterId === FILTER_NONE_SENTINEL) {
+    conditions.push({ primaryCategoryId: null });
+  } else if (filterCategoryIds.length > 0) {
     conditions.push({
       OR: [
         { primaryCategoryId: { in: filterCategoryIds } },
         { secondaryCategoryId: { in: filterCategoryIds } }
       ]
     });
+  }
+
+  if (filters.locationFilterId === FILTER_NONE_SENTINEL) {
+    conditions.push({ defaultLocationId: null });
+  } else if (filterLocationIds.length > 0) {
+    conditions.push({ defaultLocationId: { in: filterLocationIds } });
   }
 
   if (manufacturerFilter) {
@@ -1199,7 +1224,7 @@ function getCategoryFilterIds({
   categories: Array<{ id: string; parentId: string | null }>;
   categoryId?: string | null;
 }) {
-  if (!categoryId) {
+  if (!categoryId || categoryId === FILTER_NONE_SENTINEL) {
     return [];
   }
 
@@ -1216,6 +1241,38 @@ function getCategoryFilterIds({
         !filterIds.has(category.id)
       ) {
         filterIds.add(category.id);
+        changed = true;
+      }
+    }
+  }
+
+  return [...filterIds];
+}
+
+function getLocationFilterIds({
+  locations,
+  locationId
+}: {
+  locations: Array<{ id: string; parentId: string | null }>;
+  locationId?: string | null;
+}) {
+  if (!locationId || locationId === FILTER_NONE_SENTINEL) {
+    return [];
+  }
+
+  const filterIds = new Set([locationId]);
+  let changed = true;
+
+  while (changed) {
+    changed = false;
+
+    for (const location of locations) {
+      if (
+        location.parentId &&
+        filterIds.has(location.parentId) &&
+        !filterIds.has(location.id)
+      ) {
+        filterIds.add(location.id);
         changed = true;
       }
     }

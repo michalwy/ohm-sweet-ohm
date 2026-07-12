@@ -35,6 +35,7 @@ export function usePartsListQuery({
   const searchQuery = filterValues["search"] ?? "";
   const categoryFilterId = filterValues["category"] ?? "";
   const manufacturerFilter = filterValues["manufacturer"] ?? "";
+  const locationFilterId = filterValues["location"] ?? "";
   const stockQuantityFilter = filterValues["stockQty"] ?? "";
 
   const debouncedSearchQuery = useDebouncedValue(searchQuery, 300);
@@ -49,6 +50,7 @@ export function usePartsListQuery({
       searchQuery: debouncedSearchQuery,
       categoryFilterId,
       manufacturerFilter: debouncedManufacturerFilter,
+      locationFilterId,
       stockQuantityFilter,
       sorting,
       pinnedId
@@ -66,6 +68,7 @@ export function usePartsListQuery({
         searchQuery: debouncedSearchQuery,
         categoryFilterId,
         manufacturerFilter: debouncedManufacturerFilter,
+        locationFilterId: locationFilterId || null,
         stockQuantityFilter: stockQuantityFilter || null,
         sortBy: activeSorting?.id ?? null,
         sortDirection: activeSorting?.desc ? "desc" : "asc",
@@ -85,6 +88,7 @@ export function usePartsListQuery({
       !debouncedSearchQuery &&
       !categoryFilterId &&
       !debouncedManufacturerFilter &&
+      !locationFilterId &&
       !stockQuantityFilter &&
       !pinnedId &&
       sorting.length === 0
@@ -104,6 +108,7 @@ export function usePartsListQuery({
     Boolean(searchQuery.trim()) ||
     Boolean(categoryFilterId) ||
     Boolean(manufacturerFilter) ||
+    Boolean(locationFilterId) ||
     Boolean(stockQuantityFilter);
 
   const partsCounts = partsQuery.data?.pages[0] ??

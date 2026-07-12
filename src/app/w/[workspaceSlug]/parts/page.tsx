@@ -10,6 +10,7 @@ import {
 import { getManufacturerSuggestionsForPartForm } from "@/server/organizations/organizations";
 import { getWorkspaceActiveSupplierProvider } from "@/server/integrations/providerSettings";
 import { getPartCategoriesForPartForm } from "@/server/parts/categories";
+import { getLocationsForWorkspace } from "@/server/inventory/locationActions";
 import { getPartsList } from "@/server/parts/getParts";
 import {
   getEffectivePartCategoryAttributes,
@@ -57,8 +58,12 @@ const copy = {
   searchPartsPlaceholder: "Search catalog, manufacturer, category, value",
   filterByCategory: "Category",
   allCategories: "All categories",
+  noCategoryFilter: "No category",
   filterByManufacturer: "Manufacturer",
   allManufacturers: "All manufacturers",
+  filterByLocation: "Default location",
+  allLocations: "All locations",
+  noDefaultLocation: "No default location",
   filterByStock: "Current stock",
   clearFilters: "Clear filters",
   configureFilters: "Configure filters",
@@ -292,7 +297,8 @@ export default async function PartsPage({
     manufacturerSuggestions,
     workspaceAttributes,
     globalWorkspaceAttributesForMatching,
-    units
+    units,
+    locationsResult
   ] =
     isDatabaseAvailable
     ? await Promise.all([
@@ -316,9 +322,11 @@ export default async function PartsPage({
             }))
           )
           .catch(() => []),
-        getUnitsForWorkspace(context.workspace.id).catch(() => [])
+        getUnitsForWorkspace(context.workspace.id).catch(() => []),
+        getLocationsForWorkspace({ workspaceSlug }).catch(() => null)
       ])
-    : [[], [], [], [], []];
+    : [[], [], [], [], [], null];
+  const locations = locationsResult?.ok ? locationsResult.data : [];
   const categoryAttributesByCategoryId = isDatabaseAvailable
     ? Object.fromEntries(
         await Promise.all(
@@ -411,6 +419,7 @@ export default async function PartsPage({
         partDialogOpen={partDialogOpen}
         partEditDialog={partEditDialog}
         partCategories={partCategories}
+        locations={locations}
         categoryAttributesByCategoryId={categoryAttributesByCategoryId}
         manufacturerSuggestions={manufacturerSuggestions}
         workspaceAttributes={workspaceAttributes}

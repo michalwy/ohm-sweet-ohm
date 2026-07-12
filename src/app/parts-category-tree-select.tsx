@@ -2,7 +2,7 @@
 
 import type { PartCategoryListItem } from "@/server/parts/categories";
 import { LabelWithError } from "@/app/dialog-shell";
-import { TreeSelectButton, TreeSelectPanel, useTreeSelect } from "@/app/tree-select";
+import { TREE_SELECT_NONE_ID, TreeSelectButton, TreeSelectPanel, useTreeSelect } from "@/app/tree-select";
 import {
   buildTree,
   type TreeNode,
@@ -246,6 +246,7 @@ export function CategoryTreeSelect({
   label,
   name,
   noSelectionLabel,
+  noneOptionLabel,
   selectedId,
   error,
   onSelectedIdChange
@@ -260,6 +261,8 @@ export function CategoryTreeSelect({
   label: string;
   name: string;
   noSelectionLabel: string;
+  /** When set, shows a "no value assigned" option that calls onSelectedIdChange("__none__"). */
+  noneOptionLabel?: string;
   selectedId: string;
   error?: string;
   onSelectedIdChange: (categoryId: string) => void;
@@ -267,9 +270,10 @@ export function CategoryTreeSelect({
   const labelId = `${name}-label`;
   const buttonId = `${name}-button`;
   const searchId = `${name}-search`;
-  const currentSelectedCategory = categories.find(
-    (category) => category.id === selectedId
-  );
+  const isNoneSelected = selectedId === TREE_SELECT_NONE_ID;
+  const currentSelectedCategory = isNoneSelected
+    ? undefined
+    : categories.find((category) => category.id === selectedId);
 
   const {
     containerRef,
@@ -297,6 +301,7 @@ export function CategoryTreeSelect({
     filterTree: filterCategoryTree,
     onSelectedIdChange,
     includeEmptyOption: true,
+    noneOptionLabel,
   });
 
   function openSelect() {
@@ -319,6 +324,10 @@ export function CategoryTreeSelect({
 
   function commitActiveCategory() {
     if (!keyboardOptionIds.includes(activeCategoryId)) return;
+    if (activeCategoryId === TREE_SELECT_NONE_ID) {
+      setSelectedCategory(TREE_SELECT_NONE_ID);
+      return;
+    }
     if (activeCategoryId === "") {
       setSelectedCategory("");
       return;
@@ -341,6 +350,10 @@ export function CategoryTreeSelect({
 
   const handleComboboxKeyDown = buildHandleKeyDown(commitActiveCategory);
 
+  const triggerLabel = isNoneSelected
+    ? (noneOptionLabel ?? noSelectionLabel)
+    : currentSelectedCategory?.path ?? noSelectionLabel;
+
   return (
     <div ref={containerRef} className="relative grid gap-2">
       <span id={labelId}>
@@ -350,18 +363,20 @@ export function CategoryTreeSelect({
       <TreeSelectButton
         ariaExpanded={isOpen}
         ariaInvalid={error ? true : undefined}
-        ariaLabel={`${label} ${currentSelectedCategory?.path ?? noSelectionLabel}`}
+        ariaLabel={`${label} ${triggerLabel}`}
         buttonClassName={buttonClassName}
         buttonId={buttonId}
         disabled={disabled}
-        hasSelection={Boolean(currentSelectedCategory)}
-        selectedLabel={currentSelectedCategory?.path ?? noSelectionLabel}
+        hasSelection={isNoneSelected || Boolean(currentSelectedCategory)}
+        selectedLabel={triggerLabel}
         onKeyDown={handleComboboxKeyDown}
         onToggle={() => (isOpen ? setIsOpen(false) : openSelect())}
       />
       {isOpen ? (
         <TreeSelectPanel
+          activeId={activeCategoryId}
           listboxAriaLabelledby={labelId}
+          noneOptionLabel={noneOptionLabel}
           panelRef={panelRef}
           panelStyle={panelStyle}
           portalTarget={portalTarget}
@@ -369,6 +384,7 @@ export function CategoryTreeSelect({
           searchLabel={copy.searchCategories}
           searchQuery={searchQuery}
           onKeyDown={handleComboboxKeyDown}
+          onNoneSelect={() => setSelectedCategory(TREE_SELECT_NONE_ID)}
           onSearchChange={updateSearchQuery}
         >
           <button
