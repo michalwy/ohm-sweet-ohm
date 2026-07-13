@@ -95,7 +95,8 @@ export async function getOrganizationsForWorkspace({
   cursor,
   pageSize,
   sortDir = "asc",
-  searchQuery
+  searchQuery,
+  roleFilter
 }: {
   userId: string;
   workspaceId: string;
@@ -103,6 +104,7 @@ export async function getOrganizationsForWorkspace({
   pageSize?: number | null;
   sortDir?: "asc" | "desc";
   searchQuery?: string | null;
+  roleFilter?: string | null;
 }): Promise<ListPage<OrganizationSummary>> {
   await authorizeWorkspacePermission({
     userId,
@@ -112,31 +114,39 @@ export async function getOrganizationsForWorkspace({
 
   const limit = getListPageSize(pageSize);
   const baseWhere: Prisma.OrganizationWhereInput = { workspaceId, isInternal: false };
-  const searchWhere: Prisma.OrganizationWhereInput = searchQuery
-    ? { name: { contains: searchQuery, mode: "insensitive" } }
-    : {};
+  const whereClauses: Prisma.OrganizationWhereInput[] = [baseWhere];
+  if (searchQuery) {
+    whereClauses.push({ name: { contains: searchQuery, mode: "insensitive" } });
+  }
+  if (roleFilter) {
+    whereClauses.push({ roles: { some: { role: roleFilter } } });
+  }
+  const filteredWhere: Prisma.OrganizationWhereInput =
+    whereClauses.length > 1 ? { AND: whereClauses } : baseWhere;
+  const hasFilters = whereClauses.length > 1;
 
   const totalCount = await prisma.organization.count({ where: baseWhere });
-  const filteredCount = searchQuery
-    ? await prisma.organization.count({ where: { ...baseWhere, ...searchWhere } })
+  const filteredCount = hasFilters
+    ? await prisma.organization.count({ where: filteredWhere })
     : totalCount;
 
   const decoded = decodeListCursor<NameCursor>(cursor);
   const dir = sortDir === "asc" ? "asc" : "desc";
 
   const rows = await prisma.organization.findMany({
-    where: {
-      ...baseWhere,
-      ...searchWhere,
-      ...(decoded
-        ? {
-            OR: [
-              { name: dir === "asc" ? { gt: decoded.name } : { lt: decoded.name } },
-              { name: decoded.name, id: dir === "asc" ? { gt: decoded.id } : { lt: decoded.id } }
-            ]
-          }
-        : {})
-    },
+    where: decoded
+      ? {
+          AND: [
+            filteredWhere,
+            {
+              OR: [
+                { name: dir === "asc" ? { gt: decoded.name } : { lt: decoded.name } },
+                { name: decoded.name, id: dir === "asc" ? { gt: decoded.id } : { lt: decoded.id } }
+              ]
+            }
+          ]
+        }
+      : filteredWhere,
     orderBy: [{ name: dir }, { id: dir }],
     take: limit + 1,
     select: {

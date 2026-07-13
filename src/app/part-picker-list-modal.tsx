@@ -45,7 +45,6 @@ export type PartPickerCopy = PartsListFiltersCopy &
     alreadyAdded: string;
     filteredPartsSummary: string;
     configureList: string;
-    clearFilters: string;
     visibleColumns: string;
     attributeColumns: string;
     emptyTitle: string;
@@ -251,7 +250,6 @@ export function PartPickerListModal({
         <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-elevated)]">
           <ListPageToolbar
             columnGroups={[]}
-            clearFiltersLabel={copy.clearFilters}
             columnVisibility={columnVisibility}
             configurableColumns={configurableColumns}
             configureListLabel={copy.configureList}

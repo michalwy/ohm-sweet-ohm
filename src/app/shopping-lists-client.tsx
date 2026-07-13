@@ -161,9 +161,7 @@ type Copy = {
   resetListConfiguration: string;
   listCountSummary: string;
   searchLists: string;
-  configureFilters: string;
-  clearFilters: string;
-  availableFilters: string;
+  filterCreatedAt: string;
   multiAdd: MultiAddToSLCopy;
 };
 
@@ -271,9 +269,16 @@ export function ShoppingListsClient({
         urlParam: "q",
         debounceMs: 300,
         alwaysVisible: true
+      },
+      {
+        id: "createdAt",
+        label: copy.filterCreatedAt,
+        type: "date-range",
+        urlParam: "createdAt",
+        defaultVisible: true
       }
     ],
-    [copy.searchLists]
+    [copy.searchLists, copy.filterCreatedAt]
   );
 
   const { filterValues, setFilterValue, clearFilterValues, hasActiveFilters } =
@@ -292,7 +297,7 @@ export function ShoppingListsClient({
   const activeSorting = sorting[0] ?? null;
 
   const listsQuery = useInfiniteQuery({
-    queryKey: ["shopping-lists", workspaceSlug, { sorting, pinnedListId, search: debouncedSearch }] as const,
+    queryKey: ["shopping-lists", workspaceSlug, { sorting, pinnedListId, search: debouncedSearch, createdAt: filterValues.createdAt }] as const,
     enabled: isListConfigLoaded,
     initialPageParam: null as string | null,
     queryFn: async ({ pageParam }) => {
@@ -302,7 +307,8 @@ export function ShoppingListsClient({
         sortBy: (activeSorting?.id ?? null) as ShoppingListSortBy | null,
         sortDirection: activeSorting ? (activeSorting.desc ? "desc" : "asc") : null,
         pinnedId: pinnedListId,
-        searchQuery: debouncedSearch || null
+        searchQuery: debouncedSearch || null,
+        createdAtFilter: filterValues.createdAt || null
       });
       if (!result.ok) throw new Error(result.error);
       return result.data;
@@ -310,7 +316,7 @@ export function ShoppingListsClient({
     getNextPageParam: (lastPage) => lastPage.nextCursor,
     placeholderData: keepPreviousData,
     initialData:
-      sorting.length === 0 && !pinnedListId && !debouncedSearch
+      sorting.length === 0 && !pinnedListId && !debouncedSearch && !filterValues.createdAt
         ? { pages: [initialPage], pageParams: [null] }
         : undefined
   });
@@ -798,8 +804,6 @@ export function ShoppingListsClient({
             }
             hasActiveFilters={hasActiveFilters}
             onClearFilters={clearFilterValues}
-            clearFiltersLabel={copy.clearFilters}
-            configureFiltersLabel={copy.configureFilters}
             onConfigureFilters={() => filterBarRef.current?.openConfigure()}
             totalCount={listsQuery.data?.pages[0]?.totalCount}
             visibleColumnsLabel={copy.visibleColumns}
@@ -807,7 +811,6 @@ export function ShoppingListsClient({
             filterContent={
               <FilterBar
                 ref={filterBarRef}
-                availableFiltersLabel={copy.availableFilters}
                 configurableFilters={configurableFilters}
                 disabled={listsQuery.isLoading}
                 filterOrder={filterOrder}

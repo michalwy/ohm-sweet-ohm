@@ -93,9 +93,7 @@ type Copy = {
   visibleColumns: string;
   listCountSummary: string;
   searchOrganizations: string;
-  configureFilters: string;
-  clearFilters: string;
-  availableFilters: string;
+  filterRole: string;
   currency: string;
   chooseCurrency: string;
   defaultPriceEntryMode: string;
@@ -195,9 +193,20 @@ export function OrganizationsClient({
         urlParam: "q",
         debounceMs: 300,
         alwaysVisible: true
+      },
+      {
+        id: "role",
+        label: copy.filterRole,
+        type: "choice",
+        urlParam: "role",
+        defaultVisible: true,
+        choiceOptions: [
+          { id: ORGANIZATION_ROLES[0], label: copy.roleManufacturer },
+          { id: ORGANIZATION_ROLES[1], label: copy.roleSupplier }
+        ]
       }
     ],
-    [copy.searchOrganizations]
+    [copy.searchOrganizations, copy.filterRole, copy.roleManufacturer, copy.roleSupplier]
   );
 
   const { filterValues, setFilterValue, clearFilterValues, hasActiveFilters } =
@@ -217,14 +226,15 @@ export function OrganizationsClient({
   const sortDir = activeSorting?.desc ? "desc" : "asc";
 
   const orgsQuery = useInfiniteQuery({
-    queryKey: ["organizations", workspaceSlug, { sorting, search: debouncedSearch }] as const,
+    queryKey: ["organizations", workspaceSlug, { sorting, search: debouncedSearch, role: filterValues.role }] as const,
     initialPageParam: null as string | null,
     queryFn: async ({ pageParam }) => {
       const result = await getOrganizationsPageForWorkspace({
         workspaceSlug,
         cursor: pageParam,
         sortDir,
-        searchQuery: debouncedSearch || null
+        searchQuery: debouncedSearch || null,
+        roleFilter: filterValues.role || null
       });
       if (!result.ok) throw new Error(result.error);
       return result.data;
@@ -232,7 +242,7 @@ export function OrganizationsClient({
     getNextPageParam: (lastPage) => lastPage.nextCursor,
     placeholderData: keepPreviousData,
     initialData:
-      sorting.length === 0 && !debouncedSearch
+      sorting.length === 0 && !debouncedSearch && !filterValues.role
         ? { pages: [initialPage], pageParams: [null] }
         : undefined
   });
@@ -470,8 +480,6 @@ export function OrganizationsClient({
           }
           hasActiveFilters={hasActiveFilters}
           onClearFilters={clearFilterValues}
-          clearFiltersLabel={copy.clearFilters}
-          configureFiltersLabel={copy.configureFilters}
           onConfigureFilters={() => filterBarRef.current?.openConfigure()}
           totalCount={orgsQuery.data?.pages[0]?.totalCount}
           visibleColumnsLabel={copy.visibleColumns}
@@ -479,7 +487,6 @@ export function OrganizationsClient({
           filterContent={
             <FilterBar
               ref={filterBarRef}
-              availableFiltersLabel={copy.availableFilters}
               configurableFilters={configurableFilters}
               disabled={orgsQuery.isLoading}
               filterOrder={filterOrder}

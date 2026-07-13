@@ -24,10 +24,12 @@ import {
   getBuildCreateOptionsAction,
   getBuildDetailAction,
   reassignDesignatorAssignmentAction,
+  searchDesignsForWorkspace,
   setBuildAllocationsAction,
-  startBuildAction
+  startBuildAction,
+  type DesignOption
 } from "@/server/builds/buildActions";
-import type { BuildDetail, BuildSummary } from "@/server/builds/builds";
+import type { BuildDetail, BuildState, BuildSummary } from "@/server/builds/builds";
 import type { MatcherOperator } from "@/server/designs/bomMatcherEvaluation";
 import type { ListPage } from "@/server/pagination";
 import type { StorageLocationListItem } from "@/server/inventory/locationMutations";
@@ -148,9 +150,10 @@ export type BuildsCopy = {
   clearPinnedFilter: string;
   buildCountSummary: string;
   searchBuilds: string;
-  configureFilters: string;
-  clearFilters: string;
-  availableFilters: string;
+  filterState: string;
+  filterCreatedAt: string;
+  filterDesign: string;
+  chooseDesign: string;
 };
 
 type BuildsClientProps = {
@@ -202,6 +205,120 @@ const inputClass =
   "mt-1 w-full rounded-md border border-[var(--color-border-strong)] bg-[var(--color-bg-input)] px-3 py-2 text-sm text-[var(--color-text-primary)] focus:border-[var(--color-accent)] focus:outline-none focus:ring-1 focus:ring-[var(--color-accent)]";
 const smallSelectClass =
   "h-10 w-full rounded-md border border-[var(--color-border-strong)] bg-[var(--color-bg-input)] px-2 py-1 text-sm text-[var(--color-text-primary)] focus:border-[var(--color-accent)] focus:outline-none focus:ring-1 focus:ring-[var(--color-accent)] disabled:opacity-60";
+
+function DesignFilterControl({
+  value,
+  onChange,
+  disabled,
+  workspaceSlug,
+  copy
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  disabled: boolean;
+  workspaceSlug: string;
+  copy: { chooseDesign: string; filterDesign: string };
+}) {
+  const [lastSelectedName, setLastSelectedName] = useState<string | null>(null);
+  const { data: allDesigns } = useQuery({
+    queryKey: ["design-search", workspaceSlug, ""],
+    queryFn: async () => {
+      const result = await searchDesignsForWorkspace({ workspaceSlug, searchQuery: undefined });
+      return result.ok ? result.data : ([] as DesignOption[]);
+    },
+    staleTime: 30_000
+  });
+  const resolvedName = value
+    ? (allDesigns?.find((d) => d.id === value)?.name ?? lastSelectedName ?? value)
+    : null;
+
+  if (value && resolvedName) {
+    return (
+      <div className="flex min-h-9 min-w-40 items-center gap-2 rounded-md border border-[var(--color-border-strong)] bg-[var(--color-bg-elevated)] px-3 text-sm text-[var(--color-text-primary)]">
+        <span className="flex-1 truncate">{resolvedName}</span>
+        <button
+          aria-label="Clear design filter"
+          className="shrink-0 text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]"
+          disabled={disabled}
+          type="button"
+          onClick={() => onChange("")}
+        >
+          ×
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <DesignCombobox
+      allDesigns={allDesigns ?? []}
+      disabled={disabled}
+      workspaceSlug={workspaceSlug}
+      placeholder={copy.chooseDesign}
+      onSelect={(design) => {
+        setLastSelectedName(design.name);
+        onChange(design.id);
+      }}
+    />
+  );
+}
+
+function DesignCombobox({
+  allDesigns,
+  disabled,
+  workspaceSlug,
+  placeholder,
+  onSelect
+}: {
+  allDesigns: DesignOption[];
+  disabled: boolean;
+  workspaceSlug: string;
+  placeholder: string;
+  onSelect: (design: DesignOption) => void;
+}) {
+  const [query, setQuery] = useState("");
+  const { data: searchResults } = useQuery({
+    queryKey: ["design-search", workspaceSlug, query],
+    queryFn: async () => {
+      const result = await searchDesignsForWorkspace({ workspaceSlug, searchQuery: query || null });
+      return result.ok ? result.data : ([] as DesignOption[]);
+    },
+    enabled: Boolean(query),
+    staleTime: 30_000
+  });
+  const options = query ? (searchResults ?? []) : allDesigns;
+
+  return (
+    <div className="relative min-w-52">
+      <input
+        className="min-h-9 w-full rounded-md border border-[var(--color-border-strong)] bg-[var(--color-bg-elevated)] px-3 py-1.5 text-sm text-[var(--color-text-primary)] outline-none transition placeholder:text-[var(--color-text-placeholder)] hover:border-[var(--color-border-hover)] focus:border-[var(--color-border-hover)] focus:ring-2 focus:ring-[var(--color-ring)] disabled:cursor-not-allowed disabled:opacity-60"
+        disabled={disabled}
+        placeholder={placeholder}
+        type="search"
+        value={query}
+        onChange={(e) => setQuery(e.currentTarget.value)}
+      />
+      {options.length > 0 && query ? (
+        <ul className="absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-md border border-[var(--color-border)] bg-[var(--color-bg-elevated)] py-1 shadow-md">
+          {options.map((d) => (
+            <li key={d.id}>
+              <button
+                className="w-full px-3 py-2 text-left text-sm text-[var(--color-text-primary)] hover:bg-[var(--color-bg-subtle)]"
+                type="button"
+                onClick={() => {
+                  setQuery("");
+                  onSelect(d);
+                }}
+              >
+                {d.name}
+              </button>
+            </li>
+          ))}
+        </ul>
+      ) : null}
+    </div>
+  );
+}
 
 export function BuildsClient({
   canWrite,
@@ -279,6 +396,8 @@ export function BuildsClient({
 
   // --- Filters ---
 
+  const BUILD_STATES: BuildState[] = ["ALLOCATING", "STARTED", "IN_PROGRESS", "COMPLETED", "CANCELLED"];
+
   const buildFilterDefs = useMemo<FilterDefinition[]>(
     () => [
       {
@@ -288,9 +407,40 @@ export function BuildsClient({
         urlParam: "q",
         debounceMs: 300,
         alwaysVisible: true
+      },
+      {
+        id: "state",
+        label: copy.filterState,
+        type: "choice",
+        urlParam: "state",
+        defaultVisible: true,
+        choiceOptions: BUILD_STATES.map((s) => ({ id: s, label: copy.states[s] ?? s }))
+      },
+      {
+        id: "createdAt",
+        label: copy.filterCreatedAt,
+        type: "date-range",
+        urlParam: "createdAt",
+        defaultVisible: true
+      },
+      {
+        id: "design",
+        label: copy.filterDesign,
+        type: "select",
+        urlParam: "design",
+        defaultVisible: true,
+        renderControl: ({ value, onChange, disabled }) => (
+          <DesignFilterControl
+            copy={{ chooseDesign: copy.chooseDesign, filterDesign: copy.filterDesign }}
+            disabled={disabled ?? false}
+            onChange={onChange}
+            value={value}
+            workspaceSlug={workspaceSlug}
+          />
+        )
       }
     ],
-    [copy.searchBuilds]
+    [copy.searchBuilds, copy.filterState, copy.filterCreatedAt, copy.filterDesign, copy.chooseDesign, copy.states, workspaceSlug]
   );
 
   const { filterValues, setFilterValue, clearFilterValues, hasActiveFilters } =
@@ -307,7 +457,16 @@ export function BuildsClient({
   // --- Data ---
 
   const { currentBuilds, totalCount, filteredCount, isLoading, isError, isFetchingNextPage, hasNextPage, fetchNextPage } =
-    useBuildsQuery({ workspaceSlug, initialPage, pinnedId: pinnedBuildId, sorting, searchQuery: debouncedSearch || null });
+    useBuildsQuery({
+      workspaceSlug,
+      initialPage,
+      pinnedId: pinnedBuildId,
+      sorting,
+      searchQuery: debouncedSearch || null,
+      stateFilter: (filterValues.state as BuildState) || null,
+      createdAtFilter: filterValues.createdAt || null,
+      designIdFilter: filterValues.design || null
+    });
 
   // --- Detail + create options ---
 
@@ -642,13 +801,10 @@ export function BuildsClient({
           visibleColumnsLabel={copy.visibleColumns}
           hasActiveFilters={hasActiveFilters}
           onClearFilters={clearFilterValues}
-          clearFiltersLabel={copy.clearFilters}
-          configureFiltersLabel={copy.configureFilters}
           onConfigureFilters={() => filterBarRef.current?.openConfigure()}
           filterContent={
             <FilterBar
               ref={filterBarRef}
-              availableFiltersLabel={copy.availableFilters}
               configurableFilters={configurableFilters}
               disabled={isLoading}
               filterOrder={filterOrder}

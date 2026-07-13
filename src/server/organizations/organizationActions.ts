@@ -22,6 +22,7 @@ export async function getOrganizationsPageForWorkspace(input: {
   pageSize?: number | null;
   sortDir?: "asc" | "desc";
   searchQuery?: string | null;
+  roleFilter?: string | null;
 }): Promise<OrganizationActionResult<ListPage<OrganizationSummary>>> {
   try {
     const context = await getContext(input.workspaceSlug);
@@ -31,7 +32,8 @@ export async function getOrganizationsPageForWorkspace(input: {
       cursor: input.cursor,
       pageSize: input.pageSize,
       sortDir: input.sortDir,
-      searchQuery: input.searchQuery
+      searchQuery: input.searchQuery,
+      roleFilter: input.roleFilter
     });
     return success(page);
   } catch (error) {

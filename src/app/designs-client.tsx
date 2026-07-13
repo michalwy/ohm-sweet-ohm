@@ -138,9 +138,7 @@ type Copy = {
   buildStates: Record<string, string>;
   designCountSummary: string;
   searchDesigns: string;
-  configureFilters: string;
-  clearFilters: string;
-  availableFilters: string;
+  filterCreatedAt: string;
 };
 
 type DesignsClientProps = {
@@ -267,9 +265,16 @@ export function DesignsClient({
         urlParam: "q",
         debounceMs: 300,
         alwaysVisible: true
+      },
+      {
+        id: "createdAt",
+        label: copy.filterCreatedAt,
+        type: "date-range",
+        urlParam: "createdAt",
+        defaultVisible: true
       }
     ],
-    [copy.searchDesigns]
+    [copy.searchDesigns, copy.filterCreatedAt]
   );
 
   const { filterValues, setFilterValue, clearFilterValues, hasActiveFilters } =
@@ -286,7 +291,7 @@ export function DesignsClient({
   // --- Data ---
 
   const { currentDesigns, totalCount, filteredCount, isLoading, isError, isFetchingNextPage, hasNextPage, fetchNextPage } =
-    useDesignsQuery({ workspaceSlug, initialPage, sorting, searchQuery: debouncedSearch || null });
+    useDesignsQuery({ workspaceSlug, initialPage, sorting, searchQuery: debouncedSearch || null, createdAtFilter: filterValues.createdAt || null });
 
   // --- Detail panel ---
 
@@ -723,13 +728,10 @@ export function DesignsClient({
           visibleColumnsLabel={copy.visibleColumns}
           hasActiveFilters={hasActiveFilters}
           onClearFilters={clearFilterValues}
-          clearFiltersLabel={copy.clearFilters}
-          configureFiltersLabel={copy.configureFilters}
           onConfigureFilters={() => filterBarRef.current?.openConfigure()}
           filterContent={
             <FilterBar
               ref={filterBarRef}
-              availableFiltersLabel={copy.availableFilters}
               configurableFilters={configurableFilters}
               disabled={isLoading}
               filterOrder={filterOrder}

@@ -1,8 +1,12 @@
 "use client";
 
 import { useMemo, useRef, useState } from "react";
+import { FilterBar } from "@/app/list-filter-bar";
+import type { FilterBarHandle } from "@/app/list-filter-bar";
 import type { FilterDefinition } from "@/app/list-filter-config";
+import { useListFilterConfiguration } from "@/app/list-filter-config";
 import { useFilterUrlState } from "@/app/use-filter-url-state";
+import { TREE_SELECT_NONE_ID } from "@/app/tree-select";
 import { useMutation } from "@tanstack/react-query";
 
 import {
@@ -63,7 +67,8 @@ type Copy = {
   locationInUse: string;
   locationHasChildren: string;
   locationHasStock: string;
-  clearFilters: string;
+  filterArchived: string;
+  filterParentLocation: string;
 };
 
 type LocationFormErrors = Partial<
@@ -84,6 +89,7 @@ export function LocationsClient({
   workspaceSlug: string;
 }) {
   const dialogRef = useRef<HTMLDialogElement>(null);
+  const filterBarRef = useRef<FilterBarHandle>(null);
   const [formKey, setFormKey] = useState(0);
   const [locations, setLocations] = useState(initialLocations);
   const [editingLocation, setEditingLocation] = useState<StorageLocationListItem | null>(
@@ -159,21 +165,87 @@ export function LocationsClient({
         urlParam: "q",
         debounceMs: 300,
         alwaysVisible: true
+      },
+      {
+        id: "archived",
+        label: copy.filterArchived,
+        type: "boolean",
+        urlParam: "archived",
+        defaultVisible: true
+      },
+      {
+        id: "parentId",
+        label: copy.filterParentLocation,
+        type: "tree",
+        urlParam: "parent",
+        defaultVisible: true,
+        renderControl: ({ value, onChange, disabled }) => (
+          <LocationTreeSelect
+            locations={locations}
+            locationTree={locationTree}
+            copy={{
+              chooseLocation: copy.filterParentLocation,
+              searchLocations: copy.searchLocations,
+              noMatchingLocations: copy.noMatchingLocations,
+              expandLocation: copy.expandLocation,
+              collapseLocation: copy.collapseLocation
+            }}
+            name="parentId-filter"
+            selectedId={value || ""}
+            onSelectedIdChange={onChange}
+            noneOptionLabel={copy.rootLocation}
+            emptyLabel={copy.filterParentLocation}
+            clearable={Boolean(value)}
+            onClear={() => onChange("")}
+            className="min-w-52"
+            disabled={disabled}
+          />
+        )
       }
     ],
-    [copy.searchLocations]
+    [
+      copy.searchLocations,
+      copy.filterArchived,
+      copy.filterParentLocation,
+      copy.noMatchingLocations,
+      copy.expandLocation,
+      copy.collapseLocation,
+      copy.rootLocation,
+      locations,
+      locationTree
+    ]
   );
 
   const { filterValues, setFilterValue, clearFilterValues, hasActiveFilters } =
     useFilterUrlState(locationFilterDefs);
 
+  const { filterVisibility, filterOrder, configurableFilters, setFilterVisible, setFilterOrder } =
+    useListFilterConfiguration({
+      storageKey: `oso:filter-config:locations:${workspaceSlug}`,
+      filters: locationFilterDefs
+    });
+
   const searchQuery = filterValues.search ?? "";
 
   const filteredLocations = useMemo(() => {
-    if (!searchQuery.trim()) return null;
-    const q = searchQuery.trim().toLowerCase();
-    return locations.filter((l) => l.name.toLowerCase().includes(q));
-  }, [locations, searchQuery]);
+    const hasAnyFilter =
+      Boolean(searchQuery.trim()) ||
+      Boolean(filterValues.archived) ||
+      Boolean(filterValues.parentId);
+    if (!hasAnyFilter) return null;
+    let result = locations;
+    if (searchQuery.trim()) {
+      const q = searchQuery.trim().toLowerCase();
+      result = result.filter((l) => l.name.toLowerCase().includes(q));
+    }
+    if (filterValues.archived === "true") result = result.filter((l) => l.isArchived);
+    else if (filterValues.archived === "false") result = result.filter((l) => !l.isArchived);
+    if (filterValues.parentId === TREE_SELECT_NONE_ID)
+      result = result.filter((l) => l.parentId === null);
+    else if (filterValues.parentId)
+      result = result.filter((l) => l.parentId === filterValues.parentId);
+    return result;
+  }, [locations, searchQuery, filterValues.archived, filterValues.parentId]);
   const parentPickerTree = useMemo(() => buildTree(parentPickerLocations), [parentPickerLocations]);
 
   function openCreateForm(parentId = "") {
@@ -240,26 +312,36 @@ export function LocationsClient({
 
   return (
     <section className="flex min-h-0 flex-1 flex-col">
-      <div className="mb-3 flex items-end gap-3">
-        <label className="grid min-w-72 gap-1.5 text-sm font-medium text-[var(--color-text-secondary)]">
-          {copy.searchLocations}
-          <input
-            className="min-h-9 rounded-md border border-[var(--color-border-strong)] bg-[var(--color-bg-elevated)] px-3 py-1.5 text-sm text-[var(--color-text-primary)] outline-none transition placeholder:text-[var(--color-text-placeholder)] hover:border-[var(--color-border-hover)] focus:border-[var(--color-border-hover)] focus:ring-2 focus:ring-[var(--color-ring)]"
-            type="search"
-            value={searchQuery}
-            onChange={(e) => setFilterValue("search", e.currentTarget.value)}
-          />
-        </label>
-        {hasActiveFilters ? (
+      <div className="mb-3 flex flex-wrap items-end gap-3">
+        <FilterBar
+          ref={filterBarRef}
+          configurableFilters={configurableFilters}
+          disabled={false}
+          filterOrder={filterOrder}
+          filterValues={filterValues}
+          filterVisibility={filterVisibility}
+          filters={locationFilterDefs}
+          onFilterChange={setFilterValue}
+          setFilterOrder={setFilterOrder}
+          setFilterVisible={setFilterVisible}
+        />
+        <div className="ml-auto flex items-center gap-2">
           <button
-            className="min-h-9 text-sm font-medium text-[var(--color-accent)] hover:underline focus:outline-none focus:ring-2 focus:ring-[var(--color-ring)] focus:ring-offset-2"
+            className="min-h-9 text-sm font-medium text-[var(--color-text-muted)] transition hover:text-[var(--color-text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-ring)] focus:ring-offset-2"
             type="button"
-            onClick={clearFilterValues}
+            onClick={() => filterBarRef.current?.openConfigure()}
           >
-            {copy.clearFilters}
+            Configure filters
           </button>
-        ) : null}
-        <div className="ml-auto">
+          {hasActiveFilters ? (
+            <button
+              className="min-h-9 text-sm font-medium text-[var(--color-accent)] hover:underline focus:outline-none focus:ring-2 focus:ring-[var(--color-ring)] focus:ring-offset-2"
+              type="button"
+              onClick={clearFilterValues}
+            >
+              Clear filters
+            </button>
+          ) : null}
           <button
             className="inline-flex min-h-10 items-center rounded-md bg-[var(--color-accent)] px-4 text-sm font-semibold text-white transition hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-60"
             type="button"

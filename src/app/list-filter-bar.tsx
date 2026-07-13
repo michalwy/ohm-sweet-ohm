@@ -33,7 +33,7 @@ type FilterBarProps = {
   filterValues: FilterValues;
   onFilterChange: (id: string, value: string) => void;
   disabled?: boolean;
-  availableFiltersLabel: string;
+  availableFiltersLabel?: string;
 };
 
 export const FilterBar = forwardRef<FilterBarHandle, FilterBarProps>(function FilterBar({
@@ -46,7 +46,7 @@ export const FilterBar = forwardRef<FilterBarHandle, FilterBarProps>(function Fi
   filterValues,
   onFilterChange,
   disabled = false,
-  availableFiltersLabel
+  availableFiltersLabel = "Available filters"
 }: FilterBarProps, ref) {
   const dialogRef = useRef<HTMLDialogElement>(null);
 

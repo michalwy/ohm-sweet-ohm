@@ -95,9 +95,7 @@ const copy = {
   },
   designCountSummary: "{visible} of {total} designs",
   searchDesigns: "Search designs",
-  configureFilters: "Filters",
-  clearFilters: "Clear filters",
-  availableFilters: "Available filters"
+  filterCreatedAt: "Created date"
 };
 
 type DesignsPageProps = {

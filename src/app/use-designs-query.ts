@@ -16,6 +16,7 @@ type UseDesignsQueryOpts = {
   initialPage?: ListPage<DesignSummary>;
   sorting: SortingState;
   searchQuery?: string | null;
+  createdAtFilter?: string | null;
 };
 
 const SORT_COLUMN_TO_SORT_BY: Record<string, DesignSortBy> = {
@@ -24,7 +25,7 @@ const SORT_COLUMN_TO_SORT_BY: Record<string, DesignSortBy> = {
   createdAt: "createdAt"
 };
 
-export function useDesignsQuery({ workspaceSlug, initialPage, sorting, searchQuery }: UseDesignsQueryOpts) {
+export function useDesignsQuery({ workspaceSlug, initialPage, sorting, searchQuery, createdAtFilter }: UseDesignsQueryOpts) {
   const activeSort = sorting[0];
   const sortBy: DesignSortBy = activeSort
     ? (SORT_COLUMN_TO_SORT_BY[activeSort.id] ?? "name")
@@ -32,7 +33,7 @@ export function useDesignsQuery({ workspaceSlug, initialPage, sorting, searchQue
   const sortDir = activeSort?.desc ? "desc" : "asc";
 
   const query = useInfiniteQuery({
-    queryKey: ["designs", workspaceSlug, { sorting, search: searchQuery }] as const,
+    queryKey: ["designs", workspaceSlug, { sorting, search: searchQuery, createdAt: createdAtFilter }] as const,
     initialPageParam: null as string | null,
     queryFn: async ({ pageParam }) => {
       const result = await getDesignsPageForWorkspace({
@@ -40,7 +41,8 @@ export function useDesignsQuery({ workspaceSlug, initialPage, sorting, searchQue
         cursor: pageParam,
         sortBy,
         sortDir,
-        searchQuery
+        searchQuery,
+        createdAtFilter
       });
       if (!result.ok) throw new Error(result.error);
       return result.data;
@@ -48,7 +50,7 @@ export function useDesignsQuery({ workspaceSlug, initialPage, sorting, searchQue
     getNextPageParam: (lastPage) => lastPage.nextCursor,
     placeholderData: keepPreviousData,
     initialData:
-      sorting.length === 0 && !searchQuery && initialPage
+      sorting.length === 0 && !searchQuery && !createdAtFilter && initialPage
         ? { pages: [initialPage], pageParams: [null] }
         : undefined
   });

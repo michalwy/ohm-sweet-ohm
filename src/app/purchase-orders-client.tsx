@@ -37,6 +37,7 @@ import {
   removeOrderItemForWorkspace,
   revertOrderToDraftForWorkspace,
   saveManualExchangeRateForWorkspace,
+  searchSupplierOrganizationsForWorkspace,
   updateAdditionalCostForWorkspace,
   updateOrderItemForWorkspace,
   updatePurchaseOrderForWorkspace
@@ -502,9 +503,11 @@ type Copy = {
   resetListConfiguration: string;
   orderCountSummary: string;
   searchOrders: string;
-  configureFilters: string;
-  clearFilters: string;
-  availableFilters: string;
+  filterStatus: string;
+  filterSupplier: string;
+  filterOrderedAt: string;
+  filterReceivedAt: string;
+  filterTotalValue: string;
   priceEntryMode: string;
   priceEntryModeNet: string;
   priceEntryModeGross: string;
@@ -537,6 +540,75 @@ type PurchaseOrdersClientProps = {
 };
 
 type ReceiveRowState = { quantity: string; locationId: string | null };
+
+function SupplierFilterControl({
+  value,
+  onChange,
+  disabled,
+  workspaceSlug,
+  copy,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  disabled?: boolean;
+  workspaceSlug: string;
+  copy: Pick<Copy, "filterSupplier" | "chooseSupplier" | "noSuppliers" | "loadingSuppliers">;
+}) {
+  // Last-selected name stored locally to avoid flicker before allSuppliers resolves
+  const [lastSelectedName, setLastSelectedName] = useState<string | null>(null);
+
+  const { data: allSuppliers } = useQuery({
+    queryKey: ["supplier-search", workspaceSlug, ""],
+    queryFn: async () => {
+      const result = await searchSupplierOrganizationsForWorkspace({ workspaceSlug, searchQuery: undefined });
+      return result.ok ? result.data : [];
+    },
+    staleTime: 30_000,
+  });
+
+  const resolvedName = value
+    ? (allSuppliers?.find((s) => s.id === value)?.name ?? lastSelectedName ?? value)
+    : null;
+
+  if (value) {
+    return (
+      <div className="grid gap-1.5">
+        <span className="text-sm font-medium text-[var(--color-text-secondary)]">{copy.filterSupplier}</span>
+        <div className="flex min-h-9 items-center gap-2 rounded-md border border-[var(--color-border-strong)] bg-[var(--color-bg-elevated)] px-3 text-sm text-[var(--color-text-primary)]">
+          <span className="flex-1 truncate">{resolvedName}</span>
+          <button
+            type="button"
+            aria-label="Clear supplier filter"
+            className="flex-shrink-0 text-[var(--color-text-placeholder)] transition hover:text-[var(--color-text-secondary)]"
+            disabled={disabled}
+            onClick={() => onChange("")}
+          >
+            ×
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="grid w-52 gap-1.5">
+      <span className="text-sm font-medium text-[var(--color-text-secondary)]">{copy.filterSupplier}</span>
+      <SupplierPickerCombobox
+        workspaceSlug={workspaceSlug}
+        inputId="supplier-filter"
+        placeholder={copy.chooseSupplier}
+        noItemsLabel={copy.noSuppliers}
+        loadingLabel={copy.loadingSuppliers}
+        initialValue={null}
+        disabled={disabled}
+        onSupplierSelect={(s) => {
+          setLastSelectedName(s.name);
+          onChange(s.id);
+        }}
+      />
+    </div>
+  );
+}
 
 const columnHelper = createColumnHelper<PurchaseOrderSummary>();
 
@@ -661,9 +733,59 @@ export function PurchaseOrdersClient({
         urlParam: "q",
         debounceMs: 300,
         alwaysVisible: true
+      },
+      {
+        id: "status",
+        label: copy.filterStatus,
+        type: "choice",
+        urlParam: "status",
+        defaultVisible: true,
+        choiceOptions: [
+          { id: "DRAFT", label: copy.statusDraft },
+          { id: "ORDERED", label: copy.statusOrdered },
+          { id: "RECEIVED", label: copy.statusReceived }
+        ]
+      },
+      {
+        id: "supplier",
+        label: copy.filterSupplier,
+        type: "select",
+        urlParam: "supplier",
+        defaultVisible: true,
+        renderControl: ({ value, onChange, disabled: controlDisabled }) => (
+          <SupplierFilterControl
+            value={value}
+            onChange={onChange}
+            disabled={controlDisabled}
+            workspaceSlug={workspaceSlug}
+            copy={copy}
+          />
+        )
+      },
+      {
+        id: "orderedAt",
+        label: copy.filterOrderedAt,
+        type: "date-range",
+        urlParam: "orderedAt",
+        defaultVisible: false
+      },
+      {
+        id: "receivedAt",
+        label: copy.filterReceivedAt,
+        type: "date-range",
+        urlParam: "receivedAt",
+        defaultVisible: false
+      },
+      {
+        id: "totalValue",
+        label: copy.filterTotalValue,
+        type: "numeric",
+        urlParam: "totalValue",
+        defaultVisible: false
       }
     ],
-    [copy.searchOrders]
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [copy.searchOrders, copy.filterStatus, copy.statusDraft, copy.statusOrdered, copy.statusReceived, copy.filterSupplier, copy.filterOrderedAt, copy.filterReceivedAt, copy.filterTotalValue, workspaceSlug]
   );
 
   const { filterValues, setFilterValue, clearFilterValues, hasActiveFilters } =
@@ -682,7 +804,16 @@ export function PurchaseOrdersClient({
   const activeSorting = sorting[0] ?? null;
 
   const ordersQuery = useInfiniteQuery({
-    queryKey: ["purchase-orders", workspaceSlug, { sorting, pinnedOrderId, search: debouncedSearch }] as const,
+    queryKey: ["purchase-orders", workspaceSlug, {
+      sorting,
+      pinnedOrderId,
+      search: debouncedSearch,
+      status: filterValues.status,
+      supplier: filterValues.supplier,
+      orderedAt: filterValues.orderedAt,
+      receivedAt: filterValues.receivedAt,
+      totalValue: filterValues.totalValue
+    }] as const,
     enabled: isOrderConfigLoaded,
     initialPageParam: null as string | null,
     queryFn: async ({ pageParam }) => {
@@ -692,7 +823,12 @@ export function PurchaseOrdersClient({
         sortBy: (activeSorting?.id ?? null) as PurchaseOrderSortBy | null,
         sortDirection: activeSorting ? (activeSorting.desc ? "desc" : "asc") : null,
         pinnedId: pinnedOrderId,
-        searchQuery: debouncedSearch || null
+        searchQuery: debouncedSearch || null,
+        statusFilter: (filterValues.status || null) as "DRAFT" | "ORDERED" | "RECEIVED" | null,
+        supplierIdFilter: filterValues.supplier || null,
+        orderedAtFilter: filterValues.orderedAt || null,
+        receivedAtFilter: filterValues.receivedAt || null,
+        totalNetValueFilter: filterValues.totalValue || null
       });
       if (!result.ok) throw new Error(result.error);
       return result.data;
@@ -1585,8 +1721,6 @@ export function PurchaseOrdersClient({
             }
             hasActiveFilters={hasActiveFilters}
             onClearFilters={clearFilterValues}
-            clearFiltersLabel={copy.clearFilters}
-            configureFiltersLabel={copy.configureFilters}
             onConfigureFilters={() => filterBarRef.current?.openConfigure()}
             totalCount={ordersQuery.data?.pages[0]?.totalCount}
             visibleColumnsLabel={copy.visibleColumns}
@@ -1594,7 +1728,6 @@ export function PurchaseOrdersClient({
             filterContent={
               <FilterBar
                 ref={filterBarRef}
-                availableFiltersLabel={copy.availableFilters}
                 configurableFilters={configurableFilters}
                 disabled={ordersQuery.isLoading}
                 filterOrder={filterOrder}

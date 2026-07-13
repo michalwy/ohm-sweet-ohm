@@ -50,7 +50,12 @@ export async function getPurchaseOrdersForWorkspace(
       sortBy: input.sortBy,
       sortDirection: input.sortDirection,
       pinnedId: input.pinnedId,
-      searchQuery: input.searchQuery
+      searchQuery: input.searchQuery,
+      statusFilter: input.statusFilter,
+      supplierIdFilter: input.supplierIdFilter,
+      orderedAtFilter: input.orderedAtFilter,
+      receivedAtFilter: input.receivedAtFilter,
+      totalNetValueFilter: input.totalNetValueFilter
     });
     return success(page);
   } catch (error) {

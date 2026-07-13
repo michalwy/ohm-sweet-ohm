@@ -3,6 +3,7 @@ import "server-only";
 import { Prisma } from "@/generated/prisma/client";
 import { authorizeWorkspacePermission } from "@/server/access-control/authorize";
 import { prisma } from "@/server/db/prisma";
+import { deserializeDateRangeFilter, dateRangeToUtcBounds } from "@/app/date-range-filter-value";
 import {
   decodeListCursor,
   encodeListCursor,
@@ -54,7 +55,8 @@ export async function getDesignsForWorkspace({
   pageSize,
   sortBy = "name",
   sortDir = "asc",
-  searchQuery
+  searchQuery,
+  createdAtFilter
 }: {
   userId: string;
   workspaceId: string;
@@ -63,24 +65,34 @@ export async function getDesignsForWorkspace({
   sortBy?: DesignSortBy;
   sortDir?: "asc" | "desc";
   searchQuery?: string | null;
+  createdAtFilter?: string | null;
 }): Promise<ListPage<DesignSummary>> {
   await authorizeWorkspacePermission({ userId, workspaceId, permission: "designs:read" });
 
   const limit = getListPageSize(pageSize);
-  const totalCount = await prisma.design.count({ where: { workspaceId } });
+  const baseWhere: Prisma.DesignWhereInput = { workspaceId };
+  const totalCount = await prisma.design.count({ where: baseWhere });
 
-  const searchWhere: Prisma.DesignWhereInput = searchQuery
-    ? {
-        OR: [
-          { name: { contains: searchQuery, mode: "insensitive" } },
-          { description: { contains: searchQuery, mode: "insensitive" } },
-          { outputPart: { catalogNumber: { contains: searchQuery, mode: "insensitive" } } }
-        ]
-      }
-    : {};
+  const whereClauses: Prisma.DesignWhereInput[] = [baseWhere];
+  if (searchQuery) {
+    whereClauses.push({
+      OR: [
+        { name: { contains: searchQuery, mode: "insensitive" } },
+        { description: { contains: searchQuery, mode: "insensitive" } },
+        { outputPart: { catalogNumber: { contains: searchQuery, mode: "insensitive" } } }
+      ]
+    });
+  }
+  if (createdAtFilter) {
+    const parsed = deserializeDateRangeFilter(createdAtFilter);
+    if (parsed) whereClauses.push({ createdAt: dateRangeToUtcBounds(parsed) });
+  }
+  const filteredWhere: Prisma.DesignWhereInput =
+    whereClauses.length > 1 ? { AND: whereClauses } : baseWhere;
+  const hasFilters = whereClauses.length > 1;
 
-  const filteredCount = searchQuery
-    ? await prisma.design.count({ where: { workspaceId, ...searchWhere } })
+  const filteredCount = hasFilters
+    ? await prisma.design.count({ where: filteredWhere })
     : totalCount;
 
   const decoded = decodeListCursor<DesignCursor>(cursor);
@@ -121,11 +133,7 @@ export async function getDesignsForWorkspace({
   }
 
   const rows = await prisma.design.findMany({
-    where: decoded
-      ? searchQuery
-        ? { workspaceId, AND: [searchWhere, cursorWhere(decoded)] }
-        : { workspaceId, ...cursorWhere(decoded) }
-      : { workspaceId, ...searchWhere },
+    where: decoded ? { AND: [filteredWhere, cursorWhere(decoded)] } : filteredWhere,
     orderBy,
     take: limit + 1,
     select: {

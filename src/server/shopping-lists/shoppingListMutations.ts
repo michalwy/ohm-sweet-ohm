@@ -2,6 +2,7 @@ import "server-only";
 
 import { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/server/db/prisma";
+import { deserializeDateRangeFilter, dateRangeToUtcBounds } from "@/app/date-range-filter-value";
 import {
   decodeListCursor,
   encodeListCursor,
@@ -51,6 +52,7 @@ export type ShoppingListsPageInput = {
   sortDirection?: ShoppingListSortDirection | null;
   pinnedId?: string | null;
   searchQuery?: string | null;
+  createdAtFilter?: string | null;
 };
 
 type NameCursor = { name: string; id: string };
@@ -76,13 +78,20 @@ export async function getShoppingLists(
   } as const;
 
   const baseWhere: Prisma.ShoppingListWhereInput = { workspaceId };
-  const searchWhere: Prisma.ShoppingListWhereInput = input.searchQuery
-    ? { name: { contains: input.searchQuery, mode: "insensitive" } }
-    : {};
-  const filteredWhere: Prisma.ShoppingListWhereInput = { ...baseWhere, ...searchWhere };
+  const whereClauses: Prisma.ShoppingListWhereInput[] = [baseWhere];
+  if (input.searchQuery) {
+    whereClauses.push({ name: { contains: input.searchQuery, mode: "insensitive" } });
+  }
+  if (input.createdAtFilter) {
+    const parsed = deserializeDateRangeFilter(input.createdAtFilter);
+    if (parsed) whereClauses.push({ createdAt: dateRangeToUtcBounds(parsed) });
+  }
+  const filteredWhere: Prisma.ShoppingListWhereInput =
+    whereClauses.length > 1 ? { AND: whereClauses } : baseWhere;
+  const hasFilters = whereClauses.length > 1;
 
   const totalCount = await prisma.shoppingList.count({ where: baseWhere });
-  const filteredCount = input.searchQuery
+  const filteredCount = hasFilters
     ? await prisma.shoppingList.count({ where: filteredWhere })
     : totalCount;
 

@@ -101,9 +101,7 @@ const copy = {
   resetListConfiguration: "Reset defaults",
   listCountSummary: "{visible} of {total} lists",
   searchLists: "Search lists",
-  configureFilters: "Filters",
-  clearFilters: "Clear filters",
-  availableFilters: "Available filters",
+  filterCreatedAt: "Created date",
   multiAdd: {
     // picker step
     pickerTitle: "Add multiple items",
@@ -114,7 +112,6 @@ const copy = {
     alreadyAdded: "Already on list",
     filteredPartsSummary: "{visible} of {total} parts",
     configureList: "Configure list",
-    clearFilters: "Clear filters",
     visibleColumns: "Columns",
     attributeColumns: "Attribute columns",
     emptyTitle: "No parts yet",

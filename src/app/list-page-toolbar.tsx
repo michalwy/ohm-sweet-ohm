@@ -87,14 +87,14 @@ export function ListPageToolbar({
   formatCount,
   hasActiveFilters,
   onClearFilters,
-  clearFiltersLabel,
+  clearFiltersLabel = "Clear filters",
   configurableColumns,
   columnVisibility,
   setColumnVisible,
   configureListLabel,
   visibleColumnsLabel,
   columnGroups,
-  configureFiltersLabel,
+  configureFiltersLabel = "Configure filters",
   onConfigureFilters,
   primaryAction
 }: ListPageToolbarProps) {

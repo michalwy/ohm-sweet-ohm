@@ -3,6 +3,7 @@ import "server-only";
 import { Prisma } from "@/generated/prisma/client";
 import { authorizeWorkspacePermission } from "@/server/access-control/authorize";
 import { prisma } from "@/server/db/prisma";
+import { deserializeDateRangeFilter, dateRangeToUtcBounds } from "@/app/date-range-filter-value";
 import { parseDesignatorRange } from "@/lib/designators";
 import {
   distributeAllocations,
@@ -299,7 +300,10 @@ export async function getBuildsForWorkspace({
   pinnedId,
   sortBy = "createdAt",
   sortDir = "desc",
-  searchQuery
+  searchQuery,
+  stateFilter,
+  createdAtFilter,
+  designIdFilter
 }: {
   userId: string;
   workspaceId: string;
@@ -310,14 +314,14 @@ export async function getBuildsForWorkspace({
   sortBy?: BuildSortBy;
   sortDir?: "asc" | "desc";
   searchQuery?: string | null;
+  stateFilter?: BuildState | null;
+  createdAtFilter?: string | null;
+  designIdFilter?: string | null;
 }): Promise<ListPage<BuildSummary>> {
   await authorizeWorkspacePermission({ userId, workspaceId, permission: "builds:read" });
 
-  const totalCount = await prisma.build.count({ where: { workspaceId } });
-
-  const searchWhere: Prisma.BuildWhereInput = searchQuery
-    ? { designRevision: { design: { name: { contains: searchQuery, mode: "insensitive" } } } }
-    : {};
+  const baseWhere: Prisma.BuildWhereInput = { workspaceId };
+  const totalCount = await prisma.build.count({ where: baseWhere });
 
   if (pinnedId) {
     const row = await prisma.build.findFirst({
@@ -330,8 +334,26 @@ export async function getBuildsForWorkspace({
     return { items: [mapBuildSummary(row)], nextCursor: null, totalCount, filteredCount: 1 };
   }
 
-  const filteredCount = searchQuery
-    ? await prisma.build.count({ where: { workspaceId, ...searchWhere } })
+  const whereClauses: Prisma.BuildWhereInput[] = [baseWhere];
+  if (searchQuery) {
+    whereClauses.push({ designRevision: { design: { name: { contains: searchQuery, mode: "insensitive" } } } });
+  }
+  if (stateFilter) {
+    whereClauses.push({ state: stateFilter });
+  }
+  if (createdAtFilter) {
+    const parsed = deserializeDateRangeFilter(createdAtFilter);
+    if (parsed) whereClauses.push({ createdAt: dateRangeToUtcBounds(parsed) });
+  }
+  if (designIdFilter) {
+    whereClauses.push({ designRevision: { design: { id: designIdFilter } } });
+  }
+  const filteredWhere: Prisma.BuildWhereInput =
+    whereClauses.length > 1 ? { AND: whereClauses } : baseWhere;
+  const hasFilters = whereClauses.length > 1;
+
+  const filteredCount = hasFilters
+    ? await prisma.build.count({ where: filteredWhere })
     : totalCount;
 
   const limit = getListPageSize(pageSize);
@@ -409,7 +431,7 @@ export async function getBuildsForWorkspace({
   }
 
   const rows = await prisma.build.findMany({
-    where: { workspaceId, ...searchWhere, ...(decoded ? cursorWhere(decoded) : {}) },
+    where: decoded ? { AND: [filteredWhere, cursorWhere(decoded)] } : filteredWhere,
     orderBy,
     take: limit + 1,
     select: buildSummarySelect

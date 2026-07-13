@@ -1,6 +1,8 @@
 "use server";
 
 import { getCurrentWorkspaceContextBySlug } from "@/server/auth/currentContext";
+import { prisma } from "@/server/db/prisma";
+import { authorizeWorkspacePermission } from "@/server/access-control/authorize";
 import type { ListPage } from "@/server/pagination";
 import {
   assembleBuildUnit,
@@ -20,6 +22,7 @@ import {
   type BuildCreateOptions,
   type BuildDetail,
   type BuildSortBy,
+  type BuildState,
   type BuildSummary,
   type PartBuildAllocationItem,
   type PartProductionBuildItem
@@ -39,6 +42,9 @@ export async function getBuildsPageForWorkspace(input: {
   sortBy?: BuildSortBy;
   sortDir?: "asc" | "desc";
   searchQuery?: string | null;
+  stateFilter?: BuildState | null;
+  createdAtFilter?: string | null;
+  designIdFilter?: string | null;
 }): Promise<BuildActionResult<ListPage<BuildSummary>>> {
   try {
     const context = await getContext(input.workspaceSlug);
@@ -50,9 +56,42 @@ export async function getBuildsPageForWorkspace(input: {
       pinnedId: input.pinnedId,
       sortBy: input.sortBy,
       sortDir: input.sortDir,
-      searchQuery: input.searchQuery
+      searchQuery: input.searchQuery,
+      stateFilter: input.stateFilter,
+      createdAtFilter: input.createdAtFilter,
+      designIdFilter: input.designIdFilter
     });
     return success(page);
+  } catch (error) {
+    return failure(error);
+  }
+}
+
+export type DesignOption = { id: string; name: string };
+
+export async function searchDesignsForWorkspace(input: {
+  workspaceSlug: string;
+  searchQuery?: string | null;
+}): Promise<BuildActionResult<DesignOption[]>> {
+  try {
+    const context = await getContext(input.workspaceSlug);
+    await authorizeWorkspacePermission({
+      userId: context.user.id,
+      workspaceId: context.workspace.id,
+      permission: "builds:read"
+    });
+    const rows = await prisma.design.findMany({
+      where: {
+        workspaceId: context.workspace.id,
+        ...(input.searchQuery
+          ? { name: { contains: input.searchQuery, mode: "insensitive" } }
+          : {})
+      },
+      orderBy: { name: "asc" },
+      take: input.searchQuery ? 20 : undefined,
+      select: { id: true, name: true }
+    });
+    return success(rows);
   } catch (error) {
     return failure(error);
   }

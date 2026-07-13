@@ -162,9 +162,6 @@ type Copy = {
   allLocations: string;
   noDefaultLocation: string;
   filterByStock: string;
-  clearFilters: string;
-  configureFilters: string;
-  availableFilters: string;
   pinnedFilterLabel: string;
   clearPinnedFilter: string;
   configureList: string;
@@ -1547,11 +1544,9 @@ export function PartsListClient({
         </h2>
         <ListPageToolbar
           columnGroups={[{ groupId: "attribute", label: copy.attributeColumns }]}
-          clearFiltersLabel={copy.clearFilters}
           columnVisibility={columnVisibility}
           configurableColumns={configurableColumns}
           configureListLabel={copy.configureList}
-          configureFiltersLabel={copy.configureFilters}
           onConfigureFilters={() => filterBarRef.current?.openConfigure()}
           filteredCount={partsCounts.filteredCount}
           formatCount={(visible, total) =>
@@ -1574,7 +1569,6 @@ export function PartsListClient({
               filterValues={filterValues}
               onFilterChange={setFilterValue}
               disabled={!isDatabaseAvailable}
-              availableFiltersLabel={copy.availableFilters}
             />
           }
           primaryAction={

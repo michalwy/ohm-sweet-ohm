@@ -102,9 +102,10 @@ const copy: BuildsCopy = {
   clearPinnedFilter: "Show all builds",
   buildCountSummary: "{visible} of {total} builds",
   searchBuilds: "Search builds",
-  configureFilters: "Filters",
-  clearFilters: "Clear filters",
-  availableFilters: "Available filters"
+  filterState: "State",
+  filterCreatedAt: "Created date",
+  filterDesign: "Design",
+  chooseDesign: "Choose a design"
 };
 
 type BuildsPageProps = {

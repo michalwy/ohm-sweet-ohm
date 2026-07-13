@@ -15,6 +15,8 @@ import {
   type ListPage
 } from "@/server/pagination";
 import { computeAllocatedUnitCosts } from "@/lib/purchaseOrderCostAllocation";
+import { deserializeNumericFilter } from "@/app/numeric-filter-value";
+import { deserializeDateRangeFilter, dateRangeToUtcBounds } from "@/app/date-range-filter-value";
 
 export type PurchaseOrderItem = {
   id: string;
@@ -117,7 +119,43 @@ export type PurchaseOrdersPageInput = {
   sortDirection?: PurchaseOrderSortDirection | null;
   pinnedId?: string | null;
   searchQuery?: string | null;
+  statusFilter?: "DRAFT" | "ORDERED" | "RECEIVED" | null;
+  supplierIdFilter?: string | null;
+  orderedAtFilter?: string | null;
+  receivedAtFilter?: string | null;
+  totalNetValueFilter?: string | null;
 };
+
+function buildTotalNetValueWhere(serialized: string): Prisma.PurchaseOrderWhereInput | null {
+  const parsed = deserializeNumericFilter(serialized);
+  if (!parsed) return null;
+
+  function toDecimal(raw: string): Prisma.Decimal | null {
+    const n = parseFloat(raw);
+    return isNaN(n) ? null : new Prisma.Decimal(n);
+  }
+
+  if ("rawMin" in parsed) {
+    const min = toDecimal(parsed.rawMin);
+    const max = toDecimal(parsed.rawMax);
+    if (!min || !max) return null;
+    if (parsed.op === "between") {
+      return { totalNetValue: { gte: min, lte: max } };
+    }
+    return { NOT: { totalNetValue: { gte: min, lte: max } } };
+  }
+
+  const val = toDecimal(parsed.rawValue);
+  if (!val) return null;
+  const { op } = parsed;
+  if (op === "eq") return { totalNetValue: { equals: val } };
+  if (op === "neq") return { NOT: { totalNetValue: { equals: val } } };
+  if (op === "gt") return { totalNetValue: { gt: val } };
+  if (op === "gte") return { totalNetValue: { gte: val } };
+  if (op === "lt") return { totalNetValue: { lt: val } };
+  if (op === "lte") return { totalNetValue: { lte: val } };
+  return null;
+}
 
 type SupplierNameCursor = { supplierName: string; id: string };
 type OrderNumberCursor = { orderNumber: string | null; id: string };
@@ -203,21 +241,42 @@ export async function getPurchaseOrders(
   const dir = input.sortDirection ?? (sortBy === "createdAt" ? "desc" : "asc");
 
   const baseWhere: Prisma.PurchaseOrderWhereInput = { workspaceId };
-  const searchWhere: Prisma.PurchaseOrderWhereInput = input.searchQuery
-    ? {
-        OR: [
-          { orderNumber: { contains: input.searchQuery, mode: "insensitive" } },
-          { notes: { contains: input.searchQuery, mode: "insensitive" } },
-          { supplier: { name: { contains: input.searchQuery, mode: "insensitive" } } }
-        ]
-      }
-    : {};
-  const filteredWhere: Prisma.PurchaseOrderWhereInput = input.searchQuery
-    ? { AND: [baseWhere, searchWhere] }
-    : baseWhere;
+  const whereClauses: Prisma.PurchaseOrderWhereInput[] = [baseWhere];
+
+  if (input.searchQuery) {
+    whereClauses.push({
+      OR: [
+        { orderNumber: { contains: input.searchQuery, mode: "insensitive" } },
+        { notes: { contains: input.searchQuery, mode: "insensitive" } },
+        { supplier: { name: { contains: input.searchQuery, mode: "insensitive" } } }
+      ]
+    });
+  }
+  if (input.statusFilter) {
+    whereClauses.push({ status: input.statusFilter });
+  }
+  if (input.supplierIdFilter) {
+    whereClauses.push({ supplierId: input.supplierIdFilter });
+  }
+  if (input.orderedAtFilter) {
+    const parsed = deserializeDateRangeFilter(input.orderedAtFilter);
+    if (parsed) whereClauses.push({ orderedAt: dateRangeToUtcBounds(parsed) });
+  }
+  if (input.receivedAtFilter) {
+    const parsed = deserializeDateRangeFilter(input.receivedAtFilter);
+    if (parsed) whereClauses.push({ receivedAt: dateRangeToUtcBounds(parsed) });
+  }
+  if (input.totalNetValueFilter) {
+    const numericWhere = buildTotalNetValueWhere(input.totalNetValueFilter);
+    if (numericWhere) whereClauses.push(numericWhere);
+  }
+
+  const filteredWhere: Prisma.PurchaseOrderWhereInput =
+    whereClauses.length > 1 ? { AND: whereClauses } : baseWhere;
+  const hasFilters = whereClauses.length > 1;
 
   const totalCount = await prisma.purchaseOrder.count({ where: baseWhere });
-  const filteredCount = input.searchQuery
+  const filteredCount = hasFilters
     ? await prisma.purchaseOrder.count({ where: filteredWhere })
     : totalCount;
 

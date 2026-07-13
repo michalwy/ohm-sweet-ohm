@@ -31,6 +31,7 @@ export async function getDesignsPageForWorkspace(input: {
   sortBy?: DesignSortBy;
   sortDir?: "asc" | "desc";
   searchQuery?: string | null;
+  createdAtFilter?: string | null;
 }): Promise<DesignActionResult<ListPage<DesignSummary>>> {
   try {
     const context = await getContext(input.workspaceSlug);
@@ -41,7 +42,8 @@ export async function getDesignsPageForWorkspace(input: {
       pageSize: input.pageSize,
       sortBy: input.sortBy,
       sortDir: input.sortDir,
-      searchQuery: input.searchQuery
+      searchQuery: input.searchQuery,
+      createdAtFilter: input.createdAtFilter
     });
     return success(page);
   } catch (error) {
