@@ -20,6 +20,20 @@ import { findMatchingParts, type MatchSpec } from "./matching";
  * - Cycles (a design that transitively requires itself) are reported, never looped.
  */
 
+export type LineShortageMatcherFilter = {
+  attributeId: string;
+  type: "TEXT" | "NUMBER" | "QUANTITY" | "BOOLEAN" | "CHOICE";
+  operator: "EQ" | "NEQ" | "LT" | "LTE" | "GT" | "GTE";
+  /** Formatted display value as stored in BomMatcher.displayValue (e.g. "10kΩ", "SMD"). Used for QUANTITY and TEXT. */
+  displayValue: string | null;
+  /** Parsed decimal string from BomMatcher.numberValue. Used for NUMBER type to build filter URL params. */
+  numberValue: string | null;
+  /** Only set for BOOLEAN matchers. */
+  booleanValue: boolean | null;
+  /** Only set for CHOICE matchers. */
+  choiceOptionId: string | null;
+};
+
 export type LineShortage = {
   lineItemId: string;
   designators: string;
@@ -34,6 +48,12 @@ export type LineShortage = {
   sourcingDesignId: string | null;
   /** Latest revision id of the sourcing design, or null if the design has no revision yet. */
   sourcingLatestRevisionId: string | null;
+  /** Pinned part id, if this line is pinned to a specific part. Used to navigate to that part's detail directly. */
+  pinnedPartId: string | null;
+  /** Category id for building a categoryId filter URL param. Null if the line has no category scope. */
+  categoryId: string | null;
+  /** Serialized matcher data for building attr_<id>=<value> filter URL params. */
+  matchers: LineShortageMatcherFilter[];
 };
 
 export type ProcurementCandidate = {
@@ -84,6 +104,7 @@ type MatcherRow = {
   quantityBaseValue: { toString(): string } | null;
   booleanValue: boolean | null;
   choiceOptionId: string | null;
+  displayValue: string | null;
   attribute: { type: MatchSpec["matchers"][number]["type"] };
 };
 
@@ -213,6 +234,7 @@ export async function analyzeShortage({
             quantityBaseValue: true,
             booleanValue: true,
             choiceOptionId: true,
+            displayValue: true,
             attribute: { select: { type: true } }
           }
         }
@@ -268,7 +290,18 @@ export async function analyzeShortage({
           matchCount: candidates.length,
           sourcingDesignName: sourcingDesign?.designName ?? null,
           sourcingDesignId: sourcingDesign?.designId ?? null,
-          sourcingLatestRevisionId: sourcingDesign?.latestRevisionId ?? null
+          sourcingLatestRevisionId: sourcingDesign?.latestRevisionId ?? null,
+          pinnedPartId: row.pinnedPartId,
+          categoryId: row.category?.id ?? null,
+          matchers: row.matchers.map((m) => ({
+            attributeId: m.attributeId,
+            type: m.attribute.type as LineShortageMatcherFilter["type"],
+            operator: m.operator as LineShortageMatcherFilter["operator"],
+            displayValue: m.displayValue ?? null,
+            numberValue: m.numberValue?.toString() ?? null,
+            booleanValue: m.booleanValue ?? null,
+            choiceOptionId: m.choiceOptionId ?? null
+          }))
         });
       }
 

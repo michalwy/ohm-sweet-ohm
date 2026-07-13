@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useQuery, type UseQueryResult } from "@tanstack/react-query";
 
 import { analyzeShortageAction } from "@/server/designs/bomActions";
-import type { ShortageAnalysis } from "@/server/designs/shortageAnalysis";
+import type { ShortageAnalysis, LineShortage, LineShortageMatcherFilter } from "@/server/designs/shortageAnalysis";
 import {
   DialogBody,
   DialogFooter,
@@ -14,6 +14,70 @@ import {
   openDialog
 } from "@/app/dialog-shell";
 import { ShortageToShoppingListDialog } from "@/app/shortage-to-sl-dialog";
+
+const BOM_OP_TO_FILTER_OP: Record<LineShortageMatcherFilter["operator"], string> = {
+  EQ: "eq",
+  NEQ: "neq",
+  LT: "lt",
+  LTE: "lte",
+  GT: "gt",
+  GTE: "gte"
+};
+
+function buildPartsListUrl(workspaceSlug: string, line: LineShortage): string {
+  const base = `/w/${encodeURIComponent(workspaceSlug)}/parts`;
+
+  if (line.pinnedPartId) {
+    return `${base}?selectedPartId=${encodeURIComponent(line.pinnedPartId)}&pinnedId=${encodeURIComponent(line.pinnedPartId)}`;
+  }
+
+  const params = new URLSearchParams();
+
+  if (line.categoryId) {
+    params.set("categoryId", line.categoryId);
+  }
+
+  for (const matcher of line.matchers) {
+    const key = `attr_${matcher.attributeId}`;
+    const op = BOM_OP_TO_FILTER_OP[matcher.operator];
+
+    switch (matcher.type) {
+      case "TEXT":
+        // TEXT filter is contains-only; EQ approximated, NEQ cannot be expressed.
+        if (matcher.operator === "EQ" && matcher.displayValue) {
+          params.set(key, matcher.displayValue);
+        }
+        break;
+      case "NUMBER":
+        if (matcher.numberValue !== null) {
+          params.set(key, `${op}:${matcher.numberValue}`);
+        }
+        break;
+      case "QUANTITY":
+        // displayValue is the human-readable string (e.g. "10kΩ") that parseQuantityValue accepts.
+        if (matcher.displayValue !== null) {
+          params.set(key, `${op}:${matcher.displayValue}`);
+        }
+        break;
+      case "BOOLEAN":
+        if (matcher.booleanValue !== null) {
+          // NEQ: flip the value since the filter system has no negation operator.
+          const val = matcher.operator === "NEQ" ? !matcher.booleanValue : matcher.booleanValue;
+          params.set(key, String(val));
+        }
+        break;
+      case "CHOICE":
+        // EQ only; NEQ cannot be expressed in the current choice filter.
+        if (matcher.operator === "EQ" && matcher.choiceOptionId !== null) {
+          params.set(key, matcher.choiceOptionId);
+        }
+        break;
+    }
+  }
+
+  const qs = params.toString();
+  return qs ? `${base}?${qs}` : base;
+}
 
 export type ShortagePanelCopy = {
   heading: string;
@@ -37,6 +101,7 @@ export type ShortagePanelCopy = {
   viaSubDesign: string;
   createSubBuild: string;
   createShoppingListFromShortage: string;
+  viewMatchingParts: string;
   // Compact status + modal
   statusSelectDesign: string;
   statusFulfillable: string;
@@ -67,6 +132,7 @@ export const DEFAULT_SHORTAGE_COPY: ShortagePanelCopy = {
   manufacturer: "Manufacturer",
   shortageQty: "Shortage",
   cyclesHeading: "Design cycles detected",
+  viewMatchingParts: "View matching parts",
   viaSubDesign: "via",
   createSubBuild: "Create build",
   createShoppingListFromShortage: "Create shopping list",
@@ -166,10 +232,32 @@ function ShortageResults({
             {data.lines.map((line) => {
               const short = line.gapQty > 0;
               const unmatched = line.matchCount === 0;
+              const hasPartsLink = Boolean(line.pinnedPartId ?? line.categoryId) || line.matchers.length > 0;
               return (
-                <tr key={line.lineItemId} className="border-b border-[var(--color-border)]">
+                <tr key={line.lineItemId} className="group border-b border-[var(--color-border)]">
                   <td className="px-3 py-2 font-mono text-[var(--color-text-primary)]">
-                    {line.designators}
+                    <span className="inline-flex items-center gap-1">
+                      <span>{line.designators}</span>
+                      {hasPartsLink && (
+                        <a
+                          href={buildPartsListUrl(workspaceSlug, line)}
+                          aria-label={copy.viewMatchingParts}
+                          title={copy.viewMatchingParts}
+                          className="opacity-0 group-hover:opacity-100 transition-opacity text-[var(--color-text-muted)] hover:text-[var(--color-accent)] focus:opacity-100 focus:outline-none"
+                        >
+                          <svg
+                            aria-hidden="true"
+                            className="h-3.5 w-3.5"
+                            viewBox="0 0 20 20"
+                            fill="currentColor"
+                            xmlns="http://www.w3.org/2000/svg"
+                          >
+                            <path d="M11 3a1 1 0 1 0 0 2h2.586l-6.293 6.293a1 1 0 1 0 1.414 1.414L15 6.414V9a1 1 0 1 0 2 0V4a1 1 0 0 0-1-1h-5Z" />
+                            <path d="M5 5a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2v-3a1 1 0 1 0-2 0v3H5V7h3a1 1 0 0 0 0-2H5Z" />
+                          </svg>
+                        </a>
+                      )}
+                    </span>
                     {unmatched && (
                       <span className="ml-2 rounded bg-[var(--color-warning-soft)] px-1.5 py-0.5 text-xs text-[var(--color-warning)]">
                         {copy.noMatches}

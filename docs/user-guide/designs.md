@@ -120,7 +120,10 @@ analysis reports what cannot be fulfilled from current stock.
   parts together cannot cover it. Lines with no matching part are flagged. Lines whose
   shortage will be resolved by building a sub-assembly show a **"via [Design name]"** badge,
   indicating the shortfall is covered by exploding into that Design's BOM rather than
-  purchasing the part.
+  purchasing the part. Hover a line row to reveal a navigation icon — click it to open the
+  **Parts** list pre-filtered to all parts matching that line's spec (category and attribute
+  matchers). If the line is pinned to a specific part, the icon navigates directly to that
+  part's detail.
 - **To acquire** is the exploded list of purchasable parts you need to obtain, with the
   total shortage quantity for each.
 
