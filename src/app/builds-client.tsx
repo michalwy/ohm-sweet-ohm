@@ -168,6 +168,8 @@ type BuildsClientProps = {
 
 const columnHelper = createColumnHelper<BuildSummary>();
 
+const BUILD_STATES: BuildState[] = ["ALLOCATING", "STARTED", "IN_PROGRESS", "COMPLETED", "CANCELLED"];
+
 export const BUILD_STATE_BADGE_CLASS: Record<string, string> = {
   ALLOCATING: "bg-[var(--color-bg-subtle)] text-[var(--color-text-secondary)]",
   STARTED: "bg-[var(--color-warning-soft)] text-[var(--color-warning)]",
@@ -395,8 +397,6 @@ export function BuildsClient({
   });
 
   // --- Filters ---
-
-  const BUILD_STATES: BuildState[] = ["ALLOCATING", "STARTED", "IN_PROGRESS", "COMPLETED", "CANCELLED"];
 
   const buildFilterDefs = useMemo<FilterDefinition[]>(
     () => [
