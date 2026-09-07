@@ -6,6 +6,13 @@
 # against the merged file, not from recollection.
 #
 # Update it in the same commit that implements or diverges from a rule.
+#
+# Known limit: scripts/check-adoption-file.py resolves pointers into THIS
+# repository only. Any reference below to dev-agent's cards or registry is a
+# cross-repository claim that nothing here can check, and one has already gone
+# stale — R-006 called D-001 a divergence after that key was retired. Prefer
+# stating the fact and naming the id for traceability over describing how
+# another repository is organised.
 
 schema: 1
 project: ohm-sweet-ohm
@@ -67,9 +74,10 @@ rules:
     note: >-
       Browser verification is stated as deliberately out of the definition of
       done, with the date, the reason, and an explicit instruction not to "fix"
-      it back. The card requires that a position be recorded, not which one;
-      D-001 in dev-agent's registry records that this answer differs from
-      darkroom's, which is not a divergence from the rule.
+      it back. The card requires that a position be recorded, not which one, so
+      holding the opposite answer to darkroom is compliance rather than
+      divergence — dev-agent tracks both under recorded_answers as D-001, and
+      retired its divergences key once that distinction was drawn.
 
   R-007:
     status: partial
