@@ -60,7 +60,7 @@ Those three are the **only** required contexts. Every other job is deliberately 
 
 Some *cannot* be required, because they do not run on every pull request, and a required check whose job never runs blocks that pull request forever: `Publish container image` (release tags only), `renovate/stability-days` (Renovate pull requests only), and the `Site` workflow jobs (pushes to `main` only).
 
-Some *could* be required and deliberately are not: `Closing reference check` and `Ruleset drift (advisory)`. Both are cheap to satisfy and both would be defensible as required — the reasoning for leaving them advisory is with the drift check below, and adding any required context is a ruleset change and therefore the user's call, not an agent's.
+Some *could* be required and deliberately are not: `Closing reference check`, `Ruleset drift (advisory)` and `Adoption file check (advisory)`. Both are cheap to satisfy and both would be defensible as required — the reasoning for leaving them advisory is with the drift check below, and adding any required context is a ruleset change and therefore the user's call, not an agent's.
 
 **There are no bypass actors, including the repository owner.** This was chosen knowingly: a gate that its own author can step around does not gate anything, and the whole verification loop below depends on there being a real moment before merge.
 
@@ -73,6 +73,8 @@ The ruleset is checked in at `.github/rulesets/main.json`, and `scripts/check-ru
 The check runs **daily on a schedule, and advisory on pull requests** that touch the artifact or its workflow (`.github/workflows/ruleset-drift.yml`). It is **never a required context**, and that is a decision rather than an omission: the event it exists to catch — GitHub writing to the ruleset unasked — produces no pull request at all, so only the schedule can see it; and as a required context the legitimately-red window above would freeze every unrelated pull request in the repository, with no bypass for anyone. Making it required would itself be a ruleset change, and therefore the user's call.
 
 Which of the estate's workflow rules this project implements is published at `.github/workflow-rules.yaml`. Update it in the same commit that implements or diverges from a rule, never as a follow-up.
+
+`scripts/check-adoption-file.py` checks that file's **shape and pointers** — valid statuses, `gap` present on `partial`, and every `where` naming a file and heading that actually exist. It cannot check whether a rule is honestly reported; that claim is prose about prose and its author is the worst-placed party to audit it. But the pointers are exactly where such a file rots, because sections get renamed and nothing notices, so the unauditable part is smaller than it first appears. A green run means well-formed and resolvable, not true.
 
 The flow:
 

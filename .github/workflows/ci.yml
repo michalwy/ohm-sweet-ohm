@@ -152,6 +152,20 @@ jobs:
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: ./scripts/check-closing-references.sh
 
+  adoption-file:
+    name: Adoption file check (advisory)
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7.0.0
+
+      - name: Verify the adoption file's shape and pointers
+        run: |
+          python3 -c "import yaml" 2>/dev/null || pip install --quiet pyyaml
+          python3 scripts/check-adoption-file.py
+
   publish-image:
     name: Publish container image
     runs-on: ubuntu-latest
