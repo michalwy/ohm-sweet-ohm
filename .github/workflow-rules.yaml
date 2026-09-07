@@ -34,27 +34,36 @@ rules:
       head is the only protection against merging a commit nobody verified.
 
   R-004:
-    status: absent
-    note: no card exists; reserved id
+    status: implemented
+    where: "scripts/check-ruleset-drift.sh, AGENTS.md § Branching, Pull Requests, and Merging"
+    note: >-
+      The drift check reports three outcomes rather than two. When a field is
+      unreadable it names it, refuses to normalise absent to empty, exits 2 so a
+      partial run never reports success, and --write refuses to produce an
+      artifact missing it.
 
   R-005:
-    status: absent
-    note: >-
-      No card exists. This project's position — implementation plans kept but
-      narrowed, because a plan under .claude/ is gitignored and dies with the
-      worktree while the durable record is the pull request and the issue — is
-      recorded with its date in AGENTS.md § Multi-Step Implementation Plans.
-      Cannot be encoded as `diverged` while the rule it would diverge from is
-      unwritten; see the note to dev-agent in the pull request that added this
-      file.
+    status: partial
+    gap: >-
+      The second half is implemented: where the record lives is decided,
+      dated and reasoned — plans kept but narrowed, because a plan under
+      .claude/ is gitignored and dies with the worktree while the durable
+      record is the pull request and the issue. The first half, which the card
+      calls universal, is not: this project asks for a plan only when work
+      cannot be finished in one session, so a task that spans several areas but
+      fits in one session records no shape before writing. Narrower than the
+      card, deliberately, and not yet reconciled with it.
+    where: "AGENTS.md § Multi-Step Implementation Plans"
 
   R-006:
-    status: absent
+    status: implemented
+    where: "AGENTS.md § Testing Direction"
     note: >-
-      No card exists. This project's position — browser verification is
-      deliberately out of the definition of done — is recorded with its date and
-      reason in AGENTS.md § Testing Direction, and dev-agent's registry.yaml
-      carries it as divergence D-001. Same encoding problem as R-005.
+      Browser verification is stated as deliberately out of the definition of
+      done, with the date, the reason, and an explicit instruction not to "fix"
+      it back. The card requires that a position be recorded, not which one;
+      D-001 in dev-agent's registry records that this answer differs from
+      darkroom's, which is not a divergence from the rule.
 
   R-007:
     status: partial
@@ -81,8 +90,15 @@ rules:
     where: "AGENTS.md § Session Model"
 
   R-010:
-    status: absent
-    note: no card exists; reserved id
+    status: partial
+    gap: >-
+      Both known divergences are now stated where the rule that names the
+      command is: the drift check's identity-dependent coverage, and pnpm lint
+      reporting 93 errors locally against zero in CI. Stated, not eliminated —
+      the lint divergence is a three-line eslint.config.mjs change that sits
+      with the owner, and the card is explicit that a divergence is a defect in
+      the check rather than a quirk to work around.
+    where: "AGENTS.md § Testing Direction, AGENTS.md § Branching, Pull Requests, and Merging"
 
   R-011:
     status: implemented
