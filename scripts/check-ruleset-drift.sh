@@ -76,11 +76,18 @@ if [ "${1:-}" = "--write" ]; then
   exit 0
 fi
 
+# Three outcomes, never two: equal, differs, and could-not-see. The third names
+# the field and never exits as success — in a scheduled run the exit status is
+# the only signal anyone sees, so a green partial run is indistinguishable from
+# a green complete one, and the field it cannot read is the consequential one.
 if [ "$drop_bypass" = true ]; then
-  echo "::warning::Partial check — this token cannot read bypass_actors, so"
-  echo "  'no bypass for anyone' was NOT verified. Everything else was compared."
-  echo "  To close the gap, run this with a token that has administration read"
-  echo "  (set RULESET_TOKEN in the workflow's secrets)."
+  echo "::warning::Partial check — this token cannot read bypass_actors."
+  echo
+  echo "COULD NOT SEE: bypass_actors"
+  echo "  'no bypass for anyone' was NOT verified. Everything else is compared"
+  echo "  below, and this run exits 2 whatever that comparison says, so a"
+  echo "  partial run never reports success."
+  echo "  To close it, set a RULESET_TOKEN secret with administration read."
   echo
 fi
 
@@ -91,6 +98,11 @@ fi
 
 if diff -u <(normalise "$drop_bypass" < "$ARTIFACT") <(printf '%s\n' "$live") \
      --label "$ARTIFACT" --label "GitHub ruleset ${id}"; then
+  if [ "$drop_bypass" = true ]; then
+    echo "PARTIAL: everything this token could read matches ${ARTIFACT}."
+    echo "         bypass_actors was not read and is therefore not verified."
+    exit 2
+  fi
   echo "OK: ${ARTIFACT} matches the live ruleset."
 else
   echo
