@@ -129,6 +129,29 @@ jobs:
       - name: Run integration tests
         run: pnpm exec tsx --tsconfig tests/integration/tsconfig.json --test 'tests/integration/**/*.test.ts'
 
+  closing-references:
+    name: Closing reference check
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+
+    permissions:
+      contents: read
+      pull-requests: read
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7.0.0
+        with:
+          fetch-depth: 0
+
+      - name: Check for closing keywords in PR body and commit messages
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: ./scripts/check-closing-references.sh
+
   publish-image:
     name: Publish container image
     runs-on: ubuntu-latest
