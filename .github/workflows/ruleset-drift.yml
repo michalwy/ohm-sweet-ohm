@@ -46,5 +46,10 @@ jobs:
 
       - name: Compare the live ruleset against the checked-in artifact
         env:
-          GH_TOKEN: ${{ github.token }}
+          # GITHUB_TOKEN can read the ruleset, but in a reduced view: it cannot
+          # see bypass_actors, which is the field this check most needs to
+          # watch. The script says so loudly and compares everything else.
+          # Setting a RULESET_TOKEN secret with administration read closes the
+          # gap; creating it is the repository owner's action, not an agent's.
+          GH_TOKEN: ${{ secrets.RULESET_TOKEN || github.token }}
         run: ./scripts/check-ruleset-drift.sh
