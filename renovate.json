@@ -67,7 +67,7 @@
       "matchUpdateTypes": ["patch", "minor"],
       "automerge": true,
       "automergeType": "pr",
-      "automergeStrategy": "squash"
+      "automergeStrategy": "rebase"
     },
     {
       "description": "Dev tooling: major bumps require manual review",
