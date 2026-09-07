@@ -1,0 +1,91 @@
+# What this project implements of the estate's workflow rules.
+#
+# Format: dev-agent's rules/ADOPTION.md. dev-agent generates rules/INDEX.md from
+# this file rather than from its own reading of this repository, so this file is
+# a claim about `main` and R-002 applies to it: every status below was checked
+# against the merged file, not from recollection.
+#
+# Update it in the same commit that implements or diverges from a rule.
+
+schema: 1
+project: ohm-sweet-ohm
+updated: 2026-09-07
+
+rules:
+  R-001:
+    status: implemented
+    where: "AGENTS.md § Working Rules"
+    note: >-
+      Enforced rather than remembered: CI job "Closing reference check" runs
+      scripts/check-closing-references.sh over both the pull request body and
+      every commit message in the branch.
+
+  R-002:
+    status: implemented
+    where: "AGENTS.md § Branching, Pull Requests, and Merging"
+
+  R-003:
+    status: implemented
+    where: "AGENTS.md § Branching, Pull Requests, and Merging"
+    note: >-
+      Written with its holds-when, not as merge etiquette: with
+      required_approving_review_count 0 and require_last_push_approval false
+      there is no approval for a later push to invalidate, so re-reading the
+      head is the only protection against merging a commit nobody verified.
+
+  R-004:
+    status: absent
+    note: no card exists; reserved id
+
+  R-005:
+    status: absent
+    note: >-
+      No card exists. This project's position — implementation plans kept but
+      narrowed, because a plan under .claude/ is gitignored and dies with the
+      worktree while the durable record is the pull request and the issue — is
+      recorded with its date in AGENTS.md § Multi-Step Implementation Plans.
+      Cannot be encoded as `diverged` while the rule it would diverge from is
+      unwritten; see the note to dev-agent in the pull request that added this
+      file.
+
+  R-006:
+    status: absent
+    note: >-
+      No card exists. This project's position — browser verification is
+      deliberately out of the definition of done — is recorded with its date and
+      reason in AGENTS.md § Testing Direction, and dev-agent's registry.yaml
+      carries it as divergence D-001. Same encoding problem as R-005.
+
+  R-007:
+    status: implemented
+    where: "AGENTS.md § Branching, Pull Requests, and Merging"
+    note: >-
+      Artifact at .github/rulesets/main.json, derived here rather than copied.
+      scripts/check-ruleset-drift.sh compares and exits 1 with a diff; it runs
+      daily on a schedule and advisory on pull requests touching the artifact,
+      per dev-agent decisions/0003 — never a required context.
+
+  R-008:
+    status: implemented
+    where: "AGENTS.md § Session Model"
+
+  R-009:
+    status: implemented
+    where: "AGENTS.md § Session Model"
+
+  R-010:
+    status: absent
+    note: no card exists; reserved id
+
+  R-011:
+    status: implemented
+    where: "AGENTS.md § Session Model"
+
+  R-012:
+    status: implemented
+    where: "AGENTS.md § Session Model"
+    note: >-
+      Agent memory for this project is machine-local and outside git; four
+      entries were reconciled on 2026-09-07 when main was protected. The
+      delegation of process authority to dev-agent is also recorded there,
+      marked as superseding the handover chip a fresh lead inherits.

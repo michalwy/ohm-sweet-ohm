@@ -1,0 +1,52 @@
+name: Ruleset drift
+
+# Compares the live `main` ruleset against the artifact checked in at
+# .github/rulesets/main.json.
+#
+# Scheduled and advisory, never a required context (dev-agent decisions/0003).
+# Two reasons, and neither is caution:
+#
+#   * The event this check exists to catch does not produce a pull request.
+#     GitHub writes to the ruleset object unasked — this repository's ruleset
+#     arrived with require_extra_approval_for_unattributed_changes set to true,
+#     chosen by nobody. A pull-request-triggered check cannot see that, however
+#     required it is; it would only notice the next time somebody happened to
+#     open a pull request. So the schedule is the primary instrument, because it
+#     is the only trigger that fires on an event no human initiated.
+#
+#   * As a required context it would convert a documented, expected window into
+#     a total merge freeze. AGENTS.md establishes that this check is legitimately
+#     red between a deliberate ruleset change and the commit that updates the
+#     artifact — the two cannot be simultaneous, since one is an API call and the
+#     other is a pull request. With no bypass actors, nobody could escape it, and
+#     the predictable response to a hard block that is red for a correct reason
+#     is to edit the artifact to match the platform, which defeats the point.
+
+on:
+  schedule:
+    - cron: "17 6 * * *"
+  pull_request:
+    paths:
+      - ".github/rulesets/**"
+      - ".github/workflows/ruleset-drift.yml"
+      - "scripts/check-ruleset-drift.sh"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  # Reading repository rulesets is an administration-scoped read.
+  administration: read
+
+jobs:
+  drift:
+    name: Ruleset drift (advisory)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7.0.0
+
+      - name: Compare the live ruleset against the checked-in artifact
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: ./scripts/check-ruleset-drift.sh

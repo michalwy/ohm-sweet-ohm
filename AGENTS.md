@@ -56,13 +56,21 @@ This project is intentionally vibe-coded. Future agents must preserve product in
 - `Unit tests`
 - `Integration tests`
 
-`Publish container image`, `renovate/stability-days`, and the `Site` workflow jobs are deliberately **not** required: the first only runs on release tags, the second only appears on Renovate pull requests, and the third only runs on pushes to `main`. A required check whose job never runs on a pull request blocks that pull request forever.
+Those three are the **only** required contexts. Every other job is deliberately not required, and for two different reasons.
+
+Some *cannot* be required, because they do not run on every pull request, and a required check whose job never runs blocks that pull request forever: `Publish container image` (release tags only), `renovate/stability-days` (Renovate pull requests only), and the `Site` workflow jobs (pushes to `main` only).
+
+Some *could* be required and deliberately are not: `Closing reference check` and `Ruleset drift (advisory)`. Both are cheap to satisfy and both would be defensible as required — the reasoning for leaving them advisory is with the drift check below, and adding any required context is a ruleset change and therefore the user's call, not an agent's.
 
 **There are no bypass actors, including the repository owner.** This was chosen knowingly: a gate that its own author can step around does not gate anything, and the whole verification loop below depends on there being a real moment before merge.
 
 The ruleset is checked in at `.github/rulesets/main.json`, and `scripts/check-ruleset-drift.sh` exits 1 with a diff when the artifact and GitHub disagree (`--write` adopts the live state). Reason: the gate lives in GitHub's settings, where a change is unversioned, unreviewed, and leaves no trace in git — so the artifact is what makes a change to the gate reviewable. It also catches parameters GitHub sets on its own: creating this ruleset silently added `require_extra_approval_for_unattributed_changes: true`, which with 0 required approvals in a solo repository is a deadlock, since an author cannot approve their own pull request.
 
 **A red drift check is legitimate for exactly one window**: between a deliberate change to the ruleset and the commit that updates the artifact to match. Outside that window a red check means either someone changed the gate without recording it, or GitHub changed it by itself. Deliberately changing the ruleset is therefore not finished until the artifact lands — and whoever changes the platform state owns finding every place that describes it, not only this one file.
+
+The check runs **daily on a schedule, and advisory on pull requests** that touch the artifact or its workflow (`.github/workflows/ruleset-drift.yml`). It is **never a required context**, and that is a decision rather than an omission: the event it exists to catch — GitHub writing to the ruleset unasked — produces no pull request at all, so only the schedule can see it; and as a required context the legitimately-red window above would freeze every unrelated pull request in the repository, with no bypass for anyone. Making it required would itself be a ruleset change, and therefore the user's call.
+
+Which of the estate's workflow rules this project implements is published at `.github/workflow-rules.yaml`. Update it in the same commit that implements or diverges from a rule, never as a follow-up.
 
 The flow:
 
