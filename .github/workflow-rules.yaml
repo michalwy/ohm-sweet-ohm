@@ -35,7 +35,9 @@ rules:
 
   R-004:
     status: implemented
-    where: "scripts/check-ruleset-drift.sh, AGENTS.md § Branching, Pull Requests, and Merging"
+    where:
+      - "scripts/check-ruleset-drift.sh"
+      - "AGENTS.md § Branching, Pull Requests, and Merging"
     note: >-
       The drift check reports three outcomes rather than two. When a field is
       unreadable it names it, refuses to normalise absent to empty, exits 2 so a
@@ -98,7 +100,9 @@ rules:
       the lint divergence is a three-line eslint.config.mjs change that sits
       with the owner, and the card is explicit that a divergence is a defect in
       the check rather than a quirk to work around.
-    where: "AGENTS.md § Testing Direction, AGENTS.md § Branching, Pull Requests, and Merging"
+    where:
+      - "AGENTS.md § Testing Direction"
+      - "AGENTS.md § Branching, Pull Requests, and Merging"
 
   R-011:
     status: implemented
