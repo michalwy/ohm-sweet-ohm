@@ -39,10 +39,14 @@ rules:
       - "scripts/check-ruleset-drift.sh"
       - "AGENTS.md § Branching, Pull Requests, and Merging"
     note: >-
-      The drift check reports three outcomes rather than two. When a field is
-      unreadable it names it, refuses to normalise absent to empty, exits 2 so a
-      partial run never reports success, and --write refuses to produce an
-      artifact missing it.
+      The drift check reports three outcomes rather than two, and under
+      dev-agent decisions/0005 the third is DECLARED rather than inferred: a
+      field the caller may not read is named on the command line from a
+      reviewed workflow, excluded, and stated in the run summary. Anything
+      absent without a declaration still exits 1; the declarable set is an
+      enumerated allowlist of one field, so `rules` can never be excluded; and
+      --write refuses regardless, because a concession about checking is not a
+      licence to record an incomplete artifact.
 
   R-005:
     status: partial
@@ -73,9 +77,10 @@ rules:
       The artifact and the check exist, but coverage depends on who runs the
       check. GITHUB_TOKEN reads the ruleset in a reduced view without
       bypass_actors, so the scheduled run does not verify "no bypass for
-      anyone" — the clause the gate exists for. Complete when run with owner
-      rights. Closing it needs a RULESET_TOKEN secret, which is the owner's
-      action because it is a credential.
+      anyone" — the clause the gate exists for. That exclusion is declared in
+      the workflow and named on every run rather than inferred, and it retires
+      itself once a RULESET_TOKEN secret exists, which is the owner's action
+      because it is a credential.
     where: "AGENTS.md § Branching, Pull Requests, and Merging"
     note: >-
       Artifact at .github/rulesets/main.json, derived here rather than copied.
