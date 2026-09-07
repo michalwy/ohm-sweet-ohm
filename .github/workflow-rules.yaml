@@ -57,7 +57,14 @@ rules:
       carries it as divergence D-001. Same encoding problem as R-005.
 
   R-007:
-    status: implemented
+    status: partial
+    gap: >-
+      The artifact and the check exist, but coverage depends on who runs the
+      check. GITHUB_TOKEN reads the ruleset in a reduced view without
+      bypass_actors, so the scheduled run does not verify "no bypass for
+      anyone" — the clause the gate exists for. Complete when run with owner
+      rights. Closing it needs a RULESET_TOKEN secret, which is the owner's
+      action because it is a credential.
     where: "AGENTS.md § Branching, Pull Requests, and Merging"
     note: >-
       Artifact at .github/rulesets/main.json, derived here rather than copied.
