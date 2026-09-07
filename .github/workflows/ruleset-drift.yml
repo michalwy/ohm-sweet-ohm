@@ -34,8 +34,6 @@ on:
 
 permissions:
   contents: read
-  # Reading repository rulesets is an administration-scoped read.
-  administration: read
 
 jobs:
   drift:
