@@ -54,5 +54,6 @@
       "type": "required_status_checks"
     }
   ],
+  "source_type": "Repository",
   "target": "branch"
 }

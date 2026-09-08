@@ -72,11 +72,22 @@ done
 # Drop everything that is per-instance or per-viewer rather than configuration,
 # and sort what GitHub returns in arbitrary order.
 #
+# `source_type` is deliberately KEPT. It is not provenance of the fetch — it
+# answers where the ruleset lives, and a value of "Organization" means the
+# artifact no longer describes a ruleset this repository controls, with its
+# bypass list administered elsewhere. That is a premise change and should be the
+# loudest thing this check can report.
+#
+# `source` is deliberately dropped. For a repository ruleset it reads back the
+# repository's own name, so it carries nothing — but it changes on a repository
+# rename, which is not a policy event, and a false failure costs this check the
+# credibility that is its entire value.
+#
 # `drop_bypass` removes bypass_actors from BOTH sides when the caller's token
 # cannot see it — see the partial-coverage handling below.
 normalise() {
   jq -S --argjson drop "${1:-false}" '
-    del(.id, .node_id, .created_at, .updated_at, ._links, .source, .source_type,
+    del(.id, .node_id, .created_at, .updated_at, ._links, .source,
         .current_user_can_bypass)
     | .rules |= sort_by(.type)
     | (.rules[] | select(.type == "required_status_checks")
