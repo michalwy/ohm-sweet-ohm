@@ -98,7 +98,7 @@ rules:
 
   R-008:
     status: implemented
-    where: "AGENTS.md § Sesion Model"
+    where: "AGENTS.md § Session Model"
 
   R-009:
     status: implemented
