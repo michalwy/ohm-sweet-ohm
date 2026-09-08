@@ -101,18 +101,18 @@ rules:
     where: "AGENTS.md § Session Model"
 
   R-010:
-    status: partial
-    gap: >-
-      One of the two known divergences is eliminated: the drift check's
-      coverage no longer depends on who runs it, because CI holds a credential
-      that reads bypass_actors. The other remains stated but not eliminated —
-      pnpm lint reports 93 errors locally against zero in CI, and the
-      three-line eslint.config.mjs change sits with the owner. The card is
-      explicit that a divergence is a defect in the check rather than a quirk
-      to work around, so this stays partial until that one is fixed.
+    status: implemented
     where:
       - "AGENTS.md § Testing Direction"
       - "AGENTS.md § Branching, Pull Requests, and Merging"
+    note: >-
+      Both known divergences are eliminated rather than merely stated. The drift
+      check's coverage no longer depends on who runs it, because CI holds a
+      credential that reads bypass_actors. And pnpm lint no longer reports 93
+      errors locally against zero in CI: eslint.config.mjs ignores the Astro
+      site's build output, which was gitignored and never built by CI, so the
+      divergence existed only on a developer's machine. Both fixes are recorded
+      with their dates where the rules naming those commands are.
 
   R-011:
     status: implemented
