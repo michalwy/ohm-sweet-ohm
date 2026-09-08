@@ -80,21 +80,17 @@ rules:
       retired its divergences key once that distinction was drawn.
 
   R-007:
-    status: partial
-    gap: >-
-      The artifact and the check exist, but coverage depends on who runs the
-      check. GITHUB_TOKEN reads the ruleset in a reduced view without
-      bypass_actors, so the scheduled run does not verify "no bypass for
-      anyone" — the clause the gate exists for. That exclusion is declared in
-      the workflow and named on every run rather than inferred, and it retires
-      itself once a RULESET_READ_TOKEN secret exists, which is the owner's action
-      because it is a credential.
+    status: implemented
     where: "AGENTS.md § Branching, Pull Requests, and Merging"
     note: >-
       Artifact at .github/rulesets/main.json, derived here rather than copied.
       scripts/check-ruleset-drift.sh compares and exits 1 with a diff; it runs
       daily on a schedule and advisory on pull requests touching the artifact,
-      per dev-agent decisions/0003 — never a required context.
+      per dev-agent decisions/0003 — never a required context. Since
+      2026-09-08 a RULESET_READ_TOKEN secret gives CI administration read, so
+      the run verifies bypass_actors too; the declaration that covered that gap
+      is retired and the workflow branch that applied it is deleted, so losing
+      the secret fails loudly rather than returning to green-and-partial.
 
   R-008:
     status: implemented
@@ -107,12 +103,13 @@ rules:
   R-010:
     status: partial
     gap: >-
-      Both known divergences are now stated where the rule that names the
-      command is: the drift check's identity-dependent coverage, and pnpm lint
-      reporting 93 errors locally against zero in CI. Stated, not eliminated —
-      the lint divergence is a three-line eslint.config.mjs change that sits
-      with the owner, and the card is explicit that a divergence is a defect in
-      the check rather than a quirk to work around.
+      One of the two known divergences is eliminated: the drift check's
+      coverage no longer depends on who runs it, because CI holds a credential
+      that reads bypass_actors. The other remains stated but not eliminated —
+      pnpm lint reports 93 errors locally against zero in CI, and the
+      three-line eslint.config.mjs change sits with the owner. The card is
+      explicit that a divergence is a defect in the check rather than a quirk
+      to work around, so this stays partial until that one is fixed.
     where:
       - "AGENTS.md § Testing Direction"
       - "AGENTS.md § Branching, Pull Requests, and Merging"
