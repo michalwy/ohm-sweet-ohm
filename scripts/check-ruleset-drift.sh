@@ -41,7 +41,6 @@
 set -euo pipefail
 
 REPO="${REPO:-michalwy/ohm-sweet-ohm}"
-RULESET_NAME="${RULESET_NAME:-main}"
 ARTIFACT="${ARTIFACT:-.github/rulesets/main.json}"
 
 # Fields the platform has actually been observed to redact from some callers.
@@ -97,16 +96,54 @@ normalise() {
   '
 }
 
-id="$(gh api "repos/${REPO}/rulesets" --jq \
-  ".[] | select(.name == \"${RULESET_NAME}\") | .id")"
+# Select by what a ruleset GATES, never by what it is called. What gates a
+# branch is the union of every ruleset matching it, not the one you named — so
+# selecting by name makes the artifact's completeness depend on a string, and an
+# organisation ruleset called anything else would be invisible: no field would
+# change, no diff would appear, and a second gate would simply never be
+# mentioned. A second match is drift, whatever it claims to target.
+#
+# The list endpoint omits `conditions`, so each branch-target ruleset has to be
+# fetched to find out whether it covers the default branch.
+default_branch="$(gh api "repos/${REPO}" --jq .default_branch)"
+branch_ref="refs/heads/${default_branch}"
 
-if [ -z "$id" ]; then
-  echo "FAIL: no ruleset named '${RULESET_NAME}' on ${REPO}."
+matching_ids=""
+matching_desc=""
+raw=""
+
+for rid in $(gh api "repos/${REPO}/rulesets" --jq '.[] | select(.target == "branch") | .id'); do
+  detail="$(gh api "repos/${REPO}/rulesets/${rid}")"
+  if printf '%s' "$detail" | jq -e --arg b "$branch_ref" '
+        ((.conditions.ref_name.include // [])
+           | any(. == "~ALL" or . == "~DEFAULT_BRANCH" or . == $b))
+        and (((.conditions.ref_name.exclude // []) | any(. == $b)) | not)
+      ' >/dev/null; then
+    matching_ids="${matching_ids}${rid} "
+    matching_desc="${matching_desc}  - ${rid} $(printf '%s' "$detail" | jq -r '"\(.name) [\(.source_type) \(.source)]"')
+"
+    raw="$detail"
+  fi
+done
+
+set -- $matching_ids
+count=$#
+
+if [ "$count" -eq 0 ]; then
+  echo "FAIL: no branch ruleset on ${REPO} covers ${branch_ref}."
   echo "      The gate described in AGENTS.md does not exist."
   exit 1
 fi
 
-raw="$(gh api "repos/${REPO}/rulesets/${id}")"
+if [ "$count" -gt 1 ]; then
+  echo "FAIL: ${count} rulesets gate ${branch_ref}, and the artifact describes one."
+  printf '%s' "$matching_desc"
+  echo "      A second gate is drift whatever it claims to target — it can add"
+  echo "      requirements or bypass actors this repository never reviewed."
+  exit 1
+fi
+
+id="$1"
 
 # A token without administration rights can read the ruleset but gets a reduced
 # view: bypass_actors comes back null. That is the field this check most needs
@@ -183,6 +220,17 @@ if diff -u <(normalise "$drop_bypass" < "$ARTIFACT") <(printf '%s\n' "$live") \
   echo "OK: ${ARTIFACT} matches the live ruleset, bypass_actors included."
 else
   echo
+  live_st="$(printf '%s' "$raw" | jq -r '.source_type // "?"')"
+  art_st="$(jq -r '.source_type // "?"' "$ARTIFACT")"
+  if [ "$live_st" != "$art_st" ]; then
+    # source is dropped from the COMPARISON because it fires on a repository
+    # rename, but at the moment source_type flips, WHICH organisation now owns
+    # the gate is the security-relevant half. Detection and investigation are
+    # different jobs.
+    echo "SOURCE CHANGED: ${art_st} -> ${live_st}, now owned by $(printf '%s' "$raw" | jq -r '.source // "?"')"
+    echo "  The gate is no longer defined where the artifact says it is."
+    echo
+  fi
   echo "FAIL: the checked-in ruleset and GitHub disagree."
   echo "      Decide which is right. If the live change was intended, re-run"
   echo "      with --write and commit the artifact so the change is reviewed."
