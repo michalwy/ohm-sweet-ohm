@@ -145,6 +145,22 @@ fi
 
 id="$1"
 
+# The credential's expiry is recorded nowhere and cannot be read from the secret
+# — its value exists only inside a run. GitHub returns it in a response header
+# when the token has one, so this states it rather than leaving a silent time
+# bomb: an expired token fails at the fetch with an authentication error, which
+# is the least informative of the three failure modes and gives no warning.
+expiry="$(gh api -i rate_limit 2>/dev/null | tr -d '\r' \
+          | awk -F': ' 'tolower($1)=="github-authentication-token-expiration"{print $2}' || true)"
+if [ -n "$expiry" ]; then
+  echo "CREDENTIAL: expires ${expiry}"
+else
+  echo "CREDENTIAL: no expiry reported — this token either does not expire or"
+  echo "  GitHub discloses none for it. Nothing here will warn before it stops"
+  echo "  working; the run would simply start failing at the fetch."
+fi
+echo
+
 # A token without administration rights can read the ruleset but gets a reduced
 # view: bypass_actors comes back null. That is the field this check most needs
 # to watch, so the coverage gap is stated loudly rather than papered over — a
