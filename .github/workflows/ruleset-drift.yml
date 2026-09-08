@@ -46,15 +46,15 @@ jobs:
 
       - name: Compare the live ruleset against the checked-in artifact
         env:
-          GH_TOKEN: ${{ secrets.RULESET_TOKEN || github.token }}
-          RULESET_TOKEN: ${{ secrets.RULESET_TOKEN }}
+          GH_TOKEN: ${{ secrets.RULESET_READ_TOKEN || github.token }}
+          RULESET_READ_TOKEN: ${{ secrets.RULESET_READ_TOKEN }}
         run: |
           # The declaration is made HERE, in a reviewed file, and only while the
           # credential is absent — never inferred by the script at runtime. With
           # the secret present the check verifies bypass_actors like anything
           # else and the declaration retires itself; the script says so if it is
           # passed unnecessarily.
-          if [ -n "$RULESET_TOKEN" ]; then
+          if [ -n "$RULESET_READ_TOKEN" ]; then
             ./scripts/check-ruleset-drift.sh
           else
             ./scripts/check-ruleset-drift.sh --allow-unverifiable=bypass_actors
