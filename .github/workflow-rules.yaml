@@ -87,7 +87,7 @@ rules:
       bypass_actors, so the scheduled run does not verify "no bypass for
       anyone" — the clause the gate exists for. That exclusion is declared in
       the workflow and named on every run rather than inferred, and it retires
-      itself once a RULESET_TOKEN secret exists, which is the owner's action
+      itself once a RULESET_READ_TOKEN secret exists, which is the owner's action
       because it is a credential.
     where: "AGENTS.md § Branching, Pull Requests, and Merging"
     note: >-
@@ -98,7 +98,7 @@ rules:
 
   R-008:
     status: implemented
-    where: "AGENTS.md § Session Model"
+    where: "AGENTS.md § Sesion Model"
 
   R-009:
     status: implemented
@@ -120,6 +120,20 @@ rules:
   R-011:
     status: implemented
     where: "AGENTS.md § Session Model"
+
+  R-013:
+    status: partial
+    gap: >-
+      Two branches of this repository's controls are exercised and one is not.
+      Exercised: the closing-reference check proved red against a real historic
+      commit and green here; the drift check proved red on injected drift and
+      under both credentials, and its declared, undeclared and
+      declaration-unnecessary paths were all run; the adoption checker was made
+      to fail in CI on purpose before being relied on. Unexercised: the drift
+      workflow's cron trigger has never fired — every run so far came from
+      pull_request or workflow_dispatch — and a schedule cannot be forced.
+      Reported rather than assumed green.
+    where: "AGENTS.md § Branching, Pull Requests, and Merging"
 
   R-012:
     status: implemented

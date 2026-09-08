@@ -150,7 +150,7 @@ if [ "$invisible" = true ]; then
   echo "  workflow rather than inferred here. 'no bypass for anyone' is NOT"
   echo "  verified by this run. Everything else is compared below, and any"
   echo "  field that is absent WITHOUT a declaration still fails."
-  echo "  The declaration retires itself once RULESET_TOKEN exists."
+  echo "  The declaration retires itself once RULESET_READ_TOKEN exists."
   echo
 fi
 
