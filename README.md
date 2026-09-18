@@ -90,7 +90,8 @@ for each tagged release (`v*`); `latest` tracks the newest release.
 
 ## Repository Guide
 
-- [AGENTS.md](AGENTS.md): instructions for future coding agents
+- [AGENTS.md](AGENTS.md): instructions for coding agents — rules, invariants, and a map of
+  [docs/agents/](docs/agents/collaboration.md), which holds the reasoning per area
 - [docs/user-guide/](docs/user-guide/index.md): end-user guide for current functionality
 - [docs/product/brief.md](docs/product/brief.md): product direction and open questions
 - [docs/architecture/overview.md](docs/architecture/overview.md): architecture skeleton

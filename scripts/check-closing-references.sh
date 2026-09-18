@@ -56,10 +56,11 @@ done < <(git rev-list "${base}..${head}")
 if [ "$violations" -gt 0 ]; then
   cat <<'MSG'
 
-Use `Refs #NNN` instead. The issue is closed by the lead session after it has
-verified the work in the repository, not by GitHub at merge time.
+Use `Refs #NNN` instead. The issue is closed by hand, by the session that owns
+it, after it has verified the merged work on main — not by GitHub at merge time.
 
-To fix a commit message, rewrite it (`git rebase -i`) and force-push the branch.
+To fix a commit message, rewrite it (`git rebase -i`) and push the branch with
+--force-with-lease.
 MSG
   exit 1
 fi
