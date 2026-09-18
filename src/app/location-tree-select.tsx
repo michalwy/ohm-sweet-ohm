@@ -54,6 +54,7 @@ export function LocationTreeSelect({
   disabled,
   disableItem,
   describeLocation,
+  allowOrganizational = false,
   className = "w-44",
   buttonClassName = defaultLocationSelectButtonClassName
 }: {
@@ -72,6 +73,8 @@ export function LocationTreeSelect({
   /** When provided, items returning true are shown but cannot be selected. */
   disableItem?: (location: StorageLocationListItem) => boolean;
   describeLocation?: (location: StorageLocationListItem) => string | undefined;
+  /** Lets organizational locations be selected too, e.g. as a parent; by default only assignable ones can. */
+  allowOrganizational?: boolean;
   className?: string;
   buttonClassName?: string;
 }) {
@@ -118,7 +121,7 @@ export function LocationTreeSelect({
       setSelectedLocation("");
       return;
     }
-    if (!activeLocation?.isAssignable) return;
+    if (!activeLocation || (!activeLocation.isAssignable && !allowOrganizational)) return;
     if (disableItem?.(activeLocation)) return;
     setSelectedLocation(activeId);
   }
@@ -204,6 +207,7 @@ export function LocationTreeSelect({
                   copy={copy}
                   describeLocation={describeLocation}
                   disableItem={disableItem}
+                  allowOrganizational={allowOrganizational}
                   expandedIds={effectiveExpandedIds}
                   activeId={activeId}
                   level={0}
@@ -229,6 +233,7 @@ function LocationTreeSelectNode({
   copy,
   describeLocation,
   disableItem,
+  allowOrganizational,
   expandedIds,
   activeId,
   level,
@@ -240,6 +245,7 @@ function LocationTreeSelectNode({
   copy: LocationTreeSelectCopy;
   describeLocation?: (location: StorageLocationListItem) => string | undefined;
   disableItem?: (location: StorageLocationListItem) => boolean;
+  allowOrganizational: boolean;
   expandedIds: Set<string>;
   activeId: string;
   level: number;
@@ -252,7 +258,7 @@ function LocationTreeSelectNode({
   const isSelected = selectedId === location.id;
   const isActive = activeId === location.id;
   const isDisabled = disableItem?.(location) ?? false;
-  const canSelect = location.isAssignable && !isDisabled;
+  const canSelect = (location.isAssignable || allowOrganizational) && !isDisabled;
   const description = describeLocation?.(location);
   const toggleLabel = isExpanded
     ? `${copy.collapseLocation} ${location.name}`
@@ -312,6 +318,7 @@ function LocationTreeSelectNode({
               copy={copy}
               describeLocation={describeLocation}
               disableItem={disableItem}
+              allowOrganizational={allowOrganizational}
               expandedIds={expandedIds}
               activeId={activeId}
               level={level + 1}

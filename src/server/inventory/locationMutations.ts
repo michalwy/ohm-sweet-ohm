@@ -1,5 +1,14 @@
 import "server-only";
 
+import { Prisma } from "@/generated/prisma/client";
+import {
+  LOCATION_GENERATOR_MAX_NEW,
+  normalizeLocationName as normalizeLocationNameKey,
+  planLocationHierarchy,
+  resolvePlannedLocations,
+  validateLocationGeneratorLevels,
+  type LocationGeneratorLevel
+} from "@/lib/locationGenerator";
 import { prisma } from "@/server/db/prisma";
 
 export type StorageLocationListItem = {
@@ -249,6 +258,111 @@ export async function deleteStorageLocation(input: {
   }
 }
 
+/**
+ * Create a whole location hierarchy under one parent (or at root) in one transaction. A planned
+ * location whose name already exists under the same parent is reused, untouched, and the levels
+ * below it are generated inside it — which is how an existing structure is extended.
+ */
+export async function generateStorageLocations(input: {
+  workspaceId: string;
+  parentId: string | null;
+  levels: LocationGeneratorLevel[];
+}): Promise<{ created: StorageLocationListItem[]; reusedCount: number }> {
+  if (validateLocationGeneratorLevels(input.levels).length > 0) {
+    throw new Error("invalid-location-generator");
+  }
+  const plan = planLocationHierarchy(input.levels);
+
+  try {
+    return await prisma.$transaction(async (tx) => {
+      if (input.parentId) {
+        const parent = await tx.storageLocation.findFirst({
+          where: { id: input.parentId, workspaceId: input.workspaceId },
+          select: { id: true }
+        });
+        if (!parent) {
+          throw new Error("invalid-parent-location");
+        }
+      }
+
+      const existing = await tx.storageLocation.findMany({
+        where: { workspaceId: input.workspaceId },
+        select: { id: true, parentId: true, normalizedName: true }
+      });
+      const resolved = resolvePlannedLocations(plan, input.parentId, existing);
+      const toCreate = plan.filter((planned) => resolved.get(planned.key) === null);
+
+      if (toCreate.length > LOCATION_GENERATOR_MAX_NEW) {
+        throw new Error("too-many-generated-locations");
+      }
+
+      const idsByKey = new Map<string, string>();
+      for (const [key, existingId] of resolved) {
+        if (existingId) idsByKey.set(key, existingId);
+      }
+
+      // One insert per level: every parent a level needs was resolved or created by the one above.
+      const created: StorageLocationListItem[] = [];
+      const maxDepth = Math.max(-1, ...toCreate.map((planned) => planned.depth));
+      for (let depth = 0; depth <= maxDepth; depth += 1) {
+        const levelRows = toCreate
+          .filter((planned) => planned.depth === depth)
+          .map((planned) => ({
+            planned,
+            parentId: planned.parentKey === null ? input.parentId : idsByKey.get(planned.parentKey)!
+          }));
+        if (levelRows.length === 0) continue;
+
+        const rows = await tx.storageLocation.createManyAndReturn({
+          data: levelRows.map(({ planned, parentId }) => ({
+            workspaceId: input.workspaceId,
+            parentId,
+            name: planned.name,
+            normalizedName: planned.normalizedName,
+            isAssignable: planned.isAssignable
+          })),
+          select: {
+            id: true,
+            parentId: true,
+            name: true,
+            normalizedName: true,
+            isAssignable: true,
+            isArchived: true
+          }
+        });
+
+        // Match rows back by parent and name, unique among siblings, rather than by return order.
+        const rowIdsByParentAndName = new Map(
+          rows.map((row) => [`${row.parentId ?? ""} ${row.normalizedName}`, row.id])
+        );
+        for (const { planned, parentId } of levelRows) {
+          idsByKey.set(
+            planned.key,
+            rowIdsByParentAndName.get(`${parentId ?? ""} ${planned.normalizedName}`)!
+          );
+        }
+        created.push(
+          ...rows.map((row) => ({
+            id: row.id,
+            parentId: row.parentId,
+            name: row.name,
+            isAssignable: row.isAssignable,
+            isArchived: row.isArchived
+          }))
+        );
+      }
+
+      return { created, reusedCount: plan.length - toCreate.length };
+    });
+  } catch (error) {
+    // A concurrent create of the same sibling name loses the race on the unique index.
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
+      throw new Error("duplicate-location-name");
+    }
+    throw error;
+  }
+}
+
 async function assertParentLocation(
   workspaceId: string,
   parentId: string | null,
@@ -278,7 +392,7 @@ async function assertParentLocation(
 }
 
 function normalizeLocationName(value: string) {
-  const normalized = value.trim().toLocaleLowerCase("en").replace(/\s+/g, " ");
+  const normalized = normalizeLocationNameKey(value);
 
   if (!normalized) {
     throw new Error("missing-required-fields");
