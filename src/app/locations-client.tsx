@@ -35,9 +35,18 @@ import {
   type LocationTreeItem,
   type LocationTreeSelectCopy
 } from "@/app/location-tree-select";
+import {
+  LocationGeneratorDialog,
+  type LocationGeneratorCopy
+} from "@/app/location-generator-dialog";
+import { getNextToastId, ToastNotice, type ToastMessage } from "@/app/toast-notice";
 
 type Copy = {
   addLocation: string;
+  generateLocations: string;
+  generatedToast: string;
+  generatedWithReusedToast: string;
+  generator: LocationGeneratorCopy;
   addChild: string;
   edit: string;
   delete: string;
@@ -106,6 +115,10 @@ export function LocationsClient({
   workspaceSlug: string;
 }) {
   const dialogRef = useRef<HTMLDialogElement>(null);
+  const generatorDialogRef = useRef<HTMLDialogElement>(null);
+  const [generatorFormKey, setGeneratorFormKey] = useState(0);
+  const nextToastIdRef = useRef(0);
+  const [toastMessages, setToastMessages] = useState<ToastMessage[]>([]);
   const filterBarRef = useRef<FilterBarHandle>(null);
   const [formKey, setFormKey] = useState(0);
   const [locations, setLocations] = useState(initialLocations);
@@ -309,6 +322,43 @@ export function LocationsClient({
     window.requestAnimationFrame(() => openDialog(dialogRef.current));
   }
 
+  function openGenerator() {
+    setGeneratorFormKey((current) => current + 1);
+    window.requestAnimationFrame(() => openDialog(generatorDialogRef.current));
+  }
+
+  function handleGenerated(result: {
+    parentId: string | null;
+    created: StorageLocationListItem[];
+    reusedCount: number;
+  }) {
+    closeDialog(generatorDialogRef.current);
+    const nextLocations = [...locations, ...result.created];
+    setLocations(nextLocations);
+    // Reveal the new branch: the parent and its ancestors open, the generated levels stay folded.
+    if (result.parentId) {
+      setExpandedLocationIds(
+        new Set([
+          ...expandedLocationIds,
+          ...getAncestorIds(nextLocations, result.parentId),
+          result.parentId
+        ])
+      );
+    }
+    const template =
+      result.reusedCount > 0 ? copy.generatedWithReusedToast : copy.generatedToast;
+    const id = getNextToastId(nextToastIdRef);
+    setToastMessages((current) => [
+      ...current,
+      {
+        id,
+        message: template
+          .replace("{created}", result.created.length.toLocaleString("en"))
+          .replace("{reused}", result.reusedCount.toLocaleString("en"))
+      }
+    ]);
+  }
+
   function openEditForm(location: StorageLocationListItem) {
     setEditingLocation(location);
     setIsCreateMode(false);
@@ -394,6 +444,14 @@ export function LocationsClient({
               Clear filters
             </button>
           ) : null}
+          <button
+            className="inline-flex min-h-10 items-center rounded-md border border-[var(--color-border-strong)] bg-[var(--color-bg-elevated)] px-4 text-sm font-medium text-[var(--color-text-secondary)] transition hover:border-[var(--color-border-hover)] hover:bg-[var(--color-bg-subtle)] focus:outline-none focus:ring-2 focus:ring-[var(--color-ring-strong)] focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
+            type="button"
+            disabled={!isDatabaseAvailable || !canWriteLocations}
+            onClick={openGenerator}
+          >
+            {copy.generateLocations}
+          </button>
           <button
             className="inline-flex min-h-10 items-center rounded-md bg-[var(--color-accent)] px-4 text-sm font-semibold text-white transition hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-60"
             type="button"
@@ -619,6 +677,21 @@ export function LocationsClient({
           </form>
         ) : null}
       </DialogShell>
+
+      <LocationGeneratorDialog
+        ref={generatorDialogRef}
+        copy={copy.generator}
+        formKey={generatorFormKey}
+        locations={locations}
+        locationTree={locationTree}
+        workspaceSlug={workspaceSlug}
+        onGenerated={handleGenerated}
+      />
+
+      <ToastNotice
+        messages={toastMessages}
+        onDismiss={(id) => setToastMessages((current) => current.filter((toast) => toast.id !== id))}
+      />
 
       <DeleteConfirmationDialog
         body={copy.deleteConfirmationBody}

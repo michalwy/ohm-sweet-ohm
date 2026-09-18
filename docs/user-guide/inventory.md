@@ -19,6 +19,39 @@ Archived location behavior:
 - if an archived location still has stock, it remains visible in part stock breakdown with an archived marker
 - archiving is blocked while a location has non-zero stock; move or adjust stock to zero first
 
+## Generate a Location Structure
+
+Storage is often a regular grid — a cabinet with rows, each row with the same bins. Instead of adding
+each location by hand, click **Generate locations** on the **Locations** screen and describe the
+structure level by level.
+
+- **Create inside** — the parent the structure goes under, or no parent for the top level. Any
+  location can be the parent, organizational ones included.
+- **Levels** — add as many as you need; every location of a level gets the whole next level inside
+  it. For each level set:
+  - **Prefix** and **Suffix** — text around the counter, for example `Row ` or `Bin-`.
+  - **Counter** — **Numbers** (`1, 2, 3`) or **Letters** (`A, B, C`, continuing `AA, AB` after `Z`).
+    Levels can mix them, such as lettered rows with numbered bins.
+  - **Start** and **Count** — the first value (a number, or one to three letters) and how many
+    locations the level has.
+  - **Zero padding** (numbers only) — **Auto** pads every number to the width of the largest one
+    (`01` … `12`), so the list sorts in counting order; or choose none or a fixed number of digits.
+  - **Type** — organizational or assignable. By default the deepest level is assignable and the ones
+    above it organizational.
+- To build a name from several levels, put `{1}`, `{2}`, … in a prefix or suffix to insert that
+  level's counter: prefix `R{1}C` on level 2 gives `R1C1`, `R1C2`, `R2C1`, …
+
+The **Preview** lists every location the structure describes and how many are new. Up to 1,000 new
+locations can be generated at once.
+
+**Extending a structure.** A location whose name already exists in the same place (ignoring case and
+extra spaces) is kept as it is — not renamed and not retyped — and the next level is generated inside
+it. The preview marks these **Already exists**. So to add bins 11–15 to every existing row, generate
+the same rows again with a bin level starting at 11; to add rows 6–10, start the row level at 6.
+
+Generated locations are ordinary locations: rename, move, archive or delete them one by one as usual.
+Generating needs permission to manage locations.
+
 ## See What a Location Holds
 
 Click a location in the **Locations** tree to open its details panel. **Stored parts** lists every

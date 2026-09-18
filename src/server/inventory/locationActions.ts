@@ -4,8 +4,13 @@
 import { authorizeWorkspacePermission } from "@/server/access-control/authorize";
 import { getCurrentWorkspaceContextBySlug } from "@/server/auth/currentContext";
 import {
+  parseLocationGeneratorLevels,
+  type LocationGeneratorLevel
+} from "@/lib/locationGenerator";
+import {
   createStorageLocation,
   deleteStorageLocation,
+  generateStorageLocations,
   getStorageLocations,
   updateStorageLocation,
   type StorageLocationListItem
@@ -82,6 +87,34 @@ export async function updateLocationForWorkspace(input: {
       isArchived: input.isArchived
     });
     return getSuccessState(location);
+  } catch (error) {
+    return getErrorState(getLocationActionError(error));
+  }
+}
+
+export async function generateLocationsForWorkspace(input: {
+  workspaceSlug: string;
+  parentId: string | null;
+  levels: LocationGeneratorLevel[];
+}): Promise<
+  LocationActionResult<{ created: StorageLocationListItem[]; reusedCount: number }>
+> {
+  try {
+    const context = await getAuthorizedLocationContext({
+      workspaceSlug: input.workspaceSlug,
+      permission: "locations:write"
+    });
+    const levels = parseLocationGeneratorLevels(input.levels);
+    if (!levels) {
+      throw new Error("invalid-location-generator");
+    }
+    return getSuccessState(
+      await generateStorageLocations({
+        workspaceId: context.workspace.id,
+        parentId: typeof input.parentId === "string" && input.parentId ? input.parentId : null,
+        levels
+      })
+    );
   } catch (error) {
     return getErrorState(getLocationActionError(error));
   }
