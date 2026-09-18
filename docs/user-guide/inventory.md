@@ -19,6 +19,22 @@ Archived location behavior:
 - if an archived location still has stock, it remains visible in part stock breakdown with an archived marker
 - archiving is blocked while a location has non-zero stock; move or adjust stock to zero first
 
+## See What a Location Holds
+
+Click a location in the **Locations** tree to open its details panel. **Stored parts** lists every
+part with non-zero stock held directly in that location, showing the part's catalog number (with a
+link to the part), manufacturer and description, and its **Stock** and **Available** quantities
+there — the same per-location figures as the part's **Locations and stock** table.
+
+Turn on **Include sublocations** to also list stock held anywhere below the location. Each part then
+gets one row per location that holds it, with a **Location** column giving the path below the opened
+location (for example `Drawer 1 / Bin 3`); stock held directly in the opened location is listed
+first. This is how you see the contents of an organizational location, which never holds stock
+itself.
+
+The panel needs permission to read inventory. The selected location is kept in the page URL, so the
+view can be bookmarked or shared.
+
 ## Record Stock Movements
 
 From the **Parts** screen, open stock actions for a selected part.
