@@ -1,1 +1,1 @@
-Read AGENTS.md before starting any task. It contains all project rules, conventions, and working instructions.
+Read `AGENTS.md` before any task — via `git show origin/main:AGENTS.md` until you have cut your branch, because a worktree is only as fresh as the last time it was cut. It holds the rules and a map of `docs/agents/`, where the reasoning for each area lives.
