@@ -10,6 +10,7 @@ import {
   getPartLocationBalances,
   type InventoryHistoryItem
 } from "@/server/inventory/entryMutations";
+import { getLocationStock, type LocationStockItem } from "@/server/inventory/locationStock";
 
 export type InventoryActionResult<T> =
   | {
@@ -105,6 +106,29 @@ export async function getPartInventoryHistoryForWorkspace(input: {
     });
 
     return getSuccessState(history);
+  } catch (error) {
+    return getErrorState(getInventoryActionError(error));
+  }
+}
+
+export async function getLocationStockForWorkspace(input: {
+  workspaceSlug: string;
+  locationId: string;
+  includeSublocations: boolean;
+}): Promise<InventoryActionResult<LocationStockItem[]>> {
+  try {
+    const context = await getAuthorizedInventoryContext({
+      workspaceSlug: input.workspaceSlug,
+      permission: "inventory:read"
+    });
+
+    const stock = await getLocationStock({
+      workspaceId: context.workspace.id,
+      locationId: input.locationId,
+      includeSublocations: input.includeSublocations
+    });
+
+    return getSuccessState(stock);
   } catch (error) {
     return getErrorState(getInventoryActionError(error));
   }

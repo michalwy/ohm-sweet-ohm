@@ -13,7 +13,7 @@ The user guide includes a simple local run section and a walkthrough of all curr
 ## What OSO Can Do
 
 - **Parts catalogue** — track electronic parts by manufacturer and catalog number, with custom categories, attributes, and units
-- **Inventory** — manage stock across named storage locations; record receipts, issues, transfers, and adjustments
+- **Inventory** — manage stock across named storage locations; record receipts, issues, transfers, and adjustments; see which parts each location (and its sublocations) holds
 - **Designs & BOMs** — create designs with revision history; each revision carries a bill of materials that resolves against live inventory
 - **Builds** — run a design revision for a target quantity; allocate parts, reserve stock on start, consume per assembled unit, and automatically receive the output part on completion; plan against incoming (on-order or in-production) stock when on-hand stock is short
 - **Purchasing** — collect parts to buy on shopping lists, convert them to formal per-supplier purchase orders, and receive deliveries to update inventory automatically

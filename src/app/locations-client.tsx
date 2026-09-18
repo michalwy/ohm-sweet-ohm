@@ -7,7 +7,7 @@ import type { FilterDefinition } from "@/app/list-filter-config";
 import { useListFilterConfiguration } from "@/app/list-filter-config";
 import { useFilterUrlState } from "@/app/use-filter-url-state";
 import { TREE_SELECT_NONE_ID } from "@/app/tree-select";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 
 import {
   createLocationForWorkspace,
@@ -15,6 +15,9 @@ import {
   updateLocationForWorkspace
 } from "@/server/inventory/locationActions";
 import type { StorageLocationListItem } from "@/server/inventory/locationMutations";
+import { getLocationStockForWorkspace } from "@/server/inventory/entryActions";
+import { DetailPanel, useDetailsPanelWidth } from "@/app/detail-panel";
+import { PartLink } from "@/app/entity-links";
 import {
   DeleteConfirmationDialog,
   DialogActions,
@@ -69,6 +72,16 @@ type Copy = {
   locationHasStock: string;
   filterArchived: string;
   filterParentLocation: string;
+  storedParts: string;
+  includeSublocations: string;
+  part: string;
+  location: string;
+  stock: string;
+  available: string;
+  loadingStock: string;
+  loadStockError: string;
+  noStoredParts: string;
+  noStoredPartsWithSublocations: string;
 };
 
 type LocationFormErrors = Partial<
@@ -76,15 +89,19 @@ type LocationFormErrors = Partial<
 >;
 
 export function LocationsClient({
+  canReadInventory,
   canWriteLocations,
   copy,
   initialLocations,
+  initialSelectedLocationId,
   isDatabaseAvailable,
   workspaceSlug
 }: {
+  canReadInventory: boolean;
   canWriteLocations: boolean;
   copy: Copy;
   initialLocations: StorageLocationListItem[];
+  initialSelectedLocationId: string | null;
   isDatabaseAvailable: boolean;
   workspaceSlug: string;
 }) {
@@ -101,9 +118,41 @@ export function LocationsClient({
   const [locationPendingDelete, setLocationPendingDelete] =
     useState<StorageLocationListItem | null>(null);
   const [errors, setErrors] = useState<LocationFormErrors>({});
-  const [expandedLocationIds, setExpandedLocationIds] = useState<Set<string>>(
-    new Set()
+  const [expandedLocationIds, setExpandedLocationIds] = useState<Set<string>>(() =>
+    getAncestorIds(initialLocations, initialSelectedLocationId)
   );
+  const canOpenLocations = isDatabaseAvailable && canReadInventory;
+  const [selectedLocationId, setSelectedLocationId] = useState<string | null>(
+    canOpenLocations ? initialSelectedLocationId : null
+  );
+  const selectedLocation = selectedLocationId
+    ? (locations.find((location) => location.id === selectedLocationId) ?? null)
+    : null;
+  const {
+    width: detailsPanelWidth,
+    hasLoaded: hasLoadedDetailsPanelWidth,
+    startResizing: startResizingDetailsPanel
+  } = useDetailsPanelWidth(`oso:locations-details-panel-width:${workspaceSlug}`, 480);
+
+  function setSelectedLocationInUrl(locationId: string | null) {
+    const url = new URL(window.location.href);
+    if (locationId) {
+      url.searchParams.set("selectedLocationId", locationId);
+    } else {
+      url.searchParams.delete("selectedLocationId");
+    }
+    window.history.replaceState(window.history.state, "", url.toString());
+  }
+
+  function openLocationDetails(location: StorageLocationListItem) {
+    setSelectedLocationId(location.id);
+    setSelectedLocationInUrl(location.id);
+  }
+
+  function closeLocationDetails() {
+    setSelectedLocationId(null);
+    setSelectedLocationInUrl(null);
+  }
 
   const createMutation = useMutation({
     mutationFn: createLocationForWorkspace,
@@ -143,6 +192,9 @@ export function LocationsClient({
       setLocations((prev) =>
         prev.filter((location) => location.id !== variables.locationId)
       );
+      if (variables.locationId === selectedLocationId) {
+        closeLocationDetails();
+      }
       setLocationPendingDelete(null);
       setErrors({});
     }
@@ -352,78 +404,102 @@ export function LocationsClient({
           </button>
         </div>
       </div>
-      <div className="min-h-0 flex-1 overflow-auto rounded-md border border-[var(--color-border)] bg-[var(--color-bg-elevated)]">
-        {locations.length === 0 ? (
-          <p className="px-4 py-6 text-sm text-[var(--color-text-secondary)]">{copy.noLocations}</p>
-        ) : filteredLocations !== null ? (
-          <div className="p-4">
-            {filteredLocations.length === 0 ? (
-              <p className="text-sm text-[var(--color-text-muted)]">{copy.noMatchingLocations}</p>
-            ) : (
+      <div className="flex min-h-0 flex-1 gap-4">
+        <div className="min-h-0 flex-1 overflow-auto rounded-md border border-[var(--color-border)] bg-[var(--color-bg-elevated)]">
+          {locations.length === 0 ? (
+            <p className="px-4 py-6 text-sm text-[var(--color-text-secondary)]">{copy.noLocations}</p>
+          ) : filteredLocations !== null ? (
+            <div className="p-4">
+              {filteredLocations.length === 0 ? (
+                <p className="text-sm text-[var(--color-text-muted)]">{copy.noMatchingLocations}</p>
+              ) : (
+                <ol className="grid gap-1">
+                  {filteredLocations.map((location) => (
+                    <LocationNode
+                      canOpen={canOpenLocations}
+                      canWriteLocations={canWriteLocations}
+                      key={location.id}
+                      copy={copy}
+                      expandedLocationIds={expandedLocationIds}
+                      isDatabaseAvailable={isDatabaseAvailable}
+                      level={0}
+                      location={{ ...location, children: [] }}
+                      onAddChild={(parentId) => openCreateForm(parentId)}
+                      onDelete={(locationToDelete) => {
+                        setErrors({});
+                        setLocationPendingDelete(locationToDelete);
+                      }}
+                      onEdit={openEditForm}
+                      onOpen={openLocationDetails}
+                      selectedLocationId={selectedLocationId}
+                      onToggleExpanded={() => undefined}
+                    />
+                  ))}
+                </ol>
+              )}
+            </div>
+          ) : (
+            <div className="p-4">
+              <div className="mb-4 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-[var(--color-text-muted)]">
+                <span className="inline-flex items-center gap-2">
+                  <span className="h-3 w-3 rounded-sm border border-[var(--color-border-hover)] bg-[var(--color-bg-elevated)]" />
+                  {copy.assignable}
+                </span>
+                <span className="inline-flex items-center gap-2">
+                  <span className="h-3 w-3 rounded-sm border border-[var(--color-border-strong)] bg-[var(--color-bg-muted)]" />
+                  {copy.organizational}
+                </span>
+              </div>
               <ol className="grid gap-1">
-                {filteredLocations.map((location) => (
+                {locationTree.map((location) => (
                   <LocationNode
+                    canOpen={canOpenLocations}
                     canWriteLocations={canWriteLocations}
                     key={location.id}
                     copy={copy}
                     expandedLocationIds={expandedLocationIds}
                     isDatabaseAvailable={isDatabaseAvailable}
                     level={0}
-                    location={{ ...location, children: [] }}
+                    location={location}
                     onAddChild={(parentId) => openCreateForm(parentId)}
                     onDelete={(locationToDelete) => {
                       setErrors({});
                       setLocationPendingDelete(locationToDelete);
                     }}
                     onEdit={openEditForm}
-                    onToggleExpanded={() => undefined}
+                    onOpen={openLocationDetails}
+                    selectedLocationId={selectedLocationId}
+                    onToggleExpanded={(locationId) => {
+                      const nextIds = new Set(expandedLocationIds);
+                      if (nextIds.has(locationId)) {
+                        nextIds.delete(locationId);
+                      } else {
+                        nextIds.add(locationId);
+                      }
+                      setExpandedLocationIds(nextIds);
+                    }}
                   />
                 ))}
               </ol>
-            )}
-          </div>
-        ) : (
-          <div className="p-4">
-            <div className="mb-4 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-[var(--color-text-muted)]">
-              <span className="inline-flex items-center gap-2">
-                <span className="h-3 w-3 rounded-sm border border-[var(--color-border-hover)] bg-[var(--color-bg-elevated)]" />
-                {copy.assignable}
-              </span>
-              <span className="inline-flex items-center gap-2">
-                <span className="h-3 w-3 rounded-sm border border-[var(--color-border-strong)] bg-[var(--color-bg-muted)]" />
-                {copy.organizational}
-              </span>
             </div>
-            <ol className="grid gap-1">
-              {locationTree.map((location) => (
-                <LocationNode
-                  canWriteLocations={canWriteLocations}
-                  key={location.id}
-                  copy={copy}
-                  expandedLocationIds={expandedLocationIds}
-                  isDatabaseAvailable={isDatabaseAvailable}
-                  level={0}
-                  location={location}
-                  onAddChild={(parentId) => openCreateForm(parentId)}
-                  onDelete={(locationToDelete) => {
-                    setErrors({});
-                    setLocationPendingDelete(locationToDelete);
-                  }}
-                  onEdit={openEditForm}
-                  onToggleExpanded={(locationId) => {
-                    const nextIds = new Set(expandedLocationIds);
-                    if (nextIds.has(locationId)) {
-                      nextIds.delete(locationId);
-                    } else {
-                      nextIds.add(locationId);
-                    }
-                    setExpandedLocationIds(nextIds);
-                  }}
-                />
-              ))}
-            </ol>
-          </div>
-        )}
+          )}
+        </div>
+        {selectedLocation && hasLoadedDetailsPanelWidth ? (
+          <DetailPanel
+            closeLabel={copy.close}
+            title={selectedLocation.name}
+            subtitle={selectedLocation.isArchived ? copy.archived : undefined}
+            width={detailsPanelWidth}
+            onClose={closeLocationDetails}
+            onStartResize={startResizingDetailsPanel}
+          >
+            <LocationStockSection
+              copy={copy}
+              locationId={selectedLocation.id}
+              workspaceSlug={workspaceSlug}
+            />
+          </DetailPanel>
+        ) : null}
       </div>
       {errors.delete ? (
         <div className="mt-3">
@@ -585,6 +661,7 @@ function getLocationFormErrors(copy: Copy, error: string): LocationFormErrors {
 }
 
 function LocationNode({
+  canOpen,
   canWriteLocations,
   copy,
   expandedLocationIds,
@@ -594,8 +671,11 @@ function LocationNode({
   onAddChild,
   onDelete,
   onEdit,
-  onToggleExpanded
+  onOpen,
+  onToggleExpanded,
+  selectedLocationId
 }: {
+  canOpen: boolean;
   canWriteLocations: boolean;
   copy: Copy;
   expandedLocationIds: Set<string>;
@@ -605,20 +685,33 @@ function LocationNode({
   onAddChild: (parentId: string) => void;
   onDelete: (location: StorageLocationListItem) => void;
   onEdit: (location: StorageLocationListItem) => void;
+  onOpen: (location: StorageLocationListItem) => void;
   onToggleExpanded: (locationId: string) => void;
+  selectedLocationId: string | null;
 }) {
   const hasChildren = location.children.length > 0;
   const isExpanded = expandedLocationIds.has(location.id);
   const toggleLabel = isExpanded ? copy.collapseLocation : copy.expandLocation;
-  const rowClassName = location.isAssignable
-    ? "border-[var(--color-border-hover)] bg-[var(--color-bg-elevated)] text-[var(--color-text-primary)]"
-    : "border-[var(--color-border-strong)] bg-[var(--color-bg-subtle)] text-[var(--color-text-secondary)]";
+  const isSelected = location.id === selectedLocationId;
+  const rowClassName = [
+    location.isAssignable
+      ? "border-[var(--color-border-hover)] text-[var(--color-text-primary)]"
+      : "border-[var(--color-border-strong)] text-[var(--color-text-secondary)]",
+    isSelected
+      ? "bg-[var(--color-bg-muted)]"
+      : location.isAssignable
+        ? "bg-[var(--color-bg-elevated)]"
+        : "bg-[var(--color-bg-subtle)]",
+    canOpen ? "cursor-pointer hover:bg-[var(--color-bg-muted)]" : ""
+  ].join(" ");
 
   return (
     <li className="grid gap-1">
       <div
+        aria-current={isSelected ? "true" : undefined}
         className={`grid min-h-12 grid-cols-[auto_1fr_auto] items-center gap-3 rounded-md border-l-4 px-3 py-2 ${rowClassName}`}
         style={{ marginLeft: `${level * 1.25}rem` }}
+        onClick={canOpen ? () => onOpen(location) : undefined}
       >
         {hasChildren ? (
           <button
@@ -626,7 +719,10 @@ function LocationNode({
             className="grid h-7 w-7 shrink-0 place-items-center rounded text-[var(--color-text-muted)] transition hover:bg-[var(--color-bg-elevated)]/70 hover:text-[var(--color-text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-ring-strong)] focus:ring-offset-2"
             title={`${toggleLabel} ${location.name}`}
             type="button"
-            onClick={() => onToggleExpanded(location.id)}
+            onClick={(event) => {
+              event.stopPropagation();
+              onToggleExpanded(location.id);
+            }}
           >
             <span
               aria-hidden="true"
@@ -642,7 +738,17 @@ function LocationNode({
           <span className="h-7 w-7" aria-hidden="true" />
         )}
         <div className="min-w-0">
-          <p className="truncate text-sm font-medium">{location.name}</p>
+          {canOpen ? (
+            // Its click bubbles to the row, which opens the location; the button adds keyboard access.
+            <button
+              className="block max-w-full truncate rounded text-left text-sm font-medium focus:outline-none focus:ring-2 focus:ring-[var(--color-ring-strong)] focus:ring-offset-2"
+              type="button"
+            >
+              {location.name}
+            </button>
+          ) : (
+            <p className="truncate text-sm font-medium">{location.name}</p>
+          )}
           {location.isArchived ? (
             <p className="text-xs text-[var(--color-text-muted)]">
               {copy.archived}: {copy.yes}
@@ -654,7 +760,10 @@ function LocationNode({
             className="min-h-9 rounded-md border border-[var(--color-border-strong)] bg-[var(--color-bg-elevated)] px-3 py-1.5 text-sm font-medium text-[var(--color-text-secondary)] transition hover:border-[var(--color-border-hover)] hover:bg-[var(--color-bg-subtle)] focus:outline-none focus:ring-2 focus:ring-[var(--color-ring-strong)] focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-[var(--color-bg-subtle)] disabled:text-[var(--color-text-placeholder)]"
             type="button"
             disabled={!isDatabaseAvailable || !canWriteLocations}
-            onClick={() => onAddChild(location.id)}
+            onClick={(event) => {
+              event.stopPropagation();
+              onAddChild(location.id);
+            }}
           >
             {copy.addChild}
           </button>
@@ -663,7 +772,10 @@ function LocationNode({
             aria-label={copy.edit}
             type="button"
             disabled={!isDatabaseAvailable || !canWriteLocations}
-            onClick={() => onEdit(location)}
+            onClick={(event) => {
+              event.stopPropagation();
+              onEdit(location);
+            }}
           >
             <svg
               aria-hidden="true"
@@ -686,7 +798,10 @@ function LocationNode({
             aria-label={copy.delete}
             type="button"
             disabled={!isDatabaseAvailable || !canWriteLocations}
-            onClick={() => onDelete(location)}
+            onClick={(event) => {
+              event.stopPropagation();
+              onDelete(location);
+            }}
           >
             <svg
               aria-hidden="true"
@@ -711,6 +826,7 @@ function LocationNode({
           {location.children.map((child) => (
             <LocationNode
               key={child.id}
+              canOpen={canOpen}
               canWriteLocations={canWriteLocations}
               copy={copy}
               expandedLocationIds={expandedLocationIds}
@@ -720,7 +836,9 @@ function LocationNode({
               onAddChild={onAddChild}
               onDelete={onDelete}
               onEdit={onEdit}
+              onOpen={onOpen}
               onToggleExpanded={onToggleExpanded}
+              selectedLocationId={selectedLocationId}
             />
           ))}
         </ol>
@@ -732,4 +850,119 @@ function LocationNode({
 function getFormString(formData: FormData, name: string) {
   const value = formData.get(name);
   return typeof value === "string" ? value.trim() : "";
+}
+
+function getAncestorIds(
+  locations: StorageLocationListItem[],
+  locationId: string | null
+): Set<string> {
+  const parentIdById = new Map(locations.map((location) => [location.id, location.parentId]));
+  const ancestorIds = new Set<string>();
+  let parentId = locationId ? parentIdById.get(locationId) : null;
+  while (parentId && !ancestorIds.has(parentId)) {
+    ancestorIds.add(parentId);
+    parentId = parentIdById.get(parentId);
+  }
+  return ancestorIds;
+}
+
+function LocationStockSection({
+  copy,
+  locationId,
+  workspaceSlug
+}: {
+  copy: Copy;
+  locationId: string;
+  workspaceSlug: string;
+}) {
+  const [includeSublocations, setIncludeSublocations] = useState(false);
+  const stockQuery = useQuery({
+    queryKey: ["location-stock", workspaceSlug, locationId, includeSublocations],
+    queryFn: async () => {
+      const result = await getLocationStockForWorkspace({
+        workspaceSlug,
+        locationId,
+        includeSublocations
+      });
+      if (!result.ok) throw new Error(result.error);
+      return result.data;
+    }
+  });
+  const messageClassName =
+    "rounded-md border border-[var(--color-border)] bg-[var(--color-bg-subtle)] px-3 py-2 text-sm text-[var(--color-text-secondary)]";
+
+  return (
+    <section className="grid gap-2">
+      <div className="flex items-center justify-between gap-3">
+        <h3 className="text-sm font-semibold text-[var(--color-text-primary)]">
+          {copy.storedParts}
+        </h3>
+        <label className="inline-flex items-center gap-2 text-sm text-[var(--color-text-secondary)]">
+          <input
+            type="checkbox"
+            checked={includeSublocations}
+            onChange={(event) => setIncludeSublocations(event.target.checked)}
+          />
+          {copy.includeSublocations}
+        </label>
+      </div>
+      {stockQuery.isLoading ? (
+        <p className={messageClassName}>{copy.loadingStock}</p>
+      ) : stockQuery.isError ? (
+        <p className={messageClassName}>{copy.loadStockError}</p>
+      ) : (stockQuery.data ?? []).length === 0 ? (
+        <p className={messageClassName}>
+          {includeSublocations ? copy.noStoredPartsWithSublocations : copy.noStoredParts}
+        </p>
+      ) : (
+        <div className="overflow-hidden rounded-md border border-[var(--color-border)]">
+          <table className="w-full text-left text-sm">
+            <thead className="bg-[var(--color-bg-subtle)] text-[var(--color-text-secondary)]">
+              <tr>
+                <th className="px-3 py-2 font-semibold">{copy.part}</th>
+                {includeSublocations ? (
+                  <th className="px-3 py-2 font-semibold">{copy.location}</th>
+                ) : null}
+                <th className="px-3 py-2 text-right font-semibold">{copy.stock}</th>
+                <th className="px-3 py-2 text-right font-semibold">{copy.available}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {(stockQuery.data ?? []).map((row) => (
+                <tr
+                  key={`${row.partId}:${row.locationId}`}
+                  className="group border-t border-[var(--color-border)] align-top"
+                >
+                  <td className="px-3 py-2">
+                    <div className="font-medium text-[var(--color-text-primary)]">
+                      <PartLink partId={row.partId} name={row.catalogNumber} />
+                    </div>
+                    <div className="text-xs text-[var(--color-text-muted)]">
+                      {row.manufacturerName}
+                    </div>
+                    {row.description ? (
+                      <div className="text-xs text-[var(--color-text-secondary)]">
+                        {row.description}
+                      </div>
+                    ) : null}
+                  </td>
+                  {includeSublocations ? (
+                    <td className="px-3 py-2 text-[var(--color-text-secondary)]">
+                      {row.locationPath}
+                    </td>
+                  ) : null}
+                  <td className="px-3 py-2 text-right font-semibold text-[var(--color-text-primary)]">
+                    {row.quantity}
+                  </td>
+                  <td className="px-3 py-2 text-right font-semibold text-[var(--color-text-primary)]">
+                    {row.availableQuantity}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </section>
+  );
 }

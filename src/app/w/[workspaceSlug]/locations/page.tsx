@@ -62,17 +62,29 @@ const copy = {
   locationHasStock:
     "This location still has stock. Move or adjust stock to zero before archiving.",
   databaseUnavailable:
-    "Database is not available, so locations cannot be managed right now."
+    "Database is not available, so locations cannot be managed right now.",
+  storedParts: "Stored parts",
+  includeSublocations: "Include sublocations",
+  part: "Part",
+  location: "Location",
+  stock: "Stock",
+  available: "Available",
+  loadingStock: "Loading stock…",
+  loadStockError: "Stock could not be loaded.",
+  noStoredParts: "No parts are stored here.",
+  noStoredPartsWithSublocations: "No parts are stored here or in any sublocation."
 };
 
 type LocationsPageProps = {
   params: Promise<{
     workspaceSlug: string;
   }>;
+  searchParams?: Promise<{ selectedLocationId?: string }>;
 };
 
-export default async function LocationsPage({ params }: LocationsPageProps) {
+export default async function LocationsPage({ params, searchParams }: LocationsPageProps) {
   const { workspaceSlug } = await params;
+  const resolvedSearchParams = await searchParams;
   const session = await getCurrentSession();
 
   if (!session) {
@@ -94,13 +106,17 @@ export default async function LocationsPage({ params }: LocationsPageProps) {
     isDatabaseAvailable = false;
   }
 
-  const canWriteLocations = isDatabaseAvailable
-    ? await hasWorkspacePermission({
-        userId: context.user.id,
-        workspaceId: context.workspace.id,
-        permission: "locations:write"
-      }).catch(() => false)
-    : false;
+  const [canWriteLocations, canReadInventory] = isDatabaseAvailable
+    ? await Promise.all(
+        (["locations:write", "inventory:read"] as const).map((permission) =>
+          hasWorkspacePermission({
+            userId: context.user.id,
+            workspaceId: context.workspace.id,
+            permission
+          }).catch(() => false)
+        )
+      )
+    : [false, false];
 
   return (
     <WorkspaceShell
@@ -118,9 +134,11 @@ export default async function LocationsPage({ params }: LocationsPageProps) {
       ) : null}
 
       <LocationsClient
+        canReadInventory={canReadInventory}
         canWriteLocations={canWriteLocations}
         copy={copy}
         initialLocations={locations}
+        initialSelectedLocationId={resolvedSearchParams?.selectedLocationId ?? null}
         isDatabaseAvailable={isDatabaseAvailable}
         workspaceSlug={workspaceSlug}
       />

@@ -449,6 +449,47 @@ export async function getPartLocationAvailableBalancesWithDb(
   return available;
 }
 
+/** A designator assignment holds a hard reservation until it is assembled, while its build runs. */
+const heldReservationWhere = {
+  assembled: false,
+  buildLineItem: { build: { state: { in: ["STARTED" as const, "IN_PROGRESS" as const] } } }
+} satisfies Prisma.BuildDesignatorAssignmentWhereInput;
+
+/**
+ * Hard reservations held at any of `locationIds`, per part and location: the same figure
+ * `getPartLocationAvailableBalancesWithDb` subtracts, for many parts at once.
+ */
+export async function getReservedQuantitiesAtLocations(input: {
+  workspaceId: string;
+  locationIds: string[];
+}) {
+  const rows = await prisma.buildDesignatorAssignment.groupBy({
+    by: ["partId", "sourceLocationId"],
+    where: {
+      workspaceId: input.workspaceId,
+      partId: { not: null },
+      sourceLocationId: { in: input.locationIds },
+      ...heldReservationWhere
+    },
+    _count: { _all: true }
+  });
+
+  const reserved = new Map<string, Prisma.Decimal>();
+  for (const row of rows) {
+    if (row.partId && row.sourceLocationId) {
+      reserved.set(
+        getPartLocationKey(row.partId, row.sourceLocationId),
+        new Prisma.Decimal(row._count._all)
+      );
+    }
+  }
+  return reserved;
+}
+
+export function getPartLocationKey(partId: string, locationId: string) {
+  return `${partId}:${locationId}`;
+}
+
 async function getReservedQuantitiesByLocationWithDb(
   db: Prisma.TransactionClient | typeof prisma,
   input: {
@@ -461,9 +502,8 @@ async function getReservedQuantitiesByLocationWithDb(
     where: {
       workspaceId: input.workspaceId,
       partId: input.partId,
-      assembled: false,
       sourceLocationId: { not: null },
-      buildLineItem: { build: { state: { in: ["STARTED", "IN_PROGRESS"] } } }
+      ...heldReservationWhere
     },
     _count: { _all: true }
   });
