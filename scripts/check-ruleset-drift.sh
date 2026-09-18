@@ -13,29 +13,21 @@
 # a solo repository with 0 required approvals is a deadlock — an author cannot
 # approve their own pull request.
 #
-# A blind spot is DECLARED, not inferred (dev-agent decisions/0005). A field the
-# caller may be unable to read is named on the command line, committed in the
-# workflow, and reviewed like anything else:
+# A field the caller cannot read is a FAILURE, never an exclusion. A token
+# without administration rights gets a reduced view of the ruleset in which
+# bypass_actors is missing — and "no bypass for anyone" is the property this
+# check most needs to watch. A check that silently cannot see the thing it
+# guards reports success, which is worse than no check. CI therefore runs with
+# RULESET_READ_TOKEN, which has administration read; losing that secret turns
+# this check red rather than quietly narrowing what it compares.
 #
-#   declared, and absent    -> excluded, named in the summary, run PASSES
-#   undeclared, and absent  -> not comparable, exit 1
-#   declared, but visible   -> compared normally, and the run says to drop it
-#
-# This is not "downgrade the failure to a warning". The exclusion is written by
-# a human rather than inferred at runtime by the thing being excused; anything
-# undeclared still fails, so a blind spot cannot grow silently; and it retires
-# itself the day the credential arrives. The reason a permanent red is worse:
-# a scheduled run's whole delivery channel is the failure mail, so staying red
-# for a known gap makes red ambiguous and real drift arrives in the same
-# envelope. That kills the primary instrument to protect a secondary one.
-#
-# The declarable set is an ENUMERATED ALLOWLIST, not "any top-level key" — the
-# artifact's top-level keys include `rules`, and allowing that would exclude the
-# entire rule set while wearing the appearance of a documented concession.
+# There used to be a flag for declaring such a field unverifiable, for a
+# project that did not yet have the credential. Nothing passed it once the
+# credential existed, so it was removed rather than kept as an unexercised
+# path.
 #
 # Usage:
 #   ./scripts/check-ruleset-drift.sh
-#   ./scripts/check-ruleset-drift.sh --allow-unverifiable=bypass_actors
 #   ./scripts/check-ruleset-drift.sh --write   # adopt live state as the artifact
 
 set -euo pipefail
@@ -43,27 +35,11 @@ set -euo pipefail
 REPO="${REPO:-michalwy/ohm-sweet-ohm}"
 ARTIFACT="${ARTIFACT:-.github/rulesets/main.json}"
 
-# Fields the platform has actually been observed to redact from some callers.
-# A field joins this list when a caller is seen unable to read it, deliberately
-# — never because a flag accepted the string.
-DECLARABLE="bypass_actors"
-
 write=false
-declared=""
 
 for arg in "$@"; do
   case "$arg" in
     --write) write=true ;;
-    --allow-unverifiable=*)
-      field="${arg#*=}"
-      case " $DECLARABLE " in
-        *" $field "*) declared="$field" ;;
-        *)
-          echo "FAIL: '${field}' is not declarable. The allowlist is: ${DECLARABLE}."
-          echo "      Deeper or structural absence is drift, not a blind spot, and"
-          echo "      must never be excludable."
-          exit 1 ;;
-      esac ;;
     *) echo "FAIL: unknown argument '${arg}'."; exit 1 ;;
   esac
 done
@@ -81,18 +57,14 @@ done
 # repository's own name, so it carries nothing — but it changes on a repository
 # rename, which is not a policy event, and a false failure costs this check the
 # credibility that is its entire value.
-#
-# `drop_bypass` removes bypass_actors from BOTH sides when the caller's token
-# cannot see it — see the partial-coverage handling below.
 normalise() {
-  jq -S --argjson drop "${1:-false}" '
+  jq -S '
     del(.id, .node_id, .created_at, .updated_at, ._links, .source,
         .current_user_can_bypass)
     | .rules |= sort_by(.type)
     | (.rules[] | select(.type == "required_status_checks")
         | .parameters.required_status_checks) |= sort_by(.context)
-    | if $drop then del(.bypass_actors)
-      else .bypass_actors |= (. // [] | sort) end
+    | .bypass_actors |= (. // [] | sort)
   '
 }
 
@@ -131,7 +103,7 @@ count=$#
 
 if [ "$count" -eq 0 ]; then
   echo "FAIL: no branch ruleset on ${REPO} covers ${branch_ref}."
-  echo "      The gate described in AGENTS.md does not exist."
+  echo "      The gate described in docs/agents/branch-protection.md does not exist."
   exit 1
 fi
 
@@ -162,10 +134,7 @@ fi
 echo
 
 # A token without administration rights can read the ruleset but gets a reduced
-# view: bypass_actors comes back null. That is the field this check most needs
-# to watch, so the coverage gap is stated loudly rather than papered over — a
-# check that silently cannot see the thing it exists to guard is worse than no
-# check, because it reports success.
+# view: bypass_actors comes back null. See the header — that is a failure.
 invisible=false
 if [ "$(printf '%s' "$raw" | jq -r '.bypass_actors // "missing"')" = "missing" ]; then
   invisible=true
@@ -178,61 +147,33 @@ if [ "$write" = true ]; then
   if [ "$invisible" = true ]; then
     echo "REFUSING to write: this token cannot see bypass_actors, so the"
     echo "       artifact would be missing the field that matters most."
-    echo "       --allow-unverifiable does not apply to --write, by design."
     echo "       Re-run with a token that has administration read."
     exit 1
   fi
   mkdir -p "$(dirname "$ARTIFACT")"
-  printf '%s\n' "$raw" | normalise false > "$ARTIFACT"
+  printf '%s\n' "$raw" | normalise > "$ARTIFACT"
   echo "Wrote live ruleset ${id} to ${ARTIFACT}."
   exit 0
 fi
 
-# The three states of decisions/0005.
-if [ "$invisible" = true ] && [ "$declared" != "bypass_actors" ]; then
-  echo "FAIL: bypass_actors is absent from this response and was not declared."
-  echo "      NOT COMPARABLE — 'no bypass for anyone' cannot be verified, and"
-  echo "      an undeclared blind spot must never pass. Either run with a token"
-  echo "      that has administration read, or declare it deliberately with"
-  echo "      --allow-unverifiable=bypass_actors and commit that choice."
+if [ "$invisible" = true ]; then
+  echo "FAIL: bypass_actors is absent from this response."
+  echo "      NOT COMPARABLE — 'no bypass for anyone' cannot be verified by this"
+  echo "      caller. Run with a token that has administration read (CI uses"
+  echo "      RULESET_READ_TOKEN; if this is CI, that secret is missing or lacks"
+  echo "      the permission)."
   exit 1
 fi
 
-if [ "$invisible" = false ] && [ "$declared" = "bypass_actors" ]; then
-  echo "NOTE: bypass_actors IS readable by this caller, so the declaration"
-  echo "      --allow-unverifiable=bypass_actors is unnecessary. Drop it; it"
-  echo "      is comparing normally below."
-  echo
-  declared=""
-fi
-
-drop_bypass=false
-if [ "$invisible" = true ]; then
-  drop_bypass=true
-  echo "DECLARED UNVERIFIABLE: bypass_actors"
-  echo "  This caller cannot read it, and that exclusion is declared in the"
-  echo "  workflow rather than inferred here. 'no bypass for anyone' is NOT"
-  echo "  verified by this run. Everything else is compared below, and any"
-  echo "  field that is absent WITHOUT a declaration still fails."
-  echo "  The declaration retires itself once RULESET_READ_TOKEN exists."
-  echo
-fi
-
-live="$(printf '%s' "$raw" | normalise "$drop_bypass")"
+live="$(printf '%s' "$raw" | normalise)"
 
 if [ ! -f "$ARTIFACT" ]; then
   echo "FAIL: ${ARTIFACT} is missing. Run with --write to create it."
   exit 1
 fi
 
-if diff -u <(normalise "$drop_bypass" < "$ARTIFACT") <(printf '%s\n' "$live") \
+if diff -u <(normalise < "$ARTIFACT") <(printf '%s\n' "$live") \
      --label "$ARTIFACT" --label "GitHub ruleset ${id}"; then
-  if [ "$drop_bypass" = true ]; then
-    echo "PASS (declared gap): everything this caller was asked to check matches"
-    echo "     ${ARTIFACT}. bypass_actors was declared unverifiable and was not"
-    echo "     compared. What was checked is in the repository."
-    exit 0
-  fi
   echo "OK: ${ARTIFACT} matches the live ruleset, bypass_actors included."
 else
   echo
