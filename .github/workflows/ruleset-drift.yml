@@ -3,7 +3,7 @@ name: Ruleset drift
 # Compares the live `main` ruleset against the artifact checked in at
 # .github/rulesets/main.json.
 #
-# Scheduled and advisory, never a required context (dev-agent decisions/0003).
+# Scheduled and advisory, never a required context.
 # Two reasons, and neither is caution:
 #
 #   * The event this check exists to catch does not produce a pull request.
@@ -15,10 +15,10 @@ name: Ruleset drift
 #     is the only trigger that fires on an event no human initiated.
 #
 #   * As a required context it would convert a documented, expected window into
-#     a total merge freeze. AGENTS.md establishes that this check is legitimately
-#     red between a deliberate ruleset change and the commit that updates the
-#     artifact — the two cannot be simultaneous, since one is an API call and the
-#     other is a pull request. With no bypass actors, nobody could escape it, and
+#     a total merge freeze. docs/agents/branch-protection.md records that this
+#     check is legitimately red between a deliberate ruleset change and the
+#     commit that updates the artifact — the two cannot be simultaneous, since
+#     one is an API call and the other is a pull request. With no bypass actors, nobody could escape it, and
 #     the predictable response to a hard block that is red for a correct reason
 #     is to edit the artifact to match the platform, which defeats the point.
 
@@ -48,7 +48,7 @@ jobs:
         env:
           # Falls back to github.token deliberately. If RULESET_READ_TOKEN is
           # ever deleted, the run still reaches the comparison, finds
-          # bypass_actors absent and UNDECLARED, and exits 1 — a loud
+          # bypass_actors absent, and exits 1 — a loud
           # regression. The fallback is what makes it loud; without it the run
           # would die on an authentication error instead, which is also loud
           # but says nothing about coverage.
