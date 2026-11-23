@@ -24,8 +24,10 @@ commands; this file has the rules.
   pure-bash arrow-key fallback so it needs no extra dependencies.
 - Deployment management commands run as bare `docker compose ...` from the install directory, reading
   the file list from the `COMPOSE_FILE` key in `.env`.
-- Optional auto-update uses Watchtower under the `autoupdate` compose profile; deployments track the
-  image's `latest` tag.
+- There is no automatic updater: deployments track the image's `latest` tag and the operator updates
+  with `docker compose pull && docker compose up -d --remove-orphans`. Watchtower and the
+  `autoupdate` profile were removed (the owner, 2026-11-23, #250); a leftover
+  `COMPOSE_PROFILES=autoupdate` in an old `.env` starts nothing, and the installer clears it.
 
 ## The owner's instance on the Pi (ADR 0028)
 
@@ -38,7 +40,7 @@ commands; this file has the rules.
   ADR 0028 too.
 - The configuration stays in the installation's `.env`; the deploy writes only `OSO_IMAGE_TAG`
   (`X.Y.Z@sha256:…`), keeps the compose project name and refuses when it would differ, and refuses
-  while Watchtower is on.
+  while an old install still has Watchtower on (the profile in `.env`, or its leftover container).
 - **`deploy.yml` is the only workflow allowed onto a self-hosted runner.** The repository is public:
   `scripts/check-self-hosted-runners.mjs` (in `Unit tests`) fails any other workflow whose `runs-on`
   is not a GitHub-hosted label, `tests/unit/deploy-workflow.test.ts` pins Deploy's triggers, and the

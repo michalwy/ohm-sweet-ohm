@@ -183,14 +183,15 @@ docker rm -f $(docker ps -aq --filter "label=com.docker.compose.project=$project
 docker compose ps -a    # only app and worker are left
 ```
 
-(The container is found by its labels, so the same lines work before and after #250 removes the
+(The container is found by its labels, so the same lines work now that #250 has removed the
 `watchtower` service from `docker-compose.prod.yml`. `docker rm` complaining that it needs an
 argument means there was no Watchtower container left.)
 
 Both lines are needed: clearing the profile alone leaves the running Watchtower container in place,
-and the deploy refuses while it runs. Until #250 lands, `app` and `worker` still carry the
-`com.centurylinklabs.watchtower.enable` label, so make sure no other Watchtower on the Pi — one kept
-for other applications — watches them either.
+and the deploy refuses while it runs. Since #250, `app` and `worker` no longer carry the
+`com.centurylinklabs.watchtower.enable` label; containers created before that still do until the
+first deploy recreates them, so until then make sure no other Watchtower on the Pi — one kept for
+other applications — watches them either.
 
 ## The first deploy, and how to check it
 

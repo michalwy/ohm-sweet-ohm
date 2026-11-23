@@ -39,7 +39,6 @@ The script will:
    - **Public app URL** (`BETTER_AUTH_URL`).
    - **Host port** to expose (default `3000`).
    - **Auth secret** — it can generate a strong `BETTER_AUTH_SECRET` for you.
-   - **Automatic updates** — optional (see below).
 5. Pull the image and start the app and background worker.
 
 When it finishes, open the app at the URL you configured and create your account on the
@@ -58,7 +57,7 @@ Run these from the install directory. They read the compose file list from `.env
 docker compose logs -f
 
 # Apply configuration changes / pull the latest image
-docker compose pull && docker compose up -d
+docker compose pull && docker compose up -d --remove-orphans
 
 # Stop everything
 docker compose down
@@ -104,18 +103,23 @@ you update on your own schedule with the `pull && up -d` command above.
 The running version is shown in the app's left sidebar (e.g. `OSO v1.4.0`), so you can see at a
 glance which release is deployed.
 
-**Automatic updates (optional).** If you answered yes to automatic updates, a
-[Watchtower](https://containrrr.dev/watchtower/) container runs alongside the app, checks
-GitHub for a newer image periodically, and restarts the app and worker when one appears.
-Because migrations run on start, updates apply any new database changes automatically. You
-can toggle this later by setting `COMPOSE_PROFILES=autoupdate` (on) or empty (off) in `.env`
-and re-running `up -d`. Tune the check frequency with `OSO_UPDATE_INTERVAL` (seconds).
+Because migrations run on start, an update applies any new database changes on its own. To
+hear about new releases, watch the repository's releases on GitHub (*Watch → Custom →
+Releases*).
+
+**There are no automatic updates.** Earlier installs could switch on a
+[Watchtower](https://containrrr.dev/watchtower/) container that pulled new images on its own.
+Watchtower is no longer maintained, so it was removed. If your `.env` still says
+`COMPOSE_PROFILES=autoupdate`, the stack keeps starting normally — the setting no longer
+starts anything, and you can clear it. The first `docker compose up -d --remove-orphans` (or a
+re-run of the installer, which also clears the setting) removes the old Watchtower container;
+without `--remove-orphans`, Compose only warns that it found it.
 
 ## Rolling Back
 
 Pin a specific image instead of `latest` by setting `OSO_IMAGE_TAG` in `.env` to a specific
 build — either a version tag (e.g. `1.4.0`) or a commit tag (e.g. `sha-a1b2c3d`) — then run
-`up -d`. Disable automatic updates while pinned so Watchtower does not move you off it.
+`up -d`. The pin holds until you change it.
 
 ## Backups and HTTPS
 

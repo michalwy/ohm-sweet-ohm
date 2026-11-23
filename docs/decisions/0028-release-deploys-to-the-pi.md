@@ -109,7 +109,8 @@ first deploy, rollback and restoring a dump — is
 - **`pg_dump` comes from `postgres:18-alpine`** (`OSO_PG_CLIENT_IMAGE`), whose major must be at least
   the server's, or the deploy fails before anything changed.
 - A release cut while the runner is offline waits in the queue (up to 24 hours).
-- Other self-hosters are unaffected: they still use `scripts/install.sh`, and Watchtower until #250.
+- Other self-hosters are unaffected: they still use `scripts/install.sh`. Watchtower was removed for
+  them too in #250; they update by hand.
 
 ## Alternatives considered
 
