@@ -290,12 +290,11 @@ main() {
   }
 
   # --- Interview -----------------------------------------------------------
-  local database_url auth_url http_port secret interval db_mode secret_mode update_mode net_name db_hint
-  local db_default="port" update_default="off" existing_secret
+  local database_url auth_url http_port secret db_mode secret_mode net_name db_hint
+  local db_default="port" existing_secret
 
   if [ "$is_reconfigure" -eq 1 ]; then
     case "$(get_env COMPOSE_FILE)" in *"$NETWORK_FILE_NAME"*) db_default="network" ;; esac
-    case "$(get_env COMPOSE_PROFILES)" in *autoupdate*) update_default="on" ;; esac
   fi
 
   ui_menu db_mode "$db_default" "How does the app reach your PostgreSQL database?" \
@@ -359,25 +358,21 @@ $db_hint" "$(dflt DATABASE_URL "")"
     ;;
   esac
 
-  ui_menu update_mode "$update_default" "Automatic updates" \
-    off "Disabled — update manually" \
-    on "Enabled — Watchtower watches for new release images"
-  if [ "$update_mode" = "on" ]; then
-    set_env COMPOSE_PROFILES "autoupdate"
-    ui_prompt interval "Update check interval in seconds" "$(dflt OSO_UPDATE_INTERVAL 3600)"
-    [ -n "$interval" ] || interval="3600"
-    set_env OSO_UPDATE_INTERVAL "$interval"
-    info "Auto-update enabled."
-  else
+  # Watchtower auto-updates were retired (#250). An install that had them on
+  # still carries COMPOSE_PROFILES=autoupdate; the profile no longer starts
+  # anything, so clear it, and --remove-orphans below removes its old container.
+  case "$(get_env COMPOSE_PROFILES || true)" in
+  *autoupdate*)
     set_env COMPOSE_PROFILES ""
-    info "Auto-update disabled. Update manually with: docker compose pull && docker compose up -d"
-  fi
+    info "Automatic updates (Watchtower) were retired and are now switched off."
+    ;;
+  esac
 
   # --- Launch --------------------------------------------------------------
   info "Pulling images..."
   compose pull
   info "Starting stack..."
-  compose up -d
+  compose up -d --remove-orphans
 
   print_summary
 }
@@ -395,7 +390,7 @@ print_summary() {
   echo >/dev/tty
   echo "Useful commands (run from $(pwd)):" >/dev/tty
   echo "  View logs:   docker compose logs -f" >/dev/tty
-  echo "  Update:      docker compose pull && docker compose up -d" >/dev/tty
+  echo "  Update:      docker compose pull && docker compose up -d --remove-orphans" >/dev/tty
   echo "  Stop:        docker compose down" >/dev/tty
 }
 
