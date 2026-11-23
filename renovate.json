@@ -2,6 +2,10 @@
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": ["config:recommended", ":pinVersions"],
   "minimumReleaseAge": "3 days",
+  "schedule": ["before 6am on monday"],
+  "timezone": "Europe/Warsaw",
+  "updateNotScheduled": false,
+  "rebaseWhen": "conflicted",
   "prConcurrentLimit": 5,
   "labels": ["dependencies"],
   "commitMessagePrefix": "chore(deps):",
@@ -67,7 +71,8 @@
       "matchUpdateTypes": ["patch", "minor"],
       "automerge": true,
       "automergeType": "pr",
-      "automergeStrategy": "rebase"
+      "automergeStrategy": "rebase",
+      "rebaseWhen": "behind-base-branch"
     },
     {
       "description": "Dev tooling: major bumps require manual review",

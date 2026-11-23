@@ -140,8 +140,9 @@ modes invents product behavior.
 - If a thread is gone before its pull request merges, the project conversation **starts a new thread
   on the same pull request** (same issue, same branch), which takes it over.
 
-Renovate opens pull requests inside the same gate and has no bypass either; they are not a thread's
-— see [`branch-protection.md`](branch-protection.md).
+Renovate opens pull requests inside the same gate and has no bypass either; they are not an issue
+thread's — the Monday dependency-review thread takes them ([`dependency-review.md`](dependency-review.md),
+[`branch-protection.md`](branch-protection.md)).
 
 ### When `main` turns red
 

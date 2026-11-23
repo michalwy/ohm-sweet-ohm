@@ -100,4 +100,5 @@ comparison.
 Renovate opens pull requests inside the same gate and has no bypass, so its automerge (dev-tooling
 patch/minor only, `renovate.json`) fires only on green required checks, and `automergeStrategy` is
 `rebase` because the repository allows no other merge method. Everything else Renovate opens waits for
-a human. Watching it is part of every backlog review (`backlog-review.md`).
+the Monday dependency-review thread (`dependency-review.md`), and Renovate rebases those pull requests
+only when they conflict with `main`. Watching it is part of every backlog review (`backlog-review.md`).
