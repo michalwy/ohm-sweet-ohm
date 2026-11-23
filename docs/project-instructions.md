@@ -62,8 +62,9 @@ The issue is the brief; do not restate it. Tell each thread:
 **There are no reviewer threads** (the owner, 2026-11-23). The owner does not review pull requests;
 the author thread merges with a rebase merge —
 `gh api -X PUT repos/michalwy/ohm-sweet-ohm/pulls/N/merge -f merge_method=rebase -f sha=<green head>`
-— once CI is green and the guardrail checklist is clear and recorded. The `main` ruleset requires the
-branch to be up to date, so a branch behind `main` is rebased and re-verified first. The thread then
+— once CI is green and the guardrail checklist is clear and recorded. The `main` ruleset does not
+require the branch to be up to date (the owner, 2026-11-24, #256), so a branch behind `main` merges
+as it is unless it conflicts, and is then rebased and re-verified first. The thread then
 reads `main`'s run and **closes the issue** with a comment from the pull request's description: what
 landed, the merge SHA, how it was verified. **A red `main` comes to you at once**, you tell the
 owner, and the fix goes forward in its own issue.

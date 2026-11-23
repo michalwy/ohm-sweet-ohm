@@ -20,6 +20,18 @@ starts it.
 
 The project favours **small, frequent releases** over rare large ones.
 
+## The release gate
+
+**No release is tagged unless `main`'s CI run for that exact commit completed green** — every job,
+on the full 40-character SHA, a `push` run on `main` (step 3), and the release workflow checks it
+again and refuses otherwise. This is the gate for what reaches the Pi, not a formality: since
+2026-11-24 the `main` ruleset no longer requires a branch to be up to date before it merges (#256,
+[ADR 0029](../decisions/0029-no-up-to-date-branch-requirement.md)), so a pull request is checked
+against an older `main` and **`main`'s own run is the first check of what actually landed**. A
+missing, cancelled or red run for the commit is not green: tag a later commit whose run is green, or
+wait for the fix-forward. The tag's own CI run (step 4.4) checks the same commit once more before
+anything is published.
+
 Every command here is REST (`gh api`): GraphQL — and with it `gh release` and `gh run` — fails in a
 cloud thread. Throughout, `R=repos/michalwy/ohm-sweet-ohm`.
 
@@ -42,8 +54,9 @@ cloud thread. Throughout, `R=repos/michalwy/ohm-sweet-ohm`.
      --jq '.workflow_runs[] | "\(.id) \(.status) \(.conclusion)"'
    gh api --paginate "$R/actions/runs/<id>/jobs?per_page=100" --jq '.jobs[] | "\(.conclusion)  \(.name)"'
    ```
-   A cancelled run means nobody checked that commit (CI cancels in-progress runs per ref). No release
-   is tagged from a red `main`.
+   A cancelled run means nobody checked that commit (CI cancels in-progress runs per ref, so after
+   merges in quick succession only the latest commit has a completed run). **No release is tagged
+   unless this run completed with `success`** (*The release gate*, above).
 4. **Write the notes and dispatch the release workflow** — one REST call. A cloud thread cannot
    write tags or Releases itself (in `michalwy/stamporama` its proxy answered HTTP 403 to both,
    measured 2026-11-23), so the workflow does it. The notes are published verbatim: group the

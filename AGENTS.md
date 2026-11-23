@@ -68,15 +68,17 @@ not restate that reasoning here; add it to the topic file instead.
   GitHub's auto-merge all fail. Use `gh api` (REST) or the built-in GitHub tools.
   → [`collaboration.md`](docs/agents/collaboration.md) § *GitHub from a cloud thread*
 - **`main` takes no direct pushes**, for anyone, the owner included: pull request only, rebase
-  merge, linear history, required checks, the branch up to date with `main`, no bypass. Work on
+  merge, linear history, required checks, no bypass — but **not** the branch up to date with `main`
+  (the owner, 2026-11-24, #256, ADR 0029). Work on
   `task/<issue>-<slug>` cut from `main` — in a cloud thread, the branch the platform gave it; **the
   thread that opens the pull request owns it until it merges, merges it, and closes the issue by
   hand**; if it is gone, the project conversation starts a new thread on the same pull request.
   → [`collaboration.md`](docs/agents/collaboration.md)
-- **A branch behind `main` is rebased (never merged) and then re-verified**, in that order —
-  the ruleset requires it to be up to date before it merges. `--force-with-lease`, never bare
-  `--force`. **`main`'s run after each merge is read** by the thread that merged; a red `main` goes
-  to the project conversation at once and is fixed forward in its own issue.
+- **A branch behind `main` may merge as it is**: the ruleset does not require it to be up to date.
+  It is rebased (never merged) only when it conflicts with `main`, and then re-verified, in that
+  order. `--force-with-lease`, never bare `--force`. **`main`'s run after each merge is read** by the
+  thread that merged — it is the first run of that combination — and a red `main` goes to the
+  project conversation at once and is fixed forward in its own issue.
 - Conventional Commits for commit and PR titles; reference issues as `Refs #NNN`. **Never a closing
   keyword** (`close`, `fix`, `resolve` in any form) in front of an issue reference, anywhere in a
   commit message or PR body — the required `Closing reference check` fails the PR.

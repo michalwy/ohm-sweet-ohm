@@ -66,17 +66,25 @@ says the owner checks it later, locally or on the live instance after a release.
 the issue does not settle, do not merge.** Say so in the reply to the project conversation, which
 takes it to the owner, and stop. Do not ask the owner yourself.
 
-## 3. Up to date with `main`
+## 3. Behind `main` is fine; a conflict is not
 
-The ruleset's strict status checks refuse a branch that is behind `main`. If it is behind (GitHub's
-`mergeable_state` is `behind`, or the merge answers that the head branch is out of date), rebase onto
-`origin/main`, re-run the suites that could see the change (`pnpm install` first if the lockfile
-changed), push with `--force-with-lease` — never bare `--force` — and wait for CI again (§ 1) on the
-new head ([`collaboration.md`](collaboration.md) § *Branches and pull requests*).
+The ruleset does **not** require the branch to be up to date with `main` (the owner, 2026-11-24,
+#256, [ADR 0029](../decisions/0029-no-up-to-date-branch-requirement.md)): a branch that is merely
+behind (`mergeable_state` `behind`) merges as it is, on the green CI of its own head. **Do not rebase
+it just because it is behind** — that is the ~17 minutes of CI the decision removed.
+
+Rebase only when GitHub cannot rebase-merge it (`mergeable_state` `dirty`, or the merge answers with a
+conflict): rebase onto `origin/main`, re-run the suites that could see the change (`pnpm install`
+first if the lockfile changed), push with `--force-with-lease` — never bare `--force` — and wait for
+CI again (§ 1) on the new head ([`collaboration.md`](collaboration.md) § *Branches and pull
+requests*).
 
 ```bash
 gh api $R/pulls/N --jq '"\(.head.sha) \(.mergeable_state)"'
 ```
+
+Because the pull request's CI ran against an older `main`, **§ 5 is the first check of what actually
+landed** — read it every time.
 
 ## 4. Merge
 

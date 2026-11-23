@@ -4,8 +4,7 @@
 
 `main` is protected by a repository ruleset (adopted 2026-09-07). It requires a pull request with
 **0 approvals**, allows **rebase merges only**, requires **linear history**, blocks force-push and
-branch deletion, and requires these status checks to be green with the branch up to date with
-`main`:
+branch deletion, and requires these status checks to be green on the pull request's head:
 
 - `Static checks`
 - `Unit tests`
@@ -16,6 +15,25 @@ branch deletion, and requires these status checks to be green with the branch up
 own author can step around does not gate anything, and the whole flow in `collaboration.md` depends
 on there being a real moment before merge. Adding or removing a required context is a ruleset change
 and therefore the user's call.
+
+### Why the branch need not be up to date with `main`
+
+The ruleset required it (`strict_required_status_checks_policy: true`) until the owner turned it off
+on 2026-11-24 (#256, [ADR 0029](../decisions/0029-no-up-to-date-branch-requirement.md)). With three
+threads in parallel, every merge put every other open pull request behind `main`, and each then had
+to rebase and wait for a full CI run (~17 minutes) again before it could merge. Now a pull request's
+required checks are green against the `main` it was cut from, and two pull requests that are each
+green can still break `main` together. What catches that instead:
+
+- **CI runs on every push to `main`**, and the thread that merged reads that run
+  ([`merge-checklist.md`](merge-checklist.md) § 5); a red `main` is fixed forward in its own issue.
+  CI cancels an in-progress run on the same ref, so when merges land in quick succession only the
+  latest commit's run completes — it covers the earlier ones, since it contains them.
+- **A release requires a green CI run on `main` for the exact commit it tags**, and the release
+  workflow refuses otherwise ([`release-versioning.md`](release-versioning.md) § *The release gate*),
+  so a combination nobody checked never reaches the Pi.
+
+A conflict still has to be rebased away: GitHub cannot rebase-merge a branch that conflicts.
 
 ### Why the other jobs are not required
 
@@ -34,8 +52,7 @@ current working model. It runs on every pull request, Renovate's included, so it
 and the mistake it catches — a closing keyword that makes GitHub close an issue at merge time, before
 anyone verified the work — is one that every convention outside this repository teaches, so it has to
 be enforced rather than remembered. Pull requests whose last CI run predates the job (it was added
-2026-09-07) have no result for it and need a rebase before they can merge — which strict up-to-date
-checks require anyway.
+2026-09-07) have no result for it and need a fresh push (a rebase) before they can merge.
 
 ## The artifact and the drift check
 

@@ -10,7 +10,7 @@ reads stays short.
 The rules were ported on 2026-11-23 (#247) from `michalwy/stamporama` at commit `b918320`, which
 comes from the same family of rules and had already moved to the Claude Code Projects model
 (stamporama#2687, #2700). The owner asked for a port, not a redesign; what differs here is OSO's own
-(its domain list, its four required checks, the strict up-to-date rule, DigiKey and TME).
+(its domain list, its four required checks, DigiKey and TME).
 
 Before that, from 2026-09-18, the owner started and routed every session by hand: task, backlog
 review, backlog manager and release manager sessions, each started by him, none talking to another.
@@ -101,16 +101,19 @@ exactly like a current one — hence reading both halves every time.
 trip for a step he always approves, and an unpushed commit is invisible to CI and can vanish with the
 thread.
 
-**Up to date with `main`**: unlike Stamporama (stamporama#1791), OSO's ruleset keeps
-`strict_required_status_checks_policy: true`, so GitHub refuses to merge a branch that is behind.
-Changing that is a ruleset change, and the ruleset is a guardrail — the owner's call.
+**Not up to date with `main`**: OSO's ruleset kept `strict_required_status_checks_policy: true`
+until 2026-11-24, when the owner turned it off (#256, [ADR 0029](../decisions/0029-no-up-to-date-branch-requirement.md)),
+as Stamporama had (stamporama#1791). With three threads in parallel, every merge forced a rebase and
+another ~17 minutes of CI on every other open pull request. The price is that a pull request is
+checked against the `main` it was cut from, not the one it lands on, so `main`'s own run after a
+merge is the first check of the combination — which is why the thread that merged reads it, and why
+a release requires green CI on `main` for the exact commit it tags.
 
 **Rebase, then re-verify**: the re-run is the half that is easy to drop and the only half that is
 interesting — a suite that was green before the rebase was green against a different `main`.
 
 **The `sha` on the merge**: with 0 required approvals there is no approval for a later push to
-invalidate, and strict status checks only force the branch to be current with `main`; nothing else
-checks that the head is still the commit that was checked. Passing `sha` makes GitHub refuse the
+invalidate, and nothing else checks that the head is still the commit that was checked. Passing `sha` makes GitHub refuse the
 merge if anything was pushed after it.
 
 ### Closing keywords
