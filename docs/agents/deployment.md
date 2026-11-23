@@ -14,9 +14,12 @@ commands; this file has the rules.
 
 ## Self-hosted deployment (ADR 0022)
 
-- CI's `publish-image` job pushes a multi-arch image to `ghcr.io/michalwy/ohm-sweet-ohm` **only for
-  release tags (`v*`)** — on the tag's push, or on the release workflow's dispatch with
-  `publish_image` — never on every `main` commit. A release is cut by dispatching
+- CI pushes a multi-arch image to `ghcr.io/michalwy/ohm-sweet-ohm` **only for
+  release tags (`v*`)**: `build-image` builds `linux/amd64` on `ubuntu-latest` and `linux/arm64` on
+  `ubuntu-24.04-arm`, natively — **no QEMU** (the owner, 2026-11-24, #259) — each pushed by digest
+  only, and `publish-image` (`Publish container image`) merges the two digests into one tagged
+  manifest list and checks it lists both architectures. It runs on the tag's push, or on the release
+  workflow's dispatch with `publish_image` — never on every `main` commit. A release is cut by dispatching
   `.github/workflows/release.yml`; see `release-versioning.md`.
 - `docker-compose.prod.yml` runs that prebuilt image against an operator-provided external database,
   with all configuration in a git-ignored `.env` (template `.env.prod.example`).

@@ -20,8 +20,13 @@ build, and a self-hoster typically already runs (or wants to own) their own data
 Introduce a **self-hosting deployment path** built from boring, well-supported tooling:
 
 1. **Prebuilt multi-arch images in GHCR, on release only.** CI builds and pushes
-   `ghcr.io/michalwy/ohm-sweet-ohm` for `linux/amd64` and `linux/arm64` (buildx + QEMU)
-   via a `publish-image` job in `.github/workflows/ci.yml`. The job `needs` the
+   `ghcr.io/michalwy/ohm-sweet-ohm` for `linux/amd64` and `linux/arm64` in
+   `.github/workflows/ci.yml`. *Amended 2026-11-24 (the owner, #259):* each architecture is
+   built **natively, without QEMU** — `build-image`, a matrix of `linux/amd64` on
+   `ubuntu-latest` and `linux/arm64` on `ubuntu-24.04-arm`, pushes each image by digest only,
+   and `publish-image` (`Publish container image`) merges the digests into one manifest list,
+   tags it and checks it lists both architectures. Until then one runner built both, the arm64
+   leg under QEMU, which was slow and unreliable. The build `needs` the
    static/unit/integration jobs and runs **only for release tags** (`v*`), so a build is
    cut deliberately by pushing a version tag — not on every `main` commit (which would
    waste CI on routine/Renovate commits and churn the `latest` image). Tags:
@@ -81,7 +86,9 @@ Introduce a **self-hosting deployment path** built from boring, well-supported t
 - The running version is visible in the app UI (workspace sidebar), read at runtime from
   `OSO_VERSION` via `getAppVersion()` in `src/lib/version.ts`; local/non-release runs show
   `dev`.
-- CI cost increases modestly: the arm64 leg is QEMU-emulated (mitigated by GHA layer cache).
+- CI cost increases modestly: two native build legs (the arm64 one on GitHub's free arm64
+  runner for public repositories) plus a short merge job, each leg with its own GHA layer cache.
+  (Originally the arm64 leg was QEMU-emulated; replaced 2026-11-24, #259.)
 - The arm64 image depends on Prisma's `linux-arm64` query engine; the base image already
   installs `openssl`. This must be verified on real/emulated arm64 (see the plan's
   verification notes) whenever the base image or Prisma major version changes.
@@ -91,6 +98,6 @@ Introduce a **self-hosting deployment path** built from boring, well-supported t
 ## References
 
 - Operator guide: `docs/user-guide/deployment.md`
-- Files: `.github/workflows/ci.yml` (`publish-image`), `docker-compose.prod.yml`,
+- Files: `.github/workflows/ci.yml` (`build-image`, `publish-image`), `docker-compose.prod.yml`,
   `.env.prod.example`, `scripts/install.sh`
 - Initial stack: ADR 0001
