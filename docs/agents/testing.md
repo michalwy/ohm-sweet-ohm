@@ -28,7 +28,7 @@ Unit tests must not import Prisma or any server infrastructure — pure logic on
 - `tests/integration/tsconfig.json` with its `server-only` shim is required — do not remove it.
 - Add or update integration coverage when changing inventory mutations, concurrency-sensitive logic,
   or other server-side domain rules.
-- **One database for every worktree.** The compose file publishes host port 5433 and names no
+- *(Local-only.)* **One database for every worktree.** The compose file publishes host port 5433 and names no
   project, so each worktree would start its own container on the same port: two sessions cannot run
   integration tests at the same time. If the port is taken, another session is probably using it —
   report it rather than stopping someone else's container, and stop the one you started when your
@@ -37,7 +37,7 @@ Unit tests must not import Prisma or any server infrastructure — pure logic on
 ## Migrations
 
 Database schema changes are product decisions. Never run `prisma migrate dev`, `prisma migrate reset`
-or `prisma db push` — they touch the user's development database. Generate only the migration SQL:
+or `prisma db push` — locally they touch the owner's development database. Generate only the migration SQL:
 `pnpm exec prisma migrate dev --create-only --name <name>`. The migration is applied the next time
 the user runs the stack. Do not try to fix migration checksum drift by resetting a database.
 
@@ -46,14 +46,15 @@ the user runs the stack. Do not try to fix migration checksum drift by resetting
 Browser-level e2e testing is paused, and its scripts are gone from `package.json`. Do not add e2e
 test files until the e2e infrastructure is rebuilt (tracked in the backlog, #110 onward).
 
-## Browser verification — only when the user asks
+## Browser verification — only when the owner asks
 
-Not part of the definition of done; see `collaboration.md` §8 for the decision and its reason. When
-the user has explicitly asked for a browser check:
+Not part of the definition of done; see `collaboration.md` § *No browser verification* for the
+decision and its reason. A cloud thread cannot show the owner a running stack, so this applies to a
+local session. When the owner has explicitly asked for a browser check:
 
 - start the dev server in webpack mode, for example `pnpm exec next dev --webpack -p 3002` — Turbopack
   has repeatedly produced unstable dev-server failures here;
-- stop any server you started before finishing the turn. The user tests through Docker Compose; do not
+- stop any server you started before finishing the turn. The owner tests through Docker Compose; do not
   leave servers running for him.
 
 ## Generated and ignored files

@@ -1,0 +1,294 @@
+# Deploying releases to the Raspberry Pi
+
+The owner's live instance is deployed by GitHub Actions: **cutting a release deploys it** (#249,
+[ADR 0028](../decisions/0028-release-deploys-to-the-pi.md)). The release workflow
+([`.github/workflows/release.yml`](../../.github/workflows/release.yml)) tags, verifies and publishes
+the release and then starts [`.github/workflows/deploy.yml`](../../.github/workflows/deploy.yml),
+which runs on a self-hosted runner on the Pi and calls [`scripts/deploy.sh`](../../scripts/deploy.sh)
+in the existing installation directory. Nothing here applies to other self-hosters, who install with
+`scripts/install.sh` ([ADR 0022](../decisions/0022-self-hosted-deployment.md)).
+
+This is the owner's runbook. **No agent thread can reach the Pi**; every step below is done by the
+owner, on the Pi or in the repository's settings.
+
+## What a deploy does
+
+1. **Pulls the release image by digest.** `ghcr.io/michalwy/ohm-sweet-ohm:X.Y.Z` is resolved once,
+   and from then on only `…@sha256:…` is used. The image must say it is `X.Y.Z` (`OSO_VERSION`).
+2. **Refuses a downgrade.** When the running version is newer than the release, it does nothing and
+   **succeeds** — unless the run was started by hand, which is how a rollback is made.
+3. **Dumps the database** with `pg_dump` (custom format) into the backup directory, keeping the
+   newest 14 dumps. A failed dump stops the deploy before anything changed.
+4. **Runs `docker compose up -d`** in the installation directory, with its own `.env` and compose
+   files, which moves **both `app` and `worker`** to that one digest. Migrations run at `app` start,
+   as they always have.
+5. **Waits for `app`'s health check** (10 minutes at most), then checks that **`worker` is running**
+   and has not restarted (it has no health check). On failure it **rolls both back to the image `app`
+   ran before**, together, and the run fails. **Migrations are not rolled back** — see
+   [Restoring a dump](#restoring-a-dump).
+
+After a healthy start it writes `OSO_IMAGE_TAG="X.Y.Z@sha256:…"` into `.env` — the only key it ever
+writes — so that a `docker compose up -d` you run by hand later starts the same image. It also
+removes the repository's unused images, keeping the running one and the one a rollback would use.
+
+The run's summary in the Actions tab says which of these happened: *Deployed*, *Already running*,
+*Skipped* (a downgrade), *Rolled back* or *Failed*.
+
+**The run's log is public**, like every Actions log of a public repository. The script never prints
+`.env`, the database address, paths on the Pi or the application's logs; when something fails it
+says where on the Pi to look.
+
+## One-time setup
+
+### 1. A runner for this repository on the Pi
+
+The Pi already runs a runner for another repository; this is a **second runner instance**, in its own
+directory, registered to `michalwy/ohm-sweet-ohm` only.
+
+**The runner runs the deploy and nothing else.** Its job-started hook,
+[`scripts/runner-job-started-hook.sh`](../../scripts/runner-job-started-hook.sh) (#249), runs before
+every job it picks up and fails the job, before any step, unless the job is `deploy.yml` from
+`michalwy/ohm-sweet-ohm`, at a `v*` tag or at `main`, started by a published release or a manual run.
+**The hook is installed before the runner is registered**, so the runner never accepts a job
+without it.
+
+1. On GitHub: **Settings → Actions → Runners → New self-hosted runner**, Linux, ARM64. Keep the page
+   open for its download URL and registration token.
+2. On the Pi, **install the hook** outside the runner's directory, owned by root so that the runner's
+   user cannot change it, and point the runner at it:
+
+   ```bash
+   sudo mkdir -p /usr/local/lib/ohm-sweet-ohm
+   curl -fsSL https://raw.githubusercontent.com/michalwy/ohm-sweet-ohm/main/scripts/runner-job-started-hook.sh \
+     -o /tmp/runner-job-started-hook.sh
+   less /tmp/runner-job-started-hook.sh    # read it: it is short, and it guards the Pi
+   sudo install -o root -g root -m 0755 /tmp/runner-job-started-hook.sh \
+     /usr/local/lib/ohm-sweet-ohm/runner-job-started-hook.sh
+
+   mkdir ~/actions-runner-ohm-sweet-ohm && cd ~/actions-runner-ohm-sweet-ohm
+   echo 'ACTIONS_RUNNER_HOOK_JOB_STARTED=/usr/local/lib/ohm-sweet-ohm/runner-job-started-hook.sh' >> .env
+   ```
+
+   The runner reads `.env` in its own directory when it starts. Registering keeps the line:
+   `config.sh` only appends the variables it does not find there.
+3. Still in `~/actions-runner-ohm-sweet-ohm`, as the user the runner will run as:
+
+   ```bash
+   # download and unpack the archive exactly as the GitHub page shows, then:
+   grep ACTIONS_RUNNER_HOOK_JOB_STARTED .env    # the hook is there before the runner exists
+   ./config.sh --url https://github.com/michalwy/ohm-sweet-ohm --token <token from the page> \
+     --name pi-ohm-sweet-ohm --labels pi,ohm-sweet-ohm --work _work --unattended
+   sudo ./svc.sh install "$USER"
+   sudo ./svc.sh start
+   ```
+
+   `self-hosted`, `Linux` and `ARM64` are added automatically, so the runner carries
+   `self-hosted,pi,ohm-sweet-ohm` — the labels `deploy.yml` asks for.
+4. That user must be able to run `docker` without `sudo` (`sudo usermod -aG docker "$USER"`, then
+   restart the service) and to **read and write** the installation directory and its `.env`.
+5. The runner's environment must **not** set `COMPOSE_PROJECT_NAME` or `COMPOSE_FILE`; the deploy
+   takes both from the installation, and refuses when the project name would differ.
+
+The runner shows as *Idle* under **Settings → Actions → Runners** when it is ready.
+
+#### A runner that is already registered
+
+When the runner was registered before the hook existed, add the hook and restart the runner — it
+reads `.env` only when it starts:
+
+```bash
+# install the hook to /usr/local/lib/ohm-sweet-ohm/ as in step 2, then:
+cd ~/actions-runner-ohm-sweet-ohm
+grep -q '^ACTIONS_RUNNER_HOOK_JOB_STARTED=' .env \
+  || echo 'ACTIONS_RUNNER_HOOK_JOB_STARTED=/usr/local/lib/ohm-sweet-ohm/runner-job-started-hook.sh' >> .env
+sudo ./svc.sh stop
+sudo ./svc.sh start
+```
+
+A job already running when the service stops is cancelled, so do it while **Actions → Deploy** has
+nothing in progress. To update the hook later, repeat the `curl`, read it and `install` it again; no
+restart is needed, because the runner runs the file anew for every job.
+
+#### Checking that the hook is active
+
+1. **It refuses what it should**, on the Pi:
+
+   ```bash
+   env -i GITHUB_REPOSITORY=michalwy/ohm-sweet-ohm GITHUB_EVENT_NAME=pull_request \
+     GITHUB_WORKFLOW_REF=michalwy/ohm-sweet-ohm/.github/workflows/ci.yml@refs/heads/main \
+     /usr/local/lib/ohm-sweet-ohm/runner-job-started-hook.sh; echo "exit $?"
+   ```
+
+   It prints one *Refused…* line and `exit 1`.
+2. **The runner calls it.** Start a manual **Actions → Deploy** run with the version that is already
+   running (see [the first deploy](#the-first-deploy-and-how-to-check-it)). Near the top of the job's
+   log, GitHub says a job started hook was configured by the runner's administrator, followed by the
+   hook's line *Accepted by the Pi's job-started hook (#249): …deploy.yml@refs/heads/main on
+   workflow_dispatch.* No such line means the runner did not read the hook: check `.env` and restart
+   the service.
+
+### 2. The `prod` environment
+
+**Settings → Environments → New environment**, named `prod`:
+
+- **Deployment branches and tags → Selected branches and tags**: add the branch `main` and the tag
+  pattern `v*`. A release runs on its tag — `release.yml` starts the deploy there (#249); a manual
+  run on `main`. Nothing else can use the environment.
+- **Environment variables**:
+
+  | Variable | Required | Value |
+  | --- | --- | --- |
+  | `OSO_DIR` | yes | Absolute path of the installation directory on the Pi — the one holding `.env` and `docker-compose.prod.yml` |
+  | `OSO_BACKUP_DIR` | no | Where dumps go; default `<OSO_DIR>/backups` |
+  | `OSO_BACKUP_KEEP` | no | How many dumps are kept; default `14` |
+
+No secret is needed: the configuration stays in the installation's `.env`, and the image on GHCR is
+public. (If the package is ever made private, run `docker login ghcr.io` once on the Pi as the
+runner's user.)
+
+### 3. Fork pull requests need approval
+
+**Settings → Actions → General → Approval for running fork pull request workflows from
+contributors**: choose **Require approval for all external contributors**. Agents never approve a
+fork's workflow run.
+
+Why it matters even though only `deploy.yml` may use the Pi's runner: a self-hosted runner runs
+whatever the job's commit says, and this repository is public. Two other things guard the Pi, and
+neither replaces this setting:
+
+- **CI keeps such a workflow off `main`.** `scripts/check-self-hosted-runners.mjs`, run in the
+  required `Unit tests` check, fails when any workflow other than `deploy.yml` could reach a
+  self-hosted runner. It **does not stop that workflow from running**: a `pull_request` run uses the
+  workflow files from the pull request's own head, so a pull request that adds
+  `runs-on: [self-hosted, pi, ohm-sweet-ohm]` to `ci.yml` would get its job onto the Pi in the same run
+  where the check goes red. That is true of a pull request from any branch of this repository —
+  every agent thread's is one — which no approval setting covers.
+- **The runner's job-started hook is what stops it running** (step 1 above): every job that is not
+  the deploy fails before its first step.
+
+### 4. Turn Watchtower off — just before the first deploy
+
+Watchtower and this workflow would fight over `app` and `worker`, so `scripts/deploy.sh` refuses to
+run while Watchtower is switched on for the installation. Turn it off **before the first release made
+after this setup is cut** — the tag's own CI run publishes the image as `latest`, and Watchtower
+would deploy that before the deploy workflow does.
+
+In the installation directory:
+
+```bash
+sed -i 's/^COMPOSE_PROFILES=.*/COMPOSE_PROFILES=""/' .env
+project="$(docker compose config | sed -n 's/^name: *//p')"
+docker rm -f $(docker ps -aq --filter "label=com.docker.compose.project=$project" \
+  --filter label=com.docker.compose.service=watchtower)
+docker compose ps -a    # only app and worker are left
+```
+
+(The container is found by its labels, so the same lines work now that #250 has removed the
+`watchtower` service from `docker-compose.prod.yml`. `docker rm` complaining that it needs an
+argument means there was no Watchtower container left.)
+
+Both lines are needed: clearing the profile alone leaves the running Watchtower container in place,
+and the deploy refuses while it runs. Since #250, `app` and `worker` no longer carry the
+`com.centurylinklabs.watchtower.enable` label; containers created before that still do until the
+first deploy recreates them, so until then make sure no other Watchtower on the Pi — one kept for
+other applications — watches them either.
+
+## The first deploy, and how to check it
+
+The first deploy is the next release: the release procedure
+([`release-versioning.md`](../agents/release-versioning.md)) dispatches the release workflow, which
+publishes the GitHub Release and starts **Deploy** in the Actions tab. To try the setup before then,
+start a manual run with the version that is already running — it pulls, finds the same image on
+`app` and `worker`, writes `OSO_IMAGE_TAG` into `.env` and reports *Already running* without touching
+the containers.
+
+Then check:
+
+1. **Actions → Deploy**: the run is green and its summary says *Deployed* with the version.
+2. On the Pi, in the installation directory:
+
+   ```bash
+   docker compose ps                    # app: running (healthy), worker: running, both …:X.Y.Z@sha256:…
+   grep '^OSO_IMAGE_TAG=' .env          # OSO_IMAGE_TAG="X.Y.Z@sha256:…"
+   ls -l backups/                       # oso-<UTC time>-before-X.Y.Z.dump
+   docker run --rm -i postgres:18-alpine pg_restore --list < backups/<that file> | head
+   ```
+
+3. In the app, the version shown in the workspace sidebar is `X.Y.Z`.
+
+## Rolling back
+
+**Actions → Deploy → Run workflow**, branch `main`, and the version to go back to. A manual run is
+allowed past the no-downgrade guard; it takes a dump first like any other deploy, and it moves `app`
+and `worker` together.
+
+The older release then runs on a database that **still has the newer release's migrations**. Most
+migrations only add things and an older release ignores them; when one changed or removed something
+the older code needs, restore the dump taken before the bad release instead (next section).
+
+When a release fails — `app` not healthy, or `worker` not running — the deploy rolls both back to the
+previous image **by itself**, and the run fails so it is seen; the same caveat about migrations
+applies.
+
+## Restoring a dump
+
+A dump is named after the release it was taken **before**: `oso-…-before-1.4.0.dump` holds the
+database as the previous release left it. Restore it, then run that previous release.
+
+In the installation directory:
+
+```bash
+docker compose stop app worker
+
+# The connection string is DATABASE_URL from .env without Prisma's own parameters
+# (?schema=…, &connection_limit=…), which psql does not accept.
+PGURL='postgresql://<user>:<password>@<host>:<port>/<database>'
+# Where the database is reached from: the shared network when COMPOSE_FILE includes
+# docker-compose.network.yml (OSO_DB_NETWORK, default "oso"), otherwise "host".
+NET=oso
+
+# 1. Empty the schema (this is the step that throws away what the newer release migrated).
+docker run --rm -e PGURL="$PGURL" --network "$NET" postgres:18-alpine \
+  sh -c 'psql -v ON_ERROR_STOP=1 --single-transaction --dbname="$PGURL" -c "DROP SCHEMA public CASCADE" -c "CREATE SCHEMA public"'
+
+# 2. Restore the dump into it.
+docker run --rm -i -e PGURL="$PGURL" --network "$NET" postgres:18-alpine \
+  sh -c 'pg_restore --no-owner --single-transaction --exit-on-error --dbname="$PGURL"' \
+  < backups/oso-<time>-before-<bad version>.dump
+```
+
+Then **Actions → Deploy → Run workflow** with the release that ran before the bad one. (Starting the
+app first with `docker compose start app` would start the newer image again, and it would migrate the
+restored database straight back.)
+
+Both commands were run against a throwaway installation in #249.
+
+## When a run goes wrong
+
+| What the run says | What it means | What to do |
+| --- | --- | --- |
+| Queued, never starts | The Pi's runner is offline | Start it (`sudo ./svc.sh start` in its directory). A queued job waits up to 24 hours. |
+| *Refused by the Pi's job-started hook* | The job is not the deploy as the hook defines it — or it is, and something about the run differs from what the hook expects | Read the reason on that line. A job from a pull request or another workflow is meant to be refused. For a release or manual Deploy run, check that it ran from a `v*` tag or `main`. |
+| *Watchtower is still switched on* / *still running* | Step 4 of the setup was not done | Do it, then re-run the job. |
+| *Compose project mismatch* | The deploy would have used another project name — a second `app` and `worker` beside the running ones | Check `OSO_DIR` and that the runner's environment sets no `COMPOSE_PROJECT_NAME`. Nothing was changed. |
+| *pg_dump failed* | The database was unreachable, or its major is newer than the client's | Read `last-dump-error.log` in the backup directory. Nothing was deployed. |
+| *Skipped* | A release older than the running one was published | Nothing to do; a manual run deploys it if that was meant. |
+| *Rolled back* | `app` did not become healthy or `worker` did not keep running; the previous image runs again on both | Read `docker compose logs app worker` on the Pi. Decide whether to restore the dump. |
+| *Failed* after a failed health check | The rollback did not become healthy either, or there was nothing to roll back to | The instance is down. Read the logs, restore the dump, and deploy a release that worked. |
+
+## Settings the script reads
+
+Set in the `prod` environment's variables (above), or in the shell when running
+`scripts/deploy.sh` by hand on the Pi:
+
+| Variable | Default | Meaning |
+| --- | --- | --- |
+| `OSO_DIR` | — (required) | The installation directory |
+| `OSO_BACKUP_DIR` | `$OSO_DIR/backups` | Where dumps go (created `0700`) |
+| `OSO_BACKUP_KEEP` | `14` | Dumps kept |
+| `OSO_PG_CLIENT_IMAGE` | `postgres:18-alpine` | Image providing `pg_dump`; its major must be at least the server's |
+| `OSO_HEALTH_TIMEOUT` | `600` | Seconds to wait for a healthy `app` |
+| `OSO_WORKER_SETTLE` | `10` | Seconds `worker` must keep running, without restarts, after `app` is healthy |
+| `OSO_IMAGE` | `ghcr.io/michalwy/ohm-sweet-ohm` | Image repository (the compose file names the same one) |
+
+By hand: `OSO_DIR=$PWD bash scripts/deploy.sh --version X.Y.Z [--allow-downgrade]`.

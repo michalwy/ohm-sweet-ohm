@@ -20,23 +20,28 @@ build, and a self-hoster typically already runs (or wants to own) their own data
 Introduce a **self-hosting deployment path** built from boring, well-supported tooling:
 
 1. **Prebuilt multi-arch images in GHCR, on release only.** CI builds and pushes
-   `ghcr.io/michalwy/ohm-sweet-ohm` for `linux/amd64` and `linux/arm64` (buildx + QEMU)
-   via a `publish-image` job in `.github/workflows/ci.yml`. The job `needs` the
+   `ghcr.io/michalwy/ohm-sweet-ohm` for `linux/amd64` and `linux/arm64` in
+   `.github/workflows/ci.yml`. *Amended 2026-11-24 (the owner, #259):* each architecture is
+   built **natively, without QEMU** — `build-image`, a matrix of `linux/amd64` on
+   `ubuntu-latest` and `linux/arm64` on `ubuntu-24.04-arm`, pushes each image by digest only,
+   and `publish-image` (`Publish container image`) merges the digests into one manifest list,
+   tags it and checks it lists both architectures. Until then one runner built both, the arm64
+   leg under QEMU, which was slow and unreliable. The build `needs` the
    static/unit/integration jobs and runs **only for release tags** (`v*`), so a build is
    cut deliberately by pushing a version tag — not on every `main` commit (which would
-   waste CI on routine/Renovate commits and churn the auto-update image). Tags:
+   waste CI on routine/Renovate commits and churn the `latest` image). Tags:
    `{{version}}` and `{{major}}.{{minor}}` from the git tag, `sha-<short>` for rollback
    traceability, and `latest` pointing at the newest release (`flavor: latest=true`), which
-   is what deployments and Watchtower track. The release version is passed into the build as
+   is what deployments track. The release version is passed into the build as
    the `OSO_VERSION` build arg so the app can display it. The image reuses the existing
    `runner` Dockerfile target — the app and the pg-boss worker share one image, differing
    only by command.
 
-2. **Public image.** The GHCR package is public, so the target server and Watchtower pull
+2. **Public image.** The GHCR package is public, so the target server pulls
    without credentials. Tradeoff: the container image is world-readable. This is acceptable
    because it contains no secrets (all secrets are injected at runtime via `.env`) and it
-   keeps install/auto-update credential-free. Switching to a private package later would
-   only require a `docker login` step in the installer and Watchtower.
+   keeps install and updates credential-free. Switching to a private package later would
+   only require a `docker login` step in the installer.
 
 3. **External database.** The deployment runs no `db` service. The operator supplies a
    reachable PostgreSQL via `DATABASE_URL`. OSO does not manage, migrate the server, or
@@ -55,11 +60,15 @@ Introduce a **self-hosting deployment path** built from boring, well-supported t
    `BETTER_AUTH_SECRET`, writes `.env`, and brings the stack up. It never overwrites an
    existing `.env`, so re-running only refreshes the deployment definition.
 
-6. **Optional auto-update via Watchtower.** A `watchtower` service gated behind the
-   `autoupdate` compose profile polls GHCR and restarts the label-enabled app/worker
-   containers on new images. Opt-in: the installer sets `COMPOSE_PROFILES=autoupdate`.
-   Because the app container runs `prisma migrate deploy` on start, auto-updates apply
-   new migrations automatically.
+6. **Updates are manual** (since #250). The operator updates after a release with
+   `docker compose pull && docker compose up -d --remove-orphans`; because the app container
+   runs `prisma migrate deploy` on start, an update applies new migrations on its own.
+   *Superseded:* this point first shipped an optional Watchtower service under the
+   `autoupdate` compose profile, which polled GHCR and restarted label-enabled app/worker
+   containers. Watchtower is unmaintained (archived in December 2025), and the owner's
+   instance moved to release deploys (ADR 0028), so it was removed (the owner, 2026-11-23,
+   #250). A leftover `COMPOSE_PROFILES=autoupdate` in `.env` starts nothing and is harmless;
+   the installer clears it and `--remove-orphans` removes the old container.
 
 7. **Optional shared-network database.** For operators who do not want to publish a database
    port and instead run PostgreSQL as a container on a dedicated Docker network, an optional
@@ -77,7 +86,9 @@ Introduce a **self-hosting deployment path** built from boring, well-supported t
 - The running version is visible in the app UI (workspace sidebar), read at runtime from
   `OSO_VERSION` via `getAppVersion()` in `src/lib/version.ts`; local/non-release runs show
   `dev`.
-- CI cost increases modestly: the arm64 leg is QEMU-emulated (mitigated by GHA layer cache).
+- CI cost increases modestly: two native build legs (the arm64 one on GitHub's free arm64
+  runner for public repositories) plus a short merge job, each leg with its own GHA layer cache.
+  (Originally the arm64 leg was QEMU-emulated; replaced 2026-11-24, #259.)
 - The arm64 image depends on Prisma's `linux-arm64` query engine; the base image already
   installs `openssl`. This must be verified on real/emulated arm64 (see the plan's
   verification notes) whenever the base image or Prisma major version changes.
@@ -87,6 +98,6 @@ Introduce a **self-hosting deployment path** built from boring, well-supported t
 ## References
 
 - Operator guide: `docs/user-guide/deployment.md`
-- Files: `.github/workflows/ci.yml` (`publish-image`), `docker-compose.prod.yml`,
+- Files: `.github/workflows/ci.yml` (`build-image`, `publish-image`), `docker-compose.prod.yml`,
   `.env.prod.example`, `scripts/install.sh`
 - Initial stack: ADR 0001
