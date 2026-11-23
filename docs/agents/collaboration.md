@@ -117,8 +117,8 @@ modes invents product behavior.
 
 - `main` is protected with no bypass for anyone: pull request only, **rebase merge** only, linear
   history, force-push and deletion blocked, **four required checks** (`Static checks`, `Unit tests`,
-  `Integration tests`, `Closing reference check`), and the branch must be **up to date with `main`**
-  — [`branch-protection.md`](branch-protection.md).
+  `Integration tests`, `Closing reference check`). The branch does **not** have to be up to date with
+  `main` (the owner, 2026-11-24, #256, ADR 0029) — [`branch-protection.md`](branch-protection.md).
 - **Once the task is verified, commit, push and open the pull request** without asking anybody.
   A commit is pushed in the same breath. **Never push broken or unverified work.**
 - **Titles and messages:** Conventional Commits (`feat: …`, `fix: …`, `docs: …`). Every commit made
@@ -133,10 +133,12 @@ modes invents product behavior.
   is clear and recorded, rebase merge with `sha=<the head that went green>`. **If a guardrail is
   crossed and the issue does not record the owner's decision, it does not merge** and reports to the
   project conversation instead. → [`merge-checklist.md`](merge-checklist.md)
-- **A branch behind `main` is rebased before it merges** — the ruleset's strict status checks refuse
-  it otherwise. **Rebase, then re-verify, in that order**: fetch, rebase, run the checks again
-  (`pnpm install` first if the lockfile changed), push with `--force-with-lease`, never bare
-  `--force`, and wait for CI again. Never merge `main` into the branch.
+- **A branch behind `main` merges as it is** once its own CI is green; it is rebased only when it
+  conflicts with `main` (GitHub cannot rebase-merge it then). **Rebase, then re-verify, in that
+  order**: fetch, rebase, run the checks again (`pnpm install` first if the lockfile changed), push
+  with `--force-with-lease`, never bare `--force`, and wait for CI again. Never merge `main` into the
+  branch. **`main`'s run after the merge is the first check of the combination**, so the thread that
+  merged reads it (*When `main` turns red*).
 - If a thread is gone before its pull request merges, the project conversation **starts a new thread
   on the same pull request** (same issue, same branch), which takes it over.
 
