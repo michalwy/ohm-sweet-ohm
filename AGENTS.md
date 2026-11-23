@@ -73,6 +73,7 @@ that reasoning here; add it to the topic file instead.
 | UI, dialogs, lists | `docs/agents/ui.md` |
 | Docker Compose, self-hosted deployment, the container image | `docs/agents/deployment.md` |
 | DigiKey and TME payloads | `docs/agents/integrations.md` |
+| The cloud environment: setup script, versions, running the suites in a thread | `docs/agents/cloud-environment.md` |
 
 ## Invariants
 
