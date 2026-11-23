@@ -8,7 +8,7 @@ commands; this file has the rules.
 
 - `docker compose up` is the user's normal local-use stack: it runs the built app with `next start`
   against the persistent development database, without creating a seeded development user. This is
-  how the user exercises changes (see `collaboration.md` §8).
+  how the user exercises changes (see `collaboration.md` § *No browser verification*).
 - `docker compose -f docker-compose.yml -f docker-compose.dev.yml up` is containerized development
   with hot reload.
 
