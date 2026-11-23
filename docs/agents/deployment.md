@@ -15,8 +15,9 @@ commands; this file has the rules.
 ## Self-hosted deployment (ADR 0022)
 
 - CI's `publish-image` job pushes a multi-arch image to `ghcr.io/michalwy/ohm-sweet-ohm` **only for
-  release tags (`v*`)** — never on every `main` commit. A release is cut by pushing a version tag; see
-  `release-versioning.md`.
+  release tags (`v*`)** — on the tag's push, or on the release workflow's dispatch with
+  `publish_image` — never on every `main` commit. A release is cut by dispatching
+  `.github/workflows/release.yml`; see `release-versioning.md`.
 - `docker-compose.prod.yml` runs that prebuilt image against an operator-provided external database,
   with all configuration in a git-ignored `.env` (template `.env.prod.example`).
 - `scripts/install.sh` is the curl-able installer: interactive whiptail dialogs when available, with a
@@ -25,6 +26,26 @@ commands; this file has the rules.
   the file list from the `COMPOSE_FILE` key in `.env`.
 - Optional auto-update uses Watchtower under the `autoupdate` compose profile; deployments track the
   image's `latest` tag.
+
+## The owner's instance on the Pi (ADR 0028)
+
+- **A release deploys it**: `release.yml` dispatches `.github/workflows/deploy.yml`, which runs
+  `scripts/deploy.sh` on a self-hosted runner on the Pi. The runbook (the owner's steps) is
+  `docs/deployment/pi-deploy.md`. No thread can reach the Pi or start a deploy.
+- The deploy moves **`app` and `worker` to the same digest**, decides health by `app`'s health check,
+  then checks that `worker` is running without restarts, and **rolls both back together**. Change
+  the services, their commands or the health check → update `scripts/deploy.sh`, the runbook and
+  ADR 0028 too.
+- The configuration stays in the installation's `.env`; the deploy writes only `OSO_IMAGE_TAG`
+  (`X.Y.Z@sha256:…`), keeps the compose project name and refuses when it would differ, and refuses
+  while Watchtower is on.
+- **`deploy.yml` is the only workflow allowed onto a self-hosted runner.** The repository is public:
+  `scripts/check-self-hosted-runners.mjs` (in `Unit tests`) fails any other workflow whose `runs-on`
+  is not a GitHub-hosted label, `tests/unit/deploy-workflow.test.ts` pins Deploy's triggers, and the
+  runner's job-started hook (`scripts/runner-job-started-hook.sh`) refuses every other job on the Pi.
+  A change to any of these, or to the deploy or release workflows, crosses the deploy / CI-trigger
+  guardrail in `merge-checklist.md`.
+- The deploy's log is public: it prints no `.env`, database address, Pi path or application log.
 - The optional overlay `docker-compose.network.yml` (appended to `COMPOSE_FILE`, network named by
   `OSO_DB_NETWORK`) attaches the app and worker to a pre-existing external Docker network for a
   port-less database.
@@ -33,4 +54,4 @@ commands; this file has the rules.
 
 **Keep these in sync** when changing runtime environment variables, the worker command,
 migrations-on-start behavior, or the Dockerfile `runner` target: the prod compose file, the env
-template, the installer, ADR 0022 and this file.
+template, the installer, ADR 0022, `scripts/deploy.sh` and its runbook, and this file.
