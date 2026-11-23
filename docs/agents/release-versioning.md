@@ -79,7 +79,9 @@ cloud thread. Throughout, `R=repos/michalwy/ohm-sweet-ohm`.
    3. creates the annotated tag `vX.Y.Z` on the commit;
    4. **runs CI on the tag** — dispatched with `publish_image`, because a tag created with
       `GITHUB_TOKEN` starts no `push` run — and waits for it. Every suite runs (CI has no path
-      filters) and `Publish container image` needs them all. If the run is red or the image was not
+      filters), the two native image builds (`Build container image (linux/amd64)`,
+      `… (linux/arm64)`) need them all, and `Publish container image` merges their digests into the
+      tagged multi-arch image — the job this step reads. If the run is red or the image was not
       published, the workflow **deletes the tag and stops**: no Release, no deploy;
    5. publishes the GitHub Release with your notes, `make_latest=true`;
    6. **starts the deploy** — `deploy.yml` dispatched on the tag with the version. A Release
