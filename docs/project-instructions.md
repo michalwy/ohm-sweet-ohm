@@ -71,7 +71,16 @@ owner, and the fix goes forward in its own issue.
 **Route what threads report.** A pull request **blocked on a guardrail** goes to the owner; once he
 decides, record it in the issue and send the pull request back to its thread — **if that thread is
 gone, start a new thread on the same pull request**. An open question for the owner, you take to
-him. Renovate pull requests get no thread: Renovate stays as `renovate.json` sets it.
+him.
+
+## Renovate
+
+Renovate works before 6:00 on Mondays (Europe/Warsaw) and rebases a pull request that does not
+automerge only when it conflicts (`renovate.json`). **Every Monday after that window, start one
+*dependency review* thread** for the Renovate pull requests awaiting human review, without asking the
+owner; its brief is `docs/agents/dependency-review.md` (the owner, 2026-11-24, #255). It reads the
+changelogs, merges per the guardrails, and reports majors and risky updates (authentication, DigiKey
+and TME), which you take to the owner. Renovate pull requests get no other thread.
 
 ## Hard guardrails
 

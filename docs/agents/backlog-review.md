@@ -132,9 +132,19 @@ Report:
   so everything else waits for the owner, and a waiting PR holds a slot;
 - the **Rate-Limited** section of the dashboard: `prConcurrentLimit` is 5, so five stuck PRs silently
   hold back every update queued behind them;
-- the dashboard's `updated_at` and the newest Renovate PR activity. Renovate here has no schedule, so
-  there is no batch to expect — a dashboard untouched for weeks while updates are listed as available
-  means it has stopped moving, not that there is nothing to do.
+- the dashboard's `updated_at` and the newest Renovate PR activity. Renovate works only before 6:00
+  on Mondays (Europe/Warsaw, `renovate.json`), so expect one batch a week — a dashboard untouched for
+  more than a week while updates are listed as available means it has stopped moving, not that there
+  is nothing to do.
 
-Do not merge, close or rebase a Renovate pull request, start no thread for one, and do not edit
-`renovate.json` as part of a review.
+A review does not merge, close or rebase a Renovate pull request itself, and does not edit
+`renovate.json`.
+
+## Monday: start the dependency review
+
+**Every Monday after Renovate's window (after 6:00 Europe/Warsaw), start one *dependency review*
+thread** for the Renovate pull requests awaiting human review, without asking the owner (the owner,
+2026-11-24, #255). Its brief is [`dependency-review.md`](dependency-review.md); there is no issue. It
+counts toward the three threads at once; when none is waiting, start none. It merges what is safe and
+replies with what it escalates — majors and risky updates (authentication, DigiKey and TME) — which
+you take to the owner one at a time.
