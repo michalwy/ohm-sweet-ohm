@@ -5,7 +5,7 @@ Renovate works once a week, and one thread reviews what it left waiting (the own
 ## Why
 
 Renovate used to run at any time and keep every open pull request up to date with `main`. The `main`
-ruleset requires a branch to be up to date before it merges, so every merge to `main` made Renovate
+ruleset then required a branch to be up to date before it merges (until 2026-11-24, #256), so every merge to `main` made Renovate
 rebase all of its open pull requests (up to `prConcurrentLimit`, five), and each rebase re-ran the
 whole CI. That filled the CI queue, and the pull requests it kept fresh still waited for the owner.
 
@@ -19,9 +19,10 @@ whole CI. That filled the CI queue, and the pull requests it kept fresh still wa
 - `"rebaseWhen": "conflicted"`: a pull request that does not automerge is rebased only when it
   conflicts with `main`, not every time it falls behind.
 - The dev-tooling patch/minor rule, the only one that automerges, keeps
-  `"rebaseWhen": "behind-base-branch"`: an automerging pull request has to be up to date to merge
-  ([`branch-protection.md`](branch-protection.md) § *Renovate inside the gate*), and nobody else would
-  bring it there.
+  `"rebaseWhen": "behind-base-branch"`. It was set when the ruleset still required a branch to be up
+  to date to merge; since 2026-11-24 it does not (#256, [ADR 0029](../decisions/0029-no-up-to-date-branch-requirement.md)),
+  so an automerging pull request merges while behind, and this only means it is rebased within the
+  Monday window ([`branch-protection.md`](branch-protection.md) § *Renovate inside the gate*).
 
 ## Who starts it, and when
 
@@ -68,9 +69,11 @@ cloud thread*).
 
 4. **Merge the safe ones, one at a time**, per [`merge-checklist.md`](merge-checklist.md):
 
-   - **Up to date first.** With `rebaseWhen: conflicted`, a pull request behind `main` stays behind.
-     Ask Renovate to rebase it by ticking the *rebase* checkbox in its body (a manual request,
-     honoured outside the schedule), then wait for the new head's CI with one call:
+   - **Behind `main` is fine; a conflict is not.** The ruleset does not require a branch to be up to
+     date ([`merge-checklist.md`](merge-checklist.md) § 3), so a pull request that is merely behind
+     merges on its own green CI. One that conflicts (`mergeable_state` `dirty`): ask Renovate to
+     rebase it by ticking the *rebase* checkbox in its body (a manual request, honoured outside the
+     schedule), then wait for the new head's CI with one call:
 
      ```bash
      body=$(gh api $R/pulls/N --jq .body)
@@ -86,8 +89,9 @@ cloud thread*).
    - **Rebase-merge** with `sha=<the head that went green>`, and **read `main`'s run**
      ([`merge-checklist.md`](merge-checklist.md) § 4–5). A red `main` goes to the project
      conversation at once.
-   - Each merge puts every other Renovate pull request behind `main` again, so take the next one only
-     after this one has merged, and bring it up to date first.
+   - Take the next one only after this one has merged and `main`'s run for it is green or under
+     way; a merge can make another Renovate pull request conflict (a shared lockfile), and then it is
+     rebased first.
 
    A pull request whose CI is red is not merged: say in the reply what fails. The thread changes no
    application code to make an update pass; a fix that needs code is reported, and the project
