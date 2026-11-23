@@ -38,7 +38,8 @@ A conflict still has to be rebased away: GitHub cannot rebase-merge a branch tha
 ### Why the other jobs are not required
 
 Some *cannot* be required, because they do not run on every pull request, and a required check whose
-job never runs blocks that pull request forever: `Publish container image` (release tags only),
+job never runs blocks that pull request forever: `Build container image (…)` and
+`Publish container image` (release tags only),
 `renovate/stability-days` (Renovate pull requests only), and the `Site` workflow jobs (pushes to
 `main` only).
 
