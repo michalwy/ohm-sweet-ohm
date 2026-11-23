@@ -79,7 +79,9 @@ curl -fsSL https://raw.githubusercontent.com/michalwy/ohm-sweet-ohm/main/scripts
 ```
 
 The script downloads `docker-compose.prod.yml`, interviews you for configuration, writes a
-local `.env`, and starts the app against your external database. See the
+local `.env`, and starts the app against your external database. There is no automatic
+updater: after a release, update from the install directory with
+`docker compose pull && docker compose up -d --remove-orphans`. See the
 [Deployment guide](docs/user-guide/deployment.md) and
 [ADR 0022](docs/decisions/0022-self-hosted-deployment.md) for details.
 

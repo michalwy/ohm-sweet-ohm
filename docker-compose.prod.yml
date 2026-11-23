@@ -19,10 +19,6 @@ services:
     ports:
       - "${OSO_HTTP_PORT:-3000}:3000"
     restart: unless-stopped
-    labels:
-      # Opt this service in to Watchtower auto-updates (only active with the
-      # "autoupdate" compose profile below).
-      com.centurylinklabs.watchtower.enable: "true"
     healthcheck:
       test:
         [
@@ -39,27 +35,4 @@ services:
     command: pnpm worker
     env_file:
       - .env
-    restart: unless-stopped
-    labels:
-      com.centurylinklabs.watchtower.enable: "true"
-
-  # Optional auto-update watcher. Enabled only when COMPOSE_PROFILES=autoupdate
-  # (the install script sets this on request). Watchtower polls GHCR and restarts
-  # the app/worker containers when a newer image is published.
-  watchtower:
-    image: containrrr/watchtower
-    profiles:
-      - autoupdate
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock:ro
-    environment:
-      # Only update containers that carry the watchtower.enable label, so
-      # unrelated containers on the same host are left alone.
-      WATCHTOWER_LABEL_ENABLE: "true"
-      WATCHTOWER_CLEANUP: "true"
-      WATCHTOWER_POLL_INTERVAL: ${OSO_UPDATE_INTERVAL:-3600}
-      # containrrr/watchtower defaults its Docker API client to a very old version
-      # (1.25) that modern Docker daemons reject ("client version too old").
-      # Pin a modern API version; override via .env if your daemon needs another.
-      DOCKER_API_VERSION: ${OSO_DOCKER_API_VERSION:-1.44}
     restart: unless-stopped
