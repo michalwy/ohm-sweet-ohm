@@ -179,7 +179,9 @@ An area exposes an operation in six steps (#274, #275, #276, #287):
    offer. An area issue replaces its `pending` entries; the milestone is complete when none is left.
    Server actions are declared in modules, never inline (the check reports an inline `"use server"`).
 
-Errors are one shape everywhere, `{ code, message, issues? }`: REST answers
+Errors are one shape everywhere, `{ code, message, issues?, details? }` — `details` carries the
+facts a caller needs to recover, from an error object's `details` (#282: `exchange-rate-unavailable`
+names `from`, `to`, `date`): REST answers
 `{ "error": … }` with the status from `errorStatus.ts` — 401 `unauthorized` (missing, malformed,
 unknown, revoked or expired token, or archived workspace), 403 `permission-denied`, 404
 `…-not-found` (a record of another workspace is *not found*, never *forbidden*), 400 `invalid-input`

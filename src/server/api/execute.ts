@@ -103,10 +103,31 @@ export function toOperationFailure(error: unknown): OperationFailure {
     return internalErrorFailure();
   }
 
+  const details = getDomainErrorDetails(error);
+
   return {
     status: errorStatusForCode(code),
-    error: { code, message: describeDomainError(code) }
+    error: { code, message: describeDomainError(code), ...(details ? { details } : {}) }
   };
+}
+
+/** A domain error's `details` (string values only), e.g. `ExchangeRateUnavailableError`'s (#282). */
+function getDomainErrorDetails(error: unknown): Record<string, string> | null {
+  if (!(error instanceof Error) || !("details" in error)) {
+    return null;
+  }
+
+  const { details } = error as { details: unknown };
+
+  if (typeof details !== "object" || details === null) {
+    return null;
+  }
+
+  const entries = Object.entries(details).filter(
+    (entry): entry is [string, string] => typeof entry[1] === "string"
+  );
+
+  return entries.length > 0 ? Object.fromEntries(entries) : null;
 }
 
 function getDomainErrorCode(error: unknown): string | null {

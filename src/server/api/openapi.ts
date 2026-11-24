@@ -25,7 +25,13 @@ const errorSchema = z.object({
           })
         )
         .optional()
-        .describe("Present for invalid-input: one entry per invalid field.")
+        .describe("Present for invalid-input: one entry per invalid field."),
+      details: z
+        .record(z.string(), z.string())
+        .optional()
+        .describe(
+          "Present for some domain errors: what the caller needs to recover, e.g. from, to and date for exchange-rate-unavailable."
+        )
     })
     .describe("The error.")
 });

@@ -64,6 +64,8 @@ export type OperationError = {
   code: string;
   message: string;
   issues?: InputIssue[];
+  /** Facts a caller needs to recover, e.g. the currency pair and day of `exchange-rate-unavailable`. */
+  details?: Record<string, string>;
 };
 
 export type OperationInputResult<T> =

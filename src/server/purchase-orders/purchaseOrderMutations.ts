@@ -1131,6 +1131,76 @@ export async function markOrdered(input: {
   });
 }
 
+/**
+ * Adds several parts to an order at once, as the UI's "add to purchase order" bulk action does: a
+ * part already on the order gets its quantity added to that item; any other part becomes a new
+ * item. Shared by the server action and the API (#282).
+ */
+export async function addOrderItems(input: {
+  workspaceId: string;
+  orderId: string;
+  items: Array<{ partId: string; quantity: string }>;
+}): Promise<{ addedCount: number }> {
+  const order = await getPurchaseOrderDetail(input.workspaceId, input.orderId);
+  if (!order) throw new Error("order-not-found");
+
+  const existingByPartId = new Map(order.items.map((item) => [item.partId, item]));
+
+  for (const item of input.items) {
+    const existing = existingByPartId.get(item.partId);
+    if (existing) {
+      const mergedQty = (parseFloat(existing.quantity) + parseFloat(item.quantity)).toString();
+      await updateOrderItem({
+        workspaceId: input.workspaceId,
+        orderId: input.orderId,
+        itemId: existing.id,
+        quantity: mergedQty
+      });
+    } else {
+      await addOrderItem({
+        workspaceId: input.workspaceId,
+        orderId: input.orderId,
+        partId: item.partId,
+        quantity: item.quantity
+      });
+    }
+  }
+
+  return { addedCount: input.items.length };
+}
+
+/**
+ * What the create-purchase-order dialog pre-fills once a supplier is picked: the supplier's
+ * currency, else the workspace's primary currency; the supplier's default tax rate and price entry
+ * mode, else the workspace's. The API applies them to fields its caller leaves out (#282).
+ */
+export async function getPurchaseOrderCreateDefaults(workspaceId: string, supplierId: string) {
+  await assertSupplierBelongsToWorkspace(workspaceId, supplierId);
+
+  const [supplier, workspace] = await Promise.all([
+    prisma.organization.findUniqueOrThrow({
+      where: { id: supplierId },
+      select: { currency: true, defaultTaxRate: true, defaultPriceEntryMode: true }
+    }),
+    prisma.workspace.findUniqueOrThrow({
+      where: { id: workspaceId },
+      select: { primaryCurrency: true, defaultTaxRate: true, defaultPriceEntryMode: true }
+    })
+  ]);
+  const supplierMode =
+    supplier.defaultPriceEntryMode === "gross" || supplier.defaultPriceEntryMode === "net"
+      ? supplier.defaultPriceEntryMode
+      : null;
+
+  return {
+    currency: supplier.currency ?? workspace.primaryCurrency,
+    taxRate: (supplier.defaultTaxRate ?? workspace.defaultTaxRate)?.toString() ?? null,
+    priceEntryMode: (supplierMode ?? (workspace.defaultPriceEntryMode === "gross" ? "gross" : "net")) as
+      | "net"
+      | "gross"
+  };
+}
+
 export type ReceiveItemInput = {
   itemId: string;
   quantity: string;
@@ -1598,7 +1668,7 @@ async function assertSupplierBelongsToWorkspace(workspaceId: string, supplierId:
   if (!org) throw new Error("supplier-not-found");
 }
 
-async function assertPartBelongsToWorkspace(workspaceId: string, partId: string) {
+export async function assertPartBelongsToWorkspace(workspaceId: string, partId: string) {
   const part = await prisma.part.findFirst({
     where: { id: partId, workspaceId },
     select: { id: true }
