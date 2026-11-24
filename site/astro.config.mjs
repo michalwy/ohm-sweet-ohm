@@ -29,6 +29,7 @@ export default defineConfig({
             { label: 'Purchasing',    slug: 'guides/purchasing' },
             { label: 'Integrations',  slug: 'guides/integrations' },
             { label: 'Settings',      slug: 'guides/settings' },
+            { label: 'API and MCP',   slug: 'guides/api-and-mcp' },
             { label: 'Deployment',    slug: 'guides/deployment' },
           ],
         },

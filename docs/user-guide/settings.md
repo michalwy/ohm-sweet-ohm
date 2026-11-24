@@ -55,8 +55,8 @@ server accept nothing else — being signed in to OSO in your browser does not o
   Claude Code or Claude Desktop as a remote server, with the token as its bearer header. The
   `whoami` tool tells the agent who it acts as.
 
-The API and MCP grow area by area; what each one offers is listed in its description and its tool
-list.
+[API and MCP](api-and-mcp.md) explains how to call the API, how to connect Claude Code, Claude
+Desktop or claude.ai, and what each one offers today.
 
 ### Revoking a token
 

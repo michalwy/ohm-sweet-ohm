@@ -229,6 +229,22 @@ Any reverse proxy works as long as it meets the three points under
   and forward to the app container by its name on port `3000` — `docker compose ps` in the
   install directory shows the name.
 
+### The API and MCP server
+
+The [REST API and MCP server](api-and-mcp.md) are part of the app: `/api/v1` and `/api/mcp` are
+paths on the same address, served by the same container. The reverse proxy above already forwards
+them, and **nothing extra is published** — no other port, container or proxy rule. Both refuse any
+request without a valid personal API token, so a signed-in browser alone cannot call them.
+
+Two things are worth knowing:
+
+- An MCP client on another computer reaches OSO at the same HTTPS address you use in the browser.
+  A **claude.ai custom connector** is called from Claude's servers, so it works only if that
+  address is reachable from the internet; an instance kept to your home network can still be used
+  from Claude Code or Claude Desktop on that network.
+- Requests to `/api/mcp` are short, ordinary `POST` requests answered with JSON (no long-lived
+  streams), so the proxy needs no special timeout or buffering settings for them.
+
 ## Backups
 
 **Database backups** are your responsibility, since you own the database. Back it up with

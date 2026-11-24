@@ -33,7 +33,7 @@ not restate that reasoning here; add it to the topic file instead.
   existing user changes; do not rewrite unrelated files.
 - User-facing copy is English and structured so it can be localized later.
 - User-visible behavior change → update `docs/user-guide/` in the same task (feature pages: index, workspaces,
-  organizations, parts, inventory, purchasing, integrations, settings; add a page when a topic fits
+  organizations, parts, inventory, purchasing, integrations, settings, api-and-mcp; add a page when a topic fits
   none). Behavior, data model, setup or architecture change →
   update every affected doc in the same task (`README.md`, `docs/product/brief.md`,
   `docs/architecture/overview.md`, the ADRs, `docs/user-guide/`), and before finishing check that they
