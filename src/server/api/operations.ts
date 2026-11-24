@@ -21,10 +21,14 @@ import type { PermissionKey } from "@/server/access-control/permissions";
 export type Operation<
   TInput extends z.ZodType,
   TOutput extends z.ZodType,
-  TPermission extends PermissionKey = PermissionKey
+  TPermission extends PermissionKey | null = PermissionKey | null
 > = {
   name: string;
   description: string;
+  /**
+   * The permission key the actor must hold, or `null` for an operation any authenticated actor may
+   * call (only `whoami`: it describes the caller itself).
+   */
   permission: TPermission;
   input: TInput;
   output: TOutput;
@@ -33,7 +37,7 @@ export type Operation<
 export function defineOperation<
   TInput extends z.ZodType,
   TOutput extends z.ZodType,
-  TPermission extends PermissionKey
+  TPermission extends PermissionKey | null
 >(operation: Operation<TInput, TOutput, TPermission>) {
   return operation;
 }

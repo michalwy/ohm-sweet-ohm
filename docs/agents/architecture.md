@@ -120,6 +120,43 @@ The server action for the same operation validates its input through the same sc
 example: `listUnitsOperation` and `getUnitsPageForWorkspace`), so the UI, REST and MCP accept the same
 shapes. Each area issue converts its own operations.
 
+`permission` is `null` only for an operation any authenticated actor may call — `whoami`, which
+describes the caller. Everything else names a key.
+
+### REST endpoints and MCP tools
+
+An area exposes an operation in four steps (#274, #275):
+
+1. **Implement it**: `implementOperation(operation, (actor, input) => …)` in a `server-only` module
+   (`src/server/<area>/<area>Api.ts`; example `workspaceApi.ts`). The function scopes every read and
+   write to `actor.workspace.id` and calls the same domain functions as the server action; it throws
+   the domain's kebab-case error codes. Never check the permission there: `executeOperation`
+   (`src/server/api/execute.ts`) does it, then validates the input, runs the function, and checks the
+   result against the output schema (a mismatch is a 500, never a half-checked answer).
+2. **REST**: a route file under `src/app/api/v1/<path>/route.ts` exporting
+   `GET = restOperation(implementation)` (or `POST`, `PATCH`, `DELETE`), and an entry in
+   `restEndpoints` (`src/server/api/restEndpoints.ts`), from which the OpenAPI document is built; a
+   unit test checks every entry has its route file. `GET` input comes from the query string
+   (`queryInput.ts` converts numbers and booleans where the schema expects them, and repeated keys
+   for arrays); other methods take a JSON body. List endpoints are `GET` with
+   `listPageInputShape` / `listPageOutputSchema`: `?cursor=<nextCursor>&pageSize=<n>`.
+3. **MCP**: `defineMcpTool(title, implementation, behavior)` appended to `mcpTools`
+   (`src/server/mcp/tools.ts`). `behavior` is explicit — `{ readOnly: true }`, or
+   `{ readOnly: false, destructive, idempotent? }` — and becomes the tool's annotations; a delete or
+   overwrite is `destructive: true`.
+4. **Integration tests** for the area's endpoints and tools.
+
+Errors are one shape everywhere, `{ code, message, issues? }`: REST answers
+`{ "error": … }` with the status from `errorStatus.ts` — 401 `unauthorized` (missing, malformed,
+unknown, revoked or expired token, or archived workspace), 403 `permission-denied`, 404
+`…-not-found` (a record of another workspace is *not found*, never *forbidden*), 400 `invalid-input`
+/ `invalid-json` / `invalid-…` / `missing-…` / `…-required`, 409 any other domain code, 500
+`internal-error` for anything that is not a domain code (its message is logged, never sent). MCP
+returns the same object as a tool error (`isError`, JSON text). Both authenticate **only** a
+`Authorization: Bearer` token (`bearer.ts`) through `resolveWorkspaceActor`; cookies are never read.
+The MCP endpoint is stateless (ADR 0030): one SDK `Server` and transport per POST, bound to that
+request's actor.
+
 ## Parts, organizations, categories, locations
 
 - Manufacturers are workspace-scoped organizations with a `manufacturer` role, not a

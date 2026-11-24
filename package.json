@@ -20,6 +20,7 @@
     "worker": "tsx --tsconfig scripts/tsconfig.json scripts/workspace-deletion-worker.ts"
   },
   "dependencies": {
+    "@modelcontextprotocol/sdk": "1.32.2",
     "@prisma/adapter-pg": "7.8.0",
     "@prisma/client": "7.8.0",
     "@tanstack/react-query": "5.101.2",
@@ -33,6 +34,7 @@
     "zod": "4.6.7"
   },
   "devDependencies": {
+    "@seriousme/openapi-schema-validator": "2.12.0",
     "@tailwindcss/postcss": "4.3.2",
     "@types/node": "26.6.6",
     "@types/pg": "8.20.0",
