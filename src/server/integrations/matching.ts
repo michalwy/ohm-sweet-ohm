@@ -1,13 +1,17 @@
 "use server";
 
-import type { Prisma } from "@/generated/prisma/client";
 import { requireActorPermission } from "@/server/access-control/actor";
 import { resolveWorkspaceActor } from "@/server/auth/currentActor";
 import { prisma } from "@/server/db/prisma";
+import {
+  buildSourceAttributeKey,
+  formatSourceAttributeDisplay,
+  getTargetCategoryScopeKey,
+  normalizeSourceCategoryKey,
+  normalizeSourceManufacturerKey,
+  normalizeSourceValue
+} from "@/server/integrations/matchingKeys";
 import type { SupplierProviderKey } from "@/server/integrations/types";
-
-const UNCATEGORIZED_SOURCE_KEY = "uncategorized";
-const NO_TARGET_CATEGORY_SCOPE_KEY = "__none__";
 
 export type SupplierAttributeDraft = {
   sourceAttribute: string;
@@ -142,166 +146,4 @@ export async function getSupplierMatchingSuggestionsForWorkspace(input: {
       attributeRows: rows
     }
   };
-}
-
-export async function learnSupplierMatching(input: {
-  tx: Prisma.TransactionClient;
-  workspaceId: string;
-  provider: SupplierProviderKey;
-  sourceCategoryKey: string;
-  targetCategoryId: string | null;
-  attributeMappings: Array<{
-    sourceAttributeKey: string;
-    targetAttributeId: string;
-  }>;
-  sourceManufacturerKey: string;
-  targetManufacturerId: string | null;
-}) {
-  const now = new Date();
-
-  if (input.targetCategoryId) {
-    await input.tx.supplierCategoryMappingStat.upsert({
-      where: {
-        workspaceId_provider_sourceCategoryKey_targetCategoryId: {
-          workspaceId: input.workspaceId,
-          provider: input.provider,
-          sourceCategoryKey: input.sourceCategoryKey,
-          targetCategoryId: input.targetCategoryId
-        }
-      },
-      create: {
-        workspaceId: input.workspaceId,
-        provider: input.provider,
-        sourceCategoryKey: input.sourceCategoryKey,
-        targetCategoryId: input.targetCategoryId,
-        score: 1,
-        lastUsedAt: now
-      },
-      update: {
-        score: { increment: 1 },
-        lastUsedAt: now
-      }
-    });
-  }
-
-  const targetCategoryScopeKey = getTargetCategoryScopeKey(input.targetCategoryId);
-  const uniqueMappings = new Map<string, { sourceAttributeKey: string; targetAttributeId: string }>();
-
-  for (const mapping of input.attributeMappings) {
-    if (!mapping.sourceAttributeKey || !mapping.targetAttributeId) {
-      continue;
-    }
-
-    uniqueMappings.set(
-      `${mapping.sourceAttributeKey}::${mapping.targetAttributeId}`,
-      mapping
-    );
-  }
-
-  for (const mapping of uniqueMappings.values()) {
-    await input.tx.supplierAttributeMappingStat.upsert({
-      where: {
-        workspaceId_provider_sourceCategoryKey_targetCategoryScopeKey_sourceAttributeKey_targetAttributeId:
-          {
-            workspaceId: input.workspaceId,
-            provider: input.provider,
-            sourceCategoryKey: input.sourceCategoryKey,
-            targetCategoryScopeKey,
-            sourceAttributeKey: mapping.sourceAttributeKey,
-            targetAttributeId: mapping.targetAttributeId
-          }
-      },
-      create: {
-        workspaceId: input.workspaceId,
-        provider: input.provider,
-        sourceCategoryKey: input.sourceCategoryKey,
-        targetCategoryScopeKey,
-        sourceAttributeKey: mapping.sourceAttributeKey,
-        targetAttributeId: mapping.targetAttributeId,
-        score: 1,
-        lastUsedAt: now
-      },
-      update: {
-        score: { increment: 1 },
-        lastUsedAt: now
-      }
-    });
-  }
-
-  if (input.targetManufacturerId) {
-    await input.tx.supplierManufacturerMappingStat.upsert({
-      where: {
-        workspaceId_provider_sourceManufacturerKey_targetManufacturerId: {
-          workspaceId: input.workspaceId,
-          provider: input.provider,
-          sourceManufacturerKey: input.sourceManufacturerKey,
-          targetManufacturerId: input.targetManufacturerId
-        }
-      },
-      create: {
-        workspaceId: input.workspaceId,
-        provider: input.provider,
-        sourceManufacturerKey: input.sourceManufacturerKey,
-        targetManufacturerId: input.targetManufacturerId,
-        score: 1,
-        lastUsedAt: now
-      },
-      update: {
-        score: { increment: 1 },
-        lastUsedAt: now
-      }
-    });
-  }
-}
-
-function normalizeSourceCategoryKey(sourceCategory: string | null | undefined) {
-  if (!sourceCategory) {
-    return UNCATEGORIZED_SOURCE_KEY;
-  }
-
-  const normalized = normalizeKey(sourceCategory);
-  return normalized || UNCATEGORIZED_SOURCE_KEY;
-}
-
-function normalizeSourceManufacturerKey(
-  sourceManufacturerName: string | null | undefined
-) {
-  if (!sourceManufacturerName) {
-    return UNCATEGORIZED_SOURCE_KEY;
-  }
-
-  const normalized = normalizeKey(sourceManufacturerName);
-  return normalized || UNCATEGORIZED_SOURCE_KEY;
-}
-
-function buildSourceAttributeKey(input: {
-  name: string;
-  unit?: string | null;
-}) {
-  const nameKey = normalizeKey(input.name);
-  const unitKey = normalizeKey(input.unit ?? "");
-
-  return `${nameKey}::${unitKey}`;
-}
-
-function normalizeSourceValue(value: string) {
-  return value.trim();
-}
-
-function formatSourceAttributeDisplay(input: { name: string; unit?: string | null }) {
-  const name = input.name.trim();
-  const unit = (input.unit ?? "").trim();
-
-  return unit ? `${name} (${unit})` : name;
-}
-
-function getTargetCategoryScopeKey(targetCategoryId: string | null) {
-  return targetCategoryId || NO_TARGET_CATEGORY_SCOPE_KEY;
-}
-
-function normalizeKey(value: string) {
-  return value
-    .trim()
-    .toLocaleLowerCase("en")
-    .replace(/\s+/g, " ");
 }
