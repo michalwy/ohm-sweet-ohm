@@ -22,6 +22,7 @@ import {
   listOrganizationsImplementation,
   updateOrganizationImplementation
 } from "@/server/organizations/organizationApi";
+import * as buildApi from "@/server/builds/buildApi";
 import * as attributeApi from "@/server/parts/attributeApi";
 import * as categoryApi from "@/server/parts/categoryApi";
 import * as shoppingListApi from "@/server/shopping-lists/shoppingListApi";
@@ -133,6 +134,23 @@ export const mcpTools: McpTool[] = [
   defineMcpTool("Remove a shopping list item", shoppingListApi.removeShoppingListItemImplementation, { readOnly: false, destructive: true }),
   defineMcpTool("Shopping lists of a part", shoppingListApi.getPartShoppingListsImplementation, { readOnly: true }),
   defineMcpTool("Convert a shopping list to a purchase order", shoppingListApi.convertShoppingListToPurchaseOrderImplementation, { readOnly: false, destructive: false }),
+  // Builds (#284)
+  defineMcpTool("List builds", buildApi.listBuildsImplementation, { readOnly: true }),
+  defineMcpTool("Get a build", buildApi.getBuildImplementation, { readOnly: true }),
+  defineMcpTool("Build creation options", buildApi.getBuildCreateOptionsImplementation, { readOnly: true }),
+  defineMcpTool("Create a build", buildApi.createBuildImplementation, { readOnly: false, destructive: false }),
+  defineMcpTool("Delete a build", buildApi.deleteBuildImplementation, { readOnly: false, destructive: true }),
+  defineMcpTool("Set a build line's allocation", buildApi.setBuildLineAllocationsImplementation, { readOnly: false, destructive: true, idempotent: true }),
+  defineMcpTool("Set a build's allocations", buildApi.setBuildAllocationsImplementation, { readOnly: false, destructive: true, idempotent: true }),
+  defineMcpTool("Reassign a build designator", buildApi.reassignBuildDesignatorImplementation, { readOnly: false, destructive: true, idempotent: true }),
+  defineMcpTool("Start a build", buildApi.startBuildImplementation, { readOnly: false, destructive: false }),
+  defineMcpTool("Assemble a build designator", buildApi.assembleBuildDesignatorImplementation, { readOnly: false, destructive: false }),
+  defineMcpTool("Assemble a build unit", buildApi.assembleBuildUnitImplementation, { readOnly: false, destructive: false }),
+  defineMcpTool("Cancel a build", buildApi.cancelBuildImplementation, { readOnly: false, destructive: true }),
+  defineMcpTool("Build pick list", buildApi.getBuildPickListImplementation, { readOnly: true }),
+  defineMcpTool("Build assembly list", buildApi.getBuildAssemblyListImplementation, { readOnly: true }),
+  defineMcpTool("Build allocations of a part", buildApi.getPartBuildAllocationsImplementation, { readOnly: true }),
+  defineMcpTool("Production builds of a part", buildApi.getPartProductionBuildsImplementation, { readOnly: true }),
   // Locations and inventory (#280)
   defineMcpTool("List storage locations", listLocationsImplementation, { readOnly: true }),
   defineMcpTool("Get a storage location", getLocationImplementation, { readOnly: true }),

@@ -44,21 +44,24 @@ export const serverActionCoverage: ServerActionCoverageMap = {
     signOut: { excluded: AUTH }
   },
   "src/server/builds/buildActions.ts": {
-    getBuildsPageForWorkspace: { pending: "#284" },
-    searchDesignsForWorkspace: { pending: "#284" },
-    getPartBuildAllocationsForWorkspace: { pending: "#284" },
-    getPartProductionBuildsForWorkspace: { pending: "#284" },
-    getBuildDetailAction: { pending: "#284" },
-    getBuildCreateOptionsAction: { pending: "#284" },
-    createBuildAction: { pending: "#284" },
-    deleteBuildAction: { pending: "#284" },
-    setBuildLineAllocationsAction: { pending: "#284" },
-    setBuildAllocationsAction: { pending: "#284" },
-    reassignDesignatorAssignmentAction: { pending: "#284" },
-    startBuildAction: { pending: "#284" },
-    assembleDesignatorAction: { pending: "#284" },
-    assembleBuildUnitAction: { pending: "#284" },
-    cancelBuildAction: { pending: "#284" }
+    getBuildsPageForWorkspace: { tool: "list_builds" },
+    searchDesignsForWorkspace: {
+      excluded:
+        "UI-only helper: the design picker of the builds list filter; get_build_create_options lists the designs (#79, UI-only helpers)."
+    },
+    getPartBuildAllocationsForWorkspace: { tool: "get_part_build_allocations" },
+    getPartProductionBuildsForWorkspace: { tool: "get_part_production_builds" },
+    getBuildDetailAction: { tool: "get_build" },
+    getBuildCreateOptionsAction: { tool: "get_build_create_options" },
+    createBuildAction: { tool: "create_build" },
+    deleteBuildAction: { tool: "delete_build" },
+    setBuildLineAllocationsAction: { tool: "set_build_line_allocations" },
+    setBuildAllocationsAction: { tool: "set_build_allocations" },
+    reassignDesignatorAssignmentAction: { tool: "reassign_build_designator" },
+    startBuildAction: { tool: "start_build" },
+    assembleDesignatorAction: { tool: "assemble_build_designator" },
+    assembleBuildUnitAction: { tool: "assemble_build_unit" },
+    cancelBuildAction: { tool: "cancel_build" }
   },
   "src/server/designs/bomActions.ts": {
     getBomLineItemsAction: { pending: "#283" },

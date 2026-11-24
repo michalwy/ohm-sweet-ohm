@@ -2,6 +2,24 @@ import type { z } from "zod";
 
 import type { Operation } from "@/server/api/operations";
 import {
+  assembleBuildDesignatorOperation,
+  assembleBuildUnitOperation,
+  cancelBuildOperation,
+  createBuildOperation,
+  deleteBuildOperation,
+  getBuildAssemblyListOperation,
+  getBuildCreateOptionsOperation,
+  getBuildOperation,
+  getBuildPickListOperation,
+  getPartBuildAllocationsOperation,
+  getPartProductionBuildsOperation,
+  listBuildsOperation,
+  reassignBuildDesignatorOperation,
+  setBuildAllocationsOperation,
+  setBuildLineAllocationsOperation,
+  startBuildOperation
+} from "@/server/builds/buildOperations";
+import {
   createInventoryEntryOperation,
   getLocationStockOperation,
   getPartStockBalancesOperation,
@@ -204,6 +222,22 @@ export const restEndpoints: RestEndpoint[] = [
   { method: "delete", path: "/shopping-lists/{listId}/items/{itemId}", summary: "Remove a shopping list item", tag: "Shopping lists", operation: removeShoppingListItemOperation },
   { method: "post", path: "/shopping-lists/{listId}/convert-to-purchase-order", summary: "Put shopping list items on a purchase order", tag: "Shopping lists", operation: convertShoppingListToPurchaseOrderOperation },
   { method: "get", path: "/parts/{id}/shopping-lists", summary: "The shopping lists a part is on", tag: "Shopping lists", operation: getPartShoppingListsOperation },
+  { method: "get", path: "/builds", summary: "List builds", tag: "Builds", operation: listBuildsOperation },
+  { method: "post", path: "/builds", summary: "Create a build", tag: "Builds", operation: createBuildOperation },
+  { method: "get", path: "/builds/create-options", summary: "Designs, revisions and locations a build can be created from", tag: "Builds", operation: getBuildCreateOptionsOperation },
+  { method: "get", path: "/builds/{buildId}", summary: "Get a build with its lines, allocations and units", tag: "Builds", operation: getBuildOperation },
+  { method: "delete", path: "/builds/{buildId}", summary: "Delete a build", tag: "Builds", operation: deleteBuildOperation },
+  { method: "put", path: "/builds/{buildId}/allocations", summary: "Replace a build's whole allocation", tag: "Builds", operation: setBuildAllocationsOperation },
+  { method: "put", path: "/builds/{buildId}/lines/{lineId}/allocations", summary: "Replace the allocation of one build line", tag: "Builds", operation: setBuildLineAllocationsOperation },
+  { method: "post", path: "/builds/{buildId}/assignments/{assignmentId}/reassign", summary: "Change a designator's part or source location", tag: "Builds", operation: reassignBuildDesignatorOperation },
+  { method: "post", path: "/builds/{buildId}/start", summary: "Start a build", tag: "Builds", operation: startBuildOperation },
+  { method: "post", path: "/builds/{buildId}/assignments/{assignmentId}/assemble", summary: "Assemble one designator of one unit", tag: "Builds", operation: assembleBuildDesignatorOperation },
+  { method: "post", path: "/builds/{buildId}/assemble-unit", summary: "Assemble one whole unit", tag: "Builds", operation: assembleBuildUnitOperation },
+  { method: "post", path: "/builds/{buildId}/cancel", summary: "Cancel a build", tag: "Builds", operation: cancelBuildOperation },
+  { method: "get", path: "/builds/{buildId}/pick-list", summary: "A build's pick list", tag: "Builds", operation: getBuildPickListOperation },
+  { method: "get", path: "/builds/{buildId}/assembly-list", summary: "A build's assembly list", tag: "Builds", operation: getBuildAssemblyListOperation },
+  { method: "get", path: "/parts/{id}/build-allocations", summary: "The builds allocating or reserving a part", tag: "Builds", operation: getPartBuildAllocationsOperation },
+  { method: "get", path: "/parts/{id}/production-builds", summary: "The started builds producing a part", tag: "Builds", operation: getPartProductionBuildsOperation },
   // Locations and inventory (#280)
   {
     method: "get",
