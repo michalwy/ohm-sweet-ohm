@@ -43,6 +43,16 @@ the decision — fix this file.
   `/workspaces?notice=workspace-archived`; only admins may archive or restore, from Settings →
   General.
 
+## Public API and MCP
+
+[ADR 0030](../decisions/0030-public-api-and-mcp.md) is the design: REST + JSON under `/api/v1`
+with an OpenAPI 3.1 document generated from zod schemas, and MCP over Streamable HTTP at `/api/mcp`
+inside the app, both over **one service layer** shared with the server actions, both authenticated
+by per-user personal access tokens bound to one workspace and a permission set (effective rights =
+the token's set ∩ the user's roles). Each area issue delivers its REST endpoints and its MCP tools
+together. Read the ADR's *What is exposed* list before exposing an operation: demo reset, scheduled
+workspace deletion, sign-up/in/out and DigiKey/TME credentials are never exposed.
+
 ## Parts, organizations, categories, locations
 
 - Manufacturers are workspace-scoped organizations with a `manufacturer` role, not a

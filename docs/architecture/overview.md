@@ -21,6 +21,14 @@ The project is no longer only a scaffold. Core architecture now includes:
 - Self-hosted deployment path (ADR 0022): CI publishes a multi-arch image (amd64 + arm64) to `ghcr.io/michalwy/ohm-sweet-ohm` on release tags (`v*`); `docker-compose.prod.yml` runs that prebuilt image against an operator-provided external PostgreSQL database; `scripts/install.sh` is a curl-able interactive installer. The release version is baked into the image via `OSO_VERSION` and exposed at runtime through `src/lib/version.ts`. **The owner's instance on the Raspberry Pi is deployed by a release** (ADR 0028): `.github/workflows/release.yml` tags, runs CI on the tag, publishes the Release and dispatches `.github/workflows/deploy.yml`, which runs `scripts/deploy.sh` on a self-hosted runner on the Pi in the existing installation — pull by digest, no-downgrade guard, pre-deploy `pg_dump`, `docker compose up -d` moving `app` and `worker` to the same digest, `app`'s health check plus `worker` running, and a rollback of both together. It is the only workflow allowed onto a self-hosted runner (`scripts/check-self-hosted-runners.mjs`, in `Unit tests`), and the runner's job-started hook refuses every other job. Runbook: `docs/deployment/pi-deploy.md`.
 - E2E (browser-level) tests are currently paused; unit and integration tests are the active test layers.
 
+## Public API and MCP
+
+A public REST API under `/api/v1` (OpenAPI 3.1, generated from zod schemas) and an MCP server over
+Streamable HTTP at `/api/mcp` are being added as two adapters over the same service layer the server
+actions use, authenticated by per-user personal access tokens bound to one workspace and a permission
+set. The design, what is exposed and what is not, is in
+[ADR 0030](../decisions/0030-public-api-and-mcp.md) (milestone tracked in #79).
+
 ## Intended Shape
 
 - `src/app`: Next.js App Router entry points and route-level UI.
