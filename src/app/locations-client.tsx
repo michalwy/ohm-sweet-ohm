@@ -31,6 +31,15 @@ import {
 } from "@/app/dialog-shell";
 import { buildTree } from "@/app/tree-picker-utils";
 import {
+  getTreeListRowToneClassName,
+  TreeList,
+  TreeListRow,
+  TreeListRowActions,
+  type TreeListRowContext,
+  type TreeListToggleLabel
+} from "@/app/tree-list";
+import { toggleExpandedId } from "@/app/tree-list-expansion";
+import {
   LocationTreeSelect,
   type LocationTreeItem,
   type LocationTreeSelectCopy
@@ -471,17 +480,19 @@ export function LocationsClient({
               {filteredLocations.length === 0 ? (
                 <p className="text-sm text-[var(--color-text-muted)]">{copy.noMatchingLocations}</p>
               ) : (
-                <ol className="grid gap-1">
-                  {filteredLocations.map((location) => (
-                    <LocationNode
+                <TreeList
+                  expandedIds={expandedLocationIds}
+                  getToggleLabel={getLocationToggleLabel(copy)}
+                  items={filteredLocations.map((location) => ({ ...location, children: [] }))}
+                  onToggleExpanded={() => undefined}
+                  renderRow={(location, context) => (
+                    <LocationRow
                       canOpen={canOpenLocations}
                       canWriteLocations={canWriteLocations}
-                      key={location.id}
+                      context={context}
                       copy={copy}
-                      expandedLocationIds={expandedLocationIds}
                       isDatabaseAvailable={isDatabaseAvailable}
-                      level={0}
-                      location={{ ...location, children: [] }}
+                      location={location}
                       onAddChild={(parentId) => openCreateForm(parentId)}
                       onDelete={(locationToDelete) => {
                         setErrors({});
@@ -490,10 +501,9 @@ export function LocationsClient({
                       onEdit={openEditForm}
                       onOpen={openLocationDetails}
                       selectedLocationId={selectedLocationId}
-                      onToggleExpanded={() => undefined}
                     />
-                  ))}
-                </ol>
+                  )}
+                />
               )}
             </div>
           ) : (
@@ -508,16 +518,20 @@ export function LocationsClient({
                   {copy.organizational}
                 </span>
               </div>
-              <ol className="grid gap-1">
-                {locationTree.map((location) => (
-                  <LocationNode
+              <TreeList
+                expandedIds={expandedLocationIds}
+                getToggleLabel={getLocationToggleLabel(copy)}
+                items={locationTree}
+                onToggleExpanded={(locationId) =>
+                  setExpandedLocationIds((currentIds) => toggleExpandedId(currentIds, locationId))
+                }
+                renderRow={(location, context) => (
+                  <LocationRow
                     canOpen={canOpenLocations}
                     canWriteLocations={canWriteLocations}
-                    key={location.id}
+                    context={context}
                     copy={copy}
-                    expandedLocationIds={expandedLocationIds}
                     isDatabaseAvailable={isDatabaseAvailable}
-                    level={0}
                     location={location}
                     onAddChild={(parentId) => openCreateForm(parentId)}
                     onDelete={(locationToDelete) => {
@@ -527,18 +541,9 @@ export function LocationsClient({
                     onEdit={openEditForm}
                     onOpen={openLocationDetails}
                     selectedLocationId={selectedLocationId}
-                    onToggleExpanded={(locationId) => {
-                      const nextIds = new Set(expandedLocationIds);
-                      if (nextIds.has(locationId)) {
-                        nextIds.delete(locationId);
-                      } else {
-                        nextIds.add(locationId);
-                      }
-                      setExpandedLocationIds(nextIds);
-                    }}
                   />
-                ))}
-              </ol>
+                )}
+              />
             </div>
           )}
         </div>
@@ -733,190 +738,81 @@ function getLocationFormErrors(copy: Copy, error: string): LocationFormErrors {
   return { submit: copy.invalidInput };
 }
 
-function LocationNode({
+function getLocationToggleLabel(
+  copy: Copy
+): (location: LocationTreeItem, isExpanded: boolean) => TreeListToggleLabel {
+  return (location, isExpanded) => {
+    const label = isExpanded ? copy.collapseLocation : copy.expandLocation;
+    return { label, title: `${label} ${location.name}` };
+  };
+}
+
+function LocationRow({
   canOpen,
   canWriteLocations,
+  context,
   copy,
-  expandedLocationIds,
   isDatabaseAvailable,
-  level,
   location,
   onAddChild,
   onDelete,
   onEdit,
   onOpen,
-  onToggleExpanded,
   selectedLocationId
 }: {
   canOpen: boolean;
   canWriteLocations: boolean;
+  context: TreeListRowContext;
   copy: Copy;
-  expandedLocationIds: Set<string>;
   isDatabaseAvailable: boolean;
-  level: number;
   location: LocationTreeItem;
   onAddChild: (parentId: string) => void;
   onDelete: (location: StorageLocationListItem) => void;
   onEdit: (location: StorageLocationListItem) => void;
   onOpen: (location: StorageLocationListItem) => void;
-  onToggleExpanded: (locationId: string) => void;
   selectedLocationId: string | null;
 }) {
-  const hasChildren = location.children.length > 0;
-  const isExpanded = expandedLocationIds.has(location.id);
-  const toggleLabel = isExpanded ? copy.collapseLocation : copy.expandLocation;
   const isSelected = location.id === selectedLocationId;
-  const rowClassName = [
-    location.isAssignable
-      ? "border-[var(--color-border-hover)] text-[var(--color-text-primary)]"
-      : "border-[var(--color-border-strong)] text-[var(--color-text-secondary)]",
-    isSelected
-      ? "bg-[var(--color-bg-muted)]"
-      : location.isAssignable
-        ? "bg-[var(--color-bg-elevated)]"
-        : "bg-[var(--color-bg-subtle)]",
-    canOpen ? "cursor-pointer hover:bg-[var(--color-bg-muted)]" : ""
-  ].join(" ");
 
   return (
-    <li className="grid gap-1">
-      <div
-        aria-current={isSelected ? "true" : undefined}
-        className={`grid min-h-12 grid-cols-[auto_1fr_auto] items-center gap-3 rounded-md border-l-4 px-3 py-2 ${rowClassName}`}
-        style={{ marginLeft: `${level * 1.25}rem` }}
-        onClick={canOpen ? () => onOpen(location) : undefined}
-      >
-        {hasChildren ? (
-          <button
-            aria-expanded={isExpanded}
-            className="grid h-7 w-7 shrink-0 place-items-center rounded text-[var(--color-text-muted)] transition hover:bg-[var(--color-bg-elevated)]/70 hover:text-[var(--color-text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-ring-strong)] focus:ring-offset-2"
-            title={`${toggleLabel} ${location.name}`}
-            type="button"
-            onClick={(event) => {
-              event.stopPropagation();
-              onToggleExpanded(location.id);
-            }}
-          >
-            <span
-              aria-hidden="true"
-              className={`text-sm leading-none transition-transform ${
-                isExpanded ? "rotate-90" : ""
-              }`}
-            >
-              ▶
-            </span>
-            <span className="sr-only">{toggleLabel}</span>
-          </button>
-        ) : (
-          <span className="h-7 w-7" aria-hidden="true" />
-        )}
-        <div className="min-w-0">
-          {canOpen ? (
-            // Its click bubbles to the row, which opens the location; the button adds keyboard access.
-            <button
-              className="block max-w-full truncate rounded text-left text-sm font-medium focus:outline-none focus:ring-2 focus:ring-[var(--color-ring-strong)] focus:ring-offset-2"
-              type="button"
-            >
-              {location.name}
-            </button>
-          ) : (
-            <p className="truncate text-sm font-medium">{location.name}</p>
-          )}
-          {location.isArchived ? (
-            <p className="text-xs text-[var(--color-text-muted)]">
-              {copy.archived}: {copy.yes}
-            </p>
-          ) : null}
-        </div>
-        <div className="flex shrink-0 items-center gap-2">
-          <button
-            className="min-h-9 rounded-md border border-[var(--color-border-strong)] bg-[var(--color-bg-elevated)] px-3 py-1.5 text-sm font-medium text-[var(--color-text-secondary)] transition hover:border-[var(--color-border-hover)] hover:bg-[var(--color-bg-subtle)] focus:outline-none focus:ring-2 focus:ring-[var(--color-ring-strong)] focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-[var(--color-bg-subtle)] disabled:text-[var(--color-text-placeholder)]"
-            type="button"
-            disabled={!isDatabaseAvailable || !canWriteLocations}
-            onClick={(event) => {
-              event.stopPropagation();
-              onAddChild(location.id);
-            }}
-          >
-            {copy.addChild}
-          </button>
-          <button
-            className="min-h-9 rounded-md border border-[var(--color-border-strong)] bg-[var(--color-bg-elevated)] px-3 py-1.5 text-sm font-medium text-[var(--color-text-secondary)] transition hover:border-[var(--color-border-hover)] hover:bg-[var(--color-bg-subtle)] focus:outline-none focus:ring-2 focus:ring-[var(--color-ring-strong)] focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-[var(--color-bg-subtle)] disabled:text-[var(--color-text-placeholder)]"
-            aria-label={copy.edit}
-            type="button"
-            disabled={!isDatabaseAvailable || !canWriteLocations}
-            onClick={(event) => {
-              event.stopPropagation();
-              onEdit(location);
-            }}
-          >
-            <svg
-              aria-hidden="true"
-              className="h-4 w-4"
-              viewBox="0 0 20 20"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              <path
-                d="M13.9 3.3a1.5 1.5 0 0 1 2.1 0l.7.7a1.5 1.5 0 0 1 0 2.1l-8.4 8.4-3.3.8.8-3.3 8.4-8.4Z"
-                stroke="currentColor"
-                strokeWidth="1.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
-          </button>
-          <button
-            className="min-h-9 rounded-md border border-[var(--color-error-border)] bg-[var(--color-bg-elevated)] px-3 py-1.5 text-sm font-medium text-[var(--color-error)] transition hover:bg-[var(--color-error-soft)] focus:outline-none focus:ring-2 focus:ring-[var(--color-error-border)] focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-[var(--color-bg-subtle)] disabled:text-[var(--color-text-placeholder)]"
-            aria-label={copy.delete}
-            type="button"
-            disabled={!isDatabaseAvailable || !canWriteLocations}
-            onClick={(event) => {
-              event.stopPropagation();
-              onDelete(location);
-            }}
-          >
-            <svg
-              aria-hidden="true"
-              className="h-4 w-4"
-              viewBox="0 0 20 20"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              <path
-                d="M5.5 6h9m-7.5 0V4.75A1.75 1.75 0 0 1 8.75 3h2.5A1.75 1.75 0 0 1 13 4.75V6m-6.5 0 .6 9.1A1.75 1.75 0 0 0 8.84 16.75h2.32a1.75 1.75 0 0 0 1.74-1.65L13.5 6M8.75 8.5v5m2.5-5v5"
-                stroke="currentColor"
-                strokeWidth="1.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
-          </button>
-        </div>
-      </div>
-      {hasChildren && isExpanded ? (
-        <ol className="grid gap-1">
-          {location.children.map((child) => (
-            <LocationNode
-              key={child.id}
-              canOpen={canOpen}
-              canWriteLocations={canWriteLocations}
-              copy={copy}
-              expandedLocationIds={expandedLocationIds}
-              isDatabaseAvailable={isDatabaseAvailable}
-              level={level + 1}
-              location={child}
-              onAddChild={onAddChild}
-              onDelete={onDelete}
-              onEdit={onEdit}
-              onOpen={onOpen}
-              onToggleExpanded={onToggleExpanded}
-              selectedLocationId={selectedLocationId}
-            />
-          ))}
-        </ol>
+    <TreeListRow
+      aria-current={isSelected ? "true" : undefined}
+      className={getTreeListRowToneClassName({
+        isAssignable: location.isAssignable,
+        isInteractive: canOpen,
+        isSelected
+      })}
+      context={context}
+      onClick={canOpen ? () => onOpen(location) : undefined}
+      actions={
+        <TreeListRowActions
+          addChildLabel={copy.addChild}
+          deleteLabel={copy.delete}
+          disabled={!isDatabaseAvailable || !canWriteLocations}
+          editLabel={copy.edit}
+          onAddChild={() => onAddChild(location.id)}
+          onDelete={() => onDelete(location)}
+          onEdit={() => onEdit(location)}
+        />
+      }
+    >
+      {canOpen ? (
+        // Its click bubbles to the row, which opens the location; the button adds keyboard access.
+        <button
+          className="block max-w-full truncate rounded text-left text-sm font-medium focus:outline-none focus:ring-2 focus:ring-[var(--color-ring-strong)] focus:ring-offset-2"
+          type="button"
+        >
+          {location.name}
+        </button>
+      ) : (
+        <p className="truncate text-sm font-medium">{location.name}</p>
+      )}
+      {location.isArchived ? (
+        <p className="text-xs text-[var(--color-text-muted)]">
+          {copy.archived}: {copy.yes}
+        </p>
       ) : null}
-    </li>
+    </TreeListRow>
   );
 }
 

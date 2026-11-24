@@ -16,6 +16,11 @@
 - Build list screens on shared base components for loading state, empty state, filters, table layout
   and endless scrolling. Extend the shared primitives first when several lists need the same
   capability.
+- Hierarchical management lists (part categories, storage locations) are built on
+  `src/app/tree-list.tsx`: `TreeList` owns the nested list, the expand/collapse toggle and indentation,
+  `TreeListRow` the row chrome, `getTreeListRowToneClassName` the assignable/organizational colouring,
+  `TreeListRowActions` the add-child/edit/delete buttons, and `usePersistedTreeExpansion` expansion
+  saved in localStorage. A screen supplies only the row content and its domain actions (#15).
 - Reserve URL state for navigation, filters, sorting, pagination, selected records and deep-linkable
   UI. Never put ephemeral success feedback in URL parameters; use a local toast.
 - Use the semantic color tokens in `src/app/globals.css` for accent, success, error, warning and

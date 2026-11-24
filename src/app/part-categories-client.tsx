@@ -44,6 +44,14 @@ import {
   type TreeNode
 } from "@/app/tree-picker-utils";
 import {
+  getTreeListRowToneClassName,
+  TreeList,
+  TreeListRow,
+  TreeListRowActions,
+  usePersistedTreeExpansion,
+  type TreeListRowContext
+} from "@/app/tree-list";
+import {
   DeleteConfirmationDialog,
   DialogBody,
   DialogFooter,
@@ -208,10 +216,16 @@ export function PartCategoriesClient({
     () => getExpandableIds(categoryTree),
     [categoryTree]
   );
-  const expansionInteractedRef = useRef(false);
-  const [expandedCategoryIds, setExpandedCategoryIds] = useState<Set<string>>(
-    defaultExpandedCategoryIds
-  );
+  const {
+    expand: expandCategory,
+    expandedIds: expandedCategoryIds,
+    persist: persistExpandedCategoryIds,
+    toggle: toggleCategoryExpanded
+  } = usePersistedTreeExpansion({
+    changeEventName: "oso:part-category-expansion",
+    defaultExpandedIds: defaultExpandedCategoryIds,
+    storageKey: categoryExpansionStorageKey
+  });
   const createCategoryMutation = useMutation({
     mutationFn: ({ formData }: CategoryDialogSubmitInput) =>
       createPartCategoryFromForm(formData),
@@ -253,12 +267,7 @@ export function PartCategoriesClient({
 
       setCurrentCategories(result.categories);
       if (result.category.parentId) {
-        setExpandedCategoryIds((currentIds) => {
-          const nextIds = new Set(currentIds);
-          nextIds.add(result.category.parentId as string);
-          saveExpandedCategoryIds(categoryExpansionStorageKey, nextIds);
-          return nextIds;
-        });
+        expandCategory(result.category.parentId);
       }
       setCreateParentId("");
       setCreateCategoryAttributeDrafts([]);
@@ -293,20 +302,6 @@ export function PartCategoriesClient({
     }
   });
 
-  useEffect(() => {
-    window.requestAnimationFrame(() => {
-      if (expansionInteractedRef.current) {
-        return;
-      }
-
-      setExpandedCategoryIds(
-        getInitialExpandedCategoryIds(
-          categoryExpansionStorageKey,
-          defaultExpandedCategoryIds
-        )
-      );
-    });
-  }, [categoryExpansionStorageKey, defaultExpandedCategoryIds]);
   const updateCategoryMutation = useMutation({
     mutationFn: ({ formData }: CategoryDialogSubmitInput) =>
       updatePartCategoryFromForm(formData),
@@ -468,7 +463,7 @@ export function PartCategoriesClient({
     if (parentId) {
       const nextIds = new Set(expandedCategoryIds);
       nextIds.add(parentId);
-      saveExpandedCategoryIds(categoryExpansionStorageKey, nextIds);
+      persistExpandedCategoryIds(nextIds);
     }
 
     window.requestAnimationFrame(() => openDialog(categoryDialogRef.current));
@@ -651,41 +646,29 @@ export function PartCategoriesClient({
           </div>
 
           {categoryTree.length > 0 ? (
-            <ol className="grid gap-1">
-              {categoryTree.map((category) => (
-                <CategoryNode
-                  key={category.id}
+            <TreeList
+              expandedIds={expandedCategoryIds}
+              getToggleLabel={(category, isExpanded) => ({
+                label: `${isExpanded ? copy.collapseCategory : copy.expandCategory} ${category.name}`
+              })}
+              items={categoryTree}
+              onToggleExpanded={toggleCategoryExpanded}
+              renderRow={(category, context) => (
+                <CategoryRow
                   canWriteCategories={canWriteCategories}
                   category={category}
+                  context={context}
                   copy={copy}
                   isDatabaseAvailable={isDatabaseAvailable}
-                  level={0}
                   onAddChild={openCreateDialog}
                   onDelete={(categoryToDelete) => {
                     setCategoryFieldErrors({});
                     setCategoryPendingDelete(categoryToDelete);
                   }}
                   onEdit={openEditDialog}
-                  expandedCategoryIds={expandedCategoryIds}
-                  onToggleExpanded={(categoryId) => {
-                    expansionInteractedRef.current = true;
-                    const nextIds = new Set(expandedCategoryIds);
-
-                    if (nextIds.has(categoryId)) {
-                      nextIds.delete(categoryId);
-                    } else {
-                      nextIds.add(categoryId);
-                    }
-
-                    saveExpandedCategoryIds(
-                      categoryExpansionStorageKey,
-                      nextIds
-                    );
-                    setExpandedCategoryIds(nextIds);
-                  }}
                 />
-              ))}
-            </ol>
+              )}
+            />
           ) : (
             <div className="py-10">
               <p className="text-base font-medium text-[var(--color-text-primary)]">
@@ -1627,147 +1610,45 @@ function toCategoryAttributeDraft(
   };
 }
 
-function CategoryNode({
+function CategoryRow({
   canWriteCategories,
   category,
+  context,
   copy,
   isDatabaseAvailable,
-  level,
   onAddChild,
   onDelete,
-  onEdit,
-  expandedCategoryIds,
-  onToggleExpanded
+  onEdit
 }: {
   canWriteCategories: boolean;
   category: CategoryTreeItem;
+  context: TreeListRowContext;
   copy: Copy;
   isDatabaseAvailable: boolean;
-  level: number;
   onAddChild: (parentId: string) => void;
   onDelete: (category: PartCategoryListItem) => void;
   onEdit: (category: PartCategoryListItem) => void;
-  expandedCategoryIds: Set<string>;
-  onToggleExpanded: (categoryId: string) => void;
 }) {
-  const hasChildren = category.children.length > 0;
-  const isExpanded = expandedCategoryIds.has(category.id);
-  const toggleLabel = isExpanded
-    ? `${copy.collapseCategory} ${category.name}`
-    : `${copy.expandCategory} ${category.name}`;
-
   return (
-    <li>
-      <div
-        data-testid="part-category-node"
-        className={`grid min-h-12 grid-cols-[auto_1fr_auto] items-center gap-3 rounded-md border-l-4 px-3 py-2 ${
-          category.isAssignable
-            ? "border-[var(--color-border-hover)] bg-[var(--color-bg-elevated)] text-[var(--color-text-primary)]"
-            : "border-[var(--color-border-strong)] bg-[var(--color-bg-subtle)] text-[var(--color-text-secondary)]"
-        }`}
-        style={{ marginLeft: `${level * 1.25}rem` }}
-      >
-        {hasChildren ? (
-          <button
-            aria-expanded={isExpanded}
-            aria-label={toggleLabel}
-            className="grid h-7 w-7 shrink-0 place-items-center rounded text-[var(--color-text-muted)] transition hover:bg-[var(--color-bg-elevated)]/70 hover:text-[var(--color-text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-ring-strong)] focus:ring-offset-2"
-            type="button"
-            onClick={() => onToggleExpanded(category.id)}
-          >
-            <span
-              aria-hidden="true"
-              className={`text-sm leading-none transition-transform ${
-                isExpanded ? "rotate-90" : ""
-              }`}
-            >
-              ▶
-            </span>
-          </button>
-        ) : (
-          <span className="h-7 w-7" aria-hidden="true" />
-        )}
-        <div className="min-w-0">
-          <p className="truncate text-sm font-medium">{category.name}</p>
-          <p className="truncate text-xs text-[var(--color-text-muted)]">{category.path}</p>
-        </div>
-        <div className="flex shrink-0 items-center gap-2">
-          <button
-            className="min-h-9 rounded-md border border-[var(--color-border-strong)] bg-[var(--color-bg-elevated)] px-3 py-1.5 text-sm font-medium text-[var(--color-text-secondary)] transition hover:border-[var(--color-border-hover)] hover:bg-[var(--color-bg-subtle)] focus:outline-none focus:ring-2 focus:ring-[var(--color-ring-strong)] focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-[var(--color-bg-subtle)] disabled:text-[var(--color-text-placeholder)]"
-            disabled={!isDatabaseAvailable || !canWriteCategories}
-            type="button"
-            onClick={() => onAddChild(category.id)}
-          >
-            {copy.addChild}
-          </button>
-          <button
-            className="min-h-9 rounded-md border border-[var(--color-border-strong)] bg-[var(--color-bg-elevated)] px-3 py-1.5 text-sm font-medium text-[var(--color-text-secondary)] transition hover:border-[var(--color-border-hover)] hover:bg-[var(--color-bg-subtle)] focus:outline-none focus:ring-2 focus:ring-[var(--color-ring-strong)] focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-[var(--color-bg-subtle)] disabled:text-[var(--color-text-placeholder)]"
-            aria-label={copy.edit}
-            disabled={!isDatabaseAvailable || !canWriteCategories}
-            type="button"
-            onClick={() => onEdit(category)}
-          >
-            <svg
-              aria-hidden="true"
-              className="h-4 w-4"
-              viewBox="0 0 20 20"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              <path
-                d="M13.9 3.3a1.5 1.5 0 0 1 2.1 0l.7.7a1.5 1.5 0 0 1 0 2.1l-8.4 8.4-3.3.8.8-3.3 8.4-8.4Z"
-                stroke="currentColor"
-                strokeWidth="1.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
-          </button>
-          <button
-            className="min-h-9 rounded-md border border-[var(--color-error-border)] bg-[var(--color-bg-elevated)] px-3 py-1.5 text-sm font-medium text-[var(--color-error)] transition hover:bg-[var(--color-error-soft)] focus:outline-none focus:ring-2 focus:ring-[var(--color-error-border)] focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-[var(--color-bg-subtle)] disabled:text-[var(--color-text-placeholder)]"
-            aria-label={copy.delete}
-            disabled={!isDatabaseAvailable || !canWriteCategories}
-            type="button"
-            onClick={() => onDelete(category)}
-          >
-            <svg
-              aria-hidden="true"
-              className="h-4 w-4"
-              viewBox="0 0 20 20"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              <path
-                d="M5.5 6h9m-7.5 0V4.75A1.75 1.75 0 0 1 8.75 3h2.5A1.75 1.75 0 0 1 13 4.75V6m-6.5 0 .6 9.1A1.75 1.75 0 0 0 8.84 16.75h2.32a1.75 1.75 0 0 0 1.74-1.65L13.5 6M8.75 8.5v5m2.5-5v5"
-                stroke="currentColor"
-                strokeWidth="1.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
-          </button>
-        </div>
-      </div>
-      {hasChildren && isExpanded ? (
-        <ol className="mt-1 grid gap-1">
-          {category.children.map((child) => (
-            <CategoryNode
-              key={child.id}
-              canWriteCategories={canWriteCategories}
-              category={child}
-              copy={copy}
-              isDatabaseAvailable={isDatabaseAvailable}
-              level={level + 1}
-              onAddChild={onAddChild}
-              onDelete={onDelete}
-              onEdit={onEdit}
-              expandedCategoryIds={expandedCategoryIds}
-              onToggleExpanded={onToggleExpanded}
-            />
-          ))}
-        </ol>
-      ) : null}
-    </li>
+    <TreeListRow
+      data-testid="part-category-node"
+      className={getTreeListRowToneClassName({ isAssignable: category.isAssignable })}
+      context={context}
+      actions={
+        <TreeListRowActions
+          addChildLabel={copy.addChild}
+          deleteLabel={copy.delete}
+          disabled={!isDatabaseAvailable || !canWriteCategories}
+          editLabel={copy.edit}
+          onAddChild={() => onAddChild(category.id)}
+          onDelete={() => onDelete(category)}
+          onEdit={() => onEdit(category)}
+        />
+      }
+    >
+      <p className="truncate text-sm font-medium">{category.name}</p>
+      <p className="truncate text-xs text-[var(--color-text-muted)]">{category.path}</p>
+    </TreeListRow>
   );
 }
 
@@ -2308,60 +2189,6 @@ function filterCategoryTree(
   }
 
   return filteredCategories;
-}
-
-function getInitialExpandedCategoryIds(
-  storageKey: string,
-  defaultExpandedCategoryIds: Set<string>
-) {
-  const storedValue = readStoredExpandedCategoryIds(storageKey);
-
-  if (!storedValue) {
-    return defaultExpandedCategoryIds;
-  }
-
-  try {
-    const parsedValue: unknown = JSON.parse(storedValue);
-
-    if (!Array.isArray(parsedValue)) {
-      return defaultExpandedCategoryIds;
-    }
-
-    return new Set(
-      parsedValue.filter(
-        (categoryId): categoryId is string => typeof categoryId === "string"
-      )
-    );
-  } catch {
-    return defaultExpandedCategoryIds;
-  }
-}
-
-function readStoredExpandedCategoryIds(storageKey: string) {
-  if (typeof window === "undefined") {
-    return null;
-  }
-
-  return window.localStorage.getItem(storageKey);
-}
-
-function saveExpandedCategoryIds(
-  storageKey: string,
-  expandedCategoryIds: Set<string>
-) {
-  if (typeof window === "undefined") {
-    return;
-  }
-
-  try {
-    window.localStorage.setItem(
-      storageKey,
-      JSON.stringify(Array.from(expandedCategoryIds))
-    );
-    window.dispatchEvent(new Event("oso:part-category-expansion"));
-  } catch {
-    // Ignore unavailable local storage; the tree still works for this page load.
-  }
 }
 
 function getCategoryAndDescendantIds(
