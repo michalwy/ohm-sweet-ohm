@@ -47,7 +47,7 @@
     "typescript": "6.0.3"
   },
   "engines": {
-    "node": "v26.4.0",
+    "node": "v26.13.1",
     "pnpm": "11.9.0"
   },
   "packageManager": "pnpm@11.9.0"

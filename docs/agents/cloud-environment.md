@@ -83,7 +83,7 @@ never needs re-pasting for it.
 
 | What | Read from | Today |
 | --- | --- | --- |
-| Node | every `node-version:` in `.github/workflows/ci.yml` — the script stops if they disagree | 24.18.0 |
+| Node | every `node-version:` in `.github/workflows/ci.yml` — the script stops if they disagree | 26.13.1 |
 | pnpm | `packageManager` in `package.json`, through corepack (`corepack install`) | 11.9.0 |
 | corepack | ships with that Node | 0.35.0 |
 | Docker images | `docker compose -f docker-compose.e2e.yml config --images` | `postgres:18-alpine` |
@@ -106,7 +106,7 @@ its own fallback line, or none. The fallback is not theoretical: the first run o
 - **The PATH goes in `/etc/profile.d/zz-…` and `~/.bashrc`.** `nodejs.sh` puts `/opt/node22/bin`
   first in every login shell; a later file in `/etc/profile.d/` (sorted by name) prepends the CI
   Node ahead of it, and the `~/.bashrc` line covers interactive shells that are not login shells.
-  Both were checked: `bash -lc 'node -v'` and `bash -ic 'node -v'` print `v24.18.0`.
+  Both were checked: `bash -lc 'node -v'` and `bash -ic 'node -v'` print `v26.13.1`.
 - **`COREPACK_ENABLE_DOWNLOAD_PROMPT=0`** keeps corepack from stopping on a "download pnpm?" prompt
   no one will answer. Corepack picks the pnpm version from the nearest `package.json`, so `pnpm -v`
   outside the clone prints whatever corepack considers latest; run it inside the clone.
@@ -122,7 +122,7 @@ its own fallback line, or none. The fallback is not theoretical: the first run o
 First check the shell is the one the script prepared, each command alone, inside the clone:
 
 ```bash
-node -v            # the CI version, v24.18.0 today
+node -v            # the CI version, v26.13.1 today
 pnpm -v            # the packageManager version, 11.9.0 today
 docker info --format '{{.ServerVersion}}'
 ```
