@@ -49,6 +49,10 @@ fresh SDK server whose tools — the registry in `src/server/mcp/tools.ts` — r
 a failure is a tool error carrying the same error object. The first endpoints are `GET /api/v1/me`,
 `GET /api/v1/workspace` and the `whoami` tool.
 
+MCP coverage (#276): `src/server/mcp/coverage.ts` maps every server action to its MCP tool, to an
+exclusion with a reason, or to the area issue still pending; a unit test reads the `"use server"`
+modules and fails on an action without an entry.
+
 ## Intended Shape
 
 - `src/app`: Next.js App Router entry points and route-level UI.
