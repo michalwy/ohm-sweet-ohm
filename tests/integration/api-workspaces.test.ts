@@ -454,7 +454,7 @@ describe("REST /api/v1/workspaces", () => {
   });
 
   test("the OpenAPI document lists the endpoints", async () => {
-    const response = await getOpenApi(new Request(`${base}/openapi.json`), noParams);
+    const response = await getOpenApi();
     const document = (await response.json()) as { paths: Record<string, Record<string, unknown>> };
 
     assert.ok(document.paths["/workspaces"]?.get);
