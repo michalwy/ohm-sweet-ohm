@@ -17,6 +17,7 @@ import {
 } from "@/server/parts/attributes";
 import { parseAttributeValue } from "@/server/parts/attributeValues";
 import { learnSupplierMatching } from "@/server/integrations/matchingLearning";
+import { updatePartValueSortNumber } from "@/server/parts/partValueSort";
 import type { SupplierProviderKey } from "@/server/integrations/types";
 
 export type PartMutationResult =
@@ -715,44 +716,6 @@ function getPartAttributeValueData({
         displayValue: parsedValue.displayValue
       };
   }
-}
-
-export async function updatePartValueSortNumber({
-  tx,
-  workspaceId,
-  partId,
-  primaryCategoryId,
-}: {
-  tx: Prisma.TransactionClient;
-  workspaceId: string;
-  partId: string;
-  primaryCategoryId: string | null;
-}) {
-  if (!primaryCategoryId) {
-    await tx.part.update({ where: { id: partId }, data: { valueSortNumber: null } });
-    return;
-  }
-
-  const effectiveAttrs = await getEffectivePartCategoryAttributes({
-    workspaceId,
-    categoryId: primaryCategoryId
-  });
-  const valueAttr = effectiveAttrs.find((a) => a.isValue);
-
-  if (!valueAttr) {
-    await tx.part.update({ where: { id: partId }, data: { valueSortNumber: null } });
-    return;
-  }
-
-  const attrValue = await tx.partAttributeValue.findUnique({
-    where: { partId_attributeId: { partId, attributeId: valueAttr.attribute.id } },
-    select: { quantityBaseValue: true, numberValue: true }
-  });
-
-  await tx.part.update({
-    where: { id: partId },
-    data: { valueSortNumber: attrValue?.quantityBaseValue ?? attrValue?.numberValue ?? null }
-  });
 }
 
 async function syncPartAttributeValues({

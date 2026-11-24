@@ -2,7 +2,7 @@ import "server-only";
 
 import { Prisma, type PrismaClient } from "@/generated/prisma/client";
 import { prisma } from "@/server/db/prisma";
-import { updatePartValueSortNumber } from "@/server/parts/createPart";
+import { updatePartValueSortNumber } from "@/server/parts/partValueSort";
 import {
   decodeListCursor,
   encodeListCursor,

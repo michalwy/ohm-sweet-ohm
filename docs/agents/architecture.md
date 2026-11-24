@@ -51,7 +51,9 @@ the decision — fix this file.
   `workspaceId` the caller has already authorized — lives in a module without the directive,
   marked `import "server-only"` (#291: `learnSupplierMatching` moved from
   `src/server/integrations/matching.ts` to `matchingLearning.ts`, its pure key helpers to
-  `matchingKeys.ts`).
+  `matchingKeys.ts`; #295: `updatePartValueSortNumber` moved from `createPart.ts` to
+  `src/server/parts/partValueSort.ts`). `tests/unit/serverActionModules.test.ts` fails when a
+  `"use server"` module exports a function that takes a transaction client.
 - Authentication is Better Auth (ADR 0006); do not reintroduce development current-user shortcuts.
 - Registration and routing (ADR 0007): sign-up creates only a global user; sign-in returns users to
   their last accessible workspace when remembered; users choose or create workspaces at
