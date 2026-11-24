@@ -25,6 +25,8 @@ Several optional columns can be enabled via **Configure list**:
 
 All of these columns support sorting with cursor-based pagination so they work efficiently across large datasets.
 
+The **Value** column and every column for a **Quantity** attribute (e.g. `10 kΩ`, `100 nF`) are centered, header and cells, so measured values are easy to scan down the column. The same holds in the part picker and in the **Value** column of the attribute table on the part details panel.
+
 ### Filtering The Parts List
 
 The filter bar above the parts list lets you narrow down which parts are shown.

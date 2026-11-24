@@ -7,6 +7,7 @@ import {
 
 import type { PartsListItem } from "@/server/parts/getParts";
 import type { AttributeListItem } from "@/server/parts/attributeMutations";
+import { attributeColumnFlags, partValueColumnFlags } from "@/app/list-column-align";
 import type { ListColumnDefinition } from "@/app/list-table-config";
 import {
   compareNumericDisplayValues,
@@ -124,7 +125,7 @@ export function buildPartsListColumnDefs({
       defaultWidth: 160,
       minWidth: 80,
       sortable: true,
-      align: "center" as const
+      ...attributeColumnFlags(attribute)
     })
   );
 
@@ -168,7 +169,7 @@ export function buildPartsListColumnDefs({
       defaultWidth: 110,
       minWidth: 64,
       sortable: true,
-      align: "center" as const
+      ...partValueColumnFlags()
     },
     {
       id: "source",

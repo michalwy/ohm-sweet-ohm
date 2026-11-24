@@ -5,6 +5,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { Header, VisibilityState } from "@tanstack/react-table";
 import { flexRender } from "@tanstack/react-table";
 
+import { resolveListColumnAlign } from "@/app/list-column-align";
 import type { ListColumnDefinition } from "@/app/list-table-config";
 
 export function useColumnResizeCursor() {
@@ -271,7 +272,7 @@ export function ListTableHeaderCell({
   const columnId = header.column.id;
   const isActionsColumn = columnId === "actions";
   const colDef = columnDefs.find((c) => c.id === columnId);
-  const align = colDef?.align ?? "left";
+  const align = resolveListColumnAlign(colDef);
 
   const dragEnabled = !isActionsColumn && onStartDrag != null;
   const dropEnabled = !isActionsColumn && onDropOnto != null;

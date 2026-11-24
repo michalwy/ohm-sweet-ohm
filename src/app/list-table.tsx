@@ -1,8 +1,9 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { flexRender, type Table } from "@tanstack/react-table";
 
+import { MEASURED_QUANTITY_CELL_CLASS } from "@/app/list-column-align";
 import type { ListColumnDefinition } from "@/app/list-table-config";
 import { InfiniteListViewport } from "@/app/infinite-list";
 import {
@@ -61,6 +62,13 @@ export function ListTable<TData extends { id: string }>({
     useColumnResizeCursor();
   const { draggedColumnId, onDragEnd, onStartDrag, onDropOnto } =
     useColumnDragReorder(setColumnOrder ?? (() => {}));
+  const measuredQuantityColumnIds = useMemo(
+    () =>
+      new Set(
+        columnDefs.filter((columnDef) => columnDef.measuredQuantity).map((columnDef) => columnDef.id)
+      ),
+    [columnDefs]
+  );
 
   const handleTbodyKeyDown = useCallback(
     (event: React.KeyboardEvent) => {
@@ -194,6 +202,11 @@ export function ListTable<TData extends { id: string }>({
                 >
                   {row.getVisibleCells().map((cell) => {
                     const isActionsCell = cell.column.id === "actions";
+                    // Measured quantities (Value, Quantity attributes) are centered here for
+                    // every list, so no table opts in (#245). Other columns align in their
+                    // own cell renderers, unchanged.
+                    const isMeasuredQuantity =
+                      measuredQuantityColumnIds.has(cell.column.id);
                     const actionsBackground = isActionsCell
                       ? highlightClass || (isHovered ? "bg-[var(--color-bg-subtle)]" : "bg-[var(--color-bg-elevated)]")
                       : "";
@@ -205,7 +218,7 @@ export function ListTable<TData extends { id: string }>({
                           isActionsCell
                             ? `sticky right-0 z-10 px-1 py-1.5 ${actionsBackground}`
                             : ""
-                        }`}
+                        }${isMeasuredQuantity ? ` ${MEASURED_QUANTITY_CELL_CLASS}` : ""}`}
                         style={{ width: cell.column.getSize() }}
                       >
                         <div className="overflow-hidden text-ellipsis">

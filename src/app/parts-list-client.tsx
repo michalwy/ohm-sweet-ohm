@@ -34,6 +34,7 @@ import type { AttributeListItem } from "@/server/parts/attributeMutations";
 import type { SupplierProviderKey } from "@/server/integrations/types";
 import type { UnitListItem } from "@/server/units/getUnits";
 import { DetailPanel, useDetailsPanelWidth } from "@/app/detail-panel";
+import { MEASURED_QUANTITY_CELL_CLASS } from "@/app/list-column-align";
 import {
   useListTableConfiguration
 } from "@/app/list-table-config";
@@ -1717,7 +1718,7 @@ export function PartsListClient({
                       <thead className="bg-[var(--color-bg-subtle)] text-[var(--color-text-secondary)]">
                         <tr>
                           <th className="px-3 py-2 font-semibold">Attribute</th>
-                          <th className="px-3 py-2 font-semibold">Value</th>
+                          <th className={`px-3 py-2 font-semibold ${MEASURED_QUANTITY_CELL_CLASS}`}>Value</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -1736,7 +1737,7 @@ export function PartsListClient({
                               <td className="px-3 py-2 text-[var(--color-text-secondary)]">
                                 {attributeName}
                               </td>
-                              <td className="px-3 py-2 text-[var(--color-text-primary)]">
+                              <td className={`px-3 py-2 text-[var(--color-text-primary)] ${MEASURED_QUANTITY_CELL_CLASS}`}>
                                 {attributeValue.displayValue}
                               </td>
                             </tr>
