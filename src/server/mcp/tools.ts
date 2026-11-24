@@ -2,6 +2,20 @@ import "server-only";
 
 import type { OperationImplementation } from "@/server/api/execute";
 import {
+  createInventoryEntryImplementation,
+  getLocationStockImplementation,
+  getPartStockBalancesImplementation,
+  listInventoryEntriesImplementation
+} from "@/server/inventory/inventoryApi";
+import {
+  createLocationImplementation,
+  deleteLocationImplementation,
+  generateLocationsImplementation,
+  getLocationImplementation,
+  listLocationsImplementation,
+  updateLocationImplementation
+} from "@/server/inventory/locationApi";
+import {
   createOrganizationImplementation,
   deleteOrganizationImplementation,
   getOrganizationImplementation,
@@ -118,5 +132,37 @@ export const mcpTools: McpTool[] = [
   defineMcpTool("Update a shopping list item", shoppingListApi.updateShoppingListItemImplementation, { readOnly: false, destructive: true, idempotent: true }),
   defineMcpTool("Remove a shopping list item", shoppingListApi.removeShoppingListItemImplementation, { readOnly: false, destructive: true }),
   defineMcpTool("Shopping lists of a part", shoppingListApi.getPartShoppingListsImplementation, { readOnly: true }),
-  defineMcpTool("Convert a shopping list to a purchase order", shoppingListApi.convertShoppingListToPurchaseOrderImplementation, { readOnly: false, destructive: false })
+  defineMcpTool("Convert a shopping list to a purchase order", shoppingListApi.convertShoppingListToPurchaseOrderImplementation, { readOnly: false, destructive: false }),
+  // Locations and inventory (#280)
+  defineMcpTool("List storage locations", listLocationsImplementation, { readOnly: true }),
+  defineMcpTool("Get a storage location", getLocationImplementation, { readOnly: true }),
+  defineMcpTool("Create a storage location", createLocationImplementation, {
+    readOnly: false,
+    destructive: false
+  }),
+  defineMcpTool("Update or archive a storage location", updateLocationImplementation, {
+    readOnly: false,
+    destructive: true,
+    idempotent: true
+  }),
+  defineMcpTool("Delete a storage location", deleteLocationImplementation, {
+    readOnly: false,
+    destructive: true
+  }),
+  defineMcpTool("Generate a location hierarchy", generateLocationsImplementation, {
+    readOnly: false,
+    destructive: false,
+    idempotent: true
+  }),
+  defineMcpTool("Stock stored at a location", getLocationStockImplementation, { readOnly: true }),
+  defineMcpTool("Record a stock movement", createInventoryEntryImplementation, {
+    readOnly: false,
+    destructive: false
+  }),
+  defineMcpTool("A part's stock movement history", listInventoryEntriesImplementation, {
+    readOnly: true
+  }),
+  defineMcpTool("A part's stock per location", getPartStockBalancesImplementation, {
+    readOnly: true
+  })
 ];

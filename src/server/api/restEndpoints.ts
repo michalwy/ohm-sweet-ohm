@@ -2,6 +2,20 @@ import type { z } from "zod";
 
 import type { Operation } from "@/server/api/operations";
 import {
+  createInventoryEntryOperation,
+  getLocationStockOperation,
+  getPartStockBalancesOperation,
+  listInventoryEntriesOperation
+} from "@/server/inventory/inventoryOperations";
+import {
+  createLocationOperation,
+  deleteLocationOperation,
+  generateLocationsOperation,
+  getLocationOperation,
+  listLocationsOperation,
+  updateLocationOperation
+} from "@/server/inventory/locationOperations";
+import {
   createOrganizationOperation,
   deleteOrganizationOperation,
   getOrganizationOperation,
@@ -189,5 +203,76 @@ export const restEndpoints: RestEndpoint[] = [
   { method: "patch", path: "/shopping-lists/{listId}/items/{itemId}", summary: "Update a shopping list item", tag: "Shopping lists", operation: updateShoppingListItemOperation },
   { method: "delete", path: "/shopping-lists/{listId}/items/{itemId}", summary: "Remove a shopping list item", tag: "Shopping lists", operation: removeShoppingListItemOperation },
   { method: "post", path: "/shopping-lists/{listId}/convert-to-purchase-order", summary: "Put shopping list items on a purchase order", tag: "Shopping lists", operation: convertShoppingListToPurchaseOrderOperation },
-  { method: "get", path: "/parts/{id}/shopping-lists", summary: "The shopping lists a part is on", tag: "Shopping lists", operation: getPartShoppingListsOperation }
+  { method: "get", path: "/parts/{id}/shopping-lists", summary: "The shopping lists a part is on", tag: "Shopping lists", operation: getPartShoppingListsOperation },
+  // Locations and inventory (#280)
+  {
+    method: "get",
+    path: "/locations",
+    summary: "List storage locations",
+    tag: "Locations",
+    operation: listLocationsOperation
+  },
+  {
+    method: "post",
+    path: "/locations",
+    summary: "Create a storage location",
+    tag: "Locations",
+    operation: createLocationOperation
+  },
+  {
+    method: "post",
+    path: "/locations/generate",
+    summary: "Generate a location hierarchy",
+    tag: "Locations",
+    operation: generateLocationsOperation
+  },
+  {
+    method: "get",
+    path: "/locations/{id}",
+    summary: "Get a storage location",
+    tag: "Locations",
+    operation: getLocationOperation
+  },
+  {
+    method: "patch",
+    path: "/locations/{id}",
+    summary: "Update or archive a storage location",
+    tag: "Locations",
+    operation: updateLocationOperation
+  },
+  {
+    method: "delete",
+    path: "/locations/{id}",
+    summary: "Delete a storage location",
+    tag: "Locations",
+    operation: deleteLocationOperation
+  },
+  {
+    method: "get",
+    path: "/locations/{id}/stock",
+    summary: "Stock stored at a location",
+    tag: "Inventory",
+    operation: getLocationStockOperation
+  },
+  {
+    method: "get",
+    path: "/inventory/entries",
+    summary: "A part's stock movement history",
+    tag: "Inventory",
+    operation: listInventoryEntriesOperation
+  },
+  {
+    method: "post",
+    path: "/inventory/entries",
+    summary: "Record a stock movement",
+    tag: "Inventory",
+    operation: createInventoryEntryOperation
+  },
+  {
+    method: "get",
+    path: "/inventory/balances",
+    summary: "A part's stock per location",
+    tag: "Inventory",
+    operation: getPartStockBalancesOperation
+  }
 ];

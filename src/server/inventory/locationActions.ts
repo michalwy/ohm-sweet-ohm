@@ -2,16 +2,20 @@
 
 
 import { getAuthorizedSessionActor } from "@/server/auth/currentActor";
+import type { LocationGeneratorLevel } from "@/lib/locationGenerator";
+import { parseActionInput } from "@/server/api/actionInput";
 import {
-  parseLocationGeneratorLevels,
-  type LocationGeneratorLevel
-} from "@/lib/locationGenerator";
+  createLocationOperation,
+  deleteLocationOperation,
+  generateLocationsOperation,
+  updateLocationOperation
+} from "@/server/inventory/locationOperations";
 import {
   createStorageLocation,
   deleteStorageLocation,
   generateStorageLocations,
   getStorageLocations,
-  updateStorageLocation,
+  patchStorageLocation,
   type StorageLocationListItem
 } from "@/server/inventory/locationMutations";
 
@@ -52,11 +56,14 @@ export async function createLocationForWorkspace(input: {
       workspaceSlug: input.workspaceSlug,
       permission: "locations:write"
     });
-    const location = await createStorageLocation({
-      workspaceId: context.workspace.id,
+    const data = parseActionInput(createLocationOperation, {
       parentId: input.parentId,
       name: input.name,
       isAssignable: input.isAssignable
+    });
+    const location = await createStorageLocation({
+      workspaceId: context.workspace.id,
+      ...data
     });
     return getSuccessState(location);
   } catch (error) {
@@ -77,13 +84,15 @@ export async function updateLocationForWorkspace(input: {
       workspaceSlug: input.workspaceSlug,
       permission: "locations:write"
     });
-    const location = await updateStorageLocation({
+    const location = await patchStorageLocation({
       workspaceId: context.workspace.id,
-      locationId: input.locationId,
-      parentId: input.parentId,
-      name: input.name,
-      isAssignable: input.isAssignable,
-      isArchived: input.isArchived
+      ...parseActionInput(updateLocationOperation, {
+        id: input.locationId,
+        parentId: input.parentId ?? null,
+        name: input.name,
+        isAssignable: input.isAssignable,
+        isArchived: input.isArchived
+      })
     });
     return getSuccessState(location);
   } catch (error) {
@@ -103,15 +112,15 @@ export async function generateLocationsForWorkspace(input: {
       workspaceSlug: input.workspaceSlug,
       permission: "locations:write"
     });
-    const levels = parseLocationGeneratorLevels(input.levels);
-    if (!levels) {
-      throw new Error("invalid-location-generator");
-    }
+    const data = parseActionInput(generateLocationsOperation, {
+      parentId: input.parentId || null,
+      levels: input.levels
+    });
     return getSuccessState(
       await generateStorageLocations({
         workspaceId: context.workspace.id,
-        parentId: typeof input.parentId === "string" && input.parentId ? input.parentId : null,
-        levels
+        parentId: data.parentId ?? null,
+        levels: data.levels
       })
     );
   } catch (error) {
@@ -128,9 +137,10 @@ export async function deleteLocationForWorkspace(input: {
       workspaceSlug: input.workspaceSlug,
       permission: "locations:write"
     });
+    const { id } = parseActionInput(deleteLocationOperation, { id: input.locationId });
     await deleteStorageLocation({
       workspaceId: context.workspace.id,
-      locationId: input.locationId
+      locationId: id
     });
     return getSuccessState(null);
   } catch (error) {

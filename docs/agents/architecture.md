@@ -120,7 +120,10 @@ refinements whose meaning the generated schema would lose. From the definition:
 
 The server action for the same operation validates its input through the same schema (worked
 example: `listUnitsOperation` and `getUnitsPageForWorkspace`), so the UI, REST and MCP accept the same
-shapes. Each area issue converts its own operations.
+shapes. Each area issue converts its own operations; `parseActionInput(operation, raw)`
+(`src/server/api/actionInput.ts`, #280) does it in one line and throws the `invalid-input` code as
+the actions' domain errors are thrown. An action whose fields are named differently from the
+operation's (`locationId` for `id`) maps them in the call; the schema strips the workspace slug.
 
 `permission` is `null` only for an operation any authenticated actor may call — `whoami`, which
 describes the caller. Everything else names a key.

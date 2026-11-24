@@ -187,6 +187,37 @@ export async function updateStorageLocation(input: {
   });
 }
 
+/**
+ * Change only the fields given (#280): an omitted field keeps its value, `parentId: null` moves the
+ * location to the top level. The form sends every field; the API and MCP send what changes.
+ */
+export async function patchStorageLocation(input: {
+  workspaceId: string;
+  id: string;
+  parentId?: string | null;
+  name?: string;
+  isAssignable?: boolean;
+  isArchived?: boolean;
+}) {
+  const current = await prisma.storageLocation.findFirst({
+    where: { id: input.id, workspaceId: input.workspaceId },
+    select: { parentId: true, name: true, isAssignable: true, isArchived: true }
+  });
+
+  if (!current) {
+    throw new Error("location-not-found");
+  }
+
+  return updateStorageLocation({
+    workspaceId: input.workspaceId,
+    locationId: input.id,
+    parentId: input.parentId === undefined ? current.parentId : input.parentId,
+    name: input.name ?? current.name,
+    isAssignable: input.isAssignable ?? current.isAssignable,
+    isArchived: input.isArchived ?? current.isArchived
+  });
+}
+
 async function assertLocationHasZeroStock(workspaceId: string, locationId: string) {
   const nonZeroRows = await prisma.$queryRaw<Array<{ partId: string }>>`
     SELECT "partId"
@@ -388,6 +419,28 @@ async function assertParentLocation(
 
   if (!parent) {
     throw new Error("invalid-parent-location");
+  }
+
+  // Moving a location under one of its own descendants would cut the subtree off the tree (#280:
+  // the API reaches this without the form's picker, which only offers valid parents).
+  if (locationId) {
+    const locations = await prisma.storageLocation.findMany({
+      where: { workspaceId },
+      select: { id: true, parentId: true }
+    });
+    const parentIdById = new Map(locations.map((location) => [location.id, location.parentId]));
+    const seen = new Set<string>();
+
+    for (
+      let ancestorId: string | null = parentId;
+      ancestorId && !seen.has(ancestorId);
+      ancestorId = parentIdById.get(ancestorId) ?? null
+    ) {
+      if (ancestorId === locationId) {
+        throw new Error("location-parent-cycle");
+      }
+      seen.add(ancestorId);
+    }
   }
 }
 

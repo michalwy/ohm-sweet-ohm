@@ -19,6 +19,9 @@ Archived location behavior:
 - if an archived location still has stock, it remains visible in part stock breakdown with an archived marker
 - archiving is blocked while a location has non-zero stock; move or adjust stock to zero first
 
+A location cannot be moved under itself or under one of its own sublocations; OSO refuses the
+change instead of cutting that branch off the tree.
+
 ## Generate a Location Structure
 
 Storage is often a regular grid — a cabinet with rows, each row with the same bins. Instead of adding
@@ -95,3 +98,10 @@ The parts list has optional **Reserved**, **Allocated**, and **Available** colum
 The part detail panel's **Locations and stock** table shows both figures per location: **Stock** (raw on-hand quantity at that location) and **Available** (that location's stock minus any hard reservation a started build is currently holding against it there). Use **Available** when deciding where to draw stock from — a location can show non-zero **Stock** but zero **Available** if another build has already reserved it. The build allocation editor (see [Builds](builds.md)) narrows its source-location picker to this same per-location **Available** figure.
 
 If a **transfer** moves stock that a started build has reserved at the source location, OSO moves just enough of that reservation to the destination location along with it, so the source location's **Available** never goes negative and the reservation still points at real stock.
+
+## From An Assistant Or Script
+
+Locations — reading the tree, creating, changing, archiving, deleting and generating them — and
+stock movements, a part's stock per location and its movement history, and what a location holds
+are also available through the API and the MCP server, with the same rules as these screens. See
+[API & MCP](api-and-mcp.md#what-is-available).
