@@ -1,14 +1,18 @@
 "use server";
 
 
+import { parseActionInput } from "@/server/api/actionInput";
 import { getAuthorizedSessionActor } from "@/server/auth/currentActor";
 import {
   createInventoryEntry,
   getPartInventoryHistory,
-  getPartLocationAvailableBalances,
-  getPartLocationBalances,
+  getPartStockBalances,
   type InventoryHistoryItem
 } from "@/server/inventory/entryMutations";
+import {
+  createInventoryEntryOperation,
+  getLocationStockOperation
+} from "@/server/inventory/inventoryOperations";
 import { getLocationStock, type LocationStockItem } from "@/server/inventory/locationStock";
 
 export type InventoryActionResult<T> =
@@ -38,14 +42,10 @@ export async function createInventoryEntryForWorkspace(input: {
       permission: "inventory:write"
     });
 
+    // The schema strips the workspace slug: the workspace is the session's.
     await createInventoryEntry({
       workspaceId: context.workspace.id,
-      partId: input.partId,
-      entryType: input.entryType,
-      quantity: input.quantity,
-      fromLocationId: input.fromLocationId,
-      toLocationId: input.toLocationId,
-      note: input.note,
+      ...parseActionInput(createInventoryEntryOperation, input),
       createdByUserId: context.user.id
     });
     return getSuccessState(null);
@@ -66,23 +66,11 @@ export async function getPartBalancesForWorkspace(input: {
       permission: "inventory:read"
     });
 
-    const [balances, availableBalances] = await Promise.all([
-      getPartLocationBalances({
-        workspaceId: context.workspace.id,
-        partId: input.partId
-      }),
-      getPartLocationAvailableBalances({
+    return getSuccessState(
+      await getPartStockBalances({
         workspaceId: context.workspace.id,
         partId: input.partId
       })
-    ]);
-
-    return getSuccessState(
-      [...balances.entries()].map(([locationId, quantity]) => ({
-        locationId,
-        quantity: quantity.toString(),
-        availableQuantity: (availableBalances.get(locationId) ?? quantity).toString()
-      }))
     );
   } catch (error) {
     return getErrorState(getInventoryActionError(error));
@@ -121,10 +109,14 @@ export async function getLocationStockForWorkspace(input: {
       permission: "inventory:read"
     });
 
+    const data = parseActionInput(getLocationStockOperation, {
+      id: input.locationId,
+      includeSublocations: input.includeSublocations
+    });
     const stock = await getLocationStock({
       workspaceId: context.workspace.id,
-      locationId: input.locationId,
-      includeSublocations: input.includeSublocations
+      locationId: data.id,
+      includeSublocations: data.includeSublocations ?? false
     });
 
     return getSuccessState(stock);

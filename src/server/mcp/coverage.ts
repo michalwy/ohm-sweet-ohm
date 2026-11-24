@@ -100,17 +100,17 @@ export const serverActionCoverage: ServerActionCoverageMap = {
     getSupplierPartAttributesForWorkspace: { pending: "#285" }
   },
   "src/server/inventory/entryActions.ts": {
-    createInventoryEntryForWorkspace: { pending: "#280" },
-    getPartBalancesForWorkspace: { pending: "#280" },
-    getPartInventoryHistoryForWorkspace: { pending: "#280" },
-    getLocationStockForWorkspace: { pending: "#280" }
+    createInventoryEntryForWorkspace: { tool: "create_inventory_entry" },
+    getPartBalancesForWorkspace: { tool: "get_part_stock_balances" },
+    getPartInventoryHistoryForWorkspace: { tool: "list_inventory_entries" },
+    getLocationStockForWorkspace: { tool: "get_location_stock" }
   },
   "src/server/inventory/locationActions.ts": {
-    getLocationsForWorkspace: { pending: "#280" },
-    createLocationForWorkspace: { pending: "#280" },
-    updateLocationForWorkspace: { pending: "#280" },
-    generateLocationsForWorkspace: { pending: "#280" },
-    deleteLocationForWorkspace: { pending: "#280" }
+    getLocationsForWorkspace: { tool: "list_locations" },
+    createLocationForWorkspace: { tool: "create_location" },
+    updateLocationForWorkspace: { tool: "update_location" },
+    generateLocationsForWorkspace: { tool: "generate_locations" },
+    deleteLocationForWorkspace: { tool: "delete_location" }
   },
   "src/server/organizations/organizationActions.ts": {
     getOrganizationsPageForWorkspace: { tool: "list_organizations" },

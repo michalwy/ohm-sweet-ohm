@@ -2,6 +2,12 @@ import "server-only";
 
 import { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/server/db/prisma";
+import {
+  decodeListCursor,
+  encodeListCursor,
+  getListPageSize,
+  type ListPage
+} from "@/server/pagination";
 
 type InventoryEntryType = "RECEIPT" | "ISSUE" | "TRANSFER" | "ADJUSTMENT";
 
@@ -666,4 +672,174 @@ async function lockPartRow(
   if (lockedParts.length === 0) {
     throw new Error("part-not-found");
   }
+}
+
+/** Throws `part-not-found` unless the part belongs to the workspace. */
+export async function assertPartInWorkspace(input: { workspaceId: string; partId: string }) {
+  const part = await prisma.part.findFirst({
+    where: { id: input.partId, workspaceId: input.workspaceId },
+    select: { id: true }
+  });
+
+  if (!part) {
+    throw new Error("part-not-found");
+  }
+}
+
+export type PartStockBalance = {
+  locationId: string;
+  quantity: string;
+  availableQuantity: string;
+};
+
+/**
+ * A part's balance and available quantity per location (the part stock breakdown): every location
+ * a movement of the part touched, so a balance may be zero.
+ */
+export async function getPartStockBalances(input: {
+  workspaceId: string;
+  partId: string;
+}): Promise<PartStockBalance[]> {
+  const [balances, availableBalances] = await Promise.all([
+    getPartLocationBalances(input),
+    getPartLocationAvailableBalances(input)
+  ]);
+
+  return [...balances.entries()].map(([locationId, quantity]) => ({
+    locationId,
+    quantity: quantity.toString(),
+    availableQuantity: (availableBalances.get(locationId) ?? quantity).toString()
+  }));
+}
+
+export type InventoryEntryDetail = {
+  id: string;
+  partId: string;
+  entryType: InventoryEntryType;
+  quantity: string;
+  fromLocationId: string | null;
+  fromLocationName: string | null;
+  toLocationId: string | null;
+  toLocationName: string | null;
+  note: string | null;
+  createdAt: string;
+  authorName: string | null;
+};
+
+const inventoryEntryDetailSelect = {
+  id: true,
+  partId: true,
+  entryType: true,
+  quantity: true,
+  fromLocationId: true,
+  toLocationId: true,
+  note: true,
+  createdAt: true,
+  fromLocation: { select: { name: true } },
+  toLocation: { select: { name: true } },
+  createdByUser: { select: { name: true } }
+} satisfies Prisma.InventoryEntrySelect;
+
+function toInventoryEntryDetail(
+  entry: Prisma.InventoryEntryGetPayload<{ select: typeof inventoryEntryDetailSelect }>
+): InventoryEntryDetail {
+  return {
+    id: entry.id,
+    partId: entry.partId,
+    entryType: entry.entryType,
+    quantity: entry.quantity.toString(),
+    fromLocationId: entry.fromLocationId,
+    fromLocationName: entry.fromLocation?.name ?? null,
+    toLocationId: entry.toLocationId,
+    toLocationName: entry.toLocation?.name ?? null,
+    note: entry.note,
+    createdAt: entry.createdAt.toISOString(),
+    authorName: entry.createdByUser?.name ?? null
+  };
+}
+
+/** One inventory entry of the workspace, with its locations' and author's names. */
+export async function getInventoryEntryDetail(input: { workspaceId: string; entryId: string }) {
+  const entry = await prisma.inventoryEntry.findFirst({
+    where: { id: input.entryId, workspaceId: input.workspaceId },
+    select: inventoryEntryDetailSelect
+  });
+
+  if (!entry) {
+    throw new Error("inventory-entry-not-found");
+  }
+
+  return toInventoryEntryDetail(entry);
+}
+
+type InventoryEntryCursor = { createdAt: string; id: string };
+
+/**
+ * A part's movement history one page at a time (#280), newest first by default — the paged form
+ * of `getPartInventoryHistory`, which the movement-history dialog reads as its latest 50.
+ */
+export async function getPartInventoryHistoryPage(input: {
+  workspaceId: string;
+  partId: string;
+  cursor?: string | null;
+  pageSize?: number | null;
+  sortDir?: "asc" | "desc";
+}): Promise<ListPage<InventoryEntryDetail>> {
+  await assertPartInWorkspace(input);
+
+  const limit = getListPageSize(input.pageSize);
+  const dir = input.sortDir === "asc" ? "asc" : "desc";
+  const baseWhere: Prisma.InventoryEntryWhereInput = {
+    workspaceId: input.workspaceId,
+    partId: input.partId
+  };
+  const decoded = parseInventoryEntryCursor(input.cursor);
+  const after = dir === "asc" ? "gt" : "lt";
+
+  const [totalCount, rows] = await Promise.all([
+    prisma.inventoryEntry.count({ where: baseWhere }),
+    prisma.inventoryEntry.findMany({
+      where: decoded
+        ? {
+            AND: [
+              baseWhere,
+              {
+                OR: [
+                  { createdAt: { [after]: new Date(decoded.createdAt) } },
+                  { createdAt: new Date(decoded.createdAt), id: { [after]: decoded.id } }
+                ]
+              }
+            ]
+          }
+        : baseWhere,
+      orderBy: [{ createdAt: dir }, { id: dir }],
+      take: limit + 1,
+      select: inventoryEntryDetailSelect
+    })
+  ]);
+
+  const hasMore = rows.length > limit;
+  const items = rows.slice(0, limit).map(toInventoryEntryDetail);
+  const last = items[items.length - 1];
+  const nextCursor =
+    hasMore && last
+      ? encodeListCursor<InventoryEntryCursor>({ createdAt: last.createdAt, id: last.id })
+      : null;
+
+  return { items, nextCursor, totalCount, filteredCount: totalCount };
+}
+
+/** A cursor this module encoded, or null for none or for one that is not (it restarts the list). */
+function parseInventoryEntryCursor(cursor: string | null | undefined) {
+  const decoded = decodeListCursor<Partial<InventoryEntryCursor>>(cursor);
+
+  if (
+    typeof decoded?.createdAt !== "string" ||
+    typeof decoded.id !== "string" ||
+    Number.isNaN(Date.parse(decoded.createdAt))
+  ) {
+    return null;
+  }
+
+  return { createdAt: decoded.createdAt, id: decoded.id };
 }
