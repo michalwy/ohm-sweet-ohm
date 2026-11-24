@@ -65,6 +65,20 @@ or `prisma db push` — locally they touch the owner's development database. Gen
 `pnpm exec prisma migrate dev --create-only --name <name>`. The migration is applied the next time
 the user runs the stack. Do not try to fix migration checksum drift by resetting a database.
 
+The schema and the migrations must describe the same database (#304). To check, migrate this
+worktree's test database and diff it against the schema; it must print `No difference detected.`:
+
+```bash
+export DATABASE_URL=$(pnpm -s test:db:up | tail -1)   # this worktree's database, never the dev one
+pnpm exec prisma migrate deploy
+pnpm exec prisma migrate diff --from-config-datasource --to-schema prisma/schema.prisma --exit-code
+```
+
+A generated migration that contains statements you did not ask for is drift: fix it in its own
+issue, not by deleting the lines silently. Hand-written SQL must use the names and types Prisma
+derives from the schema — or the schema must say what the SQL does (for example `@db.Decimal`
+without precision for an unconstrained `NUMERIC`), never the other way round.
+
 ## End-to-end tests
 
 Browser-level e2e testing is paused, and its scripts are gone from `package.json`. Do not add e2e

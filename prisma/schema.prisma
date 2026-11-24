@@ -13,15 +13,15 @@ model Part {
   unitId              String
   defaultLocationId   String?
   currentStock        Decimal  @default(0)
-  plannedQty          Decimal  @default(0)
-  onOrderQty          Decimal  @default(0)
+  plannedQty          Decimal  @db.Decimal @default(0)
+  onOrderQty          Decimal  @db.Decimal @default(0)
   reservedQty         Decimal  @default(0)
   allocatedQty        Decimal  @default(0)
   inProductionQty     Decimal  @default(0)
   availableQty        Decimal  @default(dbgenerated())
   balanceQty          Decimal  @default(dbgenerated())
-  avgNetCostPrimary   Decimal?
-  avgGrossCostPrimary Decimal?
+  avgNetCostPrimary   Decimal? @db.Decimal
+  avgGrossCostPrimary Decimal? @db.Decimal
   valueSortNumber     Decimal?
   catalogNumber       String
   description         String?
@@ -328,7 +328,7 @@ model InventoryEntry {
   unitCost             Decimal?
   costCurrency         String?
   unitCostPrimary      Decimal?
-  unitGrossCostPrimary Decimal?
+  unitGrossCostPrimary Decimal? @db.Decimal
   createdByUserId      String?
   createdAt           DateTime           @default(now())
 
@@ -493,8 +493,8 @@ model WorkspaceAttribute {
   attributeId              String
   sortOrder                Int      @default(0)
   defaultTextValue         String?
-  defaultNumberValue       Decimal?
-  defaultQuantityBaseValue Decimal?
+  defaultNumberValue       Decimal? @db.Decimal
+  defaultQuantityBaseValue Decimal? @db.Decimal
   defaultBooleanValue      Boolean?
   defaultChoiceOptionId    String?
   defaultDisplayValue      String?
@@ -922,10 +922,10 @@ model PurchaseOrder {
   priceEntryMode       String    @default("net")
   orderedAt            DateTime?
   receivedAt           DateTime?
-  totalNetValue        Decimal?
-  totalGrossValue      Decimal?
-  totalNetValuePrimary    Decimal?
-  totalGrossValuePrimary  Decimal?
+  totalNetValue        Decimal? @db.Decimal
+  totalGrossValue      Decimal? @db.Decimal
+  totalNetValuePrimary    Decimal? @db.Decimal
+  totalGrossValuePrimary  Decimal? @db.Decimal
   notes                String?
   createdAt            DateTime            @default(now())
   updatedAt            DateTime            @updatedAt
@@ -975,10 +975,10 @@ model PurchaseOrderItem {
   receivedQuantity         Decimal  @default(0)
   supplierSku              String?
   unitPrice                Decimal?
-  lineNetValue             Decimal?
-  lineGrossValue           Decimal?
-  lineNetValuePrimary      Decimal?
-  lineGrossValuePrimary    Decimal?
+  lineNetValue             Decimal? @db.Decimal
+  lineGrossValue           Decimal? @db.Decimal
+  lineNetValuePrimary      Decimal? @db.Decimal
+  lineGrossValuePrimary    Decimal? @db.Decimal
   currency                 String?
   taxRate                  Decimal?
   notes                    String?
