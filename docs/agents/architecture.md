@@ -142,7 +142,10 @@ An area exposes an operation in six steps (#274, #275, #276, #287):
    write to `actor.workspace.id` and calls the same domain functions as the server action; it throws
    the domain's kebab-case error codes. Never check the permission there: `executeOperation`
    (`src/server/api/execute.ts`) does it, then validates the input, runs the function, and checks the
-   result against the output schema (a mismatch is a 500, never a half-checked answer).
+   result against the output schema (a mismatch is a 500, never a half-checked answer). The one
+   exception is a second permission beyond the operation's own, which the function checks with
+   `actorHasPermission` and throws as `permission-denied` (#283: `add_shortage_to_shopping_list`
+   is `shopping-lists:write` and also reads the shortage, `designs:read`).
 2. **REST**: a route file under `src/app/api/v1/<path>/route.ts` exporting
    `GET = restOperation(implementation)` (or `POST`, `PATCH`, `DELETE`), and an entry in
    `restEndpoints` (`src/server/api/restEndpoints.ts`), from which the OpenAPI document is built; a
@@ -156,6 +159,9 @@ An area exposes an operation in six steps (#274, #275, #276, #287):
    field of the operation's input — the MCP tool takes it as an argument — while the OpenAPI
    document describes it as a path parameter and leaves it out of the body. Updates are `PATCH`
    with every field but the id optional: an omitted field keeps its value, `null` clears it.
+   A record the UI's dialog saves as a whole, and whose stored form cannot be turned back into
+   the input (a BOM line's matchers keep parsed values, not what was typed), is replaced with
+   `PUT` instead, every omitted field cleared (#283: `PUT /bom-lines/{lineItemId}`).
    Next.js needs one slug name per directory level, so a sub-resource of another area's record
    uses that area's segment name (#281: `GET /parts/{id}/shopping-lists` lives under
    `src/app/api/v1/parts/[id]/`, beside the parts area's own `[id]` route); a batch variant of a

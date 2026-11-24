@@ -23,6 +23,7 @@ import {
   updateOrganizationImplementation
 } from "@/server/organizations/organizationApi";
 import * as buildApi from "@/server/builds/buildApi";
+import * as designApi from "@/server/designs/designApi";
 import * as attributeApi from "@/server/parts/attributeApi";
 import * as categoryApi from "@/server/parts/categoryApi";
 import * as purchaseOrderApi from "@/server/purchase-orders/purchaseOrderApi";
@@ -162,6 +163,20 @@ export const mcpTools: McpTool[] = [
   defineMcpTool("Build assembly list", buildApi.getBuildAssemblyListImplementation, { readOnly: true }),
   defineMcpTool("Build allocations of a part", buildApi.getPartBuildAllocationsImplementation, { readOnly: true }),
   defineMcpTool("Production builds of a part", buildApi.getPartProductionBuildsImplementation, { readOnly: true }),
+  defineMcpTool("List designs", designApi.listDesignsImplementation, { readOnly: true }),
+  defineMcpTool("Get a design", designApi.getDesignImplementation, { readOnly: true }),
+  defineMcpTool("Create a design", designApi.createDesignImplementation, { readOnly: false, destructive: false }),
+  defineMcpTool("Update a design", designApi.updateDesignImplementation, { readOnly: false, destructive: true, idempotent: true }),
+  defineMcpTool("Delete a design", designApi.deleteDesignImplementation, { readOnly: false, destructive: true }),
+  defineMcpTool("Add a design revision", designApi.addDesignRevisionImplementation, { readOnly: false, destructive: false }),
+  defineMcpTool("Update a design revision", designApi.updateDesignRevisionImplementation, { readOnly: false, destructive: true, idempotent: true }),
+  defineMcpTool("List BOM line items", designApi.listBomLineItemsImplementation, { readOnly: true }),
+  defineMcpTool("Add a BOM line item", designApi.createBomLineItemImplementation, { readOnly: false, destructive: false }),
+  defineMcpTool("Replace a BOM line item", designApi.updateBomLineItemImplementation, { readOnly: false, destructive: true, idempotent: true }),
+  defineMcpTool("Delete a BOM line item", designApi.deleteBomLineItemImplementation, { readOnly: false, destructive: true }),
+  defineMcpTool("Preview BOM line matches", designApi.previewBomLineItemMatchesImplementation, { readOnly: true }),
+  defineMcpTool("Analyze a design's shortage", designApi.analyzeShortageImplementation, { readOnly: true }),
+  defineMcpTool("Add a shortage to a shopping list", designApi.addShortageToShoppingListImplementation, { readOnly: false, destructive: false }),
   // Locations and inventory (#280)
   defineMcpTool("List storage locations", listLocationsImplementation, { readOnly: true }),
   defineMcpTool("Get a storage location", getLocationImplementation, { readOnly: true }),

@@ -64,28 +64,31 @@ export const serverActionCoverage: ServerActionCoverageMap = {
     cancelBuildAction: { tool: "cancel_build" }
   },
   "src/server/designs/bomActions.ts": {
-    getBomLineItemsAction: { pending: "#283" },
+    getBomLineItemsAction: { tool: "list_bom_line_items" },
     getBomDialogDataAction: {
       excluded: "UI-only helper: data for the BOM line item dialog (#79, UI-only helpers)."
     },
-    getBomCategoryAttributesAction: { pending: "#283" },
-    previewLineItemMatchesAction: { pending: "#283" },
-    analyzeShortageAction: { pending: "#283" },
-    createBomLineItemAction: { pending: "#283" },
-    updateBomLineItemAction: { pending: "#283" },
-    deleteBomLineItemAction: { pending: "#283" }
+    getBomCategoryAttributesAction: {
+      excluded:
+        "UI-only helper: the BOM dialog's attribute picker; get_category_attributes answers a category's effective attributes (#79, UI-only helpers)."
+    },
+    previewLineItemMatchesAction: { tool: "preview_bom_line_item_matches" },
+    analyzeShortageAction: { tool: "analyze_shortage" },
+    createBomLineItemAction: { tool: "create_bom_line_item" },
+    updateBomLineItemAction: { tool: "update_bom_line_item" },
+    deleteBomLineItemAction: { tool: "delete_bom_line_item" }
   },
   "src/server/designs/designActions.ts": {
-    getDesignsPageForWorkspace: { pending: "#283" },
-    getDesignDetailAction: { pending: "#283" },
+    getDesignsPageForWorkspace: { tool: "list_designs" },
+    getDesignDetailAction: { tool: "get_design" },
     getNextDesignCatalogNumberAction: {
       excluded: "UI-only helper: the \"next number\" preview of the design dialog (#79, UI-only helpers)."
     },
-    createDesignAction: { pending: "#283" },
-    updateDesignAction: { pending: "#283" },
-    deleteDesignAction: { pending: "#283" },
-    addRevisionToDesignAction: { pending: "#283" },
-    updateDesignRevisionAction: { pending: "#283" }
+    createDesignAction: { tool: "create_design" },
+    updateDesignAction: { tool: "update_design" },
+    deleteDesignAction: { tool: "delete_design" },
+    addRevisionToDesignAction: { tool: "add_design_revision" },
+    updateDesignRevisionAction: { tool: "update_design_revision" }
   },
   "src/server/integrations/digikeyActions.ts": {
     updateDigiKeyIntegrationSettings: { excluded: CREDENTIALS }

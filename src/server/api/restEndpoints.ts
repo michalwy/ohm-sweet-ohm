@@ -20,6 +20,22 @@ import {
   startBuildOperation
 } from "@/server/builds/buildOperations";
 import {
+  addDesignRevisionOperation,
+  addShortageToShoppingListOperation,
+  analyzeShortageOperation,
+  createBomLineItemOperation,
+  createDesignOperation,
+  deleteBomLineItemOperation,
+  deleteDesignOperation,
+  getDesignOperation,
+  listBomLineItemsOperation,
+  listDesignsOperation,
+  previewBomLineItemMatchesOperation,
+  updateBomLineItemOperation,
+  updateDesignOperation,
+  updateDesignRevisionOperation
+} from "@/server/designs/designOperations";
+import {
   createInventoryEntryOperation,
   getLocationStockOperation,
   getPartStockBalancesOperation,
@@ -278,6 +294,20 @@ export const restEndpoints: RestEndpoint[] = [
   { method: "get", path: "/builds/{buildId}/assembly-list", summary: "A build's assembly list", tag: "Builds", operation: getBuildAssemblyListOperation },
   { method: "get", path: "/parts/{id}/build-allocations", summary: "The builds allocating or reserving a part", tag: "Builds", operation: getPartBuildAllocationsOperation },
   { method: "get", path: "/parts/{id}/production-builds", summary: "The started builds producing a part", tag: "Builds", operation: getPartProductionBuildsOperation },
+  { method: "get", path: "/designs", summary: "List designs", tag: "Designs", operation: listDesignsOperation },
+  { method: "post", path: "/designs", summary: "Create a design", tag: "Designs", operation: createDesignOperation },
+  { method: "get", path: "/designs/{designId}", summary: "Get a design with its revisions", tag: "Designs", operation: getDesignOperation },
+  { method: "patch", path: "/designs/{designId}", summary: "Update a design", tag: "Designs", operation: updateDesignOperation },
+  { method: "delete", path: "/designs/{designId}", summary: "Delete a design", tag: "Designs", operation: deleteDesignOperation },
+  { method: "post", path: "/designs/{designId}/revisions", summary: "Add a revision to a design", tag: "Designs", operation: addDesignRevisionOperation },
+  { method: "patch", path: "/design-revisions/{revisionId}", summary: "Update a design revision", tag: "Designs", operation: updateDesignRevisionOperation },
+  { method: "get", path: "/design-revisions/{revisionId}/bom-lines", summary: "A revision's BOM line items", tag: "Designs", operation: listBomLineItemsOperation },
+  { method: "post", path: "/design-revisions/{revisionId}/bom-lines", summary: "Add a BOM line item", tag: "Designs", operation: createBomLineItemOperation },
+  { method: "put", path: "/bom-lines/{lineItemId}", summary: "Replace a BOM line item", tag: "Designs", operation: updateBomLineItemOperation },
+  { method: "delete", path: "/bom-lines/{lineItemId}", summary: "Delete a BOM line item", tag: "Designs", operation: deleteBomLineItemOperation },
+  { method: "post", path: "/bom-lines/preview-matches", summary: "Preview the parts a BOM line would match", tag: "Designs", operation: previewBomLineItemMatchesOperation },
+  { method: "get", path: "/design-revisions/{revisionId}/shortage", summary: "Shortage analysis of a revision", tag: "Designs", operation: analyzeShortageOperation },
+  { method: "post", path: "/design-revisions/{revisionId}/shortage/shopping-list", summary: "Add a revision's shortage to a shopping list", tag: "Designs", operation: addShortageToShoppingListOperation },
   // Locations and inventory (#280)
   {
     method: "get",
