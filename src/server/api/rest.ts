@@ -15,7 +15,7 @@ import { resolveWorkspaceActor } from "@/server/auth/currentActor";
 
 /**
  * The REST adapter (#274): turns an operation implementation into a route handler under
- * `/api/v1`. Every endpoint answers JSON; a failure is `{ "error": { code, message, issues? } }`
+ * `/api/v1`. Every endpoint answers JSON; a failure is `{ "error": { code, message, issues?, details? } }`
  * with the status from `errorStatus.ts`, and 401 for a missing or invalid token.
  */
 

@@ -4,6 +4,7 @@ import { getAuthorizedSessionActor } from "@/server/auth/currentActor";
 import {
   addAdditionalCost,
   addOrderItem,
+  addOrderItems,
   createPurchaseOrder,
   deleteAdditionalCost,
   deletePurchaseOrder,
@@ -438,32 +439,9 @@ export async function addMultipleOrderItemsForWorkspace(input: {
 }): Promise<PurchaseOrderActionResult<{ addedCount: number }>> {
   try {
     const context = await getAuthorizedContext(input.workspaceSlug, "purchase-orders:write");
-    const order = await getPurchaseOrderDetail(context.workspace.id, input.orderId);
-    if (!order) throw new Error("order-not-found");
-
-    const existingByPartId = new Map(order.items.map((item) => [item.partId, item]));
-
-    for (const item of input.items) {
-      const existing = existingByPartId.get(item.partId);
-      if (existing) {
-        const mergedQty = (parseFloat(existing.quantity) + parseFloat(item.quantity)).toString();
-        await updateOrderItem({
-          workspaceId: context.workspace.id,
-          orderId: input.orderId,
-          itemId: existing.id,
-          quantity: mergedQty
-        });
-      } else {
-        await addOrderItem({
-          workspaceId: context.workspace.id,
-          orderId: input.orderId,
-          partId: item.partId,
-          quantity: item.quantity
-        });
-      }
-    }
-
-    return success({ addedCount: input.items.length });
+    return success(
+      await addOrderItems({ workspaceId: context.workspace.id, orderId: input.orderId, items: input.items })
+    );
   } catch (error) {
     return failure(error);
   }

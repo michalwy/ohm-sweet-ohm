@@ -97,6 +97,11 @@ export class ExchangeRateUnavailableError extends Error {
     this.to = to;
     this.date = date;
   }
+
+  /** Passed on by the API (#282), so a caller can save a manual rate for exactly this pair and day. */
+  get details(): Record<string, string> {
+    return { from: this.from, to: this.to, date: this.date };
+  }
 }
 
 export async function getExchangeRateOrThrow(

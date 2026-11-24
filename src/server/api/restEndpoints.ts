@@ -65,6 +65,29 @@ import {
   updatePartCategoryOperation
 } from "@/server/parts/categoryOperations";
 import {
+  addAdditionalCostOperation,
+  addPurchaseOrderItemOperation,
+  addPurchaseOrderItemsOperation,
+  createPurchaseOrderOperation,
+  deleteAdditionalCostOperation,
+  deletePurchaseOrderOperation,
+  getExchangeRateOperation,
+  getPartPurchaseHistoryOperation,
+  getPurchaseOrderOperation,
+  listDraftPurchaseOrdersOperation,
+  listPurchaseOrdersOperation,
+  lookupSupplierItemOperation,
+  markPurchaseOrderOrderedOperation,
+  receivePurchaseOrderItemsOperation,
+  removePurchaseOrderItemOperation,
+  revertPurchaseOrderToDraftOperation,
+  saveExchangeRateOperation,
+  searchSuppliersOperation,
+  updateAdditionalCostOperation,
+  updatePurchaseOrderItemOperation,
+  updatePurchaseOrderOperation
+} from "@/server/purchase-orders/purchaseOrderOperations";
+import {
   addShoppingListItemOperation,
   addShoppingListItemsOperation,
   convertShoppingListToPurchaseOrderOperation,
@@ -308,5 +331,27 @@ export const restEndpoints: RestEndpoint[] = [
     summary: "A part's stock per location",
     tag: "Inventory",
     operation: getPartStockBalancesOperation
-  }
+  },
+  // Purchase orders (#282)
+  { method: "get", path: "/purchase-orders", summary: "List purchase orders", tag: "Purchase orders", operation: listPurchaseOrdersOperation },
+  { method: "post", path: "/purchase-orders", summary: "Create a purchase order", tag: "Purchase orders", operation: createPurchaseOrderOperation },
+  { method: "get", path: "/purchase-orders/drafts", summary: "Draft purchase orders a part can be added to", tag: "Purchase orders", operation: listDraftPurchaseOrdersOperation },
+  { method: "get", path: "/purchase-orders/{orderId}", summary: "Get a purchase order with its items and costs", tag: "Purchase orders", operation: getPurchaseOrderOperation },
+  { method: "patch", path: "/purchase-orders/{orderId}", summary: "Update a purchase order", tag: "Purchase orders", operation: updatePurchaseOrderOperation },
+  { method: "delete", path: "/purchase-orders/{orderId}", summary: "Delete a purchase order", tag: "Purchase orders", operation: deletePurchaseOrderOperation },
+  { method: "post", path: "/purchase-orders/{orderId}/items", summary: "Add an item to a purchase order", tag: "Purchase orders", operation: addPurchaseOrderItemOperation },
+  { method: "post", path: "/purchase-orders/{orderId}/items/batch", summary: "Add several parts to a purchase order", tag: "Purchase orders", operation: addPurchaseOrderItemsOperation },
+  { method: "patch", path: "/purchase-orders/{orderId}/items/{itemId}", summary: "Update a purchase order item", tag: "Purchase orders", operation: updatePurchaseOrderItemOperation },
+  { method: "delete", path: "/purchase-orders/{orderId}/items/{itemId}", summary: "Remove a purchase order item", tag: "Purchase orders", operation: removePurchaseOrderItemOperation },
+  { method: "post", path: "/purchase-orders/{orderId}/additional-costs", summary: "Add an additional cost", tag: "Purchase orders", operation: addAdditionalCostOperation },
+  { method: "patch", path: "/purchase-orders/{orderId}/additional-costs/{costId}", summary: "Update an additional cost", tag: "Purchase orders", operation: updateAdditionalCostOperation },
+  { method: "delete", path: "/purchase-orders/{orderId}/additional-costs/{costId}", summary: "Delete an additional cost", tag: "Purchase orders", operation: deleteAdditionalCostOperation },
+  { method: "post", path: "/purchase-orders/{orderId}/mark-ordered", summary: "Mark a purchase order ordered", tag: "Purchase orders", operation: markPurchaseOrderOrderedOperation },
+  { method: "post", path: "/purchase-orders/{orderId}/receive", summary: "Receive purchase order items into locations", tag: "Purchase orders", operation: receivePurchaseOrderItemsOperation },
+  { method: "post", path: "/purchase-orders/{orderId}/revert-to-draft", summary: "Revert a purchase order to draft", tag: "Purchase orders", operation: revertPurchaseOrderToDraftOperation },
+  { method: "get", path: "/parts/{id}/purchase-history", summary: "A part's purchase history", tag: "Purchase orders", operation: getPartPurchaseHistoryOperation },
+  { method: "get", path: "/parts/{id}/supplier-item", summary: "Look a part up at the active supplier integration", tag: "Purchase orders", operation: lookupSupplierItemOperation },
+  { method: "get", path: "/suppliers", summary: "Search supplier organizations", tag: "Purchase orders", operation: searchSuppliersOperation },
+  { method: "get", path: "/exchange-rates", summary: "The exchange rate for a currency pair and day", tag: "Purchase orders", operation: getExchangeRateOperation },
+  { method: "put", path: "/exchange-rates", summary: "Save a manual exchange rate", tag: "Purchase orders", operation: saveExchangeRateOperation }
 ];

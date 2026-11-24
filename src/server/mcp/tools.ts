@@ -25,6 +25,7 @@ import {
 import * as buildApi from "@/server/builds/buildApi";
 import * as attributeApi from "@/server/parts/attributeApi";
 import * as categoryApi from "@/server/parts/categoryApi";
+import * as purchaseOrderApi from "@/server/purchase-orders/purchaseOrderApi";
 import * as shoppingListApi from "@/server/shopping-lists/shoppingListApi";
 import * as unitApi from "@/server/units/unitApi";
 import {
@@ -182,5 +183,27 @@ export const mcpTools: McpTool[] = [
   }),
   defineMcpTool("A part's stock per location", getPartStockBalancesImplementation, {
     readOnly: true
-  })
+  }),
+  // Purchase orders (#282)
+  defineMcpTool("List purchase orders", purchaseOrderApi.listPurchaseOrdersImplementation, { readOnly: true }),
+  defineMcpTool("Get a purchase order", purchaseOrderApi.getPurchaseOrderImplementation, { readOnly: true }),
+  defineMcpTool("Create a purchase order", purchaseOrderApi.createPurchaseOrderImplementation, { readOnly: false, destructive: false }),
+  defineMcpTool("Update a purchase order", purchaseOrderApi.updatePurchaseOrderImplementation, { readOnly: false, destructive: true, idempotent: true }),
+  defineMcpTool("Delete a purchase order", purchaseOrderApi.deletePurchaseOrderImplementation, { readOnly: false, destructive: true }),
+  defineMcpTool("Add an item to a purchase order", purchaseOrderApi.addPurchaseOrderItemImplementation, { readOnly: false, destructive: false }),
+  defineMcpTool("Add parts to a purchase order", purchaseOrderApi.addPurchaseOrderItemsImplementation, { readOnly: false, destructive: false }),
+  defineMcpTool("Update a purchase order item", purchaseOrderApi.updatePurchaseOrderItemImplementation, { readOnly: false, destructive: true, idempotent: true }),
+  defineMcpTool("Remove a purchase order item", purchaseOrderApi.removePurchaseOrderItemImplementation, { readOnly: false, destructive: true }),
+  defineMcpTool("Add an additional cost to a purchase order", purchaseOrderApi.addAdditionalCostImplementation, { readOnly: false, destructive: false }),
+  defineMcpTool("Update an additional cost of a purchase order", purchaseOrderApi.updateAdditionalCostImplementation, { readOnly: false, destructive: true, idempotent: true }),
+  defineMcpTool("Delete an additional cost of a purchase order", purchaseOrderApi.deleteAdditionalCostImplementation, { readOnly: false, destructive: true }),
+  defineMcpTool("Mark a purchase order ordered", purchaseOrderApi.markPurchaseOrderOrderedImplementation, { readOnly: false, destructive: false }),
+  defineMcpTool("Receive purchase order items", purchaseOrderApi.receivePurchaseOrderItemsImplementation, { readOnly: false, destructive: false }),
+  defineMcpTool("Revert a purchase order to draft", purchaseOrderApi.revertPurchaseOrderToDraftImplementation, { readOnly: false, destructive: true }),
+  defineMcpTool("List draft purchase orders", purchaseOrderApi.listDraftPurchaseOrdersImplementation, { readOnly: true }),
+  defineMcpTool("Purchase history of a part", purchaseOrderApi.getPartPurchaseHistoryImplementation, { readOnly: true }),
+  defineMcpTool("Search suppliers", purchaseOrderApi.searchSuppliersImplementation, { readOnly: true }),
+  defineMcpTool("Look up a part at the supplier", purchaseOrderApi.lookupSupplierItemImplementation, { readOnly: true }),
+  defineMcpTool("Get an exchange rate", purchaseOrderApi.getExchangeRateImplementation, { readOnly: true }),
+  defineMcpTool("Save a manual exchange rate", purchaseOrderApi.saveExchangeRateImplementation, { readOnly: false, destructive: true, idempotent: true })
 ];
