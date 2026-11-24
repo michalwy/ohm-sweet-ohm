@@ -137,7 +137,7 @@ function describeTool(tool: McpTool): Tool {
 
 export function toAnnotations(title: string, behavior: McpToolBehavior): ToolAnnotations {
   if (behavior.readOnly) {
-    return { title, readOnlyHint: true, openWorldHint: false };
+    return { title, readOnlyHint: true, openWorldHint: behavior.openWorld ?? false };
   }
 
   return {
@@ -145,7 +145,7 @@ export function toAnnotations(title: string, behavior: McpToolBehavior): ToolAnn
     readOnlyHint: false,
     destructiveHint: behavior.destructive,
     idempotentHint: behavior.idempotent ?? false,
-    openWorldHint: false
+    openWorldHint: behavior.openWorld ?? false
   };
 }
 

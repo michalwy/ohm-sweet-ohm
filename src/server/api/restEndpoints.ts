@@ -36,6 +36,11 @@ import {
   updateDesignRevisionOperation
 } from "@/server/designs/designOperations";
 import {
+  getSupplierMatchingSuggestionsOperation,
+  getSupplierPartAttributesOperation,
+  searchSupplierPartsOperation
+} from "@/server/integrations/supplierOperations";
+import {
   createInventoryEntryOperation,
   getLocationStockOperation,
   getPartStockBalancesOperation,
@@ -266,6 +271,10 @@ export const restEndpoints: RestEndpoint[] = [
     tag: "Parts",
     operation: deletePartOperation
   },
+  // Supplier lookup (#285)
+  { method: "get", path: "/supplier-parts", summary: "Search the workspace's supplier", tag: "Supplier lookup", operation: searchSupplierPartsOperation },
+  { method: "get", path: "/supplier-parts/attributes", summary: "A supplier part's attributes", tag: "Supplier lookup", operation: getSupplierPartAttributesOperation },
+  { method: "post", path: "/supplier-matching-suggestions", summary: "Matching suggestions for a supplier part", tag: "Supplier lookup", operation: getSupplierMatchingSuggestionsOperation },
   // Shopping lists (#281)
   { method: "get", path: "/shopping-lists", summary: "List shopping lists", tag: "Shopping lists", operation: listShoppingListsOperation },
   { method: "post", path: "/shopping-lists", summary: "Create a shopping list", tag: "Shopping lists", operation: createShoppingListOperation },

@@ -171,7 +171,8 @@ An area exposes an operation in six steps (#274, #275, #276, #287):
 3. **MCP**: `defineMcpTool(title, implementation, behavior)` appended to `mcpTools`
    (`src/server/mcp/tools.ts`). `behavior` is explicit — `{ readOnly: true }`, or
    `{ readOnly: false, destructive, idempotent? }` — and becomes the tool's annotations; a delete or
-   overwrite is `destructive: true`.
+   overwrite is `destructive: true`. A tool that reaches outside the app (the supplier lookup, #285)
+   adds `openWorld: true`.
 4. **Integration tests** for the area's endpoints and tools.
 5. **User guide**: add the area's row — or its endpoints and tools to an existing row — to the
    table under *What is available* in `docs/user-guide/api-and-mcp.md` (#287), with REST paths
@@ -191,7 +192,7 @@ names `from`, `to`, `date`): REST answers
 `{ "error": … }` with the status from `errorStatus.ts` — 401 `unauthorized` (missing, malformed,
 unknown, revoked or expired token, or archived workspace), 403 `permission-denied`, 404
 `…-not-found` (a record of another workspace is *not found*, never *forbidden*), 400 `invalid-input`
-/ `invalid-json` / `invalid-…` / `missing-…` / `…-required`, 409 any other domain code, 500
+/ `invalid-json` / `invalid-…` / `missing-…` / `…-required`, 502 `…-request-failed` (a supplier did not answer, #285), 409 any other domain code, 500
 `internal-error` for anything that is not a domain code (its message is logged, never sent). MCP
 returns the same object as a tool error (`isError`, JSON text). Both authenticate **only** a
 `Authorization: Bearer` token (`bearer.ts`) through `resolveWorkspaceActor`; cookies are never read.

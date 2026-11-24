@@ -178,6 +178,8 @@ describe("error statuses", () => {
     assert.equal(errorStatusForCode("invalid-quantity"), 400);
     assert.equal(errorStatusForCode("missing-required-fields"), 400);
     assert.equal(errorStatusForCode("category-name-required"), 400);
+    assert.equal(errorStatusForCode("search-request-failed"), 502);
+    assert.equal(errorStatusForCode("token-request-failed"), 502);
     assert.equal(errorStatusForCode("order-already-received"), 409);
   });
 });
