@@ -1132,9 +1132,42 @@ export async function markOrdered(input: {
 }
 
 /**
- * Adds several parts to an order at once, as the UI's "add to purchase order" bulk action does: a
- * part already on the order gets its quantity added to that item; any other part becomes a new
- * item. Shared by the server action and the API (#282).
+ * Adds `quantity` to an existing order item and changes nothing else on it: its unit price, supplier
+ * SKU, currency, tax rate, description and notes stay, and its line totals follow the kept unit price
+ * and the new quantity (#310). `updateOrderItem` replaces every detail it is given, so this passes the
+ * item's own.
+ */
+export async function addQuantityToOrderItem(input: {
+  workspaceId: string;
+  orderId: string;
+  itemId: string;
+  quantity: string;
+}) {
+  await assertOrderBelongsToWorkspace(input.workspaceId, input.orderId);
+  await assertItemBelongsToOrder(input.orderId, input.itemId);
+
+  const item = await prisma.purchaseOrderItem.findUniqueOrThrow({
+    where: { id: input.itemId },
+    select: { quantity: true, supplierSku: true, unitPrice: true, currency: true, notes: true }
+  });
+
+  await updateOrderItem({
+    workspaceId: input.workspaceId,
+    orderId: input.orderId,
+    itemId: input.itemId,
+    quantity: item.quantity.plus(parseQuantity(input.quantity)).toFixed(),
+    supplierSku: item.supplierSku,
+    unitPrice: item.unitPrice?.toFixed() ?? null,
+    currency: item.currency,
+    notes: item.notes
+  });
+}
+
+/**
+ * Adds several parts to an order at once, as the UI's "add to purchase order" bulk action and the
+ * parts list's quick-add do: a part already on the order gets its quantity added to that item
+ * (keeping the item's other details, #310); any other part becomes a new item. Shared by the server
+ * action and the API (#282).
  */
 export async function addOrderItems(input: {
   workspaceId: string;
@@ -1149,12 +1182,11 @@ export async function addOrderItems(input: {
   for (const item of input.items) {
     const existing = existingByPartId.get(item.partId);
     if (existing) {
-      const mergedQty = (parseFloat(existing.quantity) + parseFloat(item.quantity)).toString();
-      await updateOrderItem({
+      await addQuantityToOrderItem({
         workspaceId: input.workspaceId,
         orderId: input.orderId,
         itemId: existing.id,
-        quantity: mergedQty
+        quantity: item.quantity
       });
     } else {
       await addOrderItem({

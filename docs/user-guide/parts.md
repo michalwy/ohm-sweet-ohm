@@ -138,7 +138,7 @@ Click any row in the parts list to open the detail panel on the right. The panel
 From either the row action button (visible in each part row when you have Purchase Orders write access) or the **Add to PO** button in the detail panel, you can add the part to a draft Purchase Order without leaving the parts list.
 
 The dialog lets you:
-- Choose an existing **Draft** PO from a list (displayed as order number and supplier). If the part is already on the selected PO, the quantity is merged into the last matching line rather than creating a duplicate.
+- Choose an existing **Draft** PO from a list (displayed as order number and supplier). If the part is already on the selected PO, the quantity is added to the last matching line rather than creating a duplicate; that line keeps its unit price, supplier SKU, tax rate and notes, and its totals follow the new quantity.
 - Or switch to **Create new purchase order** mode: choose a supplier from the autocomplete and optionally set an order number. A new Draft PO is created and the part is added in one step.
 - Enter the **Quantity** to add.
 
@@ -149,7 +149,7 @@ On success a toast confirms the action and the PO history section refreshes auto
 From either the row action button (visible in each part row when you have Shopping Lists write access) or the **Add to shopping list** button in the detail panel, you can add the part to a shopping list without leaving the parts list.
 
 The dialog lets you:
-- Choose an existing shopping list from a list (displayed as name and item count). If the part is already on the selected list, the quantity is merged into the last matching line rather than creating a duplicate.
+- Choose an existing shopping list from a list (displayed as name and item count). If the part is already on the selected list, the quantity is added to the last matching line rather than creating a duplicate; that line keeps its unit price, supplier SKU, tax rate and notes, and its totals follow the new quantity.
 - Or switch to **Create new shopping list** mode: enter a list name. The list is created and the part is added in one step.
 - Enter the **Quantity** to add and optionally a **Notes** field (shown when adding to an existing list).
 

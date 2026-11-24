@@ -108,7 +108,7 @@ Click **Add multiple items** (next to **Add item** in the detail panel, visible 
 **Step 2 — Set quantities.** Each selected part appears in a table with a quantity input (default: 1). Parts already on the order are flagged. Click **Add item(s)** to commit.
 
 - **Back** returns to step 1 with your selection and quantities preserved.
-- If a selected part is already on the order, its existing quantity is incremented rather than creating a duplicate line.
+- If a selected part is already on the order, its existing quantity is incremented rather than creating a duplicate line; the line keeps its unit price, supplier SKU, tax rate and notes.
 - Price fields are not set at this stage; edit individual items afterwards to add prices.
 3. A computed panel shows the complementary price (gross if net mode, net if gross mode). If the order is marked as ordered and the currencies differ, primary-currency equivalents are also shown.
 4. Click **Look up** next to the supplier SKU field to auto-fill the SKU from the active DigiKey or TME integration.

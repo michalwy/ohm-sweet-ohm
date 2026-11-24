@@ -4,11 +4,9 @@ import { useEffect, useRef, useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 
 import {
-  addOrderItemForWorkspace,
+  addMultipleOrderItemsForWorkspace,
   createPurchaseOrderForWorkspace,
-  getDraftPurchaseOrdersForWorkspace,
-  getPurchaseOrderDetailForWorkspace,
-  updateOrderItemForWorkspace
+  getDraftPurchaseOrdersForWorkspace
 } from "@/server/purchase-orders/purchaseOrderActions";
 import type { PartsListItem } from "@/server/parts/getParts";
 import {
@@ -135,36 +133,14 @@ export function QuickAddToPODialog({
         });
         if (!createResult.ok) return createResult;
         orderId = createResult.data.orderId;
-      } else {
-        const detailResult = await getPurchaseOrderDetailForWorkspace({
-          workspaceSlug,
-          orderId
-        });
-        if (!detailResult.ok) return detailResult;
-
-        const poDetail = detailResult.data;
-        if (poDetail) {
-          const existingItems = poDetail.items.filter((item) => item.partId === part.id);
-          if (existingItems.length > 0) {
-            const last = existingItems[existingItems.length - 1];
-            const existingQty = parseFloat(last.quantity) || 0;
-            const addedQty = parseFloat(qty) || 0;
-            const newQty = String(existingQty + addedQty);
-            return updateOrderItemForWorkspace({
-              workspaceSlug,
-              orderId,
-              itemId: last.id,
-              quantity: newQty
-            });
-          }
-        }
       }
 
-      return addOrderItemForWorkspace({
+      // A part already on the order gets the quantity added to its line, keeping the line's price,
+      // SKU and notes (#310); the same merge as the bulk action and the API.
+      return addMultipleOrderItemsForWorkspace({
         workspaceSlug,
         orderId,
-        partId: part.id,
-        quantity: qty
+        items: [{ partId: part.id, quantity: qty }]
       });
     },
     onSuccess: (result) => {
