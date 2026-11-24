@@ -39,6 +39,13 @@ import {
   updateUnitOperation
 } from "@/server/units/unitOperations";
 import {
+  createPartOperation,
+  deletePartOperation,
+  getPartOperation,
+  listPartsOperation,
+  updatePartOperation
+} from "@/server/parts/partOperations";
+import {
   getWorkspaceOperation,
   whoamiOperation
 } from "@/server/workspaces/workspaceOperations";
@@ -49,7 +56,8 @@ import {
  * route file under `src/app/api/v1/` that serves the same operation through `restOperation`.
  *
  * Conventions (`docs/agents/architecture.md` § *REST API*):
- * - `path` is relative to `/api/v1`, with OpenAPI `{param}` placeholders;
+ * - `path` is relative to `/api/v1`, with OpenAPI `{param}` placeholders, each an input field of
+ *   the operation; its route file is under the matching `[param]` folder;
  * - a `get` endpoint reads its input from the query string, every other method from a JSON body;
  * - list endpoints are `get`, spread `listPageInputShape` and return `listPageOutputSchema`, so
  *   paging is `?cursor=<nextCursor>&pageSize=<n>` everywhere;
@@ -138,5 +146,23 @@ export const restEndpoints: RestEndpoint[] = [
   { method: "get", path: "/units", summary: "List units", tag: "Units", operation: listUnitsOperation },
   { method: "post", path: "/units", summary: "Create a unit", tag: "Units", operation: createUnitOperation },
   { method: "patch", path: "/units/{unitId}", summary: "Update a unit", tag: "Units", operation: updateUnitOperation },
-  { method: "delete", path: "/units/{unitId}", summary: "Delete a unit", tag: "Units", operation: deleteUnitOperation }
+  { method: "delete", path: "/units/{unitId}", summary: "Delete a unit", tag: "Units", operation: deleteUnitOperation },
+  // Parts (#277)
+  { method: "get", path: "/parts", summary: "List parts", tag: "Parts", operation: listPartsOperation },
+  { method: "post", path: "/parts", summary: "Create a part", tag: "Parts", operation: createPartOperation },
+  { method: "get", path: "/parts/{id}", summary: "Get a part", tag: "Parts", operation: getPartOperation },
+  {
+    method: "patch",
+    path: "/parts/{id}",
+    summary: "Change a part",
+    tag: "Parts",
+    operation: updatePartOperation
+  },
+  {
+    method: "delete",
+    path: "/parts/{id}",
+    summary: "Delete a part",
+    tag: "Parts",
+    operation: deletePartOperation
+  }
 ];

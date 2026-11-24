@@ -69,7 +69,9 @@ client for your language. It always describes the version of OSO you are running
 ### How the API behaves
 
 - **JSON in, JSON out.** `GET` requests take their input from the query string; `POST`, `PUT`,
-  `PATCH` and `DELETE` take a JSON body.
+  `PATCH` and `DELETE` take a JSON body. A single record is addressed by its id in the path, as in
+  `GET /api/v1/parts/{id}`.
+- **`PATCH` changes only what you send.** Fields you leave out keep their values.
 - **Lists come in pages.** A list answers with up to `pageSize` items and a `nextCursor`; pass it
   back as `?cursor=<nextCursor>` to get the next page. There are no more pages when it is `null`.
 - **Errors** have one shape, `{ "error": { "code": …, "message": …, "issues": … } }`, with the HTTP
@@ -179,6 +181,7 @@ complete, exact reference for the version you run.
 | Part categories | `GET /part-categories` (the whole tree), `POST /part-categories`, `POST /part-categories/paths` (a path such as `Passives/Resistors/SMD` at once), `PATCH /part-categories/{categoryId}`, `POST /part-categories/{categoryId}/move`, `DELETE /part-categories/{categoryId}` | `get_part_category_tree`, `create_part_category`, `create_part_category_path`, `update_part_category`, `move_part_category`, `delete_part_category` |
 | Attributes | `GET /attributes`, `POST /attributes`, `PATCH /attributes/{attributeId}`, `DELETE /attributes/{attributeId}`, `POST /attributes/{attributeId}/choice-options`, `PATCH /attribute-choice-options/{optionId}`, `DELETE /attribute-choice-options/{optionId}`; on a category: `GET /part-categories/{categoryId}/attributes` (its effective attributes), `PUT /part-categories/{categoryId}/attributes` (save its whole configuration), `PUT` / `DELETE /part-categories/{categoryId}/attributes/{attributeId}` (attach or override / detach), `PUT /part-categories/{categoryId}/value-attribute`; on the workspace: `GET` / `PUT /workspace/attributes` | `list_attributes`, `create_attribute`, `update_attribute`, `delete_attribute`, `create_attribute_choice_option`, `update_attribute_choice_option`, `delete_attribute_choice_option`, `get_category_attributes`, `save_category_attribute_configuration`, `attach_category_attribute`, `detach_category_attribute`, `set_category_value_attribute`, `get_workspace_attributes`, `save_workspace_attribute_configuration` |
 | Units | `GET /units`, `POST /units`, `PATCH /units/{unitId}`, `DELETE /units/{unitId}` | `list_units`, `create_unit`, `update_unit`, `delete_unit` |
+| Parts | `GET /parts`, `POST /parts`, `GET /parts/{id}`, `PATCH /parts/{id}`, `DELETE /parts/{id}` | `list_parts`, `get_part`, `create_part`, `update_part`, `delete_part` |
 
 ## What is not exposed
 

@@ -11,6 +11,13 @@ import {
 import * as attributeApi from "@/server/parts/attributeApi";
 import * as categoryApi from "@/server/parts/categoryApi";
 import * as unitApi from "@/server/units/unitApi";
+import {
+  createPartImplementation,
+  deletePartImplementation,
+  getPartImplementation,
+  listPartsImplementation,
+  updatePartImplementation
+} from "@/server/parts/partsApi";
 import { whoamiImplementation } from "@/server/workspaces/workspaceApi";
 
 /**
@@ -88,5 +95,15 @@ export const mcpTools: McpTool[] = [
   defineMcpTool("List units", unitApi.listUnitsImplementation, { readOnly: true }),
   defineMcpTool("Create unit", unitApi.createUnitImplementation, { readOnly: false, destructive: false }),
   defineMcpTool("Update unit", unitApi.updateUnitImplementation, { readOnly: false, destructive: false, idempotent: true }),
-  defineMcpTool("Delete unit", unitApi.deleteUnitImplementation, { readOnly: false, destructive: true })
+  defineMcpTool("Delete unit", unitApi.deleteUnitImplementation, { readOnly: false, destructive: true }),
+  // Parts (#277)
+  defineMcpTool("List parts", listPartsImplementation, { readOnly: true }),
+  defineMcpTool("Get a part", getPartImplementation, { readOnly: true }),
+  defineMcpTool("Create a part", createPartImplementation, { readOnly: false, destructive: false }),
+  defineMcpTool("Change a part", updatePartImplementation, {
+    readOnly: false,
+    destructive: true,
+    idempotent: true
+  }),
+  defineMcpTool("Delete a part", deletePartImplementation, { readOnly: false, destructive: true })
 ];

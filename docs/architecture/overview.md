@@ -41,13 +41,14 @@ schemas plus permission, `*Operations.ts`) is bound to its service function by `
 `executeOperation` checks the permission on the actor, validates the input, runs it and checks the
 output against its schema, for both adapters. The REST adapter (`restOperation`, route files under
 `src/app/api/v1/`) authenticates the bearer token, reads a `GET` input from the query string and
-other methods' from a JSON body, and answers `{ "error": { code, message, issues? } }` on failure
-(401 token, 403 permission, 404 not in the workspace, 400 input, 409 state). `restEndpoints.ts`
+other methods' from a JSON body, with a record's id from the path (`/parts/{id}`), and answers
+`{ "error": { code, message, issues? } }` on failure (401 token, 403 permission, 404 not in the workspace, 400 input, 409 state). `restEndpoints.ts`
 lists the endpoints, and `/api/v1/openapi.json` is generated from it. The MCP server
 (`src/app/api/mcp/route.ts`) is stateless: each POST is authenticated by its token and served by a
 fresh SDK server whose tools — the registry in `src/server/mcp/tools.ts` — run as that token's actor;
 a failure is a tool error carrying the same error object. The first endpoints are `GET /api/v1/me`,
-`GET /api/v1/workspace` and the `whoami` tool.
+`GET /api/v1/workspace` and the `whoami` tool; parts (#277) share their domain code with the parts
+dialog through `src/server/parts/partMutations.ts`.
 
 MCP coverage (#276): `src/server/mcp/coverage.ts` maps every server action to its MCP tool, to an
 exclusion with a reason, or to the area issue still pending; a unit test reads the `"use server"`
