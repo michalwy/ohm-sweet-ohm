@@ -2,7 +2,7 @@ import { notFound, redirect } from "next/navigation";
 
 import { LocationsClient } from "@/app/locations-client";
 import { WorkspaceShell } from "@/app/workspace-shell";
-import { hasWorkspacePermission } from "@/server/access-control/authorize";
+import { actorHasPermission } from "@/server/access-control/actor";
 import {
   getCurrentSession,
   getCurrentWorkspaceContextBySlug
@@ -164,15 +164,10 @@ export default async function LocationsPage({ params, searchParams }: LocationsP
   }
 
   const [canWriteLocations, canReadInventory] = isDatabaseAvailable
-    ? await Promise.all(
-        (["locations:write", "inventory:read"] as const).map((permission) =>
-          hasWorkspacePermission({
-            userId: context.user.id,
-            workspaceId: context.workspace.id,
-            permission
-          }).catch(() => false)
-        )
-      )
+    ? [
+        actorHasPermission(context, "locations:write"),
+        actorHasPermission(context, "inventory:read")
+      ]
     : [false, false];
 
   return (

@@ -32,6 +32,19 @@ the decision — fix this file.
   every workspace-scoped server-side read and mutation with the appropriate permission; if no suitable
   permission exists, introduce an explicit permission key for that resource/action before exposing
   the behavior.
+- **Authorize against the workspace actor** (ADR 0030, #271). `resolveWorkspaceActor`
+  (`src/server/auth/currentActor.ts`) is the one entry point that says who is acting, in which
+  workspace, with which permissions — from a Better Auth session plus a workspace slug, or from an
+  API token bound to its workspace — and returns a `WorkspaceActor`
+  (`src/server/access-control/actor.ts`). Its permissions are the user's roles for a session, and the
+  token's set intersected with those roles for a token (`effectivePermissions.ts`). Every server
+  action, and every REST endpoint and MCP tool after it, resolves the actor and checks the permission
+  of the operation on it (`getAuthorizedSessionActor`, `requireActorPermission`,
+  `actorHasPermission`) **before** calling a domain function; never read the session directly for
+  authorization. Archived workspaces resolve to no actor unless the caller manages the workspace's
+  own lifecycle (`allowArchived`). The `{ userId, workspaceId }` checks inside domain functions
+  (`authorizeWorkspacePermission`, `hasWorkspacePermission`) are role-only defence in depth: they
+  cannot see a token's narrower set, so they never replace the actor check.
 - Authentication is Better Auth (ADR 0006); do not reintroduce development current-user shortcuts.
 - Registration and routing (ADR 0007): sign-up creates only a global user; sign-in returns users to
   their last accessible workspace when remembered; users choose or create workspaces at

@@ -2,7 +2,7 @@ import { notFound, redirect } from "next/navigation";
 
 import { UnitsClient } from "@/app/units-client";
 import { WorkspaceShell } from "@/app/workspace-shell";
-import { hasWorkspacePermission } from "@/server/access-control/authorize";
+import { actorHasPermission } from "@/server/access-control/actor";
 import {
   getCurrentSession,
   getCurrentWorkspaceContextBySlug
@@ -99,11 +99,7 @@ export default async function UnitsPage({ params }: UnitsPageProps) {
   }
 
   const canWriteUnits = isDatabaseAvailable
-    ? await hasWorkspacePermission({
-        userId: context.user.id,
-        workspaceId: context.workspace.id,
-        permission: "units:write"
-      }).catch(() => false)
+    ? actorHasPermission(context, "units:write")
     : false;
 
   return (

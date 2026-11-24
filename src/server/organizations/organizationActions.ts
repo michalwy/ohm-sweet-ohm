@@ -1,6 +1,7 @@
 "use server";
 
-import { getCurrentWorkspaceContextBySlug } from "@/server/auth/currentContext";
+import type { PermissionKey } from "@/server/access-control/permissions";
+import { getAuthorizedSessionActor } from "@/server/auth/currentActor";
 import type { ListPage } from "@/server/pagination";
 import {
   createOrganizationForWorkspace,
@@ -25,7 +26,7 @@ export async function getOrganizationsPageForWorkspace(input: {
   roleFilter?: string | null;
 }): Promise<OrganizationActionResult<ListPage<OrganizationSummary>>> {
   try {
-    const context = await getContext(input.workspaceSlug);
+    const context = await getContext(input.workspaceSlug, "organizations:read");
     const page = await getOrganizationsForWorkspace({
       userId: context.user.id,
       workspaceId: context.workspace.id,
@@ -52,7 +53,7 @@ export async function createOrganizationAction(input: {
   defaultTaxRate?: string | null;
 }): Promise<OrganizationActionResult<{ id: string }>> {
   try {
-    const context = await getContext(input.workspaceSlug);
+    const context = await getContext(input.workspaceSlug, "organizations:write");
     const result = await createOrganizationForWorkspace({
       userId: context.user.id,
       workspaceId: context.workspace.id,
@@ -79,7 +80,7 @@ export async function updateOrganizationAction(input: {
   defaultTaxRate?: string | null;
 }): Promise<OrganizationActionResult<null>> {
   try {
-    const context = await getContext(input.workspaceSlug);
+    const context = await getContext(input.workspaceSlug, "organizations:write");
     const result = await updateOrganizationForWorkspace({
       userId: context.user.id,
       workspaceId: context.workspace.id,
@@ -102,7 +103,7 @@ export async function deleteOrganizationAction(input: {
   id: string;
 }): Promise<OrganizationActionResult<null>> {
   try {
-    const context = await getContext(input.workspaceSlug);
+    const context = await getContext(input.workspaceSlug, "organizations:write");
     const result = await deleteOrganizationForWorkspace({
       userId: context.user.id,
       workspaceId: context.workspace.id,
@@ -117,10 +118,8 @@ export async function deleteOrganizationAction(input: {
 
 // --- Helpers ---
 
-async function getContext(workspaceSlug: string) {
-  const context = await getCurrentWorkspaceContextBySlug(workspaceSlug);
-  if (!context) throw new Error("workspace-not-found");
-  return context;
+async function getContext(workspaceSlug: string, permission: PermissionKey) {
+  return getAuthorizedSessionActor(workspaceSlug, permission);
 }
 
 

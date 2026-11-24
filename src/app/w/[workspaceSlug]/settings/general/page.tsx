@@ -6,7 +6,7 @@ import {
   getCurrentSession,
   getCurrentWorkspaceContextBySlug
 } from "@/server/auth/currentContext";
-import { hasWorkspacePermission } from "@/server/access-control/authorize";
+import { actorHasPermission } from "@/server/access-control/actor";
 
 export const dynamic = "force-dynamic";
 
@@ -33,11 +33,7 @@ export default async function GeneralSettingsPage({ params }: GeneralPageProps) 
     notFound();
   }
 
-  const canArchive = await hasWorkspacePermission({
-    userId: context.user.id,
-    workspaceId: context.workspace.id,
-    permission: "admin"
-  }).catch(() => false);
+  const canArchive = actorHasPermission(context, "admin");
 
   return (
     <WorkspaceShell

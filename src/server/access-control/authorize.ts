@@ -1,7 +1,7 @@
 import "server-only";
 
-import { ADMIN_PERMISSION, type PermissionKey } from "@/server/access-control/permissions";
-import { prisma } from "@/server/db/prisma";
+import { actorHasPermission, resolveMemberActor } from "@/server/access-control/actor";
+import type { PermissionKey } from "@/server/access-control/permissions";
 
 type WorkspacePermissionInput = {
   userId: string;
@@ -9,45 +9,25 @@ type WorkspacePermissionInput = {
   permission: PermissionKey;
 };
 
+/**
+ * A role-only check for a user in a workspace, archived or not.
+ *
+ * Domain functions that take `{ userId, workspaceId }` re-check with it as defence in depth. It
+ * knows nothing of API tokens, so it is never the authorization of a request: the adapter in front
+ * of the domain function — a server action, a REST endpoint, an MCP tool — checks the request's
+ * `WorkspaceActor` first (ADR 0030, `docs/agents/architecture.md`).
+ */
 export async function hasWorkspacePermission({
   userId,
   workspaceId,
   permission
 }: WorkspacePermissionInput) {
-  const member = await prisma.workspaceMember.findUnique({
-    where: {
-      workspaceId_userId: {
-        workspaceId,
-        userId
-      }
-    },
-    select: {
-      roles: {
-        select: {
-          role: {
-            select: {
-              permissions: {
-                select: {
-                  permissionKey: true
-                }
-              }
-            }
-          }
-        }
-      }
-    }
-  });
-
-  if (!member) {
-    return false;
-  }
-
-  return member.roles.some(({ role }) =>
-    role.permissions.some(
-      ({ permissionKey }) =>
-        permissionKey === ADMIN_PERMISSION || permissionKey === permission
-    )
+  const actor = await resolveMemberActor(
+    { userId, workspace: { id: workspaceId } },
+    { allowArchived: true }
   );
+
+  return actor !== null && actorHasPermission(actor, permission);
 }
 
 export async function authorizeWorkspacePermission(

@@ -1,8 +1,8 @@
 "use server";
 
 
-import { authorizeWorkspacePermission } from "@/server/access-control/authorize";
-import { getCurrentWorkspaceContextBySlug } from "@/server/auth/currentContext";
+import { requireActorPermission } from "@/server/access-control/actor";
+import { resolveWorkspaceActor } from "@/server/auth/currentActor";
 import { upsertWorkspaceDigiKeyIntegration } from "@/server/integrations/digikey";
 import {
   setWorkspaceActiveSupplierProvider
@@ -102,17 +102,13 @@ export async function updateActiveSupplierProviderSettings(
 }
 
 async function requireAdminContext(workspaceSlug: string) {
-  const context = await getCurrentWorkspaceContextBySlug(workspaceSlug);
+  const context = await resolveWorkspaceActor({ kind: "session", workspaceSlug: workspaceSlug });
 
   if (!context) {
     throw new Error("database-unavailable");
   }
 
-  await authorizeWorkspacePermission({
-    userId: context.user.id,
-    workspaceId: context.workspace.id,
-    permission: "admin"
-  });
+  requireActorPermission(context, "admin");
 
   return context;
 }

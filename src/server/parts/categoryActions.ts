@@ -1,8 +1,8 @@
 "use server";
 
 
-import { authorizeWorkspacePermission } from "@/server/access-control/authorize";
-import { getCurrentWorkspaceContextBySlug } from "@/server/auth/currentContext";
+import { requireActorPermission } from "@/server/access-control/actor";
+import { resolveWorkspaceActor } from "@/server/auth/currentActor";
 import {
   createPartCategory,
   createPartCategoryPath,
@@ -56,16 +56,12 @@ export async function createPartCategoryFromForm(
   let formError: string | null = null;
 
   try {
-    const context = await getCurrentWorkspaceContextBySlug(workspaceSlug);
+    const context = await resolveWorkspaceActor({ kind: "session", workspaceSlug: workspaceSlug });
 
     if (!context) {
       formError = "database-unavailable";
     } else {
-      await authorizeWorkspacePermission({
-        userId: context.user.id,
-        workspaceId: context.workspace.id,
-        permission: "part-categories:write"
-      });
+      requireActorPermission(context, "part-categories:write");
 
       const createdCategory = await createPartCategory({
         workspaceId: context.workspace.id,
@@ -114,16 +110,12 @@ export async function createPartCategoryPathFromForm(
   let formError: string | null = null;
 
   try {
-    const context = await getCurrentWorkspaceContextBySlug(workspaceSlug);
+    const context = await resolveWorkspaceActor({ kind: "session", workspaceSlug: workspaceSlug });
 
     if (!context) {
       formError = "database-unavailable";
     } else {
-      await authorizeWorkspacePermission({
-        userId: context.user.id,
-        workspaceId: context.workspace.id,
-        permission: "part-categories:write"
-      });
+      requireActorPermission(context, "part-categories:write");
 
       const createdCategory = await createPartCategoryPath({
         workspaceId: context.workspace.id,
@@ -172,16 +164,12 @@ export async function updatePartCategoryFromForm(
   let formError: string | null = null;
 
   try {
-    const context = await getCurrentWorkspaceContextBySlug(workspaceSlug);
+    const context = await resolveWorkspaceActor({ kind: "session", workspaceSlug: workspaceSlug });
 
     if (!context) {
       formError = "database-unavailable";
     } else {
-      await authorizeWorkspacePermission({
-        userId: context.user.id,
-        workspaceId: context.workspace.id,
-        permission: "part-categories:write"
-      });
+      requireActorPermission(context, "part-categories:write");
 
       const updatedCategory = await updatePartCategory({
         id,
@@ -227,16 +215,12 @@ export async function deletePartCategoryFromForm(
   let formError: string | null = null;
 
   try {
-    const context = await getCurrentWorkspaceContextBySlug(workspaceSlug);
+    const context = await resolveWorkspaceActor({ kind: "session", workspaceSlug: workspaceSlug });
 
     if (!context) {
       formError = "database-unavailable";
     } else {
-      await authorizeWorkspacePermission({
-        userId: context.user.id,
-        workspaceId: context.workspace.id,
-        permission: "part-categories:write"
-      });
+      requireActorPermission(context, "part-categories:write");
 
       await deletePartCategory({
         id,

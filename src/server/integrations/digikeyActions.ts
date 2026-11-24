@@ -1,8 +1,8 @@
 "use server";
 
 
-import { authorizeWorkspacePermission } from "@/server/access-control/authorize";
-import { getCurrentWorkspaceContextBySlug } from "@/server/auth/currentContext";
+import { requireActorPermission } from "@/server/access-control/actor";
+import { resolveWorkspaceActor } from "@/server/auth/currentActor";
 import {
   upsertWorkspaceDigiKeyIntegration
 } from "@/server/integrations/digikey";
@@ -31,7 +31,7 @@ export async function updateDigiKeyIntegrationSettings(
   }
 
   try {
-    const context = await getCurrentWorkspaceContextBySlug(workspaceSlug);
+    const context = await resolveWorkspaceActor({ kind: "session", workspaceSlug: workspaceSlug });
 
     if (!context) {
       return {
@@ -40,11 +40,7 @@ export async function updateDigiKeyIntegrationSettings(
       };
     }
 
-    await authorizeWorkspacePermission({
-      userId: context.user.id,
-      workspaceId: context.workspace.id,
-      permission: "admin"
-    });
+    requireActorPermission(context, "admin");
 
     await upsertWorkspaceDigiKeyIntegration({
       workspaceId: context.workspace.id,

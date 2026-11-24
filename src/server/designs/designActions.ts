@@ -1,6 +1,7 @@
 "use server";
 
-import { getCurrentWorkspaceContextBySlug } from "@/server/auth/currentContext";
+import type { PermissionKey } from "@/server/access-control/permissions";
+import { getAuthorizedSessionActor } from "@/server/auth/currentActor";
 import { getDefaultPartUnitId } from "@/server/units/defaultUnits";
 import { prisma } from "@/server/db/prisma";
 import type { ListPage } from "@/server/pagination";
@@ -34,7 +35,7 @@ export async function getDesignsPageForWorkspace(input: {
   createdAtFilter?: string | null;
 }): Promise<DesignActionResult<ListPage<DesignSummary>>> {
   try {
-    const context = await getContext(input.workspaceSlug);
+    const context = await getContext(input.workspaceSlug, "designs:read");
     const page = await getDesignsForWorkspace({
       userId: context.user.id,
       workspaceId: context.workspace.id,
@@ -56,7 +57,7 @@ export async function getDesignDetailAction(input: {
   designId: string;
 }): Promise<DesignActionResult<DesignDetail | null>> {
   try {
-    const context = await getContext(input.workspaceSlug);
+    const context = await getContext(input.workspaceSlug, "designs:read");
     const detail = await getDesignDetail({
       userId: context.user.id,
       workspaceId: context.workspace.id,
@@ -72,7 +73,7 @@ export async function getNextDesignCatalogNumberAction(input: {
   workspaceSlug: string;
 }): Promise<DesignActionResult<string>> {
   try {
-    const context = await getContext(input.workspaceSlug);
+    const context = await getContext(input.workspaceSlug, "designs:read");
     const catalogNumber = await getNextDesignCatalogNumber(context.workspace.id);
     return success(catalogNumber);
   } catch (error) {
@@ -89,7 +90,7 @@ export async function createDesignAction(input: {
   catalogNumber: string;
 }): Promise<DesignActionResult<{ id: string }>> {
   try {
-    const context = await getContext(input.workspaceSlug);
+    const context = await getContext(input.workspaceSlug, "designs:write");
     const unitId = await getDefaultPartUnitId(prisma, context.workspace.id);
     if (!unitId) throw new Error("no_default_unit");
     const result = await createDesign({
@@ -115,7 +116,7 @@ export async function updateDesignAction(input: {
   description?: string | null;
 }): Promise<DesignActionResult<null>> {
   try {
-    const context = await getContext(input.workspaceSlug);
+    const context = await getContext(input.workspaceSlug, "designs:write");
     const result = await updateDesign({
       userId: context.user.id,
       workspaceId: context.workspace.id,
@@ -135,7 +136,7 @@ export async function deleteDesignAction(input: {
   designId: string;
 }): Promise<DesignActionResult<null>> {
   try {
-    const context = await getContext(input.workspaceSlug);
+    const context = await getContext(input.workspaceSlug, "designs:write");
     const result = await deleteDesign({
       userId: context.user.id,
       workspaceId: context.workspace.id,
@@ -154,7 +155,7 @@ export async function addRevisionToDesignAction(input: {
   notes?: string | null;
 }): Promise<DesignActionResult<{ id: string }>> {
   try {
-    const context = await getContext(input.workspaceSlug);
+    const context = await getContext(input.workspaceSlug, "designs:write");
     const result = await addRevisionToDesign({
       userId: context.user.id,
       workspaceId: context.workspace.id,
@@ -174,7 +175,7 @@ export async function updateDesignRevisionAction(input: {
   notes: string | null;
 }): Promise<DesignActionResult<null>> {
   try {
-    const context = await getContext(input.workspaceSlug);
+    const context = await getContext(input.workspaceSlug, "designs:write");
     const result = await updateDesignRevision({
       userId: context.user.id,
       workspaceId: context.workspace.id,
@@ -190,10 +191,8 @@ export async function updateDesignRevisionAction(input: {
 
 // --- Helpers ---
 
-async function getContext(workspaceSlug: string) {
-  const context = await getCurrentWorkspaceContextBySlug(workspaceSlug);
-  if (!context) throw new Error("workspace-not-found");
-  return context;
+async function getContext(workspaceSlug: string, permission: PermissionKey) {
+  return getAuthorizedSessionActor(workspaceSlug, permission);
 }
 
 function success<T>(data: T): DesignActionResult<T> {

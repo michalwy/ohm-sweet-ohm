@@ -1,6 +1,7 @@
 "use server";
 
-import { getCurrentWorkspaceContextBySlug } from "@/server/auth/currentContext";
+import { actorHasPermission } from "@/server/access-control/actor";
+import { resolveWorkspaceActor } from "@/server/auth/currentActor";
 import {
   getPartsListPage,
   type PartsListPageInput
@@ -21,9 +22,12 @@ export async function getPartsListFilterDataForWorkspace(input: {
   workspaceSlug: string;
 }): Promise<PartsListFilterDataResult> {
   try {
-    const context = await getCurrentWorkspaceContextBySlug(input.workspaceSlug);
+    const context = await resolveWorkspaceActor({
+      kind: "session",
+      workspaceSlug: input.workspaceSlug
+    });
 
-    if (!context) {
+    if (!context || !actorHasPermission(context, "parts:read")) {
       return { ok: false, error: "database-unavailable" };
     }
 
@@ -59,9 +63,12 @@ export async function getPartsListPageForWorkspace(input: {
   workspaceSlug: string;
 } & PartsListPageInput): Promise<PartsListPageActionResult> {
   try {
-    const context = await getCurrentWorkspaceContextBySlug(input.workspaceSlug);
+    const context = await resolveWorkspaceActor({
+      kind: "session",
+      workspaceSlug: input.workspaceSlug
+    });
 
-    if (!context) {
+    if (!context || !actorHasPermission(context, "parts:read")) {
       return {
         ok: false,
         error: "database-unavailable"

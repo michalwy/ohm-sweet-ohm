@@ -1,8 +1,8 @@
 "use server";
 
 import type { Prisma } from "@/generated/prisma/client";
-import { authorizeWorkspacePermission } from "@/server/access-control/authorize";
-import { getCurrentWorkspaceContextBySlug } from "@/server/auth/currentContext";
+import { requireActorPermission } from "@/server/access-control/actor";
+import { resolveWorkspaceActor } from "@/server/auth/currentActor";
 import { prisma } from "@/server/db/prisma";
 import type { SupplierProviderKey } from "@/server/integrations/types";
 
@@ -30,17 +30,13 @@ export async function getSupplierMatchingSuggestionsForWorkspace(input: {
   }>;
   targetCategoryId: string | null;
 }) {
-  const context = await getCurrentWorkspaceContextBySlug(input.workspaceSlug);
+  const context = await resolveWorkspaceActor({ kind: "session", workspaceSlug: input.workspaceSlug });
 
   if (!context) {
     return { ok: false as const, error: "database-unavailable" };
   }
 
-  await authorizeWorkspacePermission({
-    userId: context.user.id,
-    workspaceId: context.workspace.id,
-    permission: "parts:write"
-  });
+  requireActorPermission(context, "parts:write");
 
   const sourceCategoryKey = normalizeSourceCategoryKey(input.sourceCategory);
   const targetCategoryScopeKey = getTargetCategoryScopeKey(input.targetCategoryId);

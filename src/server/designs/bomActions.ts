@@ -1,6 +1,7 @@
 "use server";
 
-import { getCurrentWorkspaceContextBySlug } from "@/server/auth/currentContext";
+import type { PermissionKey } from "@/server/access-control/permissions";
+import { getAuthorizedSessionActor } from "@/server/auth/currentActor";
 import {
   createBomLineItem,
   deleteBomLineItem,
@@ -29,7 +30,7 @@ export async function getBomLineItemsAction(input: {
   revisionId: string;
 }): Promise<BomActionResult<BomLineItemSummary[]>> {
   try {
-    const context = await getContext(input.workspaceSlug);
+    const context = await getContext(input.workspaceSlug, "designs:read");
     const items = await getBomLineItems({
       userId: context.user.id,
       workspaceId: context.workspace.id,
@@ -45,7 +46,7 @@ export async function getBomDialogDataAction(input: {
   workspaceSlug: string;
 }): Promise<BomActionResult<BomDialogData>> {
   try {
-    const context = await getContext(input.workspaceSlug);
+    const context = await getContext(input.workspaceSlug, "designs:read");
     const data = await getBomDialogData({
       userId: context.user.id,
       workspaceId: context.workspace.id
@@ -61,7 +62,7 @@ export async function getBomCategoryAttributesAction(input: {
   categoryId: string;
 }): Promise<BomActionResult<AttributeListItem[]>> {
   try {
-    const context = await getContext(input.workspaceSlug);
+    const context = await getContext(input.workspaceSlug, "designs:read");
     const attributes = await getBomCategoryAttributes({
       userId: context.user.id,
       workspaceId: context.workspace.id,
@@ -80,7 +81,7 @@ export async function previewLineItemMatchesAction(input: {
   matchers: BomMatcherInput[];
 }): Promise<BomActionResult<{ count: number; parts: MatchingPart[] }>> {
   try {
-    const context = await getContext(input.workspaceSlug);
+    const context = await getContext(input.workspaceSlug, "designs:read");
     const result = await previewLineItemMatches({
       userId: context.user.id,
       workspaceId: context.workspace.id,
@@ -103,7 +104,7 @@ export async function analyzeShortageAction(input: {
   targetQuantity: number;
 }): Promise<BomActionResult<ShortageAnalysis>> {
   try {
-    const context = await getContext(input.workspaceSlug);
+    const context = await getContext(input.workspaceSlug, "designs:read");
     const analysis = await analyzeShortage({
       userId: context.user.id,
       workspaceId: context.workspace.id,
@@ -124,7 +125,7 @@ export async function createBomLineItemAction(input: {
   lineItem: BomLineItemInput;
 }): Promise<BomActionResult<{ id: string }>> {
   try {
-    const context = await getContext(input.workspaceSlug);
+    const context = await getContext(input.workspaceSlug, "designs:write");
     const result = await createBomLineItem({
       userId: context.user.id,
       workspaceId: context.workspace.id,
@@ -144,7 +145,7 @@ export async function updateBomLineItemAction(input: {
   lineItem: BomLineItemInput;
 }): Promise<BomActionResult<null>> {
   try {
-    const context = await getContext(input.workspaceSlug);
+    const context = await getContext(input.workspaceSlug, "designs:write");
     const result = await updateBomLineItem({
       userId: context.user.id,
       workspaceId: context.workspace.id,
@@ -163,7 +164,7 @@ export async function deleteBomLineItemAction(input: {
   lineItemId: string;
 }): Promise<BomActionResult<null>> {
   try {
-    const context = await getContext(input.workspaceSlug);
+    const context = await getContext(input.workspaceSlug, "designs:write");
     const result = await deleteBomLineItem({
       userId: context.user.id,
       workspaceId: context.workspace.id,
@@ -178,10 +179,8 @@ export async function deleteBomLineItemAction(input: {
 
 // --- Helpers ---
 
-async function getContext(workspaceSlug: string) {
-  const context = await getCurrentWorkspaceContextBySlug(workspaceSlug);
-  if (!context) throw new Error("workspace-not-found");
-  return context;
+async function getContext(workspaceSlug: string, permission: PermissionKey) {
+  return getAuthorizedSessionActor(workspaceSlug, permission);
 }
 
 function success<T>(data: T): BomActionResult<T> {

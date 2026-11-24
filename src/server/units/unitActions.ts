@@ -2,8 +2,7 @@
 
 
 import { Prisma } from "@/generated/prisma/client";
-import { authorizeWorkspacePermission } from "@/server/access-control/authorize";
-import { getCurrentWorkspaceContextBySlug } from "@/server/auth/currentContext";
+import { getAuthorizedSessionActor } from "@/server/auth/currentActor";
 import type { ListPage } from "@/server/pagination";
 import {
   createUnit,
@@ -146,19 +145,7 @@ async function getAuthorizedUnitsContext({
   workspaceSlug: string;
   permission: "units:read" | "units:write";
 }) {
-  const context = await getCurrentWorkspaceContextBySlug(workspaceSlug);
-
-  if (!context) {
-    throw new Error("workspace-not-found");
-  }
-
-  await authorizeWorkspacePermission({
-    userId: context.user.id,
-    workspaceId: context.workspace.id,
-    permission
-  });
-
-  return context;
+  return getAuthorizedSessionActor(workspaceSlug, permission);
 }
 
 function getSuccessState<T>(data: T): UnitActionResult<T> {
