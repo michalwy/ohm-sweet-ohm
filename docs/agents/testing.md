@@ -23,16 +23,40 @@ Unit tests must not import Prisma or any server infrastructure — pure logic on
 
 - They live in `tests/integration/`, use `node:test` (not `@playwright/test`), and run against the
   isolated PostgreSQL service in `docker-compose.e2e.yml` — never the development database.
-- `pnpm test:integration` starts that container (port 5433, data on tmpfs), applies pending
-  migrations, and runs the tests. It does **not** reset or re-seed the database.
+- `pnpm test:integration` (`scripts/test-integration.sh`) starts this worktree's own container, applies
+  pending migrations, and runs the tests. It does **not** reset or re-seed the database; the next run
+  from the same worktree reuses the container (data on tmpfs).
 - `tests/integration/tsconfig.json` with its `server-only` shim is required — do not remove it.
 - Add or update integration coverage when changing inventory mutations, concurrency-sensitive logic,
   or other server-side domain rules.
-- *(Local-only.)* **One database for every worktree.** The compose file publishes host port 5433 and names no
-  project, so each worktree would start its own container on the same port: two sessions cannot run
-  integration tests at the same time. If the port is taken, another session is probably using it —
-  report it rather than stopping someone else's container, and stop the one you started when your
-  task is merged.
+
+### Parallel worktrees
+
+**Every worktree gets its own database, so sessions run the suite at the same time without waiting
+for each other** (#243). Before, the compose file published host port 5433 under Compose's default
+project name (the directory's basename): a second worktree's container failed with `Bind for
+0.0.0.0:5433 failed: port is already allocated` — reproduced 2026-11-24 with two worktrees — and two
+worktrees with the same basename would have shared one database. Now the script:
+
+- names the Compose project `oso-it-<cksum of the worktree's absolute path>`, so each worktree has
+  its own container, and the same worktree always finds its own again;
+- lets Docker pick the host port (`127.0.0.1:0`) and reads it back with `docker compose port`, then
+  exports that `DATABASE_URL` for `prisma migrate deploy` and the tests. It prints the project and
+  the address on its first line.
+
+Nothing to set up: run `pnpm test:integration` from any worktree. Also:
+
+- `pnpm test:db:up` starts this worktree's database and prints its `DATABASE_URL` — for running a
+  single test file by hand with that variable set.
+- `pnpm test:db:down` stops and removes this worktree's database. *(Local-only.)* Run it when your
+  task is merged; never stop another worktree's `oso-it-*` container.
+- `OSO_TEST_DB_PORT=5433 pnpm test:integration` pins the host port, if you need a fixed one; two
+  worktrees cannot pin the same port.
+- Two runs from **one** worktree at once still share its database; that is not supported.
+- A container left by the old setup (`<directory>-db-e2e-1` on port 5433) is no longer used and can
+  be removed by its owner.
+- CI does not use the script: its `Integration tests` job has its own Postgres service on 5433 and
+  sets `DATABASE_URL` for the whole workflow.
 
 ## Migrations
 

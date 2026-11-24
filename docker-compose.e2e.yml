@@ -2,7 +2,8 @@ services:
   db-e2e:
     image: postgres:18-alpine
     ports:
-      - "5433:5432"
+      # Docker picks the host port unless OSO_TEST_DB_PORT pins one; scripts/test-integration.sh reads it back (#243).
+      - "127.0.0.1:${OSO_TEST_DB_PORT:-0}:5432"
     environment:
       POSTGRES_DB: ohm_sweet_ohm_e2e
       POSTGRES_USER: oso

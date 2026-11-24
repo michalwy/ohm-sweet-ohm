@@ -145,10 +145,9 @@ Then the suites, exactly as locally. Measured in a cloud thread on 2026-11-23 (#
 | `pnpm typecheck` | clean | 20 s |
 | `pnpm build` (part of CI's `Static checks`) | built | 29 s |
 | `pnpm test:unit` | 124 pass | 1 s |
-| `pnpm test:integration` (Postgres 18 via `docker-compose.e2e.yml`, port 5433) | 196 pass | 97 s |
+| `pnpm test:integration` (Postgres 18 via `docker-compose.e2e.yml`, on a port Docker picks since #243) | 196 pass | 97 s |
 
-Leave the e2e database up or take it down with
-`docker compose -f docker-compose.e2e.yml down`; the VM is discarded either way.
+Leave the e2e database up or take it down with `pnpm test:db:down`; the VM is discarded either way.
 
 ### `next build` can stop once in an agent session
 
