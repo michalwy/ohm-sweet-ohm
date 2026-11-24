@@ -1,7 +1,8 @@
 import "server-only";
 
-export const DEFAULT_LIST_PAGE_SIZE = 50;
-export const MAX_LIST_PAGE_SIZE = 100;
+import { DEFAULT_LIST_PAGE_SIZE, MAX_LIST_PAGE_SIZE } from "@/server/paginationLimits";
+
+export { DEFAULT_LIST_PAGE_SIZE, MAX_LIST_PAGE_SIZE };
 
 export type ListPage<TItem> = {
   items: TItem[];

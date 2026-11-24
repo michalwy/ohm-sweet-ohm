@@ -3,6 +3,7 @@
 
 import { Prisma } from "@/generated/prisma/client";
 import { getAuthorizedSessionActor } from "@/server/auth/currentActor";
+import { parseOperationInput, type OperationInput } from "@/server/api/operations";
 import type { ListPage } from "@/server/pagination";
 import {
   createUnit,
@@ -10,9 +11,9 @@ import {
   getUnitsPageForWorkspace as getUnitsPage,
   getWorkspaceUnits,
   updateUnit,
-  type UnitListItem,
-  type UnitListSortField
+  type UnitListItem
 } from "@/server/units/unitMutations";
+import { listUnitsOperation } from "@/server/units/unitOperations";
 
 export type UnitActionResult<T> =
   | {
@@ -41,26 +42,26 @@ export async function getUnitsForWorkspace(input: {
   }
 }
 
-export async function getUnitsPageForWorkspace(input: {
-  workspaceSlug: string;
-  cursor?: string | null;
-  pageSize?: number | null;
-  sortBy?: UnitListSortField;
-  sortDir?: "asc" | "desc";
-}): Promise<UnitActionResult<ListPage<UnitListItem>>> {
+export async function getUnitsPageForWorkspace(
+  input: { workspaceSlug: string } & OperationInput<typeof listUnitsOperation>
+): Promise<UnitActionResult<ListPage<UnitListItem>>> {
   try {
+    const { workspaceSlug, ...rawInput } = input;
+    const parsed = parseOperationInput(listUnitsOperation, rawInput);
+
+    if (!parsed.ok) {
+      return getErrorState(parsed.error.code);
+    }
+
     const context = await getAuthorizedUnitsContext({
-      workspaceSlug: input.workspaceSlug,
-      permission: "units:read"
+      workspaceSlug,
+      permission: listUnitsOperation.permission
     });
 
     return getSuccessState(
       await getUnitsPage({
         workspaceId: context.workspace.id,
-        cursor: input.cursor,
-        pageSize: input.pageSize,
-        sortBy: input.sortBy,
-        sortDir: input.sortDir
+        ...parsed.data
       })
     );
   } catch (error) {
