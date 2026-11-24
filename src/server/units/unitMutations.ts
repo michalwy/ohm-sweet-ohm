@@ -91,6 +91,8 @@ export async function createUnit(input: {
   symbol: string;
   allowsFraction: boolean;
 }) {
+  assertUnitFields(input);
+
   return prisma.unit.create({
     data: {
       workspaceId: input.workspaceId,
@@ -110,6 +112,8 @@ export async function updateUnit(input: {
   symbol: string;
   allowsFraction: boolean;
 }) {
+  assertUnitFields(input);
+
   const updated = await prisma.unit.updateMany({
     where: {
       id: input.unitId,
@@ -149,6 +153,16 @@ export async function deleteUnit(input: {
 
   if (deleted.count === 0) {
     throw new Error("unit-not-found");
+  }
+}
+
+function assertUnitFields(input: { name: string; symbol: string }) {
+  if (!input.name.trim()) {
+    throw new Error("unit-name-required");
+  }
+
+  if (!input.symbol.trim()) {
+    throw new Error("unit-symbol-required");
   }
 }
 

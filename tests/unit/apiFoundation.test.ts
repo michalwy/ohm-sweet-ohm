@@ -79,6 +79,42 @@ describe("OpenAPI document", () => {
     );
   });
 
+  test("path placeholders become required path parameters, out of the body", () => {
+    const document = buildOpenApiDocument(restEndpoints) as unknown as OpenApiDocument;
+    const patch = document.paths["/units/{unitId}"].patch as {
+      parameters: Array<{ name: string; in: string; required: boolean }>;
+      requestBody: { content: Record<string, { schema: { properties: object; required?: string[] } }> };
+    };
+
+    assert.deepEqual(
+      patch.parameters.map(({ name, in: location, required }) => [name, location, required]),
+      [["unitId", "path", true]]
+    );
+    assert.deepEqual(
+      Object.keys(patch.requestBody.content["application/json"].schema.properties),
+      ["name", "symbol", "allowsFraction"]
+    );
+
+    const remove = document.paths["/units/{unitId}"].delete;
+
+    assert.ok(!("requestBody" in remove), "a DELETE with only path parameters has no body");
+
+    const attach = document.paths["/part-categories/{categoryId}/attributes/{attributeId}"].put as {
+      parameters: Array<{ name: string }>;
+    };
+
+    assert.deepEqual(
+      attach.parameters.map(({ name }) => name),
+      ["categoryId", "attributeId"]
+    );
+  });
+
+  test("every operation name is unique", () => {
+    const names = restEndpoints.map((endpoint) => endpoint.operation.name);
+
+    assert.deepEqual(names, [...new Set(names)]);
+  });
+
   test("every endpoint has a route file exporting its method", () => {
     for (const endpoint of restEndpoints) {
       // A `{param}` placeholder is served by a `[param]` route segment.

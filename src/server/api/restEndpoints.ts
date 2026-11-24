@@ -9,6 +9,36 @@ import {
   updateOrganizationOperation
 } from "@/server/organizations/organizationOperations";
 import {
+  attachCategoryAttributeOperation,
+  createAttributeOperation,
+  createChoiceOptionOperation,
+  deleteAttributeOperation,
+  deleteChoiceOptionOperation,
+  detachCategoryAttributeOperation,
+  getCategoryAttributesOperation,
+  getWorkspaceAttributesOperation,
+  listAttributesOperation,
+  saveCategoryAttributeConfigurationOperation,
+  saveWorkspaceAttributeConfigurationOperation,
+  setCategoryValueAttributeOperation,
+  updateAttributeOperation,
+  updateChoiceOptionOperation
+} from "@/server/parts/attributeOperations";
+import {
+  createPartCategoryOperation,
+  createPartCategoryPathOperation,
+  deletePartCategoryOperation,
+  getPartCategoryTreeOperation,
+  movePartCategoryOperation,
+  updatePartCategoryOperation
+} from "@/server/parts/categoryOperations";
+import {
+  createUnitOperation,
+  deleteUnitOperation,
+  listUnitsOperation,
+  updateUnitOperation
+} from "@/server/units/unitOperations";
+import {
   getWorkspaceOperation,
   whoamiOperation
 } from "@/server/workspaces/workspaceOperations";
@@ -81,5 +111,32 @@ export const restEndpoints: RestEndpoint[] = [
     summary: "Delete an organization",
     tag: "Organizations",
     operation: deleteOrganizationOperation
-  }
+  },
+  // Part categories (#278)
+  { method: "get", path: "/part-categories", summary: "The category tree", tag: "Part categories", operation: getPartCategoryTreeOperation },
+  { method: "post", path: "/part-categories", summary: "Create a category", tag: "Part categories", operation: createPartCategoryOperation },
+  { method: "post", path: "/part-categories/paths", summary: "Create a category path", tag: "Part categories", operation: createPartCategoryPathOperation },
+  { method: "patch", path: "/part-categories/{categoryId}", summary: "Update a category", tag: "Part categories", operation: updatePartCategoryOperation },
+  { method: "delete", path: "/part-categories/{categoryId}", summary: "Delete a category", tag: "Part categories", operation: deletePartCategoryOperation },
+  { method: "post", path: "/part-categories/{categoryId}/move", summary: "Move a category", tag: "Part categories", operation: movePartCategoryOperation },
+  // Attributes (#278)
+  { method: "get", path: "/attributes", summary: "List attributes", tag: "Attributes", operation: listAttributesOperation },
+  { method: "post", path: "/attributes", summary: "Create an attribute", tag: "Attributes", operation: createAttributeOperation },
+  { method: "patch", path: "/attributes/{attributeId}", summary: "Update an attribute", tag: "Attributes", operation: updateAttributeOperation },
+  { method: "delete", path: "/attributes/{attributeId}", summary: "Delete an attribute", tag: "Attributes", operation: deleteAttributeOperation },
+  { method: "post", path: "/attributes/{attributeId}/choice-options", summary: "Add a choice option", tag: "Attributes", operation: createChoiceOptionOperation },
+  { method: "patch", path: "/attribute-choice-options/{optionId}", summary: "Update a choice option", tag: "Attributes", operation: updateChoiceOptionOperation },
+  { method: "delete", path: "/attribute-choice-options/{optionId}", summary: "Delete a choice option", tag: "Attributes", operation: deleteChoiceOptionOperation },
+  { method: "get", path: "/part-categories/{categoryId}/attributes", summary: "A category's effective attributes", tag: "Attributes", operation: getCategoryAttributesOperation },
+  { method: "put", path: "/part-categories/{categoryId}/attributes", summary: "Save a category's attribute configuration", tag: "Attributes", operation: saveCategoryAttributeConfigurationOperation },
+  { method: "put", path: "/part-categories/{categoryId}/attributes/{attributeId}", summary: "Attach or override an attribute on a category", tag: "Attributes", operation: attachCategoryAttributeOperation },
+  { method: "delete", path: "/part-categories/{categoryId}/attributes/{attributeId}", summary: "Detach an attribute from a category", tag: "Attributes", operation: detachCategoryAttributeOperation },
+  { method: "put", path: "/part-categories/{categoryId}/value-attribute", summary: "Set a category's value attribute", tag: "Attributes", operation: setCategoryValueAttributeOperation },
+  { method: "get", path: "/workspace/attributes", summary: "The workspace's attributes", tag: "Attributes", operation: getWorkspaceAttributesOperation },
+  { method: "put", path: "/workspace/attributes", summary: "Save the workspace's attributes", tag: "Attributes", operation: saveWorkspaceAttributeConfigurationOperation },
+  // Units (#278)
+  { method: "get", path: "/units", summary: "List units", tag: "Units", operation: listUnitsOperation },
+  { method: "post", path: "/units", summary: "Create a unit", tag: "Units", operation: createUnitOperation },
+  { method: "patch", path: "/units/{unitId}", summary: "Update a unit", tag: "Units", operation: updateUnitOperation },
+  { method: "delete", path: "/units/{unitId}", summary: "Delete a unit", tag: "Units", operation: deleteUnitOperation }
 ];
