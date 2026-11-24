@@ -181,3 +181,10 @@ Cancelling releases stock that has not yet been consumed:
 Designators that were already assembled are **not** reversed — those parts were physically used.
 To recover them (for example by desoldering), make a manual stock adjustment in
 [Inventory](inventory.md).
+
+## From An Assistant Or Script
+
+Builds — listing, creating, allocating, starting, assembling (one designator or a whole unit),
+cancelling and deleting them, their pick and assembly lists, and the builds holding or producing a
+part — are also available through the API and the MCP server, with the same rules and stock effects
+as these screens. See [API & MCP](api-and-mcp.md#what-is-available).
