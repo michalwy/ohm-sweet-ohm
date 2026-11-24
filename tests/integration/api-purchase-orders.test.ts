@@ -311,7 +311,12 @@ describe("REST /api/v1/purchase-orders", () => {
 
     assert.equal(batch.addedCount, 2);
     assert.equal(batch.purchaseOrder.items.length, 2, "a part already on the order is merged into its item");
-    assert.equal(batch.purchaseOrder.items.find((entry) => entry.id === item.id)?.quantity, "5");
+    const merged = batch.purchaseOrder.items.find((entry) => entry.id === item.id);
+    assert.equal(merged?.quantity, "5");
+    assert.equal(merged?.unitPrice, "3.3333333333", "merging keeps the line's unit price (#310)");
+    assert.equal(merged?.supplierSku, "R-123", "merging keeps the line's supplier SKU (#310)");
+    assert.equal(merged?.notes, "0.1%", "merging keeps the line's notes (#310)");
+    assert.equal(merged?.lineNetValue, "16.67", "the line total follows the kept unit price");
     assert.deepEqual(await partQuantities(other.id), { planned: "5", onOrder: "0" });
 
     const withCost = await json<{ costId: string; purchaseOrder: Order }>(

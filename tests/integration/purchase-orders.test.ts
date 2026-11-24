@@ -8,6 +8,7 @@ import {
   updatePurchaseOrder,
   deletePurchaseOrder,
   addOrderItem,
+  addOrderItems,
   updateOrderItem,
   removeOrderItem,
   markOrdered,
@@ -980,6 +981,58 @@ describe("purchase orders — quick-add part flow", () => {
 
     const detail = await getPurchaseOrderDetail(workspaceId, order.id);
     assert.equal(detail?.items[0].quantity, "8");
+  });
+});
+
+describe("purchase orders — adding a part already on the order (#310)", () => {
+  test("adds to the line's quantity and keeps its price, SKU, currency, tax rate and notes", async () => {
+    const suffix = uniqueSuffix("qa-po-merge-keeps");
+    const { workspaceId, partId, supplierId } = await createFixture(suffix);
+
+    const order = await createPurchaseOrder({ workspaceId, supplierId });
+    const item = await addOrderItem({
+      workspaceId,
+      orderId: order.id,
+      partId,
+      quantity: "4",
+      supplierSku: "SKU-1",
+      unitPrice: "0.25",
+      taxRate: "23",
+      notes: "reel"
+    });
+    const before = (await getPurchaseOrderDetail(workspaceId, order.id))?.items[0];
+
+    const result = await addOrderItems({ workspaceId, orderId: order.id, items: [{ partId, quantity: "6" }] });
+
+    assert.equal(result.addedCount, 1);
+    const detail = await getPurchaseOrderDetail(workspaceId, order.id);
+    assert.equal(detail?.items.length, 1, "merged into the existing line");
+    const merged = detail?.items[0];
+    assert.equal(merged?.id, item.id);
+    assert.equal(merged?.quantity, "10");
+    assert.equal(merged?.supplierSku, "SKU-1");
+    assert.equal(merged?.unitPrice, "0.25");
+    assert.equal(merged?.currency, before?.currency);
+    assert.equal(merged?.taxRate, "23");
+    assert.equal(merged?.notes, "reel");
+    assert.equal(merged?.lineNetValue, "2.50", "line total follows the kept unit price");
+    assert.equal(merged?.lineGrossValue, "3.08");
+    assert.equal(detail?.totalNetValue, "2.50");
+
+    const part = await prisma.part.findUniqueOrThrow({ where: { id: partId }, select: { plannedQty: true } });
+    assert.equal(part.plannedQty.toString(), "10", "planned quantity grows by the added amount");
+  });
+
+  test("adds decimal quantities exactly", async () => {
+    const suffix = uniqueSuffix("qa-po-merge-decimal");
+    const { workspaceId, partId, supplierId } = await createFixture(suffix);
+
+    const order = await createPurchaseOrder({ workspaceId, supplierId });
+    await addOrderItem({ workspaceId, orderId: order.id, partId, quantity: "0.1" });
+    await addOrderItems({ workspaceId, orderId: order.id, items: [{ partId, quantity: "0.2" }] });
+
+    const detail = await getPurchaseOrderDetail(workspaceId, order.id);
+    assert.equal(detail?.items[0].quantity, "0.3");
   });
 });
 
