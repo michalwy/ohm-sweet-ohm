@@ -127,7 +127,7 @@ describes the caller. Everything else names a key.
 
 ### REST endpoints and MCP tools
 
-An area exposes an operation in five steps (#274, #275):
+An area exposes an operation in six steps (#274, #275, #276, #287):
 
 1. **Implement it**: `implementOperation(operation, (actor, input) => …)` in a `server-only` module
    (`src/server/<area>/<area>Api.ts`; example `workspaceApi.ts`). The function scopes every read and
@@ -150,6 +150,14 @@ An area exposes an operation in five steps (#274, #275):
 5. **User guide**: add the area's row — or its endpoints and tools to an existing row — to the
    table under *What is available* in `docs/user-guide/api-and-mcp.md` (#287), with REST paths
    relative to `/api/v1`.
+6. **Coverage** (#276): every exported function of a `"use server"` module has an entry in
+   `src/server/mcp/coverage.ts` — `{ tool }` (the MCP tool doing the same thing), `{ excluded }` with
+   a reason (the owner's exclusions of #79, or a UI-only helper no agent needs), or, until its area
+   issue lands, `{ pending: "#NNN" }`. **A new server action needs an MCP tool or an exclusion
+   entry**: `tests/unit/mcpCoverage.test.ts` fails on an action without an entry and on an entry
+   without an action, and `tests/integration/api-mcp.test.ts` on a `tool` the registry does not
+   offer. An area issue replaces its `pending` entries; the milestone is complete when none is left.
+   Server actions are declared in modules, never inline (the check reports an inline `"use server"`).
 
 Errors are one shape everywhere, `{ code, message, issues? }`: REST answers
 `{ "error": … }` with the status from `errorStatus.ts` — 401 `unauthorized` (missing, malformed,
