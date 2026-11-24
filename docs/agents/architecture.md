@@ -127,7 +127,7 @@ describes the caller. Everything else names a key.
 
 ### REST endpoints and MCP tools
 
-An area exposes an operation in four steps (#274, #275):
+An area exposes an operation in five steps (#274, #275):
 
 1. **Implement it**: `implementOperation(operation, (actor, input) => …)` in a `server-only` module
    (`src/server/<area>/<area>Api.ts`; example `workspaceApi.ts`). The function scopes every read and
@@ -147,6 +147,9 @@ An area exposes an operation in four steps (#274, #275):
    `{ readOnly: false, destructive, idempotent? }` — and becomes the tool's annotations; a delete or
    overwrite is `destructive: true`.
 4. **Integration tests** for the area's endpoints and tools.
+5. **User guide**: add the area's row — or its endpoints and tools to an existing row — to the
+   table under *What is available* in `docs/user-guide/api-and-mcp.md` (#287), with REST paths
+   relative to `/api/v1`.
 
 Errors are one shape everywhere, `{ code, message, issues? }`: REST answers
 `{ "error": … }` with the status from `errorStatus.ts` — 401 `unauthorized` (missing, malformed,

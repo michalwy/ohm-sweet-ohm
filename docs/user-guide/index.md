@@ -70,4 +70,5 @@ If you are setting up a new workspace, this sequence usually works best:
 - [Purchasing](purchasing.md) — shopping lists and purchase orders
 - [Integrations](integrations.md) — DigiKey, TME, and currency settings
 - [Settings & Permissions](settings.md) — workspace settings, access control and personal API tokens
+- [API and MCP](api-and-mcp.md) — use OSO from scripts and connect Claude to it
 - [Deployment](deployment.md) — self-host OSO on your own server with a prebuilt image

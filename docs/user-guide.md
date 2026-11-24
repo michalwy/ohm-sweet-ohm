@@ -10,3 +10,4 @@ This file has moved. The user guide is now split into feature-specific pages und
 - [Purchasing](user-guide/purchasing.md)
 - [Integrations](user-guide/integrations.md)
 - [Settings & Permissions](user-guide/settings.md)
+- [API and MCP](user-guide/api-and-mcp.md)
