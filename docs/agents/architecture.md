@@ -66,6 +66,35 @@ the token's set ∩ the user's roles). Each area issue delivers its REST endpoin
 together. Read the ADR's *What is exposed* list before exposing an operation: demo reset, scheduled
 workspace deletion, sign-up/in/out and DigiKey/TME credentials are never exposed.
 
+### Operation schemas
+
+Every operation the API and MCP expose is defined **once**, with zod (#272), in a pure module next to
+its domain code (`src/server/<area>/<area>Operations.ts`; no `server-only`, no Prisma, so unit tests
+can load it). `defineOperation` (`src/server/api/operations.ts`) takes:
+
+- `name` — the MCP tool name: snake_case, verb first (`list_units`, `receive_purchase_order`);
+  stable once released (ADR 0030), so a replacement is a new name;
+- `description` — one sentence an agent can act on;
+- `permission` — the permission key the operation needs, checked on the actor;
+- `input` — a `z.object` of what the caller sends, **never the workspace** (it comes from the actor);
+  list operations spread `listPageInputShape` and return `listPageOutputSchema(item)`
+  (`src/server/api/listSchemas.ts`);
+- `output` — what the operation returns.
+
+Every field carries `.describe()`. Schemas stay within what JSON Schema can say — no transforms or
+refinements whose meaning the generated schema would lose. From the definition:
+
+- `parseOperationInput(operation, raw)` validates input and returns the data or the shared
+  `OperationError` — `{ code: "invalid-input", message, issues: [{ path, code, message }] }` — the one
+  error shape REST and MCP both return; other failures use the same shape with the domain's
+  kebab-case error code;
+- `getOperationJsonSchemas(operation)` gives the input and output JSON Schemas (draft 2020-12, the
+  dialect of OpenAPI 3.1 and of MCP tool definitions), via zod 4's native `z.toJSONSchema`.
+
+The server action for the same operation validates its input through the same schema (worked
+example: `listUnitsOperation` and `getUnitsPageForWorkspace`), so the UI, REST and MCP accept the same
+shapes. Each area issue converts its own operations.
+
 ## Parts, organizations, categories, locations
 
 - Manufacturers are workspace-scoped organizations with a `manufacturer` role, not a
