@@ -8,6 +8,9 @@ import {
   listOrganizationsImplementation,
   updateOrganizationImplementation
 } from "@/server/organizations/organizationApi";
+import * as attributeApi from "@/server/parts/attributeApi";
+import * as categoryApi from "@/server/parts/categoryApi";
+import * as unitApi from "@/server/units/unitApi";
 import { whoamiImplementation } from "@/server/workspaces/workspaceApi";
 
 /**
@@ -58,5 +61,32 @@ export const mcpTools: McpTool[] = [
   defineMcpTool("Delete an organization", deleteOrganizationImplementation, {
     readOnly: false,
     destructive: true
-  })
+  }),
+  // Part categories (#278)
+  defineMcpTool("Part category tree", categoryApi.getPartCategoryTreeImplementation, { readOnly: true }),
+  defineMcpTool("Create part category", categoryApi.createPartCategoryImplementation, { readOnly: false, destructive: false }),
+  defineMcpTool("Create part category path", categoryApi.createPartCategoryPathImplementation, { readOnly: false, destructive: false }),
+  defineMcpTool("Update part category", categoryApi.updatePartCategoryImplementation, { readOnly: false, destructive: false, idempotent: true }),
+  defineMcpTool("Move part category", categoryApi.movePartCategoryImplementation, { readOnly: false, destructive: false, idempotent: true }),
+  defineMcpTool("Delete part category", categoryApi.deletePartCategoryImplementation, { readOnly: false, destructive: true }),
+  // Attributes (#278)
+  defineMcpTool("List attributes", attributeApi.listAttributesImplementation, { readOnly: true }),
+  defineMcpTool("Create attribute", attributeApi.createAttributeImplementation, { readOnly: false, destructive: false }),
+  defineMcpTool("Update attribute", attributeApi.updateAttributeImplementation, { readOnly: false, destructive: true, idempotent: true }),
+  defineMcpTool("Delete attribute", attributeApi.deleteAttributeImplementation, { readOnly: false, destructive: true }),
+  defineMcpTool("Create attribute choice option", attributeApi.createChoiceOptionImplementation, { readOnly: false, destructive: false }),
+  defineMcpTool("Update attribute choice option", attributeApi.updateChoiceOptionImplementation, { readOnly: false, destructive: false, idempotent: true }),
+  defineMcpTool("Delete attribute choice option", attributeApi.deleteChoiceOptionImplementation, { readOnly: false, destructive: true }),
+  defineMcpTool("Category attributes", attributeApi.getCategoryAttributesImplementation, { readOnly: true }),
+  defineMcpTool("Attach category attribute", attributeApi.attachCategoryAttributeImplementation, { readOnly: false, destructive: false, idempotent: true }),
+  defineMcpTool("Detach category attribute", attributeApi.detachCategoryAttributeImplementation, { readOnly: false, destructive: true, idempotent: true }),
+  defineMcpTool("Set category value attribute", attributeApi.setCategoryValueAttributeImplementation, { readOnly: false, destructive: false, idempotent: true }),
+  defineMcpTool("Save category attribute configuration", attributeApi.saveCategoryAttributeConfigurationImplementation, { readOnly: false, destructive: true, idempotent: true }),
+  defineMcpTool("Workspace attributes", attributeApi.getWorkspaceAttributesImplementation, { readOnly: true }),
+  defineMcpTool("Save workspace attribute configuration", attributeApi.saveWorkspaceAttributeConfigurationImplementation, { readOnly: false, destructive: true, idempotent: true }),
+  // Units (#278)
+  defineMcpTool("List units", unitApi.listUnitsImplementation, { readOnly: true }),
+  defineMcpTool("Create unit", unitApi.createUnitImplementation, { readOnly: false, destructive: false }),
+  defineMcpTool("Update unit", unitApi.updateUnitImplementation, { readOnly: false, destructive: false, idempotent: true }),
+  defineMcpTool("Delete unit", unitApi.deleteUnitImplementation, { readOnly: false, destructive: true })
 ];

@@ -119,27 +119,27 @@ export const serverActionCoverage: ServerActionCoverageMap = {
     deleteOrganizationAction: { tool: "delete_organization" }
   },
   "src/server/parts/attributeActions.ts": {
-    getAttributeDictionaryForWorkspace: { pending: "#278" },
-    getAttributeDictionaryPageForWorkspace: { pending: "#278" },
-    createAttributeForWorkspace: { pending: "#278" },
-    updateAttributeForWorkspace: { pending: "#278" },
-    deleteAttributeForWorkspace: { pending: "#278" },
-    createChoiceOptionForWorkspace: { pending: "#278" },
-    updateChoiceOptionForWorkspace: { pending: "#278" },
-    deleteChoiceOptionForWorkspace: { pending: "#278" },
-    getEffectiveCategoryAttributesForWorkspace: { pending: "#278" },
-    getEffectiveWorkspaceAttributesForWorkspace: { pending: "#278" },
-    attachCategoryAttributeForWorkspace: { pending: "#278" },
-    detachCategoryAttributeForWorkspace: { pending: "#278" },
-    setCategoryValueAttributeForWorkspace: { pending: "#278" },
-    saveCategoryAttributeConfigurationForWorkspace: { pending: "#278" },
-    saveWorkspaceAttributeConfigurationForWorkspace: { pending: "#278" }
+    getAttributeDictionaryForWorkspace: { tool: "list_attributes" },
+    getAttributeDictionaryPageForWorkspace: { tool: "list_attributes" },
+    createAttributeForWorkspace: { tool: "create_attribute" },
+    updateAttributeForWorkspace: { tool: "update_attribute" },
+    deleteAttributeForWorkspace: { tool: "delete_attribute" },
+    createChoiceOptionForWorkspace: { tool: "create_attribute_choice_option" },
+    updateChoiceOptionForWorkspace: { tool: "update_attribute_choice_option" },
+    deleteChoiceOptionForWorkspace: { tool: "delete_attribute_choice_option" },
+    getEffectiveCategoryAttributesForWorkspace: { tool: "get_category_attributes" },
+    getEffectiveWorkspaceAttributesForWorkspace: { tool: "get_workspace_attributes" },
+    attachCategoryAttributeForWorkspace: { tool: "attach_category_attribute" },
+    detachCategoryAttributeForWorkspace: { tool: "detach_category_attribute" },
+    setCategoryValueAttributeForWorkspace: { tool: "set_category_value_attribute" },
+    saveCategoryAttributeConfigurationForWorkspace: { tool: "save_category_attribute_configuration" },
+    saveWorkspaceAttributeConfigurationForWorkspace: { tool: "save_workspace_attribute_configuration" }
   },
   "src/server/parts/categoryActions.ts": {
-    createPartCategoryFromForm: { pending: "#278" },
-    createPartCategoryPathFromForm: { pending: "#278" },
-    updatePartCategoryFromForm: { pending: "#278" },
-    deletePartCategoryFromForm: { pending: "#278" }
+    createPartCategoryFromForm: { tool: "create_part_category" },
+    createPartCategoryPathFromForm: { tool: "create_part_category_path" },
+    updatePartCategoryFromForm: { tool: "update_part_category" },
+    deletePartCategoryFromForm: { tool: "delete_part_category" }
   },
   "src/server/parts/createPart.ts": {
     createPart: { pending: "#277" },
@@ -193,11 +193,11 @@ export const serverActionCoverage: ServerActionCoverageMap = {
     addMultipleShoppingListItemsForWorkspace: { pending: "#281" }
   },
   "src/server/units/unitActions.ts": {
-    getUnitsForWorkspace: { pending: "#278" },
-    getUnitsPageForWorkspace: { pending: "#278" },
-    createUnitForWorkspace: { pending: "#278" },
-    updateUnitForWorkspace: { pending: "#278" },
-    deleteUnitForWorkspace: { pending: "#278" }
+    getUnitsForWorkspace: { tool: "list_units" },
+    getUnitsPageForWorkspace: { tool: "list_units" },
+    createUnitForWorkspace: { tool: "create_unit" },
+    updateUnitForWorkspace: { tool: "update_unit" },
+    deleteUnitForWorkspace: { tool: "delete_unit" }
   },
   "src/server/user/displayPreferences.ts": {
     updateUserDisplayPreferences: { pending: "#286" }

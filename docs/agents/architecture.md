@@ -148,6 +148,8 @@ An area exposes an operation in six steps (#274, #275, #276, #287):
    field of the operation's input — the MCP tool takes it as an argument — while the OpenAPI
    document describes it as a path parameter and leaves it out of the body. Updates are `PATCH`
    with every field but the id optional: an omitted field keeps its value, `null` clears it.
+   A database constraint error is turned into the domain's code by `withDomainErrors`
+   (`src/server/api/domainErrors.ts`, #278), never left as an `internal-error`.
 3. **MCP**: `defineMcpTool(title, implementation, behavior)` appended to `mcpTools`
    (`src/server/mcp/tools.ts`). `behavior` is explicit — `{ readOnly: true }`, or
    `{ readOnly: false, destructive, idempotent? }` — and becomes the tool's annotations; a delete or

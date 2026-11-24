@@ -4,21 +4,22 @@
 import { getAuthorizedSessionActor } from "@/server/auth/currentActor";
 import {
   attachOrOverrideCategoryAttribute,
-  attachOrOverrideWorkspaceAttribute,
   createChoiceOption,
   createAttribute,
   deleteChoiceOption,
   deleteAttribute,
   detachCategoryAttribute,
-  detachWorkspaceAttribute,
   getEffectiveCategoryAttributeConfiguration,
   getEffectiveWorkspaceAttributeConfiguration,
   getWorkspaceAttributePage,
   getWorkspaceAttributes,
+  saveCategoryAttributeConfiguration,
+  saveWorkspaceAttributeConfiguration,
   setCategoryValueAttribute,
   updateChoiceOption,
   updateAttribute,
   type AttributeChoiceOptionInput,
+  type AttributeConfigurationEntry,
   type AttributeChoiceOptionUpdateInput,
   type AttributeDefaultValueInput,
   type AttributeListItem,
@@ -344,74 +345,22 @@ export async function saveCategoryAttributeConfigurationForWorkspace(input: {
   workspaceSlug: string;
   categoryId: string;
   valueAttributeId: string | null;
-  attributes: Array<{
-    attributeId: string;
-    sortOrder: number;
-    defaultValue: AttributeDefaultValueInput;
-    isPrimary: boolean;
-  }>;
+  attributes: AttributeConfigurationEntry[];
 }): Promise<AttributeActionResult<EffectiveCategoryAttribute[]>> {
   try {
     const context = await getAuthorizedAttributeContext({
       workspaceSlug: input.workspaceSlug,
       permission: "attributes:write"
     });
-    const existingEffectiveAttributes =
-      await getEffectiveCategoryAttributeConfiguration({
-        workspaceId: context.workspace.id,
-        categoryId: input.categoryId
-      });
-    const existingLocalAttributeIds = new Set(
-      existingEffectiveAttributes
-        .filter(
-          (effectiveAttribute) =>
-            effectiveAttribute.sourceCategoryId === input.categoryId
-        )
-        .map((effectiveAttribute) => effectiveAttribute.attribute.id)
-    );
-    const nextLocalAttributeIds = new Set(
-      input.attributes.map((attribute) => attribute.attributeId)
-    );
 
-    await setCategoryValueAttribute({
-      workspaceId: context.workspace.id,
-      categoryId: input.categoryId,
-      attributeId: null
-    });
-
-    for (const attribute of input.attributes) {
-      await attachOrOverrideCategoryAttribute({
+    return getSuccessState(
+      await saveCategoryAttributeConfiguration({
         workspaceId: context.workspace.id,
         categoryId: input.categoryId,
-        attributeId: attribute.attributeId,
-        sortOrder: attribute.sortOrder,
-        defaultValue: attribute.defaultValue,
-        isPrimary: attribute.isPrimary
-      });
-    }
-
-    for (const attributeId of existingLocalAttributeIds) {
-      if (!nextLocalAttributeIds.has(attributeId)) {
-        await detachCategoryAttribute({
-          workspaceId: context.workspace.id,
-          categoryId: input.categoryId,
-          attributeId
-        });
-      }
-    }
-
-    await setCategoryValueAttribute({
-      workspaceId: context.workspace.id,
-      categoryId: input.categoryId,
-      attributeId: input.valueAttributeId
-    });
-
-    const effectiveAttributes = await getEffectiveCategoryAttributeConfiguration({
-      workspaceId: context.workspace.id,
-      categoryId: input.categoryId
-    });
-
-    return getSuccessState(effectiveAttributes);
+        valueAttributeId: input.valueAttributeId,
+        attributes: input.attributes
+      })
+    );
   } catch (error) {
     return getErrorState(getAttributeActionError(error));
   }
@@ -419,55 +368,20 @@ export async function saveCategoryAttributeConfigurationForWorkspace(input: {
 
 export async function saveWorkspaceAttributeConfigurationForWorkspace(input: {
   workspaceSlug: string;
-  attributes: Array<{
-    attributeId: string;
-    sortOrder: number;
-    defaultValue: AttributeDefaultValueInput;
-    isPrimary: boolean;
-  }>;
+  attributes: AttributeConfigurationEntry[];
 }): Promise<AttributeActionResult<EffectiveCategoryAttribute[]>> {
   try {
     const context = await getAuthorizedAttributeContext({
       workspaceSlug: input.workspaceSlug,
       permission: "attributes:write"
     });
-    const existingEffectiveAttributes =
-      await getEffectiveWorkspaceAttributeConfiguration({
-        workspaceId: context.workspace.id
-      });
-    const existingWorkspaceAttributeIds = new Set(
-      existingEffectiveAttributes.map(
-        (effectiveAttribute) => effectiveAttribute.attribute.id
-      )
-    );
-    const nextWorkspaceAttributeIds = new Set(
-      input.attributes.map((attribute) => attribute.attributeId)
-    );
 
-    for (const attribute of input.attributes) {
-      await attachOrOverrideWorkspaceAttribute({
+    return getSuccessState(
+      await saveWorkspaceAttributeConfiguration({
         workspaceId: context.workspace.id,
-        attributeId: attribute.attributeId,
-        sortOrder: attribute.sortOrder,
-        defaultValue: attribute.defaultValue,
-        isPrimary: attribute.isPrimary
-      });
-    }
-
-    for (const attributeId of existingWorkspaceAttributeIds) {
-      if (!nextWorkspaceAttributeIds.has(attributeId)) {
-        await detachWorkspaceAttribute({
-          workspaceId: context.workspace.id,
-          attributeId
-        });
-      }
-    }
-
-    const effectiveAttributes = await getEffectiveWorkspaceAttributeConfiguration({
-      workspaceId: context.workspace.id
-    });
-
-    return getSuccessState(effectiveAttributes);
+        attributes: input.attributes
+      })
+    );
   } catch (error) {
     return getErrorState(getAttributeActionError(error));
   }

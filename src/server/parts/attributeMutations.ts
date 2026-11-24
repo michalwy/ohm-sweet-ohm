@@ -539,6 +539,103 @@ export async function getEffectiveWorkspaceAttributeConfiguration({
   return getEffectiveWorkspaceAttributes({ workspaceId });
 }
 
+/** One attribute of a category's or the workspace's attribute configuration, as the editor saves it. */
+export type AttributeConfigurationEntry = {
+  attributeId: string;
+  sortOrder: number;
+  defaultValue: AttributeDefaultValueInput;
+  isPrimary: boolean;
+};
+
+/**
+ * Replaces a category's own attribute configuration with `attributes` (attach or override each,
+ * detach the category's own attributes not listed) and sets its value attribute. Inherited
+ * attributes are untouched. Returns the category's effective attributes afterwards.
+ */
+export async function saveCategoryAttributeConfiguration({
+  workspaceId,
+  categoryId,
+  valueAttributeId,
+  attributes
+}: {
+  workspaceId: string;
+  categoryId: string;
+  valueAttributeId: string | null;
+  attributes: AttributeConfigurationEntry[];
+}) {
+  const existingEffectiveAttributes = await getEffectiveCategoryAttributeConfiguration({
+    workspaceId,
+    categoryId
+  });
+  const existingLocalAttributeIds = new Set(
+    existingEffectiveAttributes
+      .filter((effectiveAttribute) => effectiveAttribute.sourceCategoryId === categoryId)
+      .map((effectiveAttribute) => effectiveAttribute.attribute.id)
+  );
+  const nextLocalAttributeIds = new Set(attributes.map((attribute) => attribute.attributeId));
+
+  await setCategoryValueAttribute({ workspaceId, categoryId, attributeId: null });
+
+  for (const attribute of attributes) {
+    await attachOrOverrideCategoryAttribute({
+      workspaceId,
+      categoryId,
+      attributeId: attribute.attributeId,
+      sortOrder: attribute.sortOrder,
+      defaultValue: attribute.defaultValue,
+      isPrimary: attribute.isPrimary
+    });
+  }
+
+  for (const attributeId of existingLocalAttributeIds) {
+    if (!nextLocalAttributeIds.has(attributeId)) {
+      await detachCategoryAttribute({ workspaceId, categoryId, attributeId });
+    }
+  }
+
+  await setCategoryValueAttribute({ workspaceId, categoryId, attributeId: valueAttributeId });
+
+  return getEffectiveCategoryAttributeConfiguration({ workspaceId, categoryId });
+}
+
+/**
+ * Replaces the workspace-level attribute configuration (the attributes every part gets) with
+ * `attributes`. Returns the effective workspace attributes afterwards.
+ */
+export async function saveWorkspaceAttributeConfiguration({
+  workspaceId,
+  attributes
+}: {
+  workspaceId: string;
+  attributes: AttributeConfigurationEntry[];
+}) {
+  const existingEffectiveAttributes = await getEffectiveWorkspaceAttributeConfiguration({
+    workspaceId
+  });
+  const existingWorkspaceAttributeIds = new Set(
+    existingEffectiveAttributes.map((effectiveAttribute) => effectiveAttribute.attribute.id)
+  );
+  const nextWorkspaceAttributeIds = new Set(attributes.map((attribute) => attribute.attributeId));
+
+  for (const attribute of attributes) {
+    await attachOrOverrideWorkspaceAttribute({
+      workspaceId,
+      attributeId: attribute.attributeId,
+      sortOrder: attribute.sortOrder,
+      defaultValue: attribute.defaultValue,
+      isPrimary: attribute.isPrimary
+    });
+  }
+
+  for (const attributeId of existingWorkspaceAttributeIds) {
+    if (!nextWorkspaceAttributeIds.has(attributeId)) {
+      await detachWorkspaceAttribute({ workspaceId, attributeId });
+    }
+  }
+
+  return getEffectiveWorkspaceAttributeConfiguration({ workspaceId });
+}
+
 function getCategoryAttributeDefaultData({
   attribute,
   defaultValue
