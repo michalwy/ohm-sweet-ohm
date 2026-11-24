@@ -45,6 +45,13 @@ the decision — fix this file.
   own lifecycle (`allowArchived`). The `{ userId, workspaceId }` checks inside domain functions
   (`authorizeWorkspacePermission`, `hasWorkspacePermission`) are role-only defence in depth: they
   cannot see a token's narrower set, so they never replace the actor check.
+- **A `"use server"` module exports only server actions.** Next.js publishes every exported async
+  function of such a module as an action the browser can call directly, past any authorization its
+  caller performs. An internal helper that a server action calls — one that takes a transaction or a
+  `workspaceId` the caller has already authorized — lives in a module without the directive,
+  marked `import "server-only"` (#291: `learnSupplierMatching` moved from
+  `src/server/integrations/matching.ts` to `matchingLearning.ts`, its pure key helpers to
+  `matchingKeys.ts`).
 - Authentication is Better Auth (ADR 0006); do not reintroduce development current-user shortcuts.
 - Registration and routing (ADR 0007): sign-up creates only a global user; sign-in returns users to
   their last accessible workspace when remembered; users choose or create workspaces at

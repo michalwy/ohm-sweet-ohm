@@ -16,7 +16,7 @@ import {
   type EffectiveCategoryAttribute
 } from "@/server/parts/attributes";
 import { parseAttributeValue } from "@/server/parts/attributeValues";
-import { learnSupplierMatching } from "@/server/integrations/matching";
+import { learnSupplierMatching } from "@/server/integrations/matchingLearning";
 import type { SupplierProviderKey } from "@/server/integrations/types";
 
 export type PartMutationResult =
