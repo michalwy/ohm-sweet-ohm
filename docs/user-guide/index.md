@@ -69,5 +69,5 @@ If you are setting up a new workspace, this sequence usually works best:
 - [Inventory](inventory.md) — storage locations and stock movements
 - [Purchasing](purchasing.md) — shopping lists and purchase orders
 - [Integrations](integrations.md) — DigiKey, TME, and currency settings
-- [Settings & Permissions](settings.md) — workspace settings and access control
+- [Settings & Permissions](settings.md) — workspace settings, access control and personal API tokens
 - [Deployment](deployment.md) — self-host OSO on your own server with a prebuilt image

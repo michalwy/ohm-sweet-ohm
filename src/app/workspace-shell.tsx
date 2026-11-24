@@ -20,7 +20,8 @@ type WorkspaceNavItem =
   | "settings-general"
   | "settings-integrations"
   | "settings-ordering"
-  | "settings-display";
+  | "settings-display"
+  | "settings-api-tokens";
 
 type WorkspaceShellProps = {
   workspaceSlug: string;
@@ -54,7 +55,8 @@ const copy = {
   general: "General",
   integrations: "Integrations",
   ordering: "Ordering",
-  display: "Display"
+  display: "Display",
+  apiTokens: "API tokens"
 };
 
 function getNavLinkClass(isActive: boolean) {
@@ -211,6 +213,15 @@ export function WorkspaceShell({
               }
             >
               {copy.display}
+            </Link>
+            <Link
+              className={getNavLinkClass(activeNavItem === "settings-api-tokens")}
+              href={`/w/${workspaceSlug}/settings/api-tokens`}
+              aria-current={
+                activeNavItem === "settings-api-tokens" ? "page" : undefined
+              }
+            >
+              {copy.apiTokens}
             </Link>
           </nav>
           <div className="border-t border-[var(--color-border)] p-3">

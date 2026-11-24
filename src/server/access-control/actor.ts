@@ -7,6 +7,7 @@ import {
   type EffectivePermissions
 } from "@/server/access-control/effectivePermissions";
 import { PERMISSIONS, type PermissionKey } from "@/server/access-control/permissions";
+import { recordApiTokenUse, verifyApiToken } from "@/server/api-tokens/apiTokens";
 import { prisma } from "@/server/db/prisma";
 
 const actorWorkspaceSelect = {
@@ -46,13 +47,6 @@ export type ActorResolveOptions = {
    * lifecycle — archiving, restoring, scheduling deletion — and opts in.
    */
   allowArchived?: boolean;
-};
-
-/** What a verified API token says about itself. */
-export type VerifiedApiToken = {
-  userId: string;
-  workspaceId: string;
-  permissions: PermissionKey[];
 };
 
 
@@ -127,15 +121,12 @@ export async function resolveMemberActor(
 }
 
 /**
- * Verifies a raw API token. A stub until the personal access tokens issue lands: no token is valid
- * yet, so every token request is unauthenticated.
+ * The actor for a raw API token (#273): the token's user, in the token's workspace, with the
+ * token's set intersected with the user's roles there. `null` for a malformed, unknown, revoked or
+ * expired token, a workspace the user is no longer a member of, or an archived workspace — always,
+ * whatever `allowArchived` says: workspace lifecycle actions are not exposed to tokens (ADR 0030).
+ * A token that resolves has its last-used time recorded.
  */
-export async function verifyApiToken(token: string): Promise<VerifiedApiToken | null> {
-  void token;
-
-  return null;
-}
-
 export async function resolveTokenActor(
   token: string,
   options: ActorResolveOptions = {}
@@ -146,14 +137,20 @@ export async function resolveTokenActor(
     return null;
   }
 
-  return resolveMemberActor(
+  const actor = await resolveMemberActor(
     {
       userId: verified.userId,
       workspace: { id: verified.workspaceId },
       tokenPermissions: verified.permissions
     },
-    options
+    { ...options, allowArchived: false }
   );
+
+  if (actor) {
+    await recordApiTokenUse(verified.tokenId);
+  }
+
+  return actor;
 }
 
 export function actorHasPermission(actor: WorkspaceActor, permission: PermissionKey) {
