@@ -113,35 +113,78 @@ function describeEndpoint(endpoint: RestEndpoint): JsonObject {
     responses
   };
 
-  if (endpoint.method === "get") {
-    const parameters = describeQueryParameters(input);
+  const pathNames = getPathParameterNames(endpoint.path);
+  const { pathInput, otherInput } = splitPathInput(input, pathNames);
+  const parameters = describeParameters(pathInput, "path");
 
-    if (parameters.length > 0) {
-      described.parameters = parameters;
-    }
-  } else {
+  if (endpoint.method === "get") {
+    parameters.push(...describeParameters(otherInput, "query"));
+  } else if (Object.keys((otherInput.properties ?? {}) as JsonObject).length > 0) {
     described.requestBody = {
       required: true,
-      content: { "application/json": { schema: input } }
+      content: { "application/json": { schema: otherInput } }
     };
+  }
+
+  if (parameters.length > 0) {
+    described.parameters = parameters;
   }
 
   return described;
 }
 
-function describeQueryParameters(input: JsonObject): JsonObject[] {
+/** The `{param}` placeholders of an endpoint path, e.g. `["id"]` for `/organizations/{id}`. */
+export function getPathParameterNames(path: string) {
+  return [...path.matchAll(/\{([^}]+)\}/g)].map((match) => match[1]);
+}
+
+/**
+ * An operation's input schema split in two: the fields its path carries (`{id}`) and the rest,
+ * which is the query string of a `get` and the JSON body of any other method (#279).
+ */
+function splitPathInput(input: JsonObject, pathNames: string[]) {
+  const properties = (input.properties ?? {}) as Record<string, JsonObject>;
+  const required = (input.required ?? []) as string[];
+  const pick = (keep: (name: string) => boolean): JsonObject => {
+    const picked: JsonObject = {
+      ...input,
+      properties: Object.fromEntries(Object.entries(properties).filter(([name]) => keep(name)))
+    };
+    const pickedRequired = required.filter(keep);
+
+    if (pickedRequired.length > 0) {
+      picked.required = pickedRequired;
+    } else {
+      delete picked.required;
+    }
+
+    return picked;
+  };
+
+  return {
+    pathInput: pick((name) => pathNames.includes(name)),
+    otherInput: pick((name) => !pathNames.includes(name))
+  };
+}
+
+function describeParameters(input: JsonObject, location: "path" | "query"): JsonObject[] {
   const properties = (input.properties ?? {}) as Record<string, JsonObject>;
   const required = new Set((input.required ?? []) as string[]);
 
   return Object.entries(properties).map(([name, schema]) => {
     const { description, ...rest } = schema;
-    const parameter: JsonObject = { name, in: "query", required: required.has(name), schema: rest };
+    const parameter: JsonObject = {
+      name,
+      in: location,
+      required: location === "path" || required.has(name),
+      schema: rest
+    };
 
     if (typeof description === "string") {
       parameter.description = description;
     }
 
-    if (rest.type === "array") {
+    if (location === "query" && rest.type === "array") {
       parameter.style = "form";
       parameter.explode = true;
     }

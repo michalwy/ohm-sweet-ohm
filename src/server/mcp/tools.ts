@@ -1,6 +1,13 @@
 import "server-only";
 
 import type { OperationImplementation } from "@/server/api/execute";
+import {
+  createOrganizationImplementation,
+  deleteOrganizationImplementation,
+  getOrganizationImplementation,
+  listOrganizationsImplementation,
+  updateOrganizationImplementation
+} from "@/server/organizations/organizationApi";
 import { whoamiImplementation } from "@/server/workspaces/workspaceApi";
 
 /**
@@ -36,5 +43,20 @@ export function defineMcpTool(
  * here. Tool names are stable once released (ADR 0030).
  */
 export const mcpTools: McpTool[] = [
-  defineMcpTool("Who am I", whoamiImplementation, { readOnly: true })
+  defineMcpTool("Who am I", whoamiImplementation, { readOnly: true }),
+  defineMcpTool("List organizations", listOrganizationsImplementation, { readOnly: true }),
+  defineMcpTool("Get an organization", getOrganizationImplementation, { readOnly: true }),
+  defineMcpTool("Create an organization", createOrganizationImplementation, {
+    readOnly: false,
+    destructive: false
+  }),
+  defineMcpTool("Update an organization", updateOrganizationImplementation, {
+    readOnly: false,
+    destructive: true,
+    idempotent: true
+  }),
+  defineMcpTool("Delete an organization", deleteOrganizationImplementation, {
+    readOnly: false,
+    destructive: true
+  })
 ];

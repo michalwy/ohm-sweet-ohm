@@ -1,6 +1,9 @@
 "use server";
 
+import type { z } from "zod";
+
 import type { PermissionKey } from "@/server/access-control/permissions";
+import { parseOperationInput, type Operation } from "@/server/api/operations";
 import { getAuthorizedSessionActor } from "@/server/auth/currentActor";
 import type { ListPage } from "@/server/pagination";
 import {
@@ -10,6 +13,12 @@ import {
   updateOrganizationForWorkspace,
   type OrganizationSummary
 } from "@/server/organizations/organizations";
+import {
+  createOrganizationOperation,
+  deleteOrganizationOperation,
+  listOrganizationsOperation,
+  updateOrganizationOperation
+} from "@/server/organizations/organizationOperations";
 
 export type OrganizationActionResult<T> =
   | { ok: true; data: T; submittedAt: number }
@@ -26,15 +35,12 @@ export async function getOrganizationsPageForWorkspace(input: {
   roleFilter?: string | null;
 }): Promise<OrganizationActionResult<ListPage<OrganizationSummary>>> {
   try {
-    const context = await getContext(input.workspaceSlug, "organizations:read");
+    const { workspaceSlug, ...data } = parse(listOrganizationsOperation, input);
+    const context = await getContext(workspaceSlug, listOrganizationsOperation.permission);
     const page = await getOrganizationsForWorkspace({
       userId: context.user.id,
       workspaceId: context.workspace.id,
-      cursor: input.cursor,
-      pageSize: input.pageSize,
-      sortDir: input.sortDir,
-      searchQuery: input.searchQuery,
-      roleFilter: input.roleFilter
+      ...data
     });
     return success(page);
   } catch (error) {
@@ -53,15 +59,12 @@ export async function createOrganizationAction(input: {
   defaultTaxRate?: string | null;
 }): Promise<OrganizationActionResult<{ id: string }>> {
   try {
-    const context = await getContext(input.workspaceSlug, "organizations:write");
+    const { workspaceSlug, ...data } = parse(createOrganizationOperation, input);
+    const context = await getContext(workspaceSlug, createOrganizationOperation.permission);
     const result = await createOrganizationForWorkspace({
       userId: context.user.id,
       workspaceId: context.workspace.id,
-      name: input.name,
-      roles: input.roles,
-      currency: input.currency,
-      defaultPriceEntryMode: input.defaultPriceEntryMode,
-      defaultTaxRate: input.defaultTaxRate
+      ...data
     });
     if (!result.ok) throw new Error(result.error);
     return success({ id: result.id });
@@ -80,16 +83,12 @@ export async function updateOrganizationAction(input: {
   defaultTaxRate?: string | null;
 }): Promise<OrganizationActionResult<null>> {
   try {
-    const context = await getContext(input.workspaceSlug, "organizations:write");
+    const { workspaceSlug, ...data } = parse(updateOrganizationOperation, input);
+    const context = await getContext(workspaceSlug, updateOrganizationOperation.permission);
     const result = await updateOrganizationForWorkspace({
       userId: context.user.id,
       workspaceId: context.workspace.id,
-      id: input.id,
-      name: input.name,
-      roles: input.roles,
-      currency: input.currency,
-      defaultPriceEntryMode: input.defaultPriceEntryMode,
-      defaultTaxRate: input.defaultTaxRate
+      ...data
     });
     if (!result.ok) throw new Error(result.error);
     return success(null);
@@ -103,11 +102,12 @@ export async function deleteOrganizationAction(input: {
   id: string;
 }): Promise<OrganizationActionResult<null>> {
   try {
-    const context = await getContext(input.workspaceSlug, "organizations:write");
+    const { workspaceSlug, ...data } = parse(deleteOrganizationOperation, input);
+    const context = await getContext(workspaceSlug, deleteOrganizationOperation.permission);
     const result = await deleteOrganizationForWorkspace({
       userId: context.user.id,
       workspaceId: context.workspace.id,
-      id: input.id
+      id: data.id
     });
     if (!result.ok) throw new Error(result.error);
     return success(null);
@@ -117,6 +117,25 @@ export async function deleteOrganizationAction(input: {
 }
 
 // --- Helpers ---
+
+/**
+ * Validates an action's input through its operation's schema (#279), so the form, REST and MCP
+ * accept the same shapes; the workspace slug is the session's and stays outside the schema.
+ * Throws `invalid-input`.
+ */
+function parse<TInput extends z.ZodType>(
+  operation: Operation<TInput, z.ZodType>,
+  input: { workspaceSlug: string }
+): { workspaceSlug: string } & z.output<TInput> {
+  const { workspaceSlug, ...rawInput } = input;
+  const parsed = parseOperationInput(operation, rawInput);
+
+  if (!parsed.ok) {
+    throw new Error(parsed.error.code);
+  }
+
+  return Object.assign({ workspaceSlug }, parsed.data);
+}
 
 async function getContext(workspaceSlug: string, permission: PermissionKey) {
   return getAuthorizedSessionActor(workspaceSlug, permission);

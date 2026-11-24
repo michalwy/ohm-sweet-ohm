@@ -25,3 +25,8 @@ Use the pencil icon on any row to open the edit dialog. You can rename the organ
 Use the delete icon on any row. An organization cannot be deleted if it is still referenced by parts (as a manufacturer) or by purchase orders (as a supplier). Remove those references first.
 
 > **Note:** Organizations with the **Manufacturer** role are also created automatically when you type a new manufacturer name in the part form. You can then open the organization in the Organizations screen to assign the Supplier role if the same company also sells parts to you.
+
+## From An Assistant Or Script
+
+Organizations can also be listed, read, created, changed and deleted through the API and the MCP
+server, with the same rules as this screen. See [API & MCP](api-and-mcp.md#what-is-available).

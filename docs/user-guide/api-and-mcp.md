@@ -175,6 +175,7 @@ complete, exact reference for the version you run.
 | Area | REST endpoints | MCP tools |
 | --- | --- | --- |
 | Workspace | `GET /me`, `GET /workspace` | `whoami` |
+| Organizations (manufacturers and suppliers) | `GET /organizations` (`searchQuery`, `roleFilter`), `POST /organizations`, `GET /organizations/{id}`, `PATCH /organizations/{id}` (only the fields you send change), `DELETE /organizations/{id}` | `list_organizations`, `get_organization`, `create_organization`, `update_organization`, `delete_organization` |
 
 ## What is not exposed
 

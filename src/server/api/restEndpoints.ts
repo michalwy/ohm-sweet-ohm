@@ -2,6 +2,13 @@ import type { z } from "zod";
 
 import type { Operation } from "@/server/api/operations";
 import {
+  createOrganizationOperation,
+  deleteOrganizationOperation,
+  getOrganizationOperation,
+  listOrganizationsOperation,
+  updateOrganizationOperation
+} from "@/server/organizations/organizationOperations";
+import {
   getWorkspaceOperation,
   whoamiOperation
 } from "@/server/workspaces/workspaceOperations";
@@ -15,7 +22,9 @@ import {
  * - `path` is relative to `/api/v1`, with OpenAPI `{param}` placeholders;
  * - a `get` endpoint reads its input from the query string, every other method from a JSON body;
  * - list endpoints are `get`, spread `listPageInputShape` and return `listPageOutputSchema`, so
- *   paging is `?cursor=<nextCursor>&pageSize=<n>` everywhere.
+ *   paging is `?cursor=<nextCursor>&pageSize=<n>` everywhere;
+ * - a `{param}` in `path` is served by a `[param]` route segment and is an input field of the
+ *   operation, taken from the path, not from the query string or body.
  */
 export type RestMethod = "get" | "post" | "put" | "patch" | "delete";
 
@@ -37,5 +46,40 @@ export const restEndpoints: RestEndpoint[] = [
     summary: "The token's workspace",
     tag: "Workspace",
     operation: getWorkspaceOperation
+  },
+  {
+    method: "get",
+    path: "/organizations",
+    summary: "List organizations",
+    tag: "Organizations",
+    operation: listOrganizationsOperation
+  },
+  {
+    method: "post",
+    path: "/organizations",
+    summary: "Create an organization",
+    tag: "Organizations",
+    operation: createOrganizationOperation
+  },
+  {
+    method: "get",
+    path: "/organizations/{id}",
+    summary: "Get an organization",
+    tag: "Organizations",
+    operation: getOrganizationOperation
+  },
+  {
+    method: "patch",
+    path: "/organizations/{id}",
+    summary: "Update an organization",
+    tag: "Organizations",
+    operation: updateOrganizationOperation
+  },
+  {
+    method: "delete",
+    path: "/organizations/{id}",
+    summary: "Delete an organization",
+    tag: "Organizations",
+    operation: deleteOrganizationOperation
   }
 ];
