@@ -94,7 +94,7 @@ export const serverActionCoverage: ServerActionCoverageMap = {
     updateDigiKeyIntegrationSettings: { excluded: CREDENTIALS }
   },
   "src/server/integrations/matching.ts": {
-    getSupplierMatchingSuggestionsForWorkspace: { pending: "#285" }
+    getSupplierMatchingSuggestionsForWorkspace: { tool: "get_supplier_matching_suggestions" }
   },
   "src/server/integrations/settingsActions.ts": {
     updateDigiKeyIntegrationSettings: { excluded: CREDENTIALS },
@@ -102,8 +102,8 @@ export const serverActionCoverage: ServerActionCoverageMap = {
     updateActiveSupplierProviderSettings: { tool: "update_workspace_settings" }
   },
   "src/server/integrations/supplierActions.ts": {
-    searchSupplierPartsForWorkspace: { pending: "#285" },
-    getSupplierPartAttributesForWorkspace: { pending: "#285" }
+    searchSupplierPartsForWorkspace: { tool: "search_supplier_parts" },
+    getSupplierPartAttributesForWorkspace: { tool: "get_supplier_part_attributes" }
   },
   "src/server/inventory/entryActions.ts": {
     createInventoryEntryForWorkspace: { tool: "create_inventory_entry" },

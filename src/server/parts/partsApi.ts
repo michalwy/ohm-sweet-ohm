@@ -3,11 +3,13 @@ import "server-only";
 import type { WorkspaceActor } from "@/server/access-control/actor";
 import { implementOperation } from "@/server/api/execute";
 import { prisma } from "@/server/db/prisma";
+import type { OperationInput } from "@/server/api/operations";
 import { getPartsListPage, type PartsListItem } from "@/server/parts/getParts";
 import {
   createPartForActor,
   deletePartForActor,
-  updatePartForActor
+  updatePartForActor,
+  type SupplierMatchingPayload
 } from "@/server/parts/partMutations";
 import {
   createPartOperation,
@@ -58,7 +60,10 @@ export const createPartImplementation = implementOperation(
       primaryCategoryId: emptyToNull(input.primaryCategoryId),
       secondaryCategoryId: emptyToNull(input.secondaryCategoryId),
       defaultLocationId: emptyToNull(input.defaultLocationId),
-      attributeValues: { values: toAttributeValueMap(input.attributeValues), mode: "patch" }
+      attributeValues: { values: toAttributeValueMap(input.attributeValues), mode: "patch" },
+      supplierMatching: input.supplierMatching
+        ? await toSupplierMatchingPayload(actor, input.supplierMatching)
+        : null
     });
 
     return readPart(actor, id);
@@ -149,4 +154,49 @@ function emptyToNull(value: string | null | undefined) {
 
 function optionalEmptyToNull(value: string | null | undefined) {
   return value === undefined ? undefined : emptyToNull(value);
+}
+
+/**
+ * `create_part`'s accepted supplier matches (#285), as the add-part dialog submits them. The
+ * category and attributes they name must be the workspace's own: an id of another workspace is not
+ * found, so the API cannot plant another workspace's ids in this one's matching statistics.
+ */
+async function toSupplierMatchingPayload(
+  actor: WorkspaceActor,
+  matching: NonNullable<OperationInput<typeof createPartOperation>["supplierMatching"]>
+): Promise<SupplierMatchingPayload> {
+  const workspaceId = actor.workspace.id;
+  const targetCategoryId = matching.targetCategoryId || null;
+
+  if (targetCategoryId) {
+    const category = await prisma.partCategory.findFirst({
+      where: { id: targetCategoryId, workspaceId },
+      select: { id: true }
+    });
+
+    if (!category) {
+      throw new Error("category-not-found");
+    }
+  }
+
+  const attributeIds = [...new Set(matching.attributeMappings.map((item) => item.targetAttributeId))];
+  const attributeCount = attributeIds.length
+    ? await prisma.attribute.count({ where: { id: { in: attributeIds }, workspaceId } })
+    : 0;
+
+  if (attributeCount !== attributeIds.length) {
+    throw new Error("attribute-not-found");
+  }
+
+  return {
+    mode: "create-from-suggestion",
+    provider: matching.provider,
+    sourceCategoryKey: matching.sourceCategoryKey,
+    sourceManufacturerKey: matching.sourceManufacturerKey,
+    targetCategoryId,
+    attributeMappings: matching.attributeMappings.map((item) => ({
+      sourceAttributeKey: item.sourceAttributeKey,
+      targetAttributeId: item.targetAttributeId
+    }))
+  };
 }

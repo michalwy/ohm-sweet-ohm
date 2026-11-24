@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import { listPageInputShape, listPageOutputSchema } from "@/server/api/listSchemas";
 import { defineOperation } from "@/server/api/operations";
+import { supplierMatchingInputSchema } from "@/server/integrations/supplierOperations";
 
 /**
  * Parts in the API and MCP (#277): `list_parts`, `get_part`, `create_part`, `update_part` and
@@ -205,7 +206,7 @@ const partWriteFields = {
 export const createPartOperation = defineOperation({
   name: "create_part",
   description:
-    "Create a part. A part is unique in the workspace by manufacturer and catalog number (duplicate-part otherwise). Returns the new part.",
+    "Create a part. A part is unique in the workspace by manufacturer and catalog number (duplicate-part otherwise). For a part taken from a supplier result (search_supplier_parts), pass the accepted matches as supplierMatching. Returns the new part.",
   permission: "parts:write",
   input: z.object({
     catalogNumber: partWriteFields.catalogNumber,
@@ -215,7 +216,8 @@ export const createPartOperation = defineOperation({
     primaryCategoryId: partWriteFields.primaryCategoryId.optional(),
     secondaryCategoryId: partWriteFields.secondaryCategoryId.optional(),
     defaultLocationId: partWriteFields.defaultLocationId.optional(),
-    attributeValues: partWriteFields.attributeValues.optional()
+    attributeValues: partWriteFields.attributeValues.optional(),
+    supplierMatching: supplierMatchingInputSchema.optional()
   }),
   output: partSchema
 });

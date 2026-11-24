@@ -24,6 +24,7 @@ import {
 } from "@/server/organizations/organizationApi";
 import * as buildApi from "@/server/builds/buildApi";
 import * as designApi from "@/server/designs/designApi";
+import * as supplierApi from "@/server/integrations/supplierApi";
 import * as attributeApi from "@/server/parts/attributeApi";
 import * as categoryApi from "@/server/parts/categoryApi";
 import * as purchaseOrderApi from "@/server/purchase-orders/purchaseOrderApi";
@@ -44,9 +45,16 @@ import * as workspaceApi from "@/server/workspaces/workspaceApi";
  * the user before calling a destructive tool. Declared explicitly, never left to the client's
  * defaults (which assume the worst).
  */
-export type McpToolBehavior =
+export type McpToolBehavior = (
   | { readOnly: true }
-  | { readOnly: false; destructive: boolean; idempotent?: boolean };
+  | { readOnly: false; destructive: boolean; idempotent?: boolean }
+) & {
+  /**
+   * True for a tool that reaches outside the app — the supplier lookup tools call DigiKey or TME
+   * (#285). Every other tool works on the workspace's own data only.
+   */
+  openWorld?: boolean;
+};
 
 export type McpTool = {
   title: string;
@@ -134,6 +142,10 @@ export const mcpTools: McpTool[] = [
     idempotent: true
   }),
   defineMcpTool("Delete a part", deletePartImplementation, { readOnly: false, destructive: true }),
+  // Supplier lookup (#285): the search and the attribute lookup call DigiKey or TME
+  defineMcpTool("Search supplier parts", supplierApi.searchSupplierPartsImplementation, { readOnly: true, openWorld: true }),
+  defineMcpTool("Supplier part attributes", supplierApi.getSupplierPartAttributesImplementation, { readOnly: true, openWorld: true }),
+  defineMcpTool("Supplier matching suggestions", supplierApi.getSupplierMatchingSuggestionsImplementation, { readOnly: true }),
   // Shopping lists (#281)
   defineMcpTool("List shopping lists", shoppingListApi.listShoppingListsImplementation, { readOnly: true }),
   defineMcpTool("Get a shopping list", shoppingListApi.getShoppingListImplementation, { readOnly: true }),
