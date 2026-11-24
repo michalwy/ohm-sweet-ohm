@@ -3,6 +3,7 @@
 import { getAuthorizedSessionActor } from "@/server/auth/currentActor";
 import {
   addShoppingListItem,
+  addShoppingListItems,
   convertShoppingListToOrder,
   createShoppingList,
   deleteShoppingList,
@@ -234,33 +235,13 @@ export async function addMultipleShoppingListItemsForWorkspace(input: {
 }): Promise<ShoppingListActionResult<{ addedCount: number }>> {
   try {
     const context = await getAuthorizedContext(input.workspaceSlug, "shopping-lists:write");
-    const list = await getShoppingListDetail(context.workspace.id, input.listId);
-    if (!list) throw new Error("list-not-found");
+    const result = await addShoppingListItems({
+      workspaceId: context.workspace.id,
+      listId: input.listId,
+      items: input.items
+    });
 
-    const existingByPartId = new Map(list.items.map((item) => [item.partId, item]));
-
-    for (const item of input.items) {
-      const existing = existingByPartId.get(item.partId);
-      if (existing) {
-        const mergedQty = (parseFloat(existing.quantity) + parseFloat(item.quantity)).toString();
-        await updateShoppingListItem({
-          workspaceId: context.workspace.id,
-          listId: input.listId,
-          itemId: existing.id,
-          quantity: mergedQty,
-          description: existing.description
-        });
-      } else {
-        await addShoppingListItem({
-          workspaceId: context.workspace.id,
-          listId: input.listId,
-          partId: item.partId,
-          quantity: item.quantity
-        });
-      }
-    }
-
-    return success({ addedCount: input.items.length });
+    return success(result);
   } catch (error) {
     return failure(error);
   }

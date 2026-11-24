@@ -148,6 +148,10 @@ An area exposes an operation in six steps (#274, #275, #276, #287):
    field of the operation's input — the MCP tool takes it as an argument — while the OpenAPI
    document describes it as a path parameter and leaves it out of the body. Updates are `PATCH`
    with every field but the id optional: an omitted field keeps its value, `null` clears it.
+   Next.js needs one slug name per directory level, so a sub-resource of another area's record
+   uses that area's segment name (#281: `GET /parts/{id}/shopping-lists` lives under
+   `src/app/api/v1/parts/[id]/`, beside the parts area's own `[id]` route); a batch variant of a
+   create is a static `…/batch` segment beside the dynamic one.
    A database constraint error is turned into the domain's code by `withDomainErrors`
    (`src/server/api/domainErrors.ts`, #278), never left as an `internal-error`.
 3. **MCP**: `defineMcpTool(title, implementation, behavior)` appended to `mcpTools`

@@ -33,6 +33,19 @@ import {
   updatePartCategoryOperation
 } from "@/server/parts/categoryOperations";
 import {
+  addShoppingListItemOperation,
+  addShoppingListItemsOperation,
+  convertShoppingListToPurchaseOrderOperation,
+  createShoppingListOperation,
+  deleteShoppingListOperation,
+  getPartShoppingListsOperation,
+  getShoppingListOperation,
+  listShoppingListsOperation,
+  removeShoppingListItemOperation,
+  updateShoppingListItemOperation,
+  updateShoppingListOperation
+} from "@/server/shopping-lists/shoppingListOperations";
+import {
   createUnitOperation,
   deleteUnitOperation,
   listUnitsOperation,
@@ -164,5 +177,17 @@ export const restEndpoints: RestEndpoint[] = [
     summary: "Delete a part",
     tag: "Parts",
     operation: deletePartOperation
-  }
+  },
+  // Shopping lists (#281)
+  { method: "get", path: "/shopping-lists", summary: "List shopping lists", tag: "Shopping lists", operation: listShoppingListsOperation },
+  { method: "post", path: "/shopping-lists", summary: "Create a shopping list", tag: "Shopping lists", operation: createShoppingListOperation },
+  { method: "get", path: "/shopping-lists/{listId}", summary: "Get a shopping list with its items", tag: "Shopping lists", operation: getShoppingListOperation },
+  { method: "patch", path: "/shopping-lists/{listId}", summary: "Update a shopping list", tag: "Shopping lists", operation: updateShoppingListOperation },
+  { method: "delete", path: "/shopping-lists/{listId}", summary: "Delete a shopping list", tag: "Shopping lists", operation: deleteShoppingListOperation },
+  { method: "post", path: "/shopping-lists/{listId}/items", summary: "Add a part to a shopping list", tag: "Shopping lists", operation: addShoppingListItemOperation },
+  { method: "post", path: "/shopping-lists/{listId}/items/batch", summary: "Add several parts to a shopping list", tag: "Shopping lists", operation: addShoppingListItemsOperation },
+  { method: "patch", path: "/shopping-lists/{listId}/items/{itemId}", summary: "Update a shopping list item", tag: "Shopping lists", operation: updateShoppingListItemOperation },
+  { method: "delete", path: "/shopping-lists/{listId}/items/{itemId}", summary: "Remove a shopping list item", tag: "Shopping lists", operation: removeShoppingListItemOperation },
+  { method: "post", path: "/shopping-lists/{listId}/convert-to-purchase-order", summary: "Put shopping list items on a purchase order", tag: "Shopping lists", operation: convertShoppingListToPurchaseOrderOperation },
+  { method: "get", path: "/parts/{id}/shopping-lists", summary: "The shopping lists a part is on", tag: "Shopping lists", operation: getPartShoppingListsOperation }
 ];

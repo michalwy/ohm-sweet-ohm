@@ -179,18 +179,18 @@ export const serverActionCoverage: ServerActionCoverageMap = {
     saveManualExchangeRateForWorkspace: { pending: "#282" }
   },
   "src/server/shopping-lists/shoppingListActions.ts": {
-    getShoppingListsForWorkspace: { pending: "#281" },
-    getShoppingListDetailForWorkspace: { pending: "#281" },
-    getPartShoppingListMembershipForWorkspace: { pending: "#281" },
-    getAllShoppingListsForWorkspace: { pending: "#281" },
-    createShoppingListForWorkspace: { pending: "#281" },
-    updateShoppingListForWorkspace: { pending: "#281" },
-    deleteShoppingListForWorkspace: { pending: "#281" },
-    addShoppingListItemForWorkspace: { pending: "#281" },
-    updateShoppingListItemForWorkspace: { pending: "#281" },
-    removeShoppingListItemForWorkspace: { pending: "#281" },
-    convertShoppingListToOrderForWorkspace: { pending: "#281" },
-    addMultipleShoppingListItemsForWorkspace: { pending: "#281" }
+    getShoppingListsForWorkspace: { tool: "list_shopping_lists" },
+    getShoppingListDetailForWorkspace: { tool: "get_shopping_list" },
+    getPartShoppingListMembershipForWorkspace: { tool: "get_part_shopping_lists" },
+    getAllShoppingListsForWorkspace: { tool: "list_shopping_lists" },
+    createShoppingListForWorkspace: { tool: "create_shopping_list" },
+    updateShoppingListForWorkspace: { tool: "update_shopping_list" },
+    deleteShoppingListForWorkspace: { tool: "delete_shopping_list" },
+    addShoppingListItemForWorkspace: { tool: "add_shopping_list_item" },
+    updateShoppingListItemForWorkspace: { tool: "update_shopping_list_item" },
+    removeShoppingListItemForWorkspace: { tool: "remove_shopping_list_item" },
+    convertShoppingListToOrderForWorkspace: { tool: "convert_shopping_list_to_purchase_order" },
+    addMultipleShoppingListItemsForWorkspace: { tool: "add_shopping_list_items" }
   },
   "src/server/units/unitActions.ts": {
     getUnitsForWorkspace: { tool: "list_units" },
