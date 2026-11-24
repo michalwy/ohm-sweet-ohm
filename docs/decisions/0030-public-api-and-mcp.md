@@ -30,6 +30,11 @@ and MCP endpoints themselves.
 - **MCP over Streamable HTTP at `/api/mcp`**, served by the Next.js app itself — the same container,
   on the Pi. There is no separate stdio server (the owner, 2026-11-24); a stdio-only client reaches
   it through a bridge such as `mcp-remote`.
+- **The MCP endpoint is stateless** (#275's reading): each POST carries its own bearer token and is
+  answered as plain JSON by a server built for that request; there is no MCP session id and no
+  server-to-client SSE stream (`GET` and `DELETE` answer 405, as the Streamable HTTP specification
+  allows). Every call therefore re-checks the token, and the single app process keeps no session
+  state. Server-initiated messages (progress, sampling) would need sessions and are a later issue's.
 - **Both are served on the app's public HTTPS URL**, behind the operator's existing reverse proxy,
   and protected by tokens (the owner, 2026-11-24).
 
@@ -95,6 +100,9 @@ webhooks (the owner, 2026-11-24).
 - **The official MCP TypeScript SDK** (`@modelcontextprotocol/sdk`, latest stable at adoption) for
   the MCP server and its Streamable HTTP transport. It accepts zod schemas for tool definitions
   directly.
+- **`@seriousme/openapi-schema-validator`**, a development dependency only, validates the generated
+  document against the OpenAPI 3.1 schema in a unit test (#274's reading: the *Done when* asks for
+  that validation, and a hand-written check would test only what it thought of).
 - Both are added by the issue that first needs them (#272 for zod, the MCP foundation issue for the
   SDK), at their latest stable versions then, and kept current by Renovate like every dependency.
 

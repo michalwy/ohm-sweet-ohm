@@ -36,6 +36,19 @@ never `admin`), an optional expiry and a last-used time. Only the SHA-256 hash o
 `src/server/api-tokens/`; `resolveTokenActor` turns a token into a `WorkspaceActor` and always
 denies an archived workspace. Users manage their tokens at **Settings → API tokens**.
 
+The foundations (#274, #275) are in `src/server/api/` and `src/server/mcp/`. An operation (zod
+schemas plus permission, `*Operations.ts`) is bound to its service function by `implementOperation`;
+`executeOperation` checks the permission on the actor, validates the input, runs it and checks the
+output against its schema, for both adapters. The REST adapter (`restOperation`, route files under
+`src/app/api/v1/`) authenticates the bearer token, reads a `GET` input from the query string and
+other methods' from a JSON body, and answers `{ "error": { code, message, issues? } }` on failure
+(401 token, 403 permission, 404 not in the workspace, 400 input, 409 state). `restEndpoints.ts`
+lists the endpoints, and `/api/v1/openapi.json` is generated from it. The MCP server
+(`src/app/api/mcp/route.ts`) is stateless: each POST is authenticated by its token and served by a
+fresh SDK server whose tools — the registry in `src/server/mcp/tools.ts` — run as that token's actor;
+a failure is a tool error carrying the same error object. The first endpoints are `GET /api/v1/me`,
+`GET /api/v1/workspace` and the `whoami` tool.
+
 ## Intended Shape
 
 - `src/app`: Next.js App Router entry points and route-level UI.

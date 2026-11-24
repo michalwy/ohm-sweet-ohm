@@ -43,6 +43,21 @@ A token stops working when you revoke it, when it expires, when its workspace is
 you leave its workspace. The **Status** column shows which of these applies; **Last used** shows
 when the token was last accepted (updated at most once a minute).
 
+### Using a token
+
+Send the token in every request's `Authorization` header as `Bearer <token>`; the API and the MCP
+server accept nothing else — being signed in to OSO in your browser does not open them.
+
+- **REST API** — `<your OSO address>/api/v1`. `GET /api/v1/me` tells you who the token acts as, in
+  which workspace and with which permissions. The full description of the API, in OpenAPI 3.1, is
+  at `/api/v1/openapi.json` (no token needed to read it).
+- **MCP** — `<your OSO address>/api/mcp`, over Streamable HTTP: add it to an MCP client such as
+  Claude Code or Claude Desktop as a remote server, with the token as its bearer header. The
+  `whoami` tool tells the agent who it acts as.
+
+The API and MCP grow area by area; what each one offers is listed in its description and its tool
+list.
+
 ### Revoking a token
 
 Select **Revoke** on the token's row and confirm. Anything using the token stops working at once;
