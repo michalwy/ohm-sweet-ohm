@@ -63,7 +63,8 @@ the decision — fix this file.
   `getCurrentUserWorkspaces()` returns only active ones; the shared layout at
   `src/app/w/[workspaceSlug]/layout.tsx` redirects archived workspace URLs to
   `/workspaces?notice=workspace-archived`; only admins may archive or restore, from Settings →
-  General.
+  General, the workspace picker or the API (#286); a workspace whose deletion is scheduled is not
+  restored.
 
 ## Public API and MCP
 
@@ -84,9 +85,13 @@ says what a member may do. Rules:
 
 - **The value exists once**, in `createApiToken`'s answer; nothing reads it back, and no listing or
   log carries it or its hash.
-- **`admin` is never a token permission**: presets and custom sets hold named keys only, so a token
-  cannot reach `admin`-gated workspace lifecycle actions; `resolveTokenActor` also ignores
-  `allowArchived`.
+- **`admin` is never a token permission**: presets and custom sets hold named keys only;
+  `resolveTokenActor` also ignores `allowArchived`, so a token of an archived workspace is refused.
+  The `admin`-gated workspace operations the owner opened to the API (#286: settings, starter
+  dictionaries, create, archive, restore — never demo reset or deletion) take the token's
+  `workspace:write` **and** the user's `admin` role in the workspace acted on, read from the roles
+  by `requireUserWorkspaceAdmin` (`src/server/workspaces/workspaceLifecycle.ts`); archive and
+  restore act on any workspace of the user, by id, while the token stays bound to its own.
 - **Presets are stored by name** (`read-only`, `read-write`) and resolved on use
   (`apiTokenPermissions.ts`), so a permission key added for a new area reaches existing tokens of
   that preset; a custom set is stored as keys.

@@ -36,8 +36,16 @@ and create a new one.
 
 A token can never do more than you can. What it may do is the permissions you gave it **and** what
 your roles in its workspace allow, both at once — so a read-write token of a reader can only read,
-and if your roles change, your tokens follow on their next use. No token holds the workspace's
-administrative access: archiving, restoring, resetting or deleting a workspace stays in the app.
+and if your roles change, your tokens follow on their next use.
+
+A few things in the app are for a workspace's **administrators** only: its ordering and supplier
+settings, loading the starter dictionaries, and archiving or restoring it. A token reaches them only
+when it has the `workspace:write` permission ("Update workspace settings") **and** you are an
+administrator of the workspace it acts on. A token with `workspace:write` can also create a new
+workspace (you become its owner), and archive or restore any workspace you administer, not only its
+own — archiving its own workspace ends the token. Resetting a workspace to demo data and deleting a
+workspace stay in the app. A token stays bound to its own workspace: to work in a workspace you
+created or restored, create a token for it.
 
 A token stops working when you revoke it, when it expires, when its workspace is archived, or when
 you leave its workspace. The **Status** column shows which of these applies; **Last used** shows

@@ -3,10 +3,11 @@
 import "server-only";
 
 import { getCurrentSession } from "@/server/auth/currentContext";
-import { prisma } from "@/server/db/prisma";
-
-const VALID_DATE_FORMATS = ["locale", "abbr", "YMD", "DMY", "MDY"] as const;
-const VALID_TIME_FORMATS = ["locale", "12h", "24h"] as const;
+import {
+  isDisplayDateFormat,
+  isDisplayTimeFormat
+} from "@/server/user/displayPreferenceFormats";
+import { updateDisplayPreferencesForUser } from "@/server/user/displayPreferenceMutations";
 
 type UpdateUserDisplayPreferencesInput = {
   dateFormat: string;
@@ -26,20 +27,15 @@ export async function updateUserDisplayPreferences(
     return { ok: false, error: "unauthenticated" };
   }
 
-  const isValidDate = (VALID_DATE_FORMATS as readonly string[]).includes(input.dateFormat);
-  const isValidTime = (VALID_TIME_FORMATS as readonly string[]).includes(input.timeFormat);
-  if (!isValidDate || !isValidTime) {
+  if (!isDisplayDateFormat(input.dateFormat) || !isDisplayTimeFormat(input.timeFormat)) {
     return { ok: false, error: "invalid-format" };
   }
 
   try {
-    await prisma.user.update({
-      where: { id: session.user.id },
-      data: {
-        dateFormat: input.dateFormat,
-        timeFormat: input.timeFormat,
-        relativeFormat: input.relativeFormat
-      }
+    await updateDisplayPreferencesForUser(session.user.id, {
+      dateFormat: input.dateFormat,
+      timeFormat: input.timeFormat,
+      relativeFormat: input.relativeFormat
     });
     return { ok: true };
   } catch {

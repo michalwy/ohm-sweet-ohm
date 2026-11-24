@@ -7,28 +7,27 @@ import { resolveWorkspaceActor } from "@/server/auth/currentActor";
 import { getCurrentSession } from "@/server/auth/currentContext";
 import { prisma } from "@/server/db/prisma";
 import { ensureDefaultUnitsForWorkspace, getDefaultPartUnitId } from "@/server/units/defaultUnits";
-import { applyDemoPreset, type DemoPreset } from "@/server/workspaces/applyDemoPreset";
+import { applyDemoPreset } from "@/server/workspaces/applyDemoPreset";
 import { applyStarterDictionaries } from "@/server/workspaces/applyStarterDictionaries";
 import {
   archiveWorkspace as archiveWorkspaceMutation,
   restoreWorkspace as restoreWorkspaceMutation
 } from "@/server/workspaces/archiveMutations";
-import { createWorkspaceForOwner } from "@/server/workspaces/createWorkspace";
 import { enqueueWorkspaceDeletion } from "@/server/workspaces/deletionQueue";
 import { getPgBoss } from "@/server/db/pgBoss";
 import { DEMO_PRESET_FIXTURE } from "@/server/workspaces/demoPresetFixture";
 import { wipeDomainData } from "@/server/workspaces/resetMutations";
+import { createWorkspaceWithPreset } from "@/server/workspaces/workspaceLifecycle";
+import {
+  isSupportedWorkspaceCurrency,
+  toWorkspaceCreationPreset
+} from "@/server/workspaces/workspaceOptions";
 
 const workspaceCopy = {
   missingName: "missing-name",
   missingCurrency: "missing-currency",
   unavailable: "workspace-unavailable"
 };
-
-const SUPPORTED_CURRENCIES = new Set([
-  "EUR", "USD", "GBP", "PLN", "CZK", "CHF", "SEK", "DKK", "NOK",
-  "HUF", "RON", "BGN", "HRK", "RUB", "JPY", "CNY", "CAD", "AUD"
-]);
 
 export async function createWorkspace(formData: FormData) {
   const session = await getCurrentSession();
@@ -39,37 +38,27 @@ export async function createWorkspace(formData: FormData) {
 
   const name = getRequiredFormValue(formData, "name");
   const currency = getRequiredFormValue(formData, "currency").toUpperCase();
-  const rawPreset = getRequiredFormValue(formData, "preset");
-  const preset: DemoPreset | "starter-dictionaries" =
-    rawPreset === "parts-only" || rawPreset === "parts-and-orders" || rawPreset === "starter-dictionaries"
-      ? rawPreset
-      : "empty";
+  const preset = toWorkspaceCreationPreset(getRequiredFormValue(formData, "preset"));
 
   if (!name) {
     redirect(`/workspaces?error=${workspaceCopy.missingName}`);
   }
 
-  if (!currency || !SUPPORTED_CURRENCIES.has(currency)) {
+  if (!currency || !isSupportedWorkspaceCurrency(currency)) {
     redirect(`/workspaces?error=${workspaceCopy.missingCurrency}`);
   }
 
   let workspaceSlug = "";
 
   try {
-    const workspace = await createWorkspaceForOwner({
+    const workspace = await createWorkspaceWithPreset({
       userId: session.user.id,
       name,
-      primaryCurrency: currency
+      primaryCurrency: currency,
+      preset
     });
 
     workspaceSlug = workspace.slug;
-
-    if (preset === "starter-dictionaries") {
-      await applyStarterDictionaries(prisma, workspace.id);
-    } else if (preset !== "empty") {
-      const unitId = await getDefaultPartUnitId(prisma, workspace.id);
-      await applyDemoPreset(prisma, workspace.id, unitId, preset, DEMO_PRESET_FIXTURE, workspace.primaryCurrency);
-    }
   } catch {
     redirect(`/workspaces?error=${workspaceCopy.unavailable}`);
   }
