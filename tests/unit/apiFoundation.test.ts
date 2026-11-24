@@ -81,7 +81,12 @@ describe("OpenAPI document", () => {
 
   test("every endpoint has a route file exporting its method", () => {
     for (const endpoint of restEndpoints) {
-      const file = path.join("src/app/api/v1", endpoint.path, "route.ts");
+      // A `{param}` placeholder is served by a `[param]` route segment.
+      const file = path.join(
+        "src/app/api/v1",
+        endpoint.path.replace(/\{([^}]+)\}/g, "[$1]"),
+        "route.ts"
+      );
 
       assert.ok(existsSync(file), `${file} is missing`);
       assert.match(

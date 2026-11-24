@@ -11,15 +11,17 @@ import {
   type ListPage
 } from "@/server/pagination";
 
-export const ORGANIZATION_ROLE_MANUFACTURER = "manufacturer";
-export const ORGANIZATION_ROLE_SUPPLIER = "supplier";
-
-export const ORGANIZATION_ROLES = [
+import {
   ORGANIZATION_ROLE_MANUFACTURER,
   ORGANIZATION_ROLE_SUPPLIER
-] as const;
+} from "@/server/organizations/organizationOperations";
 
-export type OrganizationRole = (typeof ORGANIZATION_ROLES)[number];
+export {
+  ORGANIZATION_ROLE_MANUFACTURER,
+  ORGANIZATION_ROLE_SUPPLIER,
+  ORGANIZATION_ROLES,
+  type OrganizationRole
+} from "@/server/organizations/organizationOperations";
 
 export type OrganizationSummary = {
   id: string;
@@ -32,6 +34,30 @@ export type OrganizationSummary = {
 };
 
 type NameCursor = { name: string; id: string };
+
+const organizationSummarySelect = {
+  id: true,
+  name: true,
+  currency: true,
+  defaultPriceEntryMode: true,
+  defaultTaxRate: true,
+  createdAt: true,
+  roles: { select: { role: true } }
+} satisfies Prisma.OrganizationSelect;
+
+function toOrganizationSummary(
+  row: Prisma.OrganizationGetPayload<{ select: typeof organizationSummarySelect }>
+): OrganizationSummary {
+  return {
+    id: row.id,
+    name: row.name,
+    currency: row.currency,
+    defaultPriceEntryMode: row.defaultPriceEntryMode,
+    defaultTaxRate: row.defaultTaxRate?.toString() ?? null,
+    createdAt: row.createdAt,
+    roles: row.roles.map((role) => role.role)
+  };
+}
 
 export function normalizeOrganizationName(name: string) {
   return name.trim().replace(/\s+/g, " ").toLowerCase();
@@ -149,33 +175,45 @@ export async function getOrganizationsForWorkspace({
       : filteredWhere,
     orderBy: [{ name: dir }, { id: dir }],
     take: limit + 1,
-    select: {
-      id: true,
-      name: true,
-      currency: true,
-      defaultPriceEntryMode: true,
-      defaultTaxRate: true,
-      createdAt: true,
-      roles: { select: { role: true } }
-    }
+    select: organizationSummarySelect
   });
 
   const hasMore = rows.length > limit;
-  const items = rows.slice(0, limit).map((r) => ({
-    id: r.id,
-    name: r.name,
-    currency: r.currency,
-    defaultPriceEntryMode: r.defaultPriceEntryMode,
-    defaultTaxRate: r.defaultTaxRate?.toString() ?? null,
-    createdAt: r.createdAt,
-    roles: r.roles.map((role) => role.role)
-  }));
+  const items = rows.slice(0, limit).map(toOrganizationSummary);
 
   const last = items[items.length - 1];
   const nextCursor =
     hasMore && last ? encodeListCursor<NameCursor>({ name: last.name, id: last.id }) : null;
 
   return { items, nextCursor, totalCount, filteredCount };
+}
+
+/**
+ * One organization of the workspace, or null. The workspace's internal organization (the
+ * workspace itself as manufacturer of its own designs) is never listed, so it is not found here
+ * either (#279).
+ */
+export async function getOrganizationForWorkspace({
+  userId,
+  workspaceId,
+  id
+}: {
+  userId: string;
+  workspaceId: string;
+  id: string;
+}): Promise<OrganizationSummary | null> {
+  await authorizeWorkspacePermission({
+    userId,
+    workspaceId,
+    permission: "organizations:read"
+  });
+
+  const row = await prisma.organization.findFirst({
+    where: { id, workspaceId, isInternal: false },
+    select: organizationSummarySelect
+  });
+
+  return row ? toOrganizationSummary(row) : null;
 }
 
 export async function createOrganizationForWorkspace({
@@ -242,6 +280,10 @@ export async function createOrganizationForWorkspace({
   return { ok: true, id: org.id };
 }
 
+/**
+ * Changes an organization. A field left undefined keeps its value, so the API can change one field
+ * (#279); the form sends every field. `null` clears currency, price entry mode and tax rate.
+ */
 export async function updateOrganizationForWorkspace({
   userId,
   workspaceId,
@@ -255,8 +297,8 @@ export async function updateOrganizationForWorkspace({
   userId: string;
   workspaceId: string;
   id: string;
-  name: string;
-  roles: string[];
+  name?: string;
+  roles?: string[];
   currency?: string | null;
   defaultPriceEntryMode?: string | null;
   defaultTaxRate?: string | null;
@@ -267,52 +309,62 @@ export async function updateOrganizationForWorkspace({
     permission: "organizations:write"
   });
 
-  if (!name.trim()) {
-    return { ok: false, error: "name_required" };
-  }
-  if (roles.length === 0) {
-    return { ok: false, error: "role_required" };
-  }
-
-  const displayName = name.trim().replace(/\s+/g, " ");
-  const normalizedName = normalizeOrganizationName(displayName);
-
-  const existing = await prisma.organization.findUnique({
-    where: { workspaceId_normalizedName: { workspaceId, normalizedName } },
-    select: { id: true }
-  });
-  if (existing && existing.id !== id) {
-    return { ok: false, error: "name_taken" };
-  }
-
   const org = await prisma.organization.findUnique({
     where: { id },
-    select: { workspaceId: true }
+    select: { workspaceId: true, isInternal: true }
   });
-  if (!org || org.workspaceId !== workspaceId) {
+  if (!org || org.workspaceId !== workspaceId || org.isInternal) {
     return { ok: false, error: "not_found" };
   }
 
+  if (name !== undefined && !name.trim()) {
+    return { ok: false, error: "name_required" };
+  }
+  if (roles !== undefined && roles.length === 0) {
+    return { ok: false, error: "role_required" };
+  }
+
+  let nameData: { name: string; normalizedName: string } | undefined;
+  if (name !== undefined) {
+    const displayName = name.trim().replace(/\s+/g, " ");
+    const normalizedName = normalizeOrganizationName(displayName);
+
+    const existing = await prisma.organization.findUnique({
+      where: { workspaceId_normalizedName: { workspaceId, normalizedName } },
+      select: { id: true }
+    });
+    if (existing && existing.id !== id) {
+      return { ok: false, error: "name_taken" };
+    }
+    nameData = { name: displayName, normalizedName };
+  }
+
   const parsedUpdateTaxRate =
-    defaultTaxRate && defaultTaxRate.trim()
-      ? new Prisma.Decimal(defaultTaxRate.trim())
-      : null;
+    defaultTaxRate === undefined
+      ? undefined
+      : defaultTaxRate && defaultTaxRate.trim()
+        ? new Prisma.Decimal(defaultTaxRate.trim())
+        : null;
 
   await prisma.$transaction([
     prisma.organization.update({
       where: { id },
       data: {
-        name: displayName,
-        normalizedName,
-        currency: currency || null,
-        defaultPriceEntryMode: defaultPriceEntryMode || null,
+        ...nameData,
+        currency: currency === undefined ? undefined : currency || null,
+        defaultPriceEntryMode:
+          defaultPriceEntryMode === undefined ? undefined : defaultPriceEntryMode || null,
         defaultTaxRate: parsedUpdateTaxRate
       }
     }),
-    prisma.organizationRole.deleteMany({ where: { organizationId: id } }),
-    prisma.organizationRole.createMany({
-      data: roles.map((role) => ({ organizationId: id, role }))
-    })
+    ...(roles === undefined
+      ? []
+      : [
+          prisma.organizationRole.deleteMany({ where: { organizationId: id } }),
+          prisma.organizationRole.createMany({
+            data: roles.map((role) => ({ organizationId: id, role }))
+          })
+        ])
   ]);
 
   return { ok: true };
@@ -337,11 +389,12 @@ export async function deleteOrganizationForWorkspace({
     where: { id },
     select: {
       workspaceId: true,
+      isInternal: true,
       _count: { select: { manufacturedParts: true, purchaseOrders: true } }
     }
   });
 
-  if (!org || org.workspaceId !== workspaceId) {
+  if (!org || org.workspaceId !== workspaceId || org.isInternal) {
     return { ok: false, error: "not_found" };
   }
   if (org._count.manufacturedParts > 0) {

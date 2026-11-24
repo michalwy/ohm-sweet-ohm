@@ -141,7 +141,13 @@ An area exposes an operation in six steps (#274, #275, #276, #287):
    unit test checks every entry has its route file. `GET` input comes from the query string
    (`queryInput.ts` converts numbers and booleans where the schema expects them, and repeated keys
    for arrays); other methods take a JSON body. List endpoints are `GET` with
-   `listPageInputShape` / `listPageOutputSchema`: `?cursor=<nextCursor>&pageSize=<n>`.
+   `listPageInputShape` / `listPageOutputSchema`: `?cursor=<nextCursor>&pageSize=<n>`. A record is
+   addressed by a path parameter (#279): the entry's path is `/organizations/{id}`, the route file
+   `src/app/api/v1/organizations/[id]/route.ts`, and `restOperation` merges the route's params into
+   the input (they win over a query or body field of the same name), so `id` stays an ordinary
+   field of the operation's input — the MCP tool takes it as an argument — while the OpenAPI
+   document describes it as a path parameter and leaves it out of the body. Updates are `PATCH`
+   with every field but the id optional: an omitted field keeps its value, `null` clears it.
 3. **MCP**: `defineMcpTool(title, implementation, behavior)` appended to `mcpTools`
    (`src/server/mcp/tools.ts`). `behavior` is explicit — `{ readOnly: true }`, or
    `{ readOnly: false, destructive, idempotent? }` — and becomes the tool's annotations; a delete or

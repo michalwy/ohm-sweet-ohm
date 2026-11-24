@@ -56,15 +56,23 @@ export async function authenticateApiRequest(request: Request): Promise<Workspac
 }
 
 /**
+ * What Next.js passes a route handler as its second argument: the dynamic segments of its path,
+ * e.g. `{ id }` for `src/app/api/v1/organizations/[id]/route.ts`.
+ */
+export type RestRouteContext = { params: Promise<Record<string, string | string[] | undefined>> };
+
+/**
  * A route handler for one operation. `GET` reads the input from the query string, every other
- * method from a JSON body (an empty body is `{}`).
+ * method from a JSON body (an empty body is `{}`). Path parameters (`/organizations/{id}`, served by
+ * a `[id]` route segment) are input fields too, and win over a field of the same name in the query
+ * or body (#279).
  */
 export function restOperation<TInput extends z.ZodType, TOutput extends z.ZodType>(
   implementation: OperationImplementation<TInput, TOutput>
 ) {
   const inputJsonSchema = getOperationJsonSchemas(implementation.operation).input;
 
-  return async function handle(request: Request): Promise<Response> {
+  return async function handle(request: Request, context?: RestRouteContext): Promise<Response> {
     const actor = await authenticateApiRequest(request);
 
     if (!actor) {
@@ -77,10 +85,19 @@ export function restOperation<TInput extends z.ZodType, TOutput extends z.ZodTyp
       return errorResponse(rawInput.failure);
     }
 
-    const result = await executeOperation(actor, implementation, rawInput.input);
+    const pathParams = context ? await context.params : {};
+    const input = isPlainObject(rawInput.input)
+      ? { ...rawInput.input, ...pathParams }
+      : rawInput.input;
+
+    const result = await executeOperation(actor, implementation, input);
 
     return result.ok ? jsonResponse(result.data) : errorResponse(result);
   };
+}
+
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 async function readRequestInput(

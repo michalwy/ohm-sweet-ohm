@@ -113,10 +113,10 @@ export const serverActionCoverage: ServerActionCoverageMap = {
     deleteLocationForWorkspace: { pending: "#280" }
   },
   "src/server/organizations/organizationActions.ts": {
-    getOrganizationsPageForWorkspace: { pending: "#279" },
-    createOrganizationAction: { pending: "#279" },
-    updateOrganizationAction: { pending: "#279" },
-    deleteOrganizationAction: { pending: "#279" }
+    getOrganizationsPageForWorkspace: { tool: "list_organizations" },
+    createOrganizationAction: { tool: "create_organization" },
+    updateOrganizationAction: { tool: "update_organization" },
+    deleteOrganizationAction: { tool: "delete_organization" }
   },
   "src/server/parts/attributeActions.ts": {
     getAttributeDictionaryForWorkspace: { pending: "#278" },
