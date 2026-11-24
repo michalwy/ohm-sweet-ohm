@@ -390,6 +390,45 @@ export async function addShoppingListItem(input: {
   return item;
 }
 
+/**
+ * Adds several parts to a list at once, as the UI's bulk add does: a part already on the list gets
+ * its quantity added to that line (keeping the line's description); any other part gets a new line.
+ * Shared by the server action and the API (#281).
+ */
+export async function addShoppingListItems(input: {
+  workspaceId: string;
+  listId: string;
+  items: Array<{ partId: string; quantity: string }>;
+}): Promise<{ addedCount: number }> {
+  const list = await getShoppingListDetail(input.workspaceId, input.listId);
+  if (!list) throw new Error("shopping-list-not-found");
+
+  const existingByPartId = new Map(list.items.map((item) => [item.partId, item]));
+
+  for (const item of input.items) {
+    const existing = existingByPartId.get(item.partId);
+    if (existing) {
+      const mergedQty = (parseFloat(existing.quantity) + parseFloat(item.quantity)).toString();
+      await updateShoppingListItem({
+        workspaceId: input.workspaceId,
+        listId: input.listId,
+        itemId: existing.id,
+        quantity: mergedQty,
+        description: existing.description
+      });
+    } else {
+      await addShoppingListItem({
+        workspaceId: input.workspaceId,
+        listId: input.listId,
+        partId: item.partId,
+        quantity: item.quantity
+      });
+    }
+  }
+
+  return { addedCount: input.items.length };
+}
+
 export async function updateShoppingListItem(input: {
   workspaceId: string;
   listId: string;
@@ -545,7 +584,7 @@ async function assertItemBelongsToList(
   if (!item) throw new Error("shopping-list-item-not-found");
 }
 
-async function assertPartBelongsToWorkspace(workspaceId: string, partId: string) {
+export async function assertPartBelongsToWorkspace(workspaceId: string, partId: string) {
   const part = await prisma.part.findFirst({
     where: { id: partId, workspaceId },
     select: { id: true }

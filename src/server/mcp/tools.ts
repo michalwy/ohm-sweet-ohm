@@ -10,6 +10,7 @@ import {
 } from "@/server/organizations/organizationApi";
 import * as attributeApi from "@/server/parts/attributeApi";
 import * as categoryApi from "@/server/parts/categoryApi";
+import * as shoppingListApi from "@/server/shopping-lists/shoppingListApi";
 import * as unitApi from "@/server/units/unitApi";
 import {
   createPartImplementation,
@@ -105,5 +106,17 @@ export const mcpTools: McpTool[] = [
     destructive: true,
     idempotent: true
   }),
-  defineMcpTool("Delete a part", deletePartImplementation, { readOnly: false, destructive: true })
+  defineMcpTool("Delete a part", deletePartImplementation, { readOnly: false, destructive: true }),
+  // Shopping lists (#281)
+  defineMcpTool("List shopping lists", shoppingListApi.listShoppingListsImplementation, { readOnly: true }),
+  defineMcpTool("Get a shopping list", shoppingListApi.getShoppingListImplementation, { readOnly: true }),
+  defineMcpTool("Create a shopping list", shoppingListApi.createShoppingListImplementation, { readOnly: false, destructive: false }),
+  defineMcpTool("Update a shopping list", shoppingListApi.updateShoppingListImplementation, { readOnly: false, destructive: true, idempotent: true }),
+  defineMcpTool("Delete a shopping list", shoppingListApi.deleteShoppingListImplementation, { readOnly: false, destructive: true }),
+  defineMcpTool("Add a part to a shopping list", shoppingListApi.addShoppingListItemImplementation, { readOnly: false, destructive: false }),
+  defineMcpTool("Add parts to a shopping list", shoppingListApi.addShoppingListItemsImplementation, { readOnly: false, destructive: false }),
+  defineMcpTool("Update a shopping list item", shoppingListApi.updateShoppingListItemImplementation, { readOnly: false, destructive: true, idempotent: true }),
+  defineMcpTool("Remove a shopping list item", shoppingListApi.removeShoppingListItemImplementation, { readOnly: false, destructive: true }),
+  defineMcpTool("Shopping lists of a part", shoppingListApi.getPartShoppingListsImplementation, { readOnly: true }),
+  defineMcpTool("Convert a shopping list to a purchase order", shoppingListApi.convertShoppingListToPurchaseOrderImplementation, { readOnly: false, destructive: false })
 ];
