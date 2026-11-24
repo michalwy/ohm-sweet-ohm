@@ -2,7 +2,7 @@ import { notFound, redirect } from "next/navigation";
 
 import { PartsListClient } from "@/app/parts-list-client";
 import { WorkspaceShell } from "@/app/workspace-shell";
-import { hasWorkspacePermission } from "@/server/access-control/authorize";
+import { actorHasPermission } from "@/server/access-control/actor";
 import {
   getCurrentSession,
   getCurrentWorkspaceContextBySlug
@@ -357,41 +357,13 @@ export default async function PartsPage({
     canReadBuilds
   ] = isDatabaseAvailable
     ? await Promise.all([
-        hasWorkspacePermission({
-          userId: context.user.id,
-          workspaceId: context.workspace.id,
-          permission: "inventory:read"
-        }).catch(() => false),
-        hasWorkspacePermission({
-          userId: context.user.id,
-          workspaceId: context.workspace.id,
-          permission: "inventory:write"
-        }).catch(() => false),
-        hasWorkspacePermission({
-          userId: context.user.id,
-          workspaceId: context.workspace.id,
-          permission: "shopping-lists:read"
-        }).catch(() => false),
-        hasWorkspacePermission({
-          userId: context.user.id,
-          workspaceId: context.workspace.id,
-          permission: "purchase-orders:read"
-        }).catch(() => false),
-        hasWorkspacePermission({
-          userId: context.user.id,
-          workspaceId: context.workspace.id,
-          permission: "shopping-lists:write"
-        }).catch(() => false),
-        hasWorkspacePermission({
-          userId: context.user.id,
-          workspaceId: context.workspace.id,
-          permission: "purchase-orders:write"
-        }).catch(() => false),
-        hasWorkspacePermission({
-          userId: context.user.id,
-          workspaceId: context.workspace.id,
-          permission: "builds:read"
-        }).catch(() => false)
+        actorHasPermission(context, "inventory:read"),
+        actorHasPermission(context, "inventory:write"),
+        actorHasPermission(context, "shopping-lists:read"),
+        actorHasPermission(context, "purchase-orders:read"),
+        actorHasPermission(context, "shopping-lists:write"),
+        actorHasPermission(context, "purchase-orders:write"),
+        actorHasPermission(context, "builds:read")
       ])
     : [false, false, false, false, false, false, false];
 

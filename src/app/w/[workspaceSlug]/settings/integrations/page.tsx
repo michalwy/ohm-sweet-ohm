@@ -5,7 +5,7 @@ import {
   getCurrentSession,
   getCurrentWorkspaceContextBySlug
 } from "@/server/auth/currentContext";
-import { hasWorkspacePermission } from "@/server/access-control/authorize";
+import { actorHasPermission } from "@/server/access-control/actor";
 import { getWorkspaceDigiKeyIntegration } from "@/server/integrations/digikey";
 import { getWorkspaceActiveSupplierProvider } from "@/server/integrations/providerSettings";
 import { getWorkspaceTmeIntegration } from "@/server/integrations/tme";
@@ -79,11 +79,7 @@ export default async function IntegrationsPage({ params }: IntegrationsPageProps
   let initialActiveProvider = null;
 
   try {
-    canManageIntegrations = await hasWorkspacePermission({
-      userId: context.user.id,
-      workspaceId: context.workspace.id,
-      permission: "admin"
-    });
+    canManageIntegrations = actorHasPermission(context, "admin");
 
     const [digiKeyIntegration, tmeIntegration, activeProvider] = await Promise.all([
       getWorkspaceDigiKeyIntegration(context.workspace.id),

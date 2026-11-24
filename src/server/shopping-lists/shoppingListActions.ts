@@ -1,7 +1,6 @@
 "use server";
 
-import { authorizeWorkspacePermission } from "@/server/access-control/authorize";
-import { getCurrentWorkspaceContextBySlug } from "@/server/auth/currentContext";
+import { getAuthorizedSessionActor } from "@/server/auth/currentActor";
 import {
   addShoppingListItem,
   convertShoppingListToOrder,
@@ -273,16 +272,7 @@ async function getAuthorizedContext(
   workspaceSlug: string,
   permission: "shopping-lists:read" | "shopping-lists:write"
 ) {
-  const context = await getCurrentWorkspaceContextBySlug(workspaceSlug);
-  if (!context) throw new Error("workspace-not-found");
-
-  await authorizeWorkspacePermission({
-    userId: context.user.id,
-    workspaceId: context.workspace.id,
-    permission
-  });
-
-  return context;
+  return getAuthorizedSessionActor(workspaceSlug, permission);
 }
 
 

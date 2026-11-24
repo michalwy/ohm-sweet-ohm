@@ -2,7 +2,7 @@ import { notFound, redirect } from "next/navigation";
 
 import { AttributesClient } from "@/app/attributes-client";
 import { WorkspaceShell } from "@/app/workspace-shell";
-import { hasWorkspacePermission } from "@/server/access-control/authorize";
+import { actorHasPermission } from "@/server/access-control/actor";
 import {
   getCurrentSession,
   getCurrentWorkspaceContextBySlug
@@ -110,11 +110,7 @@ export default async function AttributesPage({ params }: AttributesPageProps) {
   }
 
   const canWriteAttributes = isDatabaseAvailable
-    ? await hasWorkspacePermission({
-        userId: context.user.id,
-        workspaceId: context.workspace.id,
-        permission: "attributes:write"
-      }).catch(() => false)
+    ? actorHasPermission(context, "attributes:write")
     : false;
 
   return (

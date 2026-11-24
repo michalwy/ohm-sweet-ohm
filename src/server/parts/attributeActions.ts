@@ -1,8 +1,7 @@
 "use server";
 
 
-import { authorizeWorkspacePermission } from "@/server/access-control/authorize";
-import { getCurrentWorkspaceContextBySlug } from "@/server/auth/currentContext";
+import { getAuthorizedSessionActor } from "@/server/auth/currentActor";
 import {
   attachOrOverrideCategoryAttribute,
   attachOrOverrideWorkspaceAttribute,
@@ -481,19 +480,7 @@ async function getAuthorizedAttributeContext({
   workspaceSlug: string;
   permission: "attributes:read" | "attributes:write";
 }) {
-  const context = await getCurrentWorkspaceContextBySlug(workspaceSlug);
-
-  if (!context) {
-    throw new Error("workspace-not-found");
-  }
-
-  await authorizeWorkspacePermission({
-    userId: context.user.id,
-    workspaceId: context.workspace.id,
-    permission
-  });
-
-  return context;
+  return getAuthorizedSessionActor(workspaceSlug, permission);
 }
 
 function getSuccessState<T>(data: T): AttributeActionResult<T> {

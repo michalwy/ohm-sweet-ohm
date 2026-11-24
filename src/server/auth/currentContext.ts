@@ -3,6 +3,7 @@ import "server-only";
 import { headers } from "next/headers";
 
 import { auth } from "@/server/auth/auth";
+import { resolveWorkspaceActor } from "@/server/auth/currentActor";
 import { prisma } from "@/server/db/prisma";
 
 export async function getCurrentSession() {
@@ -135,45 +136,11 @@ export async function getCurrentWorkspaceContext() {
   };
 }
 
+/**
+ * The session's context in a workspace, archived or not, for pages and layouts. It is the session
+ * actor (`resolveWorkspaceActor`, ADR 0030), so page-level permission checks and server actions
+ * share one resolution; the workspace layout redirects archived workspaces itself (ADR 0016).
+ */
 export async function getCurrentWorkspaceContextBySlug(workspaceSlug: string) {
-  const session = await getCurrentSession();
-
-  if (!session) {
-    return null;
-  }
-
-  const membership = await prisma.workspaceMember.findFirst({
-    where: {
-      userId: session.user.id,
-      workspace: {
-        slug: workspaceSlug
-      }
-    },
-    select: {
-      user: true,
-      workspace: {
-        select: {
-          id: true,
-          name: true,
-          slug: true,
-          primaryCurrency: true,
-          defaultPriceEntryMode: true,
-          defaultTaxRate: true,
-          activeSupplierProvider: true,
-          archivedAt: true,
-          createdAt: true,
-          updatedAt: true
-        }
-      }
-    }
-  });
-
-  if (!membership) {
-    return null;
-  }
-
-  return {
-    user: membership.user,
-    workspace: membership.workspace
-  };
+  return resolveWorkspaceActor({ kind: "session", workspaceSlug }, { allowArchived: true });
 }

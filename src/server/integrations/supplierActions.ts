@@ -1,6 +1,6 @@
 "use server";
 
-import { getCurrentWorkspaceContextBySlug } from "@/server/auth/currentContext";
+import { resolveWorkspaceActor } from "@/server/auth/currentActor";
 import { getWorkspaceActiveSupplierProvider } from "@/server/integrations/providerSettings";
 import { getSupplierPartSearchProvider } from "@/server/integrations/providers";
 import { fetchTmeProductParameters } from "@/server/integrations/tme";
@@ -16,7 +16,10 @@ export async function searchSupplierPartsForWorkspace(input: {
   offset?: number;
 }): Promise<SupplierPartSearchResult> {
   try {
-    const context = await getCurrentWorkspaceContextBySlug(input.workspaceSlug);
+    const context = await resolveWorkspaceActor({
+      kind: "session",
+      workspaceSlug: input.workspaceSlug
+    });
 
     if (!context) {
       return {
@@ -74,7 +77,10 @@ export async function getSupplierPartAttributesForWorkspace(input: {
   catalogNumber: string;
 }) {
   try {
-    const context = await getCurrentWorkspaceContextBySlug(input.workspaceSlug);
+    const context = await resolveWorkspaceActor({
+      kind: "session",
+      workspaceSlug: input.workspaceSlug
+    });
     if (!context) {
       return {
         ok: false as const,

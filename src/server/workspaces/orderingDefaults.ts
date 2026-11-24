@@ -2,8 +2,8 @@
 
 import { Prisma } from "@/generated/prisma/client";
 
-import { getCurrentWorkspaceContextBySlug } from "@/server/auth/currentContext";
-import { hasWorkspacePermission } from "@/server/access-control/authorize";
+import { actorHasPermission } from "@/server/access-control/actor";
+import { resolveWorkspaceActor } from "@/server/auth/currentActor";
 import { prisma } from "@/server/db/prisma";
 
 type UpdateOrderingDefaultsInput = {
@@ -19,17 +19,13 @@ type UpdateOrderingDefaultsResult =
 export async function updateWorkspaceOrderingDefaults(
   input: UpdateOrderingDefaultsInput
 ): Promise<UpdateOrderingDefaultsResult> {
-  const context = await getCurrentWorkspaceContextBySlug(input.workspaceSlug);
+  const context = await resolveWorkspaceActor({ kind: "session", workspaceSlug: input.workspaceSlug });
 
   if (!context) {
     return { ok: false, error: "workspace-permission-denied" };
   }
 
-  const canWrite = await hasWorkspacePermission({
-    userId: context.user.id,
-    workspaceId: context.workspace.id,
-    permission: "admin"
-  });
+  const canWrite = actorHasPermission(context, "admin");
 
   if (!canWrite) {
     return { ok: false, error: "workspace-permission-denied" };

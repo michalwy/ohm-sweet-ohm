@@ -2,8 +2,8 @@
 
 
 import { Prisma } from "@/generated/prisma/client";
-import { authorizeWorkspacePermission } from "@/server/access-control/authorize";
-import { getCurrentWorkspaceContextBySlug } from "@/server/auth/currentContext";
+import { requireActorPermission } from "@/server/access-control/actor";
+import { resolveWorkspaceActor } from "@/server/auth/currentActor";
 import { prisma } from "@/server/db/prisma";
 import {
   ensureOrganizationWithRole,
@@ -69,16 +69,12 @@ export async function createPart(
   let formError: string | null = null;
 
   try {
-    const context = await getCurrentWorkspaceContextBySlug(workspaceSlug);
+    const context = await resolveWorkspaceActor({ kind: "session", workspaceSlug: workspaceSlug });
 
     if (!context) {
       formError = "database-unavailable";
     } else {
-      await authorizeWorkspacePermission({
-        userId: context.user.id,
-        workspaceId: context.workspace.id,
-        permission: "parts:write"
-      });
+      requireActorPermission(context, "parts:write");
 
       formError = await validatePartCategoryAssignment({
         workspaceId: context.workspace.id,
@@ -223,16 +219,12 @@ export async function updatePart(
   let formError: string | null = null;
 
   try {
-    const context = await getCurrentWorkspaceContextBySlug(workspaceSlug);
+    const context = await resolveWorkspaceActor({ kind: "session", workspaceSlug: workspaceSlug });
 
     if (!context) {
       formError = "database-unavailable";
     } else {
-      await authorizeWorkspacePermission({
-        userId: context.user.id,
-        workspaceId: context.workspace.id,
-        permission: "parts:write"
-      });
+      requireActorPermission(context, "parts:write");
 
       formError = await validatePartCategoryAssignment({
         workspaceId: context.workspace.id,
@@ -356,16 +348,12 @@ export async function deletePart(formData: FormData): Promise<PartDeleteResult> 
   let formError: string | null = null;
 
   try {
-    const context = await getCurrentWorkspaceContextBySlug(workspaceSlug);
+    const context = await resolveWorkspaceActor({ kind: "session", workspaceSlug: workspaceSlug });
 
     if (!context) {
       formError = "database-unavailable";
     } else {
-      await authorizeWorkspacePermission({
-        userId: context.user.id,
-        workspaceId: context.workspace.id,
-        permission: "parts:write"
-      });
+      requireActorPermission(context, "parts:write");
 
       const deleteResult = await prisma.part.deleteMany({
         where: {

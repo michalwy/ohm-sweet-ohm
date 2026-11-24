@@ -2,7 +2,7 @@ import { notFound, redirect } from "next/navigation";
 
 import { PurchaseOrdersClient } from "@/app/purchase-orders-client";
 import { WorkspaceShell } from "@/app/workspace-shell";
-import { hasWorkspacePermission } from "@/server/access-control/authorize";
+import { actorHasPermission } from "@/server/access-control/actor";
 import {
   getCurrentSession,
   getCurrentWorkspaceContextBySlug
@@ -257,11 +257,7 @@ export default async function PurchaseOrdersPage({ params, searchParams }: Purch
   const [initialPage, locations, canWrite] = await Promise.all([
     getPurchaseOrders(context.workspace.id).catch(() => emptyPage),
     getStorageLocations(context.workspace.id).catch(() => []),
-    hasWorkspacePermission({
-      userId: context.user.id,
-      workspaceId: context.workspace.id,
-      permission: "purchase-orders:write"
-    }).catch(() => false)
+    actorHasPermission(context, "purchase-orders:write")
   ]);
 
   const allLocations = locations.filter((l) => !l.isArchived);

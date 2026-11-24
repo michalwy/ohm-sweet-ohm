@@ -2,7 +2,7 @@ import { notFound, redirect } from "next/navigation";
 
 import { DesignsClient } from "@/app/designs-client";
 import { WorkspaceShell } from "@/app/workspace-shell";
-import { hasWorkspacePermission } from "@/server/access-control/authorize";
+import { actorHasPermission } from "@/server/access-control/actor";
 import {
   getCurrentSession,
   getCurrentWorkspaceContextBySlug
@@ -123,21 +123,9 @@ export default async function DesignsPage({ params }: DesignsPageProps) {
       userId: context.user.id,
       workspaceId: context.workspace.id
     }).catch(() => emptyPage),
-    hasWorkspacePermission({
-      userId: context.user.id,
-      workspaceId: context.workspace.id,
-      permission: "designs:write"
-    }).catch(() => false),
-    hasWorkspacePermission({
-      userId: context.user.id,
-      workspaceId: context.workspace.id,
-      permission: "shopping-lists:write"
-    }).catch(() => false),
-    hasWorkspacePermission({
-      userId: context.user.id,
-      workspaceId: context.workspace.id,
-      permission: "builds:read"
-    }).catch(() => false)
+    actorHasPermission(context, "designs:write"),
+    actorHasPermission(context, "shopping-lists:write"),
+    actorHasPermission(context, "builds:read")
   ]);
 
   return (

@@ -2,7 +2,7 @@ import { notFound, redirect } from "next/navigation";
 
 import { OrganizationsClient } from "@/app/organizations-client";
 import { WorkspaceShell } from "@/app/workspace-shell";
-import { hasWorkspacePermission } from "@/server/access-control/authorize";
+import { actorHasPermission } from "@/server/access-control/actor";
 import {
   getCurrentSession,
   getCurrentWorkspaceContextBySlug
@@ -92,11 +92,7 @@ export default async function OrganizationsPage({ params }: OrganizationsPagePro
       userId: context.user.id,
       workspaceId: context.workspace.id
     }).catch(() => emptyPage),
-    hasWorkspacePermission({
-      userId: context.user.id,
-      workspaceId: context.workspace.id,
-      permission: "organizations:write"
-    }).catch(() => false)
+    actorHasPermission(context, "organizations:write")
   ]);
 
   return (

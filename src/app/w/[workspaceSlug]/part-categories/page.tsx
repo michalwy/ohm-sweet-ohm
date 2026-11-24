@@ -2,7 +2,7 @@ import { notFound, redirect } from "next/navigation";
 
 import { PartCategoriesClient } from "@/app/part-categories-client";
 import { WorkspaceShell } from "@/app/workspace-shell";
-import { hasWorkspacePermission } from "@/server/access-control/authorize";
+import { actorHasPermission } from "@/server/access-control/actor";
 import {
   getCurrentSession,
   getCurrentWorkspaceContextBySlug
@@ -149,11 +149,7 @@ export default async function PartCategoriesPage({
   }
 
   const canWriteCategories = isDatabaseAvailable
-    ? await hasWorkspacePermission({
-        userId: context.user.id,
-        workspaceId: context.workspace.id,
-        permission: "part-categories:write"
-      }).catch(() => false)
+    ? actorHasPermission(context, "part-categories:write")
     : false;
   const resolvedSearchParams = await searchParams;
   const categoryDialogOpen = resolvedSearchParams?.categoryDialog === "create";

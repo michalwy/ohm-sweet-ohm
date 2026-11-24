@@ -2,8 +2,9 @@
 
 import { redirect } from "next/navigation";
 
-import { getCurrentSession, getCurrentWorkspaceContextBySlug } from "@/server/auth/currentContext";
-import { hasWorkspacePermission } from "@/server/access-control/authorize";
+import { actorHasPermission } from "@/server/access-control/actor";
+import { resolveWorkspaceActor } from "@/server/auth/currentActor";
+import { getCurrentSession } from "@/server/auth/currentContext";
 import { prisma } from "@/server/db/prisma";
 import { ensureDefaultUnitsForWorkspace, getDefaultPartUnitId } from "@/server/units/defaultUnits";
 import { applyDemoPreset, type DemoPreset } from "@/server/workspaces/applyDemoPreset";
@@ -89,7 +90,10 @@ export async function archiveWorkspace(
     return { ok: false, error: "unauthenticated" };
   }
 
-  const context = await getCurrentWorkspaceContextBySlug(workspaceSlug);
+  const context = await resolveWorkspaceActor(
+    { kind: "session", workspaceSlug },
+    { allowArchived: true }
+  );
 
   if (!context) {
     return { ok: false, error: "workspace-not-found" };
@@ -99,11 +103,7 @@ export async function archiveWorkspace(
     return { ok: false, error: "already-archived" };
   }
 
-  const allowed = await hasWorkspacePermission({
-    userId: context.user.id,
-    workspaceId: context.workspace.id,
-    permission: "admin"
-  }).catch(() => false);
+  const allowed = actorHasPermission(context, "admin");
 
   if (!allowed) {
     return { ok: false, error: "workspace-permission-denied" };
@@ -126,33 +126,20 @@ export async function restoreWorkspaceFromPicker(formData: FormData) {
     redirect("/workspaces?error=missing-slug");
   }
 
-  const membership = await prisma.workspaceMember.findFirst({
-    where: {
-      userId: session.user.id,
-      workspace: { slug: workspaceSlug }
-    },
-    select: {
-      workspace: {
-        select: { id: true, archivedAt: true }
-      }
-    }
-  });
+  const actor = await resolveWorkspaceActor(
+    { kind: "session", workspaceSlug },
+    { allowArchived: true }
+  );
 
-  if (!membership || !membership.workspace.archivedAt) {
+  if (!actor || !actor.workspace.archivedAt) {
     redirect("/workspaces");
   }
 
-  const allowed = await hasWorkspacePermission({
-    userId: session.user.id,
-    workspaceId: membership.workspace.id,
-    permission: "admin"
-  }).catch(() => false);
-
-  if (!allowed) {
+  if (!actorHasPermission(actor, "admin")) {
     redirect("/workspaces?error=permission-denied");
   }
 
-  await restoreWorkspaceMutation(membership.workspace.id);
+  await restoreWorkspaceMutation(actor.workspace.id);
   redirect("/workspaces");
 }
 
@@ -165,41 +152,28 @@ export async function scheduleWorkspaceDeletion(
     return { ok: false, error: "unauthenticated" };
   }
 
-  const membership = await prisma.workspaceMember.findFirst({
-    where: {
-      userId: session.user.id,
-      workspace: { slug: workspaceSlug }
-    },
-    select: {
-      workspace: {
-        select: { id: true, archivedAt: true, deletionScheduledAt: true }
-      }
-    }
-  });
+  const actor = await resolveWorkspaceActor(
+    { kind: "session", workspaceSlug },
+    { allowArchived: true }
+  );
 
-  if (!membership) {
+  if (!actor) {
     return { ok: false, error: "workspace-not-found" };
   }
 
-  if (!membership.workspace.archivedAt) {
+  if (!actor.workspace.archivedAt) {
     return { ok: false, error: "not-archived" };
   }
 
-  if (membership.workspace.deletionScheduledAt) {
+  if (actor.workspace.deletionScheduledAt) {
     return { ok: false, error: "already-scheduled" };
   }
 
-  const allowed = await hasWorkspacePermission({
-    userId: session.user.id,
-    workspaceId: membership.workspace.id,
-    permission: "admin"
-  }).catch(() => false);
-
-  if (!allowed) {
+  if (!actorHasPermission(actor, "admin")) {
     return { ok: false, error: "workspace-permission-denied" };
   }
 
-  await enqueueWorkspaceDeletion(membership.workspace.id, "manual", await getPgBoss());
+  await enqueueWorkspaceDeletion(actor.workspace.id, "manual", await getPgBoss());
   return { ok: true };
 }
 
@@ -213,17 +187,13 @@ export async function resetWorkspaceToDemoPreset(
     return { ok: false, error: "unauthenticated" };
   }
 
-  const context = await getCurrentWorkspaceContextBySlug(workspaceSlug);
+  const context = await resolveWorkspaceActor({ kind: "session", workspaceSlug });
 
   if (!context) {
     return { ok: false, error: "workspace-not-found" };
   }
 
-  const allowed = await hasWorkspacePermission({
-    userId: context.user.id,
-    workspaceId: context.workspace.id,
-    permission: "admin"
-  }).catch(() => false);
+  const allowed = actorHasPermission(context, "admin");
 
   if (!allowed) {
     return { ok: false, error: "workspace-permission-denied" };
@@ -253,17 +223,13 @@ export async function loadStarterDictionaries(
     return { ok: false, error: "unauthenticated" };
   }
 
-  const context = await getCurrentWorkspaceContextBySlug(workspaceSlug);
+  const context = await resolveWorkspaceActor({ kind: "session", workspaceSlug });
 
   if (!context) {
     return { ok: false, error: "workspace-not-found" };
   }
 
-  const allowed = await hasWorkspacePermission({
-    userId: context.user.id,
-    workspaceId: context.workspace.id,
-    permission: "admin"
-  }).catch(() => false);
+  const allowed = actorHasPermission(context, "admin");
 
   if (!allowed) {
     return { ok: false, error: "workspace-permission-denied" };

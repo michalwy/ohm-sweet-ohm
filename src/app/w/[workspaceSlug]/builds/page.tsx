@@ -2,7 +2,7 @@ import { notFound, redirect } from "next/navigation";
 
 import { BuildsClient, type BuildsCopy } from "@/app/builds-client";
 import { WorkspaceShell } from "@/app/workspace-shell";
-import { hasWorkspacePermission } from "@/server/access-control/authorize";
+import { actorHasPermission } from "@/server/access-control/actor";
 import {
   getCurrentSession,
   getCurrentWorkspaceContextBySlug
@@ -136,16 +136,8 @@ export default async function BuildsPage({ params, searchParams }: BuildsPagePro
       workspaceId: context.workspace.id,
       pinnedId: resolvedSearchParams?.pinnedId
     }).catch(() => emptyPage),
-    hasWorkspacePermission({
-      userId: context.user.id,
-      workspaceId: context.workspace.id,
-      permission: "builds:write"
-    }).catch(() => false),
-    hasWorkspacePermission({
-      userId: context.user.id,
-      workspaceId: context.workspace.id,
-      permission: "shopping-lists:write"
-    }).catch(() => false)
+    actorHasPermission(context, "builds:write"),
+    actorHasPermission(context, "shopping-lists:write")
   ]);
 
   return (

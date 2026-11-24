@@ -5,7 +5,7 @@ import {
   getCurrentSession,
   getCurrentWorkspaceContextBySlug
 } from "@/server/auth/currentContext";
-import { hasWorkspacePermission } from "@/server/access-control/authorize";
+import { actorHasPermission } from "@/server/access-control/actor";
 import { OrderingDefaultsClient } from "@/app/ordering-defaults-client";
 
 export const dynamic = "force-dynamic";
@@ -46,11 +46,7 @@ export default async function OrderingPage({ params }: OrderingPageProps) {
     notFound();
   }
 
-  const canManage = await hasWorkspacePermission({
-    userId: context.user.id,
-    workspaceId: context.workspace.id,
-    permission: "admin"
-  }).catch(() => false);
+  const canManage = actorHasPermission(context, "admin");
 
   return (
     <WorkspaceShell
