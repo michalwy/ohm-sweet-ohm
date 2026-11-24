@@ -142,15 +142,15 @@ export const serverActionCoverage: ServerActionCoverageMap = {
     deletePartCategoryFromForm: { tool: "delete_part_category" }
   },
   "src/server/parts/createPart.ts": {
-    createPart: { pending: "#277" },
-    updatePart: { pending: "#277" },
-    deletePart: { pending: "#277" }
+    createPart: { tool: "create_part" },
+    updatePart: { tool: "update_part" },
+    deletePart: { tool: "delete_part" }
   },
   "src/server/parts/listActions.ts": {
     getPartsListFilterDataForWorkspace: {
       excluded: "UI-only helper: filter options of the parts list (#79, UI-only helpers)."
     },
-    getPartsListPageForWorkspace: { pending: "#277" }
+    getPartsListPageForWorkspace: { tool: "list_parts" }
   },
   "src/server/purchase-orders/purchaseOrderActions.ts": {
     getPurchaseOrdersForWorkspace: { pending: "#282" },
