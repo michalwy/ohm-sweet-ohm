@@ -27,6 +27,12 @@ commands; this file has the rules.
   pure-bash arrow-key fallback so it needs no extra dependencies.
 - Deployment management commands run as bare `docker compose ...` from the install directory, reading
   the file list from the `COMPOSE_FILE` key in `.env`.
+- HTTPS is the operator's own reverse proxy in front of `OSO_HTTP_PORT` (Caddy recommended), with
+  `BETTER_AUTH_URL` set to the public HTTPS URL; the operator guide's *HTTPS with a Reverse Proxy*
+  section has the setup. The stack ships no proxy service or overlay (#143). Restricting the port
+  to loopback is `OSO_HTTP_PORT=127.0.0.1:3000` — the compose port mapping takes a host IP — so
+  keep that mapping's `${OSO_HTTP_PORT}:3000` shape, and keep the installer from validating the
+  value as a bare number.
 - There is no automatic updater: deployments track the image's `latest` tag and the operator updates
   with `docker compose pull && docker compose up -d --remove-orphans`. Watchtower and the
   `autoupdate` profile were removed (the owner, 2026-11-23, #250); a leftover

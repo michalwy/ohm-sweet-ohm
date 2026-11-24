@@ -93,7 +93,8 @@ Introduce a **self-hosting deployment path** built from boring, well-supported t
   installs `openssl`. This must be verified on real/emulated arm64 (see the plan's
   verification notes) whenever the base image or Prisma major version changes.
 - TLS/reverse proxy and database backups are explicitly the operator's responsibility and
-  are out of scope for this ADR (candidate follow-up work).
+  are out of scope for this ADR. The operator guide documents running OSO behind an
+  operator-run reverse proxy, Caddy recommended (#143, 2026-11-24); the stack ships no proxy.
 
 ## References
 
