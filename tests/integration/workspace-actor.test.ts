@@ -195,7 +195,7 @@ describe("workspace actor", () => {
     assert.equal(actorHasPermission(adminToken, "parts:write"), false);
   });
 
-  test("no API token verifies until the tokens issue supplies verification", async () => {
+  test("an unknown API token resolves to no actor", async () => {
     assert.equal(await resolveTokenActor("oso_anything"), null);
   });
 });

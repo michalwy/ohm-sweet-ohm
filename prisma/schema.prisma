@@ -574,6 +574,31 @@ model User {
   shoppingListsCreated    ShoppingList[]
   purchaseOrdersCreated   PurchaseOrder[]
   buildsCreated           Build[]
+  apiTokens               ApiToken[]
+}
+
+/// A personal API token (ADR 0030, #273): it belongs to one user and is bound to one workspace and
+/// a permission set. Only the SHA-256 hash of the token value is stored; revoking deletes the row.
+model ApiToken {
+  id          String    @id @default(cuid())
+  userId      String
+  workspaceId String
+  name        String
+  tokenHash   String    @unique
+  /// "read-only", "read-write" or "custom"; the two presets are resolved when the token is used.
+  access      String
+  /// The permission keys of a "custom" token; empty for the presets.
+  permissions String[]
+  expiresAt   DateTime?
+  lastUsedAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([workspaceId])
 }
 
 model Session {
@@ -636,6 +661,7 @@ model Workspace {
   updatedAt       DateTime @updatedAt
 
   members              WorkspaceMember[]
+  apiTokens            ApiToken[]
   parts                Part[]
   organizations        Organization[]
   partCategories       PartCategory[]

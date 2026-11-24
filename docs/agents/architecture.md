@@ -66,6 +66,24 @@ the token's set ∩ the user's roles). Each area issue delivers its REST endpoin
 together. Read the ADR's *What is exposed* list before exposing an operation: demo reset, scheduled
 workspace deletion, sign-up/in/out and DigiKey/TME credentials are never exposed.
 
+### Personal API tokens
+
+`src/server/api-tokens/` (#273). `verifyApiToken` checks only the token — shape, SHA-256 hash,
+expiry; the workspace checks (membership, archived workspace, intersection with the roles) are
+`resolveTokenActor`'s, through the same `resolveMemberActor` sessions use, so there is one place that
+says what a member may do. Rules:
+
+- **The value exists once**, in `createApiToken`'s answer; nothing reads it back, and no listing or
+  log carries it or its hash.
+- **`admin` is never a token permission**: presets and custom sets hold named keys only, so a token
+  cannot reach `admin`-gated workspace lifecycle actions; `resolveTokenActor` also ignores
+  `allowArchived`.
+- **Presets are stored by name** (`read-only`, `read-write`) and resolved on use
+  (`apiTokenPermissions.ts`), so a permission key added for a new area reaches existing tokens of
+  that preset; a custom set is stored as keys.
+- **Token management is session-only**: the actions in `apiTokenActions.ts` act for the signed-in
+  user and are never exposed to token callers.
+
 ### Operation schemas
 
 Every operation the API and MCP expose is defined **once**, with zod (#272), in a pure module next to

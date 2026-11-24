@@ -29,6 +29,13 @@ actions use, authenticated by per-user personal access tokens bound to one works
 set. The design, what is exposed and what is not, is in
 [ADR 0030](../decisions/0030-public-api-and-mcp.md) (milestone tracked in #79).
 
+Personal API tokens (#273) are the `ApiToken` model: one user, one workspace, an access level
+(`read-only`, `read-write` — resolved to permission keys when used — or `custom` with its own keys;
+never `admin`), an optional expiry and a last-used time. Only the SHA-256 hash of a token value
+(`oso_` + 32 random bytes, base64url) is stored, and revoking deletes the row. The domain code is
+`src/server/api-tokens/`; `resolveTokenActor` turns a token into a `WorkspaceActor` and always
+denies an archived workspace. Users manage their tokens at **Settings → API tokens**.
+
 ## Intended Shape
 
 - `src/app`: Next.js App Router entry points and route-level UI.
