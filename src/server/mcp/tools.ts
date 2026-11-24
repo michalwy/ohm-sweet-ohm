@@ -34,7 +34,7 @@ import {
   listPartsImplementation,
   updatePartImplementation
 } from "@/server/parts/partsApi";
-import { whoamiImplementation } from "@/server/workspaces/workspaceApi";
+import * as workspaceApi from "@/server/workspaces/workspaceApi";
 
 /**
  * How a tool behaves, as MCP annotations tell clients (#275). Every tool says whether it only
@@ -69,7 +69,17 @@ export function defineMcpTool(
  * here. Tool names are stable once released (ADR 0030).
  */
 export const mcpTools: McpTool[] = [
-  defineMcpTool("Who am I", whoamiImplementation, { readOnly: true }),
+  defineMcpTool("Who am I", workspaceApi.whoamiImplementation, { readOnly: true }),
+  // Workspaces, settings and display preferences (#286)
+  defineMcpTool("The token's workspace", workspaceApi.getWorkspaceImplementation, { readOnly: true }),
+  defineMcpTool("Update workspace settings", workspaceApi.updateWorkspaceSettingsImplementation, { readOnly: false, destructive: true, idempotent: true }),
+  defineMcpTool("Load starter dictionaries", workspaceApi.loadStarterDictionariesImplementation, { readOnly: false, destructive: false, idempotent: true }),
+  defineMcpTool("List my workspaces", workspaceApi.listWorkspacesImplementation, { readOnly: true }),
+  defineMcpTool("Create a workspace", workspaceApi.createWorkspaceImplementation, { readOnly: false, destructive: false }),
+  defineMcpTool("Archive a workspace", workspaceApi.archiveWorkspaceImplementation, { readOnly: false, destructive: true }),
+  defineMcpTool("Restore a workspace", workspaceApi.restoreWorkspaceImplementation, { readOnly: false, destructive: false }),
+  defineMcpTool("My display preferences", workspaceApi.getDisplayPreferencesImplementation, { readOnly: true }),
+  defineMcpTool("Update my display preferences", workspaceApi.updateDisplayPreferencesImplementation, { readOnly: false, destructive: true, idempotent: true }),
   defineMcpTool("List organizations", listOrganizationsImplementation, { readOnly: true }),
   defineMcpTool("Get an organization", getOrganizationImplementation, { readOnly: true }),
   defineMcpTool("Create an organization", createOrganizationImplementation, {

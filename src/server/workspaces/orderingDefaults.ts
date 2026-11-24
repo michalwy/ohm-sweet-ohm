@@ -1,10 +1,13 @@
 "use server";
 
-import { Prisma } from "@/generated/prisma/client";
+import type { Prisma } from "@/generated/prisma/client";
 
 import { actorHasPermission } from "@/server/access-control/actor";
 import { resolveWorkspaceActor } from "@/server/auth/currentActor";
-import { prisma } from "@/server/db/prisma";
+import {
+  parseDefaultTaxRate,
+  updateWorkspaceOrderingDefaultsForWorkspace
+} from "@/server/workspaces/workspaceSettings";
 
 type UpdateOrderingDefaultsInput = {
   workspaceSlug: string;
@@ -31,23 +34,18 @@ export async function updateWorkspaceOrderingDefaults(
     return { ok: false, error: "workspace-permission-denied" };
   }
 
-  let parsedTaxRate: Prisma.Decimal | null = null;
+  let parsedTaxRate: Prisma.Decimal | null;
 
-  if (input.defaultTaxRate !== null && input.defaultTaxRate.trim() !== "") {
-    const n = parseFloat(input.defaultTaxRate);
-    if (isNaN(n) || n < 0 || n >= 100) {
-      return { ok: false, error: "invalid-tax-rate" };
-    }
-    parsedTaxRate = new Prisma.Decimal(input.defaultTaxRate.trim());
+  try {
+    parsedTaxRate = parseDefaultTaxRate(input.defaultTaxRate);
+  } catch {
+    return { ok: false, error: "invalid-tax-rate" };
   }
 
   try {
-    await prisma.workspace.update({
-      where: { id: context.workspace.id },
-      data: {
-        defaultPriceEntryMode: input.defaultPriceEntryMode,
-        defaultTaxRate: parsedTaxRate
-      }
+    await updateWorkspaceOrderingDefaultsForWorkspace(context.workspace.id, {
+      defaultPriceEntryMode: input.defaultPriceEntryMode,
+      defaultTaxRate: parsedTaxRate
     });
 
     return { ok: true };

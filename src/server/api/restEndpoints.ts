@@ -91,7 +91,15 @@ import {
   updatePartOperation
 } from "@/server/parts/partOperations";
 import {
+  archiveWorkspaceOperation,
+  createWorkspaceOperation,
+  getDisplayPreferencesOperation,
   getWorkspaceOperation,
+  listWorkspacesOperation,
+  loadStarterDictionariesOperation,
+  restoreWorkspaceOperation,
+  updateDisplayPreferencesOperation,
+  updateWorkspaceSettingsOperation,
   whoamiOperation
 } from "@/server/workspaces/workspaceOperations";
 
@@ -130,6 +138,15 @@ export const restEndpoints: RestEndpoint[] = [
     tag: "Workspace",
     operation: getWorkspaceOperation
   },
+  // Workspaces, settings and display preferences (#286)
+  { method: "patch", path: "/workspace", summary: "Update the token's workspace settings", tag: "Workspace", operation: updateWorkspaceSettingsOperation },
+  { method: "post", path: "/workspace/starter-dictionaries", summary: "Load the starter dictionaries", tag: "Workspace", operation: loadStarterDictionariesOperation },
+  { method: "get", path: "/workspaces", summary: "List the user's workspaces", tag: "Workspace", operation: listWorkspacesOperation },
+  { method: "post", path: "/workspaces", summary: "Create a workspace", tag: "Workspace", operation: createWorkspaceOperation },
+  { method: "post", path: "/workspaces/{id}/archive", summary: "Archive a workspace", tag: "Workspace", operation: archiveWorkspaceOperation },
+  { method: "post", path: "/workspaces/{id}/restore", summary: "Restore an archived workspace", tag: "Workspace", operation: restoreWorkspaceOperation },
+  { method: "get", path: "/me/display-preferences", summary: "The user's display preferences", tag: "Workspace", operation: getDisplayPreferencesOperation },
+  { method: "patch", path: "/me/display-preferences", summary: "Update the user's display preferences", tag: "Workspace", operation: updateDisplayPreferencesOperation },
   {
     method: "get",
     path: "/organizations",

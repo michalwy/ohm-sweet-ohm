@@ -96,7 +96,7 @@ export const serverActionCoverage: ServerActionCoverageMap = {
   "src/server/integrations/settingsActions.ts": {
     updateDigiKeyIntegrationSettings: { excluded: CREDENTIALS },
     updateTmeIntegrationSettings: { excluded: CREDENTIALS },
-    updateActiveSupplierProviderSettings: { pending: "#286" }
+    updateActiveSupplierProviderSettings: { tool: "update_workspace_settings" }
   },
   "src/server/integrations/supplierActions.ts": {
     searchSupplierPartsForWorkspace: { pending: "#285" },
@@ -203,22 +203,22 @@ export const serverActionCoverage: ServerActionCoverageMap = {
     deleteUnitForWorkspace: { tool: "delete_unit" }
   },
   "src/server/user/displayPreferences.ts": {
-    updateUserDisplayPreferences: { pending: "#286" }
+    updateUserDisplayPreferences: { tool: "update_display_preferences" }
   },
   "src/server/workspaces/actions.ts": {
-    createWorkspace: { pending: "#286" },
-    archiveWorkspace: { pending: "#286" },
-    restoreWorkspaceFromPicker: { pending: "#286" },
+    createWorkspace: { tool: "create_workspace" },
+    archiveWorkspace: { tool: "archive_workspace" },
+    restoreWorkspaceFromPicker: { tool: "restore_workspace" },
     scheduleWorkspaceDeletion: {
       excluded: "Scheduled workspace deletion is not exposed (the owner, 2026-11-24, #79)."
     },
     resetWorkspaceToDemoPreset: {
       excluded: "Reset to the demo preset is not exposed (the owner, 2026-11-24, #79)."
     },
-    loadStarterDictionaries: { pending: "#286" }
+    loadStarterDictionaries: { tool: "load_starter_dictionaries" }
   },
   "src/server/workspaces/orderingDefaults.ts": {
-    updateWorkspaceOrderingDefaults: { pending: "#286" }
+    updateWorkspaceOrderingDefaults: { tool: "update_workspace_settings" }
   }
 };
 
