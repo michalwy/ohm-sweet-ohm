@@ -21,6 +21,12 @@ export type ListColumnDefinition = {
   maxWidth?: number;
   sortable?: boolean;
   align?: "left" | "right" | "center";
+  /**
+   * The column shows a short measured quantity: the part Value, or an attribute of type Quantity.
+   * Such columns are centered, header and cells, in every list (#245); set it through
+   * `partValueColumnFlags()` / `attributeColumnFlags()` (`list-column-align.ts`) rather than by hand.
+   */
+  measuredQuantity?: boolean;
 };
 
 type StoredListConfiguration = {

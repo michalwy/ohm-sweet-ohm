@@ -23,6 +23,11 @@
   saved in localStorage. A screen supplies only the row content and its domain actions (#15).
 - Reserve URL state for navigation, filters, sorting, pagination, selected records and deep-linkable
   UI. Never put ephemeral success feedback in URL parameters; use a local toast.
+- **Measured quantities are centered** — the part Value column and Quantity-type attribute columns,
+  header and cells, in every list (#245). Build such column definitions with
+  `partValueColumnFlags()` / `attributeColumnFlags()` from `src/app/list-column-align.ts`; `ListTable`
+  centers the cells of any column marked `measuredQuantity`, so a new list needs nothing more. A table
+  not built on `ListTable` uses `MEASURED_QUANTITY_CELL_CLASS` on that column's header and cells.
 - Use the semantic color tokens in `src/app/globals.css` for accent, success, error, warning and
   primary actions instead of hard-coding black action buttons.
 - User-facing copy is English, structured so it can be localized later.
