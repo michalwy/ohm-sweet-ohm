@@ -23,6 +23,11 @@ means each required check (`Static checks`, `Unit tests`, `Integration tests`,
 twice counts by its latest `started_at`; `failure`, `skipped`, `cancelled`, `timed_out` or a missing
 check is not green. On red, fix, push and wait again.
 
+The script waits only for required checks. `Container image build check` is not required yet
+([`branch-protection.md`](branch-protection.md)); read its conclusion on the head before merging
+(`gh api $R/commits/<sha>/check-runs --jq '.check_runs[] | [.name, .status, .conclusion] | @tsv'`) and
+treat red as red.
+
 **Closing references.** Never a closing keyword in the body or the commit messages. The
 `Closing reference check` does **not** re-run when the body or title is edited (it runs on pushes
 only), so after any edit its green describes the old text. Read the text itself with the pattern of

@@ -161,6 +161,36 @@ jobs:
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: ./scripts/check-closing-references.sh
 
+  # Builds the release image's `runner` target for linux/amd64 on every pull request and `main` push,
+  # without pushing it, so a broken Dockerfile fails here rather than at a release (#317: v0.15.0's
+  # first attempt failed because Node 26 no longer bundles corepack). Not a required check — that is a
+  # ruleset change and the owner's call (branch-protection.md). Tag runs skip it: `build-image` builds
+  # both architectures there.
+  image-build-check:
+    name: Container image build check
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request' || github.ref == 'refs/heads/main'
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7.0.0
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4.2.0
+
+      - name: Build the runner image (linux/amd64, not pushed)
+        uses: docker/build-push-action@v7.3.0
+        with:
+          context: .
+          target: runner
+          platforms: linux/amd64
+          push: false
+          # Reuse the release build's layers; write only to this job's own scope.
+          cache-from: |
+            type=gha,scope=image-check-amd64
+            type=gha,scope=image-amd64
+          cache-to: type=gha,scope=image-check-amd64,mode=max
+
   # The release image is built natively per architecture — no QEMU (the owner, 2026-11-24, #259).
   # Each leg builds its platform on a runner of that architecture and pushes it by digest only;
   # `Publish container image` then joins the digests into one multi-arch manifest list and tags it.

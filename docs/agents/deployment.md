@@ -21,6 +21,9 @@ commands; this file has the rules.
   manifest list and checks it lists both architectures. It runs on the tag's push, or on the release
   workflow's dispatch with `publish_image` — never on every `main` commit. A release is cut by dispatching
   `.github/workflows/release.yml`; see `release-versioning.md`.
+- **Every pull request and every push to `main`** also builds the image, `linux/amd64` only and not
+  pushed (`Container image build check`, #317), so a broken Dockerfile fails CI before it reaches a
+  release. It is not a required check ([`branch-protection.md`](branch-protection.md)).
 - `docker-compose.prod.yml` runs that prebuilt image against an operator-provided external database,
   with all configuration in a git-ignored `.env` (template `.env.prod.example`).
 - `scripts/install.sh` is the curl-able installer: interactive whiptail dialogs when available, with a

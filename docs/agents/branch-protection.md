@@ -43,6 +43,13 @@ job never runs blocks that pull request forever: `Build container image (…)` a
 `renovate/stability-days` (Renovate pull requests only), and the `Site` workflow jobs (pushes to
 `main` only).
 
+`Container image build check` (#317, the owner, 2026-11-25) runs on every pull request and every
+push to `main` — it builds the Dockerfile's `runner` target for `linux/amd64` without pushing, so a
+broken Dockerfile fails a pull request instead of a release — but it is **not required** yet: making
+it so is a ruleset change, still the owner's call. Until then `scripts/ci/wait-for-checks.sh` does
+not wait for it, so read its result on the pull request before merging, and do not merge one where
+it is red.
+
 `Ruleset drift (advisory)` *could* run on every pull request and deliberately is not required — see
 the drift check below.
 
