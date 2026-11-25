@@ -59,6 +59,17 @@ If you are setting up a new workspace, this sequence usually works best:
 11. Create purchase orders and receive deliveries to update inventory automatically.
 12. Run builds of a design revision to allocate, reserve, and consume parts and produce the output part.
 
+## Working With Lists
+
+- **Row buttons.** The small icon buttons at the end of a list row (edit, delete, add to purchase
+  order, add to shopping list, and so on) show their name in a tooltip when you rest the mouse on
+  them for a moment, or when you reach them with the keyboard.
+- **Links to related records.** Where a list shows a related part, purchase order or shopping list,
+  hovering the row reveals a small link icon next to its name. Rest the mouse on the icon to see a
+  short preview without leaving the page — manufacturer, catalog number and description for a part;
+  supplier, status and number of items for a purchase order; name, description and number of items
+  for a shopping list. Click the icon to open that record.
+
 ## Guide Sections
 
 - [Workspaces](workspaces.md) — sign in, create, archive, restore, delete workspaces

@@ -21,6 +21,15 @@
   `TreeListRow` the row chrome, `getTreeListRowToneClassName` the assignable/organizational colouring,
   `TreeListRowActions` the add-child/edit/delete buttons, and `usePersistedTreeExpansion` expansion
   saved in localStorage. A screen supplies only the row content and its domain actions (#15).
+- **Tooltips and hover popovers** are built on `src/app/floating.tsx` (#129, #123): `Tooltip` labels
+  an icon-only button — every icon-only row action is wrapped in one, with the same text as its
+  `aria-label` and no native `title` — and `HoverPopover` shows richer content, mounted only once it
+  opens, so a preview that fetches on mount fetches only for a deliberate hover (the entity links of
+  `src/app/entity-links.tsx` use it for their part / purchase order / shopping list previews). Both
+  open after a short delay, close on leave, Escape or scroll, and render in the browser's top layer
+  (Popover API), so they also show above an open modal dialog. Placement is the pure
+  `computeFloatingPosition` in `src/app/floating-position.ts`. Do not add ad-hoc per-button
+  tooltips or another floating library; extend these.
 - Reserve URL state for navigation, filters, sorting, pagination, selected records and deep-linkable
   UI. Never put ephemeral success feedback in URL parameters; use a local toast.
 - **Measured quantities are centered** — the part Value column and Quantity-type attribute columns,

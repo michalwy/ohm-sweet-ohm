@@ -13,6 +13,7 @@ import {
   closeDialog,
   openDialog
 } from "@/app/dialog-shell";
+import { Tooltip } from "@/app/floating";
 import { ShortageToShoppingListDialog } from "@/app/shortage-to-sl-dialog";
 
 const BOM_OP_TO_FILTER_OP: Record<LineShortageMatcherFilter["operator"], string> = {
@@ -239,23 +240,24 @@ function ShortageResults({
                     <span className="inline-flex items-center gap-1">
                       <span>{line.designators}</span>
                       {hasPartsLink && (
-                        <a
-                          href={buildPartsListUrl(workspaceSlug, line)}
-                          aria-label={copy.viewMatchingParts}
-                          title={copy.viewMatchingParts}
-                          className="opacity-0 group-hover:opacity-100 transition-opacity text-[var(--color-text-muted)] hover:text-[var(--color-accent)] focus:opacity-100 focus:outline-none"
-                        >
-                          <svg
-                            aria-hidden="true"
-                            className="h-3.5 w-3.5"
-                            viewBox="0 0 20 20"
-                            fill="currentColor"
-                            xmlns="http://www.w3.org/2000/svg"
+                        <Tooltip label={copy.viewMatchingParts}>
+                          <a
+                            href={buildPartsListUrl(workspaceSlug, line)}
+                            aria-label={copy.viewMatchingParts}
+                            className="opacity-0 group-hover:opacity-100 transition-opacity text-[var(--color-text-muted)] hover:text-[var(--color-accent)] focus:opacity-100 focus:outline-none"
                           >
-                            <path d="M11 3a1 1 0 1 0 0 2h2.586l-6.293 6.293a1 1 0 1 0 1.414 1.414L15 6.414V9a1 1 0 1 0 2 0V4a1 1 0 0 0-1-1h-5Z" />
-                            <path d="M5 5a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2v-3a1 1 0 1 0-2 0v3H5V7h3a1 1 0 0 0 0-2H5Z" />
-                          </svg>
-                        </a>
+                            <svg
+                              aria-hidden="true"
+                              className="h-3.5 w-3.5"
+                              viewBox="0 0 20 20"
+                              fill="currentColor"
+                              xmlns="http://www.w3.org/2000/svg"
+                            >
+                              <path d="M11 3a1 1 0 1 0 0 2h2.586l-6.293 6.293a1 1 0 1 0 1.414 1.414L15 6.414V9a1 1 0 1 0 2 0V4a1 1 0 0 0-1-1h-5Z" />
+                              <path d="M5 5a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2v-3a1 1 0 1 0-2 0v3H5V7h3a1 1 0 0 0 0-2H5Z" />
+                            </svg>
+                          </a>
+                        </Tooltip>
                       )}
                     </span>
                     {unmatched && (

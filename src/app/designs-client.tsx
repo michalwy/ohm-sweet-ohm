@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useMemo, useRef, useState } from "react";
+import { Tooltip } from "@/app/floating";
 import { FilterBar } from "@/app/list-filter-bar";
 import type { FilterBarHandle } from "@/app/list-filter-bar";
 import type { FilterDefinition } from "@/app/list-filter-config";
@@ -517,28 +518,30 @@ export function DesignsClient({
         cell: ({ row }) =>
           canWrite ? (
             <div className="flex justify-end gap-2">
-              <button
-                aria-label={copy.edit}
-                title={copy.edit}
-                className="min-h-8 rounded-md border border-[var(--color-border-strong)] bg-[var(--color-bg-elevated)] px-2.5 py-1 text-sm font-medium text-[var(--color-text-secondary)] transition hover:border-[var(--color-border-hover)] hover:bg-[var(--color-bg-subtle)] focus:outline-none focus:ring-2 focus:ring-[var(--color-ring-strong)] focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-[var(--color-bg-subtle)] disabled:text-[var(--color-text-placeholder)]"
-                type="button"
-                onClick={() => openDesignDialog(row.original)}
-              >
-                <svg aria-hidden="true" className="h-4 w-4" fill="none" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M13.9 3.3a1.5 1.5 0 0 1 2.1 0l.7.7a1.5 1.5 0 0 1 0 2.1l-8.4 8.4-3.3.8.8-3.3 8.4-8.4Z" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" />
-                </svg>
-              </button>
-              <button
-                aria-label={copy.delete}
-                title={copy.delete}
-                className="min-h-8 rounded-md border border-[var(--color-error-border)] bg-[var(--color-bg-elevated)] px-2.5 py-1 text-sm font-medium text-[var(--color-error)] transition hover:bg-[var(--color-error-soft)] focus:outline-none focus:ring-2 focus:ring-[var(--color-error-border)] focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-[var(--color-bg-subtle)] disabled:text-[var(--color-text-placeholder)]"
-                type="button"
-                onClick={() => setDesignPendingDelete(row.original)}
-              >
-                <svg aria-hidden="true" className="h-4 w-4" fill="none" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M5.5 6h9m-7.5 0V4.75A1.75 1.75 0 0 1 8.75 3h2.5A1.75 1.75 0 0 1 13 4.75V6m-6.5 0 .6 9.1A1.75 1.75 0 0 0 8.84 16.75h2.32a1.75 1.75 0 0 0 1.74-1.65L13.5 6M8.75 8.5v5m2.5-5v5" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" />
-                </svg>
-              </button>
+              <Tooltip label={copy.edit}>
+                <button
+                  aria-label={copy.edit}
+                  className="min-h-8 rounded-md border border-[var(--color-border-strong)] bg-[var(--color-bg-elevated)] px-2.5 py-1 text-sm font-medium text-[var(--color-text-secondary)] transition hover:border-[var(--color-border-hover)] hover:bg-[var(--color-bg-subtle)] focus:outline-none focus:ring-2 focus:ring-[var(--color-ring-strong)] focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-[var(--color-bg-subtle)] disabled:text-[var(--color-text-placeholder)]"
+                  type="button"
+                  onClick={() => openDesignDialog(row.original)}
+                >
+                  <svg aria-hidden="true" className="h-4 w-4" fill="none" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M13.9 3.3a1.5 1.5 0 0 1 2.1 0l.7.7a1.5 1.5 0 0 1 0 2.1l-8.4 8.4-3.3.8.8-3.3 8.4-8.4Z" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" />
+                  </svg>
+                </button>
+              </Tooltip>
+              <Tooltip label={copy.delete}>
+                <button
+                  aria-label={copy.delete}
+                  className="min-h-8 rounded-md border border-[var(--color-error-border)] bg-[var(--color-bg-elevated)] px-2.5 py-1 text-sm font-medium text-[var(--color-error)] transition hover:bg-[var(--color-error-soft)] focus:outline-none focus:ring-2 focus:ring-[var(--color-error-border)] focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-[var(--color-bg-subtle)] disabled:text-[var(--color-text-placeholder)]"
+                  type="button"
+                  onClick={() => setDesignPendingDelete(row.original)}
+                >
+                  <svg aria-hidden="true" className="h-4 w-4" fill="none" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M5.5 6h9m-7.5 0V4.75A1.75 1.75 0 0 1 8.75 3h2.5A1.75 1.75 0 0 1 13 4.75V6m-6.5 0 .6 9.1A1.75 1.75 0 0 0 8.84 16.75h2.32a1.75 1.75 0 0 0 1.74-1.65L13.5 6M8.75 8.5v5m2.5-5v5" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" />
+                  </svg>
+                </button>
+              </Tooltip>
             </div>
           ) : null
       })
@@ -870,20 +873,21 @@ export function DesignsClient({
                       </td>
                       {canWrite && (
                         <td className="px-3 py-2">
-                          <button
-                            aria-label={copy.editNotes}
-                            title={copy.editNotes}
-                            className="rounded p-1 text-[var(--color-text-muted)] hover:bg-[var(--color-bg-subtle)] hover:text-[var(--color-text-secondary)]"
-                            type="button"
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              openRevisionDialog(rev.id, rev.notes);
-                            }}
-                          >
-                            <svg aria-hidden="true" className="h-3.5 w-3.5" fill="none" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
-                              <path d="M13.9 3.3a1.5 1.5 0 0 1 2.1 0l.7.7a1.5 1.5 0 0 1 0 2.1l-8.4 8.4-3.3.8.8-3.3 8.4-8.4Z" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" />
-                            </svg>
-                          </button>
+                          <Tooltip label={copy.editNotes}>
+                            <button
+                              aria-label={copy.editNotes}
+                              className="rounded p-1 text-[var(--color-text-muted)] hover:bg-[var(--color-bg-subtle)] hover:text-[var(--color-text-secondary)]"
+                              type="button"
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                openRevisionDialog(rev.id, rev.notes);
+                              }}
+                            >
+                              <svg aria-hidden="true" className="h-3.5 w-3.5" fill="none" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M13.9 3.3a1.5 1.5 0 0 1 2.1 0l.7.7a1.5 1.5 0 0 1 0 2.1l-8.4 8.4-3.3.8.8-3.3 8.4-8.4Z" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" />
+                              </svg>
+                            </button>
+                          </Tooltip>
                         </td>
                       )}
                     </tr>
@@ -967,28 +971,30 @@ export function DesignsClient({
                       {canWrite && (
                         <td className="px-3 py-2">
                           <div className="flex items-center gap-1">
-                            <button
-                              aria-label={copy.edit}
-                              title={copy.edit}
-                              className="rounded p-1 text-[var(--color-text-muted)] hover:bg-[var(--color-bg-subtle)] hover:text-[var(--color-text-secondary)]"
-                              type="button"
-                              onClick={() => openLineItemDialog(item)}
-                            >
-                              <svg aria-hidden="true" className="h-3.5 w-3.5" fill="none" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
-                                <path d="M13.9 3.3a1.5 1.5 0 0 1 2.1 0l.7.7a1.5 1.5 0 0 1 0 2.1l-8.4 8.4-3.3.8.8-3.3 8.4-8.4Z" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" />
-                              </svg>
-                            </button>
-                            <button
-                              aria-label={copy.deleteLineItem}
-                              title={copy.deleteLineItem}
-                              className="rounded p-1 text-[var(--color-text-muted)] hover:bg-[var(--color-error-soft)] hover:text-[var(--color-error)]"
-                              type="button"
-                              onClick={() => setLineItemPendingDelete(item)}
-                            >
-                              <svg aria-hidden="true" className="h-3.5 w-3.5" fill="none" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
-                                <path d="M5 6h10M8 6V4h4v2m-5 0v9m6-9v9M6 6l1 11h6l1-11" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" />
-                              </svg>
-                            </button>
+                            <Tooltip label={copy.edit}>
+                              <button
+                                aria-label={copy.edit}
+                                className="rounded p-1 text-[var(--color-text-muted)] hover:bg-[var(--color-bg-subtle)] hover:text-[var(--color-text-secondary)]"
+                                type="button"
+                                onClick={() => openLineItemDialog(item)}
+                              >
+                                <svg aria-hidden="true" className="h-3.5 w-3.5" fill="none" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+                                  <path d="M13.9 3.3a1.5 1.5 0 0 1 2.1 0l.7.7a1.5 1.5 0 0 1 0 2.1l-8.4 8.4-3.3.8.8-3.3 8.4-8.4Z" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" />
+                                </svg>
+                              </button>
+                            </Tooltip>
+                            <Tooltip label={copy.deleteLineItem}>
+                              <button
+                                aria-label={copy.deleteLineItem}
+                                className="rounded p-1 text-[var(--color-text-muted)] hover:bg-[var(--color-error-soft)] hover:text-[var(--color-error)]"
+                                type="button"
+                                onClick={() => setLineItemPendingDelete(item)}
+                              >
+                                <svg aria-hidden="true" className="h-3.5 w-3.5" fill="none" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+                                  <path d="M5 6h10M8 6V4h4v2m-5 0v9m6-9v9M6 6l1 11h6l1-11" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" />
+                                </svg>
+                              </button>
+                            </Tooltip>
                           </div>
                         </td>
                       )}
