@@ -4,7 +4,10 @@ ENV NEXT_TELEMETRY_DISABLED=1
 RUN apt-get update -y \
   && apt-get install -y --no-install-recommends openssl \
   && rm -rf /var/lib/apt/lists/*
-RUN corepack enable
+# Node 25+ no longer bundles corepack; install it so `pnpm` follows the
+# packageManager pin in package.json.
+RUN npm install -g corepack@0.36.0 \
+  && corepack enable pnpm
 
 FROM base AS deps
 # pnpm-workspace.yaml carries onlyBuiltDependencies/allowBuilds; without it pnpm 11

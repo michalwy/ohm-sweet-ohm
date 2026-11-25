@@ -36,6 +36,7 @@ These choices are documented in [docs/decisions/0001-initial-stack.md](docs/deci
 Install dependencies:
 
 ```bash
+npm install -g corepack   # Node 25+ no longer bundles corepack
 corepack enable
 pnpm install
 ```
