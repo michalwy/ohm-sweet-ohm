@@ -6,9 +6,11 @@
 - pnpm 9 or newer
 - Docker and Docker Compose
 
-If pnpm is not available yet, enable it through Corepack:
+If pnpm is not available yet, enable it through Corepack. Node 25 and later no longer bundle
+Corepack, so install it first there:
 
 ```bash
+npm install -g corepack   # Node 25+ only
 corepack enable
 ```
 
