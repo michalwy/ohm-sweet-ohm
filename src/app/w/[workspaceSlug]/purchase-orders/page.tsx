@@ -286,6 +286,7 @@ export default async function PurchaseOrdersPage({ params, searchParams }: Purch
           (context.workspace.defaultPriceEntryMode as "net" | "gross") ?? "net"
         }
         workspaceDefaultTaxRate={context.workspace.defaultTaxRate?.toString() ?? null}
+        workspaceDefaultLocationId={context.workspace.defaultLocationId}
       />
     </WorkspaceShell>
   );

@@ -38,7 +38,7 @@ A token can never do more than you can. What it may do is the permissions you ga
 your roles in its workspace allow, both at once — so a read-write token of a reader can only read,
 and if your roles change, your tokens follow on their next use.
 
-A few things in the app are for a workspace's **administrators** only: its ordering and supplier
+A few things in the app are for a workspace's **administrators** only: its ordering, inventory and supplier
 settings, loading the starter dictionaries, and archiving or restoring it. A token reaches them only
 when it has the `workspace:write` permission ("Update workspace settings") **and** you are an
 administrator of the workspace it acts on. A token with `workspace:write` can also create a new

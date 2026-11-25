@@ -219,6 +219,11 @@ request's actor.
   category.
 - Archived locations (ADR 0013): a location can be archived only when stock is zero for every part;
   archived locations stay visible in stock read views and cannot be used in new stock movements.
+- Default locations (#37, #39): a part's own `defaultLocationId` wins; a part with none falls back to
+  the workspace's `Workspace.defaultLocationId` (Settings → Inventory). Both must name a non-archived
+  location of the same workspace when set, and a location that either names cannot be deleted
+  (`location-in-use`). Pickers resolve the preselection with `resolvePreselectedLocationId`
+  (`src/lib/defaultLocation.ts`): the receive-order dialog and a build's output location.
 
 ## Lists at scale
 

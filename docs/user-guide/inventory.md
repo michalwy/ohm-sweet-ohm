@@ -22,6 +22,19 @@ Archived location behavior:
 A location cannot be moved under itself or under one of its own sublocations; OSO refuses the
 change instead of cutting that branch off the tree.
 
+## Workspace Default Location
+
+**Settings → Inventory** sets one storage location as the workspace's default location. It is the
+fallback for every part that has no [default location](parts.md#default-location) of its own:
+
+- the receive-order dialog pre-selects it for such a part's line item;
+- creating a build pre-selects it as the output location when the output part has none.
+
+A part's own default location always takes precedence. You can still choose another location
+before saving. Only workspace administrators can change the setting; clear it with the **×** button
+next to the picker and save. The default location cannot be deleted while it is set — clear it or
+choose another first. If it is archived, it is treated as unset.
+
 ## Generate a Location Structure
 
 Storage is often a regular grid — a cabinet with rows, each row with the same bins. Instead of adding

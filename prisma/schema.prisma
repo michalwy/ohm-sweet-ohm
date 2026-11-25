@@ -296,6 +296,7 @@ model StorageLocation {
   parent                StorageLocation?  @relation("StorageLocationTree", fields: [parentId], references: [id], onDelete: Restrict)
   children              StorageLocation[] @relation("StorageLocationTree")
   defaultForParts       Part[]            @relation("PartDefaultLocation")
+  defaultForWorkspaces  Workspace[]       @relation("WorkspaceDefaultLocation")
   inventoryEntriesFrom  InventoryEntry[]  @relation("InventoryEntryFromLocation")
   inventoryEntriesTo    InventoryEntry[]  @relation("InventoryEntryToLocation")
   buildAllocationSources BuildLineAllocation[]       @relation("BuildAllocationSourceLocation")
@@ -655,6 +656,7 @@ model Workspace {
   defaultPriceEntryMode String   @default("net")
   defaultTaxRate        Decimal?
   activeSupplierProvider SupplierProvider?
+  defaultLocationId   String?
   archivedAt          DateTime?
   deletionScheduledAt DateTime?
   createdAt       DateTime @default(now())
@@ -690,6 +692,7 @@ model Workspace {
   buildLineItems             BuildLineItem[]
   buildLineAllocations       BuildLineAllocation[]
   buildDesignatorAssignments BuildDesignatorAssignment[]
+  defaultLocation            StorageLocation?            @relation("WorkspaceDefaultLocation", fields: [defaultLocationId], references: [id], onDelete: SetNull)
 
   @@index([archivedAt])
 }

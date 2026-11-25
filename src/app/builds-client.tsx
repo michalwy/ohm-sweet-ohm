@@ -64,6 +64,7 @@ import {
   type LocationTreeItem,
   type LocationTreeSelectCopy
 } from "@/app/location-tree-select";
+import { resolvePreselectedLocationId } from "@/lib/defaultLocation";
 
 export type BuildsCopy = {
   title: string;
@@ -629,12 +630,20 @@ export function BuildsClient({
       setFormRevisionId(prefill.revisionId);
       setFormTargetQuantity(String(prefill.targetQuantity));
       const design = createOptions?.designs.find((d) => d.id === prefill.designId) ?? null;
-      setFormOutputLocationId(design?.defaultLocationId ?? "");
+      setFormOutputLocationId(
+        design
+          ? resolvePreselectedLocationId(
+              design.defaultLocationId,
+              createOptions?.workspaceDefaultLocationId,
+              outputLocations
+            )
+          : ""
+      );
       setFormErrors({});
       setFormKey((k) => k + 1);
       window.requestAnimationFrame(() => openDialog(createDialogRef.current));
     },
-    [createOptions]
+    [createOptions, outputLocations]
   );
 
   const selectedFormDesign = createOptions?.designs.find((d) => d.id === formDesignId) ?? null;
@@ -645,8 +654,17 @@ export function BuildsClient({
     const design = createOptions?.designs.find((d) => d.id === designId) ?? null;
     // Auto-select the latest revision (revisions are ordered newest-first).
     setFormRevisionId(design?.revisions[0]?.id ?? "");
-    // Default the output location to the design output part's default location.
-    setFormOutputLocationId(design?.defaultLocationId ?? "");
+    // Default the output location to the design output part's default location, else the
+    // workspace's (#39).
+    setFormOutputLocationId(
+      design
+        ? resolvePreselectedLocationId(
+            design.defaultLocationId,
+            createOptions?.workspaceDefaultLocationId,
+            outputLocations
+          )
+        : ""
+    );
   }
 
   function handleCreateSubmit(e: React.FormEvent) {

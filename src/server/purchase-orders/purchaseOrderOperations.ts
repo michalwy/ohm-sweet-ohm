@@ -116,7 +116,9 @@ export const purchaseOrderItemSchema = z.object({
   partDefaultLocationId: z
     .string()
     .nullable()
-    .describe("The part's default storage location, where receiving usually puts it.")
+    .describe(
+      "The part's own default storage location, where receiving usually puts it; when null, the UI preselects the workspace's defaultLocationId (get_workspace) instead."
+    )
 });
 
 export const additionalCostSchema = z.object({
@@ -412,7 +414,7 @@ export const receivePurchaseOrderItemsOperation = defineOperation({
             .string()
             .nullable()
             .describe(
-              "The storage location (not archived) to put a part item into, usually its partDefaultLocationId; null only for a free-text item."
+              "The storage location (not archived) to put a part item into, usually its partDefaultLocationId, or the workspace's defaultLocationId (get_workspace) when the part has none; null only for a free-text item."
             )
         })
       )

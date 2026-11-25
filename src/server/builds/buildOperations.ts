@@ -261,7 +261,7 @@ export const getBuildOperation = defineOperation({
 export const getBuildCreateOptionsOperation = defineOperation({
   name: "get_build_create_options",
   description:
-    "What create_build takes: every design with its revisions (newest first), its output part and that part's default location, and the workspace's storage locations.",
+    "What create_build takes: every design with its revisions (newest first), its output part and that part's default location, the workspace's storage locations and its default location.",
   permission: "builds:write",
   input: z.object({}),
   output: z.object({
@@ -286,7 +286,13 @@ export const getBuildCreateOptionsOperation = defineOperation({
         })
       )
       .describe("The workspace's designs, by name."),
-    locations: z.array(storageLocationSchema).describe("The workspace's storage locations.")
+    locations: z.array(storageLocationSchema).describe("The workspace's storage locations."),
+    workspaceDefaultLocationId: z
+      .string()
+      .nullable()
+      .describe(
+        "The workspace's default location; the UI preselects it as the output location when the output part has no default location of its own."
+      )
   })
 });
 

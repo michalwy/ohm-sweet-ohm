@@ -247,7 +247,7 @@ export async function deleteStorageLocation(input: {
   workspaceId: string;
   locationId: string;
 }) {
-  const [childrenCount, partDefaultsCount, inventoryUsageCount] =
+  const [childrenCount, partDefaultsCount, workspaceDefaultsCount, inventoryUsageCount] =
     await Promise.all([
       prisma.storageLocation.count({
         where: {
@@ -258,6 +258,12 @@ export async function deleteStorageLocation(input: {
       prisma.part.count({
         where: {
           workspaceId: input.workspaceId,
+          defaultLocationId: input.locationId
+        }
+      }),
+      prisma.workspace.count({
+        where: {
+          id: input.workspaceId,
           defaultLocationId: input.locationId
         }
       }),
@@ -273,7 +279,7 @@ export async function deleteStorageLocation(input: {
     throw new Error("location-has-children");
   }
 
-  if (partDefaultsCount > 0 || inventoryUsageCount > 0) {
+  if (partDefaultsCount > 0 || workspaceDefaultsCount > 0 || inventoryUsageCount > 0) {
     throw new Error("location-in-use");
   }
 

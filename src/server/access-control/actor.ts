@@ -18,6 +18,7 @@ const actorWorkspaceSelect = {
   defaultPriceEntryMode: true,
   defaultTaxRate: true,
   activeSupplierProvider: true,
+  defaultLocationId: true,
   archivedAt: true,
   deletionScheduledAt: true,
   createdAt: true,

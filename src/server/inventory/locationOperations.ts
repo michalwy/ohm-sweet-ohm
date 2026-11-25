@@ -99,7 +99,7 @@ export const updateLocationOperation = defineOperation({
 export const deleteLocationOperation = defineOperation({
   name: "delete_location",
   description:
-    "Delete a storage location. Refused while it has child locations (location-has-children), or while any part uses it as default location or any stock movement names it (location-in-use) — archive it instead.",
+    "Delete a storage location. Refused while it has child locations (location-has-children), or while any part or the workspace uses it as default location or any stock movement names it (location-in-use) — archive it instead.",
   permission: "locations:write",
   input: z.object({ id: locationIdSchema }),
   output: z.object({ id: z.string().describe("The deleted location's id.") })

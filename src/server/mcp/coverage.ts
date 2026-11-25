@@ -220,6 +220,9 @@ export const serverActionCoverage: ServerActionCoverageMap = {
     },
     loadStarterDictionaries: { tool: "load_starter_dictionaries" }
   },
+  "src/server/workspaces/inventoryDefaults.ts": {
+    updateWorkspaceInventoryDefaults: { tool: "update_workspace_settings" }
+  },
   "src/server/workspaces/orderingDefaults.ts": {
     updateWorkspaceOrderingDefaults: { tool: "update_workspace_settings" }
   }

@@ -23,6 +23,8 @@ import {
 } from "../../src/app/api/v1/workspaces/route";
 import { POST as archiveWorkspace } from "../../src/app/api/v1/workspaces/[id]/archive/route";
 import { POST as restoreWorkspace } from "../../src/app/api/v1/workspaces/[id]/restore/route";
+import { getBuildCreateOptions } from "../../src/server/builds/builds";
+import { deleteStorageLocation } from "../../src/server/inventory/locationMutations";
 import { bearer, createApiTestWorkspace, createTestToken, uniqueSuffix } from "./apiFixtures";
 
 /** Workspaces, workspace settings and display preferences in the REST API and MCP (#286). */
@@ -45,6 +47,7 @@ type WorkspaceDetails = {
   defaultPriceEntryMode: string;
   defaultTaxRate: string | null;
   activeSupplierProvider: string | null;
+  defaultLocationId: string | null;
 };
 
 type DisplayPreferences = { dateFormat: string; timeFormat: string; relativeFormat: boolean };
@@ -231,6 +234,61 @@ describe("REST /api/v1/workspace settings", () => {
     const storedB = await prisma.workspace.findUniqueOrThrow({ where: { id: b.workspace.id } });
 
     assert.equal(storedB.activeSupplierProvider, null);
+  });
+
+  test("the workspace default location: set, validated, kept from deletion, cleared (#39)", async () => {
+    const { workspace, owner, readWrite } = await setup("ws-default-location");
+    const other = await setup("ws-default-location-other");
+    const location = (name: string, workspaceId: string, isArchived = false) =>
+      prisma.storageLocation.create({
+        data: { workspaceId, name, normalizedName: name.toLowerCase(), isArchived }
+      });
+    const shelf = await location("Shelf", workspace.id);
+    const archived = await location("Old box", workspace.id, true);
+    const foreign = await location("Foreign", other.workspace.id);
+    const patch = (body: unknown) =>
+      updateWorkspaceSettings(jsonRequest(`${base}/workspace`, "PATCH", readWrite, body), noParams);
+
+    const initial = await getWorkspace(
+      new Request(`${base}/workspace`, { headers: bearer(readWrite) }),
+      noParams
+    );
+
+    assert.equal(((await initial.json()) as WorkspaceDetails).defaultLocationId, null);
+
+    const set = await patch({ defaultLocationId: shelf.id });
+
+    assert.equal(set.status, 200);
+    assert.equal(((await set.json()) as WorkspaceDetails).defaultLocationId, shelf.id);
+
+    for (const invalidId of [foreign.id, archived.id, "no-such-location"]) {
+      const refused = await patch({ defaultLocationId: invalidId, defaultPriceEntryMode: "gross" });
+
+      assert.equal(refused.status, 400);
+      assert.equal(await errorCode(refused), "invalid-default-location");
+    }
+
+    const stored = await prisma.workspace.findUniqueOrThrow({ where: { id: workspace.id } });
+
+    assert.equal(stored.defaultLocationId, shelf.id);
+    assert.equal(stored.defaultPriceEntryMode, "net", "a refused location writes nothing else either");
+
+    const options = await getBuildCreateOptions({ userId: owner.id, workspaceId: workspace.id });
+
+    assert.equal(options.workspaceDefaultLocationId, shelf.id);
+
+    await assert.rejects(
+      deleteStorageLocation({ workspaceId: workspace.id, locationId: shelf.id }),
+      /location-in-use/
+    );
+
+    const cleared = await patch({ defaultLocationId: null });
+
+    assert.equal(((await cleared.json()) as WorkspaceDetails).defaultLocationId, null);
+
+    await deleteStorageLocation({ workspaceId: workspace.id, locationId: shelf.id });
+
+    assert.equal(await prisma.storageLocation.count({ where: { id: shelf.id } }), 0);
   });
 
   test("load the starter dictionaries, safely twice; a read-only token cannot", async () => {
