@@ -74,8 +74,6 @@ type Copy = {
   assignable: string;
   organizational: string;
   archived: string;
-  yes: string;
-  no: string;
   chooseParentLocation: string;
   searchLocations: string;
   noMatchingLocations: string;
@@ -808,9 +806,7 @@ function LocationRow({
         <p className="truncate text-sm font-medium">{location.name}</p>
       )}
       {location.isArchived ? (
-        <p className="text-xs text-[var(--color-text-muted)]">
-          {copy.archived}: {copy.yes}
-        </p>
+        <p className="text-xs text-[var(--color-text-muted)]">{copy.archived}</p>
       ) : null}
     </TreeListRow>
   );

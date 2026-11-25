@@ -43,6 +43,7 @@ import {
   getFieldInputClassName,
   openDialog
 } from "@/app/dialog-shell";
+import { BooleanIndicator } from "@/app/boolean-indicator";
 
 type Copy = {
   addUnit: string;
@@ -370,9 +371,7 @@ export function UnitsClient({
         size: 220,
         minSize: 120,
         cell: ({ getValue }) => (
-          <span className="text-[var(--color-text-secondary)]">
-            {getValue() ? copy.yes : copy.no}
-          </span>
+          <BooleanIndicator value={getValue()} label={getValue() ? copy.yes : copy.no} />
         )
       }),
       columnHelper.display({
