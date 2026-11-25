@@ -134,7 +134,7 @@ Deleting a draft order returns any quantities it contributed to the **Planned** 
 When parts arrive:
 
 1. Click **Receive items** in the detail panel.
-2. For each item, enter the quantity received and choose a destination storage location using the tree picker. If the part has a default location set, the picker is pre-filled with that location. The picker shows your full location hierarchy — click the arrow to expand a node, or type in the search box to filter by name.
+2. For each item, enter the quantity received and choose a destination storage location using the tree picker. If the part has a default location set, the picker is pre-filled with that location; a part without one gets the [workspace default location](inventory.md#workspace-default-location), if set. The picker shows your full location hierarchy — click the arrow to expand a node, or type in the search box to filter by name.
 3. Save.
 
 Each received item creates a **Receipt** inventory movement automatically. Items with a checkmark (✓) are fully received.

@@ -35,7 +35,9 @@ treatment: a numeric fraction and a progress bar. Columns can be shown, hidden, 
 2. Pick a **design** and one of its **revisions**.
 3. Enter the **target quantity** — how many units of the design you intend to produce.
 4. Choose an **output location** — where the finished output part will be received on completion.
-   This is required; a build cannot be created without one.
+   This is required; a build cannot be created without one. It is pre-filled with the output part's
+   default location, or, when the part has none, the
+   [workspace default location](inventory.md#workspace-default-location).
 
 Once a revision and target quantity are set, the dialog shows a **shortage preview** — which
 BOM lines cannot be fulfilled from available stock and which parts you would need to acquire or
@@ -46,7 +48,8 @@ While a build is **Allocating**, the shortage analysis is also accessible from t
 panel. For any shortage line sourced by a sub-assembly, a **Create build** button appears next to
 the sub-design name in the shortage modal. Clicking it closes the modal and opens the build
 creation dialog pre-filled with the sub-design's latest revision and the unmet quantity as the
-target quantity; you still need to choose an output location before creating. The resulting
+target quantity; the output location is pre-filled as above, otherwise you still need to choose
+one before creating. The resulting
 sub-build is independent — no parent/child link is stored.
 
 When the build is created, the chosen revision's bill of materials is **frozen** into the build:

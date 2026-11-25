@@ -79,6 +79,7 @@ import { DateDisplay } from "@/app/date-display";
 import { MultiAddToPODialog, type MultiAddToPOCopy } from "@/app/multi-add-to-po-dialog";
 import { PartLink } from "@/app/entity-links";
 import { PinnedFilterBanner } from "@/app/pinned-filter-banner";
+import { resolvePreselectedLocationId } from "@/lib/defaultLocation";
 
 function roundDisplay(n: number): string {
   return n.toFixed(2);
@@ -537,6 +538,7 @@ type PurchaseOrdersClientProps = {
   primaryCurrency: string;
   workspaceDefaultPriceEntryMode?: "net" | "gross";
   workspaceDefaultTaxRate?: string | null;
+  workspaceDefaultLocationId?: string | null;
 };
 
 type ReceiveRowState = { quantity: string; locationId: string | null };
@@ -623,7 +625,8 @@ export function PurchaseOrdersClient({
   workspaceSlug,
   primaryCurrency,
   workspaceDefaultPriceEntryMode = "net",
-  workspaceDefaultTaxRate = null
+  workspaceDefaultTaxRate = null,
+  workspaceDefaultLocationId = null
 }: PurchaseOrdersClientProps) {
   const queryClient = useQueryClient();
 
@@ -1218,12 +1221,18 @@ export function PurchaseOrdersClient({
     for (const item of detail.items) {
       const remaining = (parseFloat(item.quantity) - parseFloat(item.receivedQuantity)).toString();
       if (parseFloat(remaining) > 0) {
-        const defaultLoc = item.partDefaultLocationId
-          ? assignableLocations.find((l) => l.id === item.partDefaultLocationId)
-          : undefined;
+        // The part's default location, else the workspace's (#39); a free-text item has no
+        // inventory effect and gets none.
         rows.set(item.id, {
           quantity: remaining,
-          locationId: defaultLoc?.id ?? ""
+          locationId:
+            item.partId === null
+              ? ""
+              : resolvePreselectedLocationId(
+                  item.partDefaultLocationId,
+                  workspaceDefaultLocationId,
+                  assignableLocations
+                )
         });
       }
     }

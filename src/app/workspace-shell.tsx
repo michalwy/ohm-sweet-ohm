@@ -20,6 +20,7 @@ type WorkspaceNavItem =
   | "settings-general"
   | "settings-integrations"
   | "settings-ordering"
+  | "settings-inventory"
   | "settings-display"
   | "settings-api-tokens";
 
@@ -55,6 +56,7 @@ const copy = {
   general: "General",
   integrations: "Integrations",
   ordering: "Ordering",
+  inventoryDefaults: "Inventory",
   display: "Display",
   apiTokens: "API tokens"
 };
@@ -204,6 +206,15 @@ export function WorkspaceShell({
               }
             >
               {copy.ordering}
+            </Link>
+            <Link
+              className={getNavLinkClass(activeNavItem === "settings-inventory")}
+              href={`/w/${workspaceSlug}/settings/inventory`}
+              aria-current={
+                activeNavItem === "settings-inventory" ? "page" : undefined
+              }
+            >
+              {copy.inventoryDefaults}
             </Link>
             <Link
               className={getNavLinkClass(activeNavItem === "settings-display")}

@@ -1420,6 +1420,8 @@ export type BuildCreateOptions = {
     revisions: { id: string; revisionNumber: number }[];
   }[];
   locations: StorageLocationListItem[];
+  /** The workspace's default location (#39), preselected when the output part has none. */
+  workspaceDefaultLocationId: string | null;
 };
 
 export async function getBuildCreateOptions({
@@ -1431,7 +1433,7 @@ export async function getBuildCreateOptions({
 }): Promise<BuildCreateOptions> {
   await authorizeWorkspacePermission({ userId, workspaceId, permission: "builds:write" });
 
-  const [designs, locations] = await Promise.all([
+  const [designs, locations, workspace] = await Promise.all([
     prisma.design.findMany({
       where: { workspaceId },
       orderBy: [{ name: "asc" }, { id: "asc" }],
@@ -1445,7 +1447,11 @@ export async function getBuildCreateOptions({
         }
       }
     }),
-    getStorageLocations(workspaceId)
+    getStorageLocations(workspaceId),
+    prisma.workspace.findUniqueOrThrow({
+      where: { id: workspaceId },
+      select: { defaultLocationId: true }
+    })
   ]);
 
   return {
@@ -1456,7 +1462,8 @@ export async function getBuildCreateOptions({
       defaultLocationId: design.outputPart.defaultLocationId,
       revisions: design.revisions
     })),
-    locations
+    locations,
+    workspaceDefaultLocationId: workspace.defaultLocationId
   };
 }
 

@@ -42,3 +42,30 @@ export async function updateWorkspaceOrderingDefaultsForWorkspace(
     }
   });
 }
+
+/**
+ * The workspace's fallback default location (Settings → Inventory, #39): preselected wherever a
+ * part's own default location would be, when the part has none. `null` clears it; otherwise it
+ * must be a location of this workspace that is not archived — the rule of a part's own default
+ * location — or `invalid-default-location`.
+ */
+export async function updateWorkspaceDefaultLocationForWorkspace(
+  workspaceId: string,
+  defaultLocationId: string | null
+) {
+  if (defaultLocationId !== null) {
+    const location = await prisma.storageLocation.findFirst({
+      where: { id: defaultLocationId, workspaceId, isArchived: false },
+      select: { id: true }
+    });
+
+    if (!location) {
+      throw new Error("invalid-default-location");
+    }
+  }
+
+  await prisma.workspace.update({
+    where: { id: workspaceId },
+    data: { defaultLocationId }
+  });
+}

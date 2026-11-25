@@ -119,6 +119,10 @@ A part can have an optional default storage location set in its edit dialog. Whe
 - The receive-order dialog pre-selects this location for that part's line item. You can still override it before saving.
 - If the default location is later archived, it is treated as unset until you choose a new one.
 
+A part without a default location of its own uses the workspace's default location instead, if one
+is set in **Settings → Inventory** (see [Workspace Default Location](inventory.md#workspace-default-location)).
+The part's own default location always takes precedence.
+
 To clear the default location, click the **×** button next to the location picker in the edit dialog.
 
 ### Part Detail Panel

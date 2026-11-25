@@ -70,6 +70,12 @@ export const workspaceDetailsSchema = z.object({
   activeSupplierProvider: supplierProviderSchema
     .nullable()
     .describe("The supplier catalogue used for part lookups; null when none is active."),
+  defaultLocationId: z
+    .string()
+    .nullable()
+    .describe(
+      "The workspace's default storage location: preselected where a part's own default location would be (receiving a purchase order, a build's output) when the part has none; null when unset."
+    ),
   createdAt: z.iso.datetime().describe("When the workspace was created (ISO 8601, UTC)."),
   updatedAt: z.iso.datetime().describe("When the workspace was last changed (ISO 8601, UTC).")
 });
@@ -165,7 +171,7 @@ export const restoreWorkspaceOperation = defineOperation({
 export const updateWorkspaceSettingsOperation = defineOperation({
   name: "update_workspace_settings",
   description:
-    "Change the token's workspace settings: the ordering defaults and the supplier catalogue used for part lookups. Fields left out keep their value. Needs the user's administrative role in the workspace (workspace-requires-admin).",
+    "Change the token's workspace settings: the ordering defaults, the default storage location and the supplier catalogue used for part lookups. Fields left out keep their value. Needs the user's administrative role in the workspace (workspace-requires-admin).",
   permission: "workspace:write",
   input: z.object({
     defaultPriceEntryMode: z
@@ -181,7 +187,15 @@ export const updateWorkspaceSettingsOperation = defineOperation({
       ),
     activeSupplierProvider: supplierProviderSchema
       .optional()
-      .describe("The supplier catalogue used for part lookups.")
+      .describe("The supplier catalogue used for part lookups."),
+    defaultLocationId: z
+      .string()
+      .min(1)
+      .nullable()
+      .optional()
+      .describe(
+        "The workspace's default storage location, used when a part has no default location of its own: a location of this workspace that is not archived (invalid-default-location otherwise); null clears it."
+      )
   }),
   output: workspaceDetailsSchema
 });

@@ -101,6 +101,7 @@ describe("REST API /api/v1", () => {
       defaultPriceEntryMode: workspace.defaultPriceEntryMode,
       defaultTaxRate: null,
       activeSupplierProvider: null,
+      defaultLocationId: null,
       createdAt: workspace.createdAt.toISOString(),
       updatedAt: workspace.updatedAt.toISOString()
     });

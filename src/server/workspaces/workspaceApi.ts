@@ -34,6 +34,7 @@ import {
 } from "@/server/workspaces/workspaceOperations";
 import {
   parseDefaultTaxRate,
+  updateWorkspaceDefaultLocationForWorkspace,
   updateWorkspaceOrderingDefaultsForWorkspace,
   type PriceEntryMode
 } from "@/server/workspaces/workspaceSettings";
@@ -65,6 +66,7 @@ type WorkspaceDetailsSource = Pick<
   | "defaultPriceEntryMode"
   | "defaultTaxRate"
   | "activeSupplierProvider"
+  | "defaultLocationId"
   | "createdAt"
   | "updatedAt"
 >;
@@ -78,6 +80,7 @@ function toWorkspaceDetails(workspace: WorkspaceDetailsSource) {
     defaultPriceEntryMode: workspace.defaultPriceEntryMode,
     defaultTaxRate: workspace.defaultTaxRate === null ? null : workspace.defaultTaxRate.toString(),
     activeSupplierProvider: workspace.activeSupplierProvider,
+    defaultLocationId: workspace.defaultLocationId,
     createdAt: workspace.createdAt.toISOString(),
     updatedAt: workspace.updatedAt.toISOString()
   };
@@ -171,7 +174,7 @@ const supplierProviderKeys: Record<"DIGIKEY" | "MOUSER" | "TME", SupplierProvide
 };
 
 /**
- * Settings → Ordering and the supplier choice of Settings → Integrations, for the token's
+ * Settings → Ordering, Settings → Inventory and the supplier choice of Settings → Integrations, for the token's
  * workspace. Every input is checked before anything is written, so a bad tax rate changes nothing.
  */
 export const updateWorkspaceSettingsImplementation = implementOperation(
@@ -181,12 +184,17 @@ export const updateWorkspaceSettingsImplementation = implementOperation(
 
     await requireUserWorkspaceAdmin(actor.user.id, workspace.id);
 
-    if (input.defaultPriceEntryMode !== undefined || input.defaultTaxRate !== undefined) {
-      const defaultTaxRate =
-        input.defaultTaxRate === undefined
-          ? workspace.defaultTaxRate
-          : parseDefaultTaxRate(input.defaultTaxRate);
+    const defaultTaxRate =
+      input.defaultTaxRate === undefined
+        ? workspace.defaultTaxRate
+        : parseDefaultTaxRate(input.defaultTaxRate);
 
+    // Validated before it is written, so an unknown location changes nothing either.
+    if (input.defaultLocationId !== undefined) {
+      await updateWorkspaceDefaultLocationForWorkspace(workspace.id, input.defaultLocationId);
+    }
+
+    if (input.defaultPriceEntryMode !== undefined || input.defaultTaxRate !== undefined) {
       await updateWorkspaceOrderingDefaultsForWorkspace(workspace.id, {
         defaultPriceEntryMode:
           input.defaultPriceEntryMode ?? (workspace.defaultPriceEntryMode as PriceEntryMode),

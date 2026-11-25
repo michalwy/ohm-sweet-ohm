@@ -23,6 +23,7 @@ Current implemented extension scope beyond the base parts list includes:
 - workspace-scoped part categories and category attributes
 - workspace-scoped attribute dictionary
 - workspace-scoped units
+- a default storage location per part, with a workspace-wide fallback for parts without one, preselected when receiving purchase orders and as a build's output location
 - workspace-scoped storage locations, each with a view of the parts stored in it (optionally including its sublocations), created one by one or generated as a whole multi-level structure (a counter per level, reusing locations that already exist)
 - stock movements (receipt, issue, transfer, adjustment)
 - supplier integration settings (DigiKey and TME) and active provider selection
