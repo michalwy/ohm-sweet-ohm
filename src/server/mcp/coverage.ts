@@ -90,6 +90,12 @@ export const serverActionCoverage: ServerActionCoverageMap = {
     addRevisionToDesignAction: { tool: "add_design_revision" },
     updateDesignRevisionAction: { tool: "update_design_revision" }
   },
+  "src/server/entity-previews/entityPreviewActions.ts": {
+    // The hover preview of an entity link (#123) is a few fields of the entity's own detail tool.
+    getPartPreviewForWorkspace: { tool: "get_part" },
+    getPurchaseOrderPreviewForWorkspace: { tool: "get_purchase_order" },
+    getShoppingListPreviewForWorkspace: { tool: "get_shopping_list" }
+  },
   "src/server/integrations/digikeyActions.ts": {
     updateDigiKeyIntegrationSettings: { excluded: CREDENTIALS }
   },

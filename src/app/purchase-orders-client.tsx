@@ -6,6 +6,7 @@ import {
   useRef,
   useState
 } from "react";
+import { Tooltip } from "@/app/floating";
 import { FilterBar } from "@/app/list-filter-bar";
 import type { FilterBarHandle } from "@/app/list-filter-bar";
 import type { FilterDefinition } from "@/app/list-filter-config";
@@ -1654,34 +1655,38 @@ export function PurchaseOrdersClient({
         enableResizing: false,
         cell: ({ row }) => (
           <div className="flex justify-end gap-2">
-            <button
-              aria-label={copy.edit}
-              className="min-h-8 rounded-md border border-[var(--color-border-strong)] bg-[var(--color-bg-elevated)] px-2.5 py-1 text-sm font-medium text-[var(--color-text-secondary)] transition hover:border-[var(--color-border-hover)] hover:bg-[var(--color-bg-subtle)] focus:outline-none focus:ring-2 focus:ring-[var(--color-ring-strong)] focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-[var(--color-bg-subtle)] disabled:text-[var(--color-text-placeholder)]"
-              disabled={!canWrite || row.original.status === "RECEIVED"}
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                openEditOrderDialog(row.original);
-              }}
-            >
-              <svg aria-hidden="true" className="h-4 w-4" fill="none" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
-                <path d="M13.9 3.3a1.5 1.5 0 0 1 2.1 0l.7.7a1.5 1.5 0 0 1 0 2.1l-8.4 8.4-3.3.8.8-3.3 8.4-8.4Z" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" />
-              </svg>
-            </button>
-            <button
-              aria-label={copy.delete}
-              className="min-h-8 rounded-md border border-[var(--color-error-border)] bg-[var(--color-bg-elevated)] px-2.5 py-1 text-sm font-medium text-[var(--color-error)] transition hover:bg-[var(--color-error-soft)] focus:outline-none focus:ring-2 focus:ring-[var(--color-error-border)] focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-[var(--color-bg-subtle)] disabled:text-[var(--color-text-placeholder)]"
-              disabled={!canWrite || row.original.status === "RECEIVED" || deleteOrderMutation.isPending}
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                setOrderPendingDelete(row.original);
-              }}
-            >
-              <svg aria-hidden="true" className="h-4 w-4" fill="none" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
-                <path d="M5.5 6h9m-7.5 0V4.75A1.75 1.75 0 0 1 8.75 3h2.5A1.75 1.75 0 0 1 13 4.75V6m-6.5 0 .6 9.1A1.75 1.75 0 0 0 8.84 16.75h2.32a1.75 1.75 0 0 0 1.74-1.65L13.5 6M8.75 8.5v5m2.5-5v5" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" />
-              </svg>
-            </button>
+            <Tooltip label={copy.edit}>
+              <button
+                aria-label={copy.edit}
+                className="min-h-8 rounded-md border border-[var(--color-border-strong)] bg-[var(--color-bg-elevated)] px-2.5 py-1 text-sm font-medium text-[var(--color-text-secondary)] transition hover:border-[var(--color-border-hover)] hover:bg-[var(--color-bg-subtle)] focus:outline-none focus:ring-2 focus:ring-[var(--color-ring-strong)] focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-[var(--color-bg-subtle)] disabled:text-[var(--color-text-placeholder)]"
+                disabled={!canWrite || row.original.status === "RECEIVED"}
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  openEditOrderDialog(row.original);
+                }}
+              >
+                <svg aria-hidden="true" className="h-4 w-4" fill="none" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M13.9 3.3a1.5 1.5 0 0 1 2.1 0l.7.7a1.5 1.5 0 0 1 0 2.1l-8.4 8.4-3.3.8.8-3.3 8.4-8.4Z" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" />
+                </svg>
+              </button>
+            </Tooltip>
+            <Tooltip label={copy.delete}>
+              <button
+                aria-label={copy.delete}
+                className="min-h-8 rounded-md border border-[var(--color-error-border)] bg-[var(--color-bg-elevated)] px-2.5 py-1 text-sm font-medium text-[var(--color-error)] transition hover:bg-[var(--color-error-soft)] focus:outline-none focus:ring-2 focus:ring-[var(--color-error-border)] focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-[var(--color-bg-subtle)] disabled:text-[var(--color-text-placeholder)]"
+                disabled={!canWrite || row.original.status === "RECEIVED" || deleteOrderMutation.isPending}
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setOrderPendingDelete(row.original);
+                }}
+              >
+                <svg aria-hidden="true" className="h-4 w-4" fill="none" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M5.5 6h9m-7.5 0V4.75A1.75 1.75 0 0 1 8.75 3h2.5A1.75 1.75 0 0 1 13 4.75V6m-6.5 0 .6 9.1A1.75 1.75 0 0 0 8.84 16.75h2.32a1.75 1.75 0 0 0 1.74-1.65L13.5 6M8.75 8.5v5m2.5-5v5" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" />
+                </svg>
+              </button>
+            </Tooltip>
           </div>
         )
       })
@@ -1973,28 +1978,32 @@ export function PurchaseOrdersClient({
                             {detail?.status !== "RECEIVED" ? (
                               <td className="px-3 py-2">
                                 <div className="flex justify-end gap-1">
-                                  <button
-                                    aria-label={copy.editItem}
-                                    className="min-h-7 rounded border border-[var(--color-border-strong)] bg-[var(--color-bg-elevated)] px-2 py-0.5 text-xs font-medium text-[var(--color-text-secondary)] transition hover:border-[var(--color-border-hover)] hover:bg-[var(--color-bg-subtle)] disabled:cursor-not-allowed disabled:opacity-60"
-                                    disabled={!canWrite}
-                                    type="button"
-                                    onClick={() => openEditItemDialog(item)}
-                                  >
-                                    <svg aria-hidden="true" className="h-3.5 w-3.5" fill="none" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
-                                      <path d="M13.9 3.3a1.5 1.5 0 0 1 2.1 0l.7.7a1.5 1.5 0 0 1 0 2.1l-8.4 8.4-3.3.8.8-3.3 8.4-8.4Z" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" />
-                                    </svg>
-                                  </button>
-                                  <button
-                                    aria-label={copy.removeItem}
-                                    className="min-h-7 rounded border border-[var(--color-error-border)] bg-[var(--color-bg-elevated)] px-2 py-0.5 text-xs font-medium text-[var(--color-error)] transition hover:bg-[var(--color-error-soft)] disabled:cursor-not-allowed disabled:opacity-60"
-                                    disabled={!canWrite || removeItemMutation.isPending}
-                                    type="button"
-                                    onClick={() => setItemPendingRemove(item)}
-                                  >
-                                    <svg aria-hidden="true" className="h-3.5 w-3.5" fill="none" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
-                                      <path d="M5.5 6h9m-7.5 0V4.75A1.75 1.75 0 0 1 8.75 3h2.5A1.75 1.75 0 0 1 13 4.75V6m-6.5 0 .6 9.1A1.75 1.75 0 0 0 8.84 16.75h2.32a1.75 1.75 0 0 0 1.74-1.65L13.5 6M8.75 8.5v5m2.5-5v5" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" />
-                                    </svg>
-                                  </button>
+                                  <Tooltip label={copy.editItem}>
+                                    <button
+                                      aria-label={copy.editItem}
+                                      className="min-h-7 rounded border border-[var(--color-border-strong)] bg-[var(--color-bg-elevated)] px-2 py-0.5 text-xs font-medium text-[var(--color-text-secondary)] transition hover:border-[var(--color-border-hover)] hover:bg-[var(--color-bg-subtle)] disabled:cursor-not-allowed disabled:opacity-60"
+                                      disabled={!canWrite}
+                                      type="button"
+                                      onClick={() => openEditItemDialog(item)}
+                                    >
+                                      <svg aria-hidden="true" className="h-3.5 w-3.5" fill="none" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+                                        <path d="M13.9 3.3a1.5 1.5 0 0 1 2.1 0l.7.7a1.5 1.5 0 0 1 0 2.1l-8.4 8.4-3.3.8.8-3.3 8.4-8.4Z" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" />
+                                      </svg>
+                                    </button>
+                                  </Tooltip>
+                                  <Tooltip label={copy.removeItem}>
+                                    <button
+                                      aria-label={copy.removeItem}
+                                      className="min-h-7 rounded border border-[var(--color-error-border)] bg-[var(--color-bg-elevated)] px-2 py-0.5 text-xs font-medium text-[var(--color-error)] transition hover:bg-[var(--color-error-soft)] disabled:cursor-not-allowed disabled:opacity-60"
+                                      disabled={!canWrite || removeItemMutation.isPending}
+                                      type="button"
+                                      onClick={() => setItemPendingRemove(item)}
+                                    >
+                                      <svg aria-hidden="true" className="h-3.5 w-3.5" fill="none" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+                                        <path d="M5.5 6h9m-7.5 0V4.75A1.75 1.75 0 0 1 8.75 3h2.5A1.75 1.75 0 0 1 13 4.75V6m-6.5 0 .6 9.1A1.75 1.75 0 0 0 8.84 16.75h2.32a1.75 1.75 0 0 0 1.74-1.65L13.5 6M8.75 8.5v5m2.5-5v5" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" />
+                                      </svg>
+                                    </button>
+                                  </Tooltip>
                                 </div>
                               </td>
                             ) : null}
@@ -2032,26 +2041,30 @@ export function PurchaseOrdersClient({
                           </span>
                           {canWrite && !detail.additionalCostsLocked ? (
                             <div className="flex items-center gap-1">
-                              <button
-                                aria-label={copy.editAdditionalCost}
-                                className="min-h-6 rounded border border-[var(--color-border-strong)] bg-[var(--color-bg-elevated)] px-1.5 py-0.5 text-xs font-medium text-[var(--color-text-secondary)] transition hover:border-[var(--color-border-hover)] hover:bg-[var(--color-bg-subtle)]"
-                                type="button"
-                                onClick={() => openEditCostDialog(cost)}
-                              >
-                                <svg aria-hidden="true" className="h-3 w-3" fill="none" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
-                                  <path d="M13.9 3.3a1.5 1.5 0 0 1 2.1 0l.7.7a1.5 1.5 0 0 1 0 2.1l-8.4 8.4-3.3.8.8-3.3 8.4-8.4Z" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" />
-                                </svg>
-                              </button>
-                              <button
-                                aria-label={copy.removeCost}
-                                className="min-h-6 rounded border border-[var(--color-error-border)] bg-[var(--color-bg-elevated)] px-1.5 py-0.5 text-xs font-medium text-[var(--color-error)] transition hover:bg-[var(--color-error-soft)]"
-                                type="button"
-                                onClick={() => setCostPendingRemove(cost)}
-                              >
-                                <svg aria-hidden="true" className="h-3 w-3" fill="none" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
-                                  <path d="M5.5 6h9m-7.5 0V4.75A1.75 1.75 0 0 1 8.75 3h2.5A1.75 1.75 0 0 1 13 4.75V6m-6.5 0 .6 9.1A1.75 1.75 0 0 0 8.84 16.75h2.32a1.75 1.75 0 0 0 1.74-1.65L13.5 6M8.75 8.5v5m2.5-5v5" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" />
-                                </svg>
-                              </button>
+                              <Tooltip label={copy.editAdditionalCost}>
+                                <button
+                                  aria-label={copy.editAdditionalCost}
+                                  className="min-h-6 rounded border border-[var(--color-border-strong)] bg-[var(--color-bg-elevated)] px-1.5 py-0.5 text-xs font-medium text-[var(--color-text-secondary)] transition hover:border-[var(--color-border-hover)] hover:bg-[var(--color-bg-subtle)]"
+                                  type="button"
+                                  onClick={() => openEditCostDialog(cost)}
+                                >
+                                  <svg aria-hidden="true" className="h-3 w-3" fill="none" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+                                    <path d="M13.9 3.3a1.5 1.5 0 0 1 2.1 0l.7.7a1.5 1.5 0 0 1 0 2.1l-8.4 8.4-3.3.8.8-3.3 8.4-8.4Z" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" />
+                                  </svg>
+                                </button>
+                              </Tooltip>
+                              <Tooltip label={copy.removeCost}>
+                                <button
+                                  aria-label={copy.removeCost}
+                                  className="min-h-6 rounded border border-[var(--color-error-border)] bg-[var(--color-bg-elevated)] px-1.5 py-0.5 text-xs font-medium text-[var(--color-error)] transition hover:bg-[var(--color-error-soft)]"
+                                  type="button"
+                                  onClick={() => setCostPendingRemove(cost)}
+                                >
+                                  <svg aria-hidden="true" className="h-3 w-3" fill="none" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+                                    <path d="M5.5 6h9m-7.5 0V4.75A1.75 1.75 0 0 1 8.75 3h2.5A1.75 1.75 0 0 1 13 4.75V6m-6.5 0 .6 9.1A1.75 1.75 0 0 0 8.84 16.75h2.32a1.75 1.75 0 0 0 1.74-1.65L13.5 6M8.75 8.5v5m2.5-5v5" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" />
+                                  </svg>
+                                </button>
+                              </Tooltip>
                             </div>
                           ) : null}
                         </div>
