@@ -27,6 +27,8 @@ All of these columns support sorting with cursor-based pagination so they work e
 
 The **Value** column and every column for a **Quantity** attribute (e.g. `10 kΩ`, `100 nF`) are centered, header and cells, so measured values are easy to scan down the column. The same holds in the part picker and in the **Value** column of the attribute table on the part details panel.
 
+Yes/no (boolean) attribute values are shown as icons rather than text: a green check mark for yes and a grey cross for no, in the parts list, the part picker and the part details panel. Hover an icon to see its value as text.
+
 ### Filtering The Parts List
 
 The filter bar above the parts list lets you narrow down which parts are shown.
@@ -190,7 +192,7 @@ For each unit, you can set:
 
 - name
 - symbol
-- whether fractional values are allowed
+- whether fractional values are allowed (shown in the units list as a check mark or a cross)
 
 This helps keep part data consistent when recording quantities and stock operations.
 

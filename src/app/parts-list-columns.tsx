@@ -14,6 +14,7 @@ import {
   compareQuantityDisplayValues
 } from "@/app/parts-list-sort-utils";
 import { EmptyCell } from "@/app/list-table-cell";
+import { BooleanIndicator } from "@/app/boolean-indicator";
 
 // A stock/quantity column shows nothing for an absent value *or* a numeric zero, so an empty
 // shelf reads as blank rather than a noisy "0".
@@ -359,6 +360,10 @@ export function buildPartsListColumns(
         },
         cell: ({ getValue }) => {
           const value = getValue();
+
+          if (value && attribute.type === "BOOLEAN") {
+            return <BooleanIndicator value={value === "Yes"} label={value} />;
+          }
 
           return value ? (
             <span className="text-[var(--color-text-secondary)]">{value}</span>

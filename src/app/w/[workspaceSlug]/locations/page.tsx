@@ -101,8 +101,6 @@ const copy = {
   assignable: "Assignable",
   organizational: "Organizational",
   archived: "Archived",
-  yes: "Yes",
-  no: "No",
   chooseParentLocation: "Choose a parent location",
   searchLocations: "Search locations",
   noMatchingLocations: "No matching locations",

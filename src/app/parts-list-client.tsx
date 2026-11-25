@@ -105,6 +105,7 @@ import { BUILD_STATE_BADGE_CLASS } from "@/app/builds-client";
 import { BuildLink, PoLink, SlLink } from "@/app/entity-links";
 import { PinnedFilterBanner } from "@/app/pinned-filter-banner";
 import { DateDisplay } from "@/app/date-display";
+import { BooleanIndicator } from "@/app/boolean-indicator";
 
 type Copy = {
   title: string;
@@ -1723,11 +1724,12 @@ export function PartsListClient({
                       </thead>
                       <tbody>
                         {selectedPart.attributeValues.map((attributeValue) => {
+                          const workspaceAttribute = workspaceAttributes.find(
+                            (attribute) =>
+                              attribute.id === attributeValue.attributeId
+                          );
                           const attributeName =
-                            workspaceAttributes.find(
-                              (attribute) =>
-                                attribute.id === attributeValue.attributeId
-                            )?.name ?? attributeValue.attributeId;
+                            workspaceAttribute?.name ?? attributeValue.attributeId;
 
                           return (
                             <tr
@@ -1738,7 +1740,14 @@ export function PartsListClient({
                                 {attributeName}
                               </td>
                               <td className={`px-3 py-2 text-[var(--color-text-primary)] ${MEASURED_QUANTITY_CELL_CLASS}`}>
-                                {attributeValue.displayValue}
+                                {workspaceAttribute?.type === "BOOLEAN" ? (
+                                  <BooleanIndicator
+                                    value={attributeValue.displayValue === "Yes"}
+                                    label={attributeValue.displayValue}
+                                  />
+                                ) : (
+                                  attributeValue.displayValue
+                                )}
                               </td>
                             </tr>
                           );
