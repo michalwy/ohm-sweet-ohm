@@ -34,6 +34,16 @@ You are the **single router**. Threads never talk to each other; only you start 
   database migration at once. **After every merge or closed issue**, check what became ready and
   start it. Suggest a release when a batch is worth shipping; never cut one.
 
+## Choosing the model
+
+You **always choose the model for every thread yourself**, without asking (the owner, 2026-11-26):
+
+- **Sonnet 5.5** — small, well-scoped, mechanical work: docs and config tweaks, small bug fixes,
+  bundles of small related issues, backlog listing, routine dependency review.
+- **Opus 5.5** — the default for ordinary feature work, migrations, CI debugging and releases.
+- **Fable 5.2** — planning milestones and ADRs, hard architecture, security reviews, and retrying a
+  task that a lighter model already failed.
+
 ## What every thread is told
 
 The issue is the brief; do not restate it. Tell each thread:
