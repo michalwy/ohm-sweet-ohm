@@ -4,6 +4,7 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 
 import { auth } from "@/server/auth/auth";
+import { canCreateAccount } from "@/server/auth/registration";
 import { safeOAuthNextPath } from "@/server/oauth/oauthValues";
 import {
   clearLastWorkspaceSlug,
@@ -14,7 +15,8 @@ const signInCopy = {
   emailTaken: "email-taken",
   invalid: "invalid-credentials",
   missingFields: "missing-fields",
-  passwordTooShort: "password-too-short"
+  passwordTooShort: "password-too-short",
+  registrationClosed: "registration-closed"
 };
 
 export async function signInWithPassword(formData: FormData) {
@@ -62,6 +64,10 @@ export async function signInWithPassword(formData: FormData) {
 }
 
 export async function signUpWithPassword(formData: FormData) {
+  if (!(await canCreateAccount())) {
+    redirect(`/sign-up?error=${signInCopy.registrationClosed}`);
+  }
+
   const name = getRequiredFormValue(formData, "name");
   const email = getRequiredFormValue(formData, "email");
   const password = getRequiredFormValue(formData, "password");

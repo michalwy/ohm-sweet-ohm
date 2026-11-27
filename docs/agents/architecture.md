@@ -55,6 +55,10 @@ the decision — fix this file.
   `src/server/parts/partValueSort.ts`). `tests/unit/serverActionModules.test.ts` fails when a
   `"use server"` module exports a function that takes a transaction client.
 - Authentication is Better Auth (ADR 0006); do not reintroduce development current-user shortcuts.
+- Registration is closed by default (#323): `src/server/auth/registration.ts` is the one place that
+  answers it (config default `OSO_AUTH_ALLOW_SIGN_UP=1` to open; the first account on an empty
+  instance is always allowed; the admin panel, #324, overrides it there). Enforced in a Better Auth
+  `databaseHooks.user.create.before` hook, so the sign-up API refuses too, not only the page.
 - Registration and routing (ADR 0007): sign-up creates only a global user; sign-in returns users to
   their last accessible workspace when remembered; users choose or create workspaces at
   `/workspaces`; workspace URLs use `/w/[workspaceSlug]/...`; slug resolution must still authorize by

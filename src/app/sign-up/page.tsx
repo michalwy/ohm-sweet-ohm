@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { signUpWithPassword } from "@/server/auth/actions";
+import { canCreateAccount } from "@/server/auth/registration";
 import { getCurrentSession } from "@/server/auth/currentContext";
 import { getLastWorkspaceRedirectPath } from "@/server/workspaces/lastWorkspace";
 
@@ -22,7 +23,9 @@ const copy = {
   emailPlaceholder: "owner@ohmsweetohm.local",
   missingFields: "Enter name, email, and password.",
   passwordTooShort: "Use at least 8 characters for the password.",
-  emailTaken: "An account with this email already exists."
+  emailTaken: "An account with this email already exists.",
+  registrationClosed:
+    "Registration is closed on this instance. Ask the administrator for an account.",
 };
 
 type SignUpPageProps = {
@@ -40,6 +43,7 @@ export default async function SignUpPage({ searchParams }: SignUpPageProps) {
 
   const resolvedSearchParams = await searchParams;
   const error = resolvedSearchParams?.error;
+  const registrationOpen = await canCreateAccount();
 
   return (
     <main className="grid min-h-screen place-items-center bg-[var(--color-bg-page)] px-4 py-8 text-[var(--color-text-primary)]">
@@ -68,60 +72,71 @@ export default async function SignUpPage({ searchParams }: SignUpPageProps) {
           {copy.title}
         </h1>
 
-        {error ? (
+        {!registrationOpen ? (
+          <p className="mt-4 rounded-md border border-[var(--color-error-border)] bg-[var(--color-error-soft)] px-3 py-2 text-sm text-[var(--color-error)]">
+            {copy.registrationClosed}
+          </p>
+        ) : null}
+
+        {registrationOpen && error ? (
           <p className="mt-4 rounded-md border border-[var(--color-error-border)] bg-[var(--color-error-soft)] px-3 py-2 text-sm text-[var(--color-error)]">
             {getErrorMessage(error)}
           </p>
         ) : null}
 
-        <form action={signUpWithPassword} className="mt-6 grid gap-4">
-          <label className="grid gap-2 text-sm font-medium text-[var(--color-text-secondary)]">
-            {copy.name}
-            <input
-              autoComplete="name"
-              className="min-h-11 rounded-md border border-[var(--color-border-strong)] bg-[var(--color-bg-elevated)] px-3 py-2 text-base text-[var(--color-text-primary)] outline-none transition placeholder:text-[var(--color-text-placeholder)] hover:border-[var(--color-border-hover)] focus:border-[var(--color-border-hover)] focus:ring-2 focus:ring-[var(--color-ring)]"
-              name="name"
-              placeholder={copy.namePlaceholder}
-              required
-              type="text"
-            />
-          </label>
+        {registrationOpen ? (
+          <form action={signUpWithPassword} className="mt-6 grid gap-4">
+            <label className="grid gap-2 text-sm font-medium text-[var(--color-text-secondary)]">
+              {copy.name}
+              <input
+                autoComplete="name"
+                className="min-h-11 rounded-md border border-[var(--color-border-strong)] bg-[var(--color-bg-elevated)] px-3 py-2 text-base text-[var(--color-text-primary)] outline-none transition placeholder:text-[var(--color-text-placeholder)] hover:border-[var(--color-border-hover)] focus:border-[var(--color-border-hover)] focus:ring-2 focus:ring-[var(--color-ring)]"
+                name="name"
+                placeholder={copy.namePlaceholder}
+                required
+                type="text"
+              />
+            </label>
 
-          <label className="grid gap-2 text-sm font-medium text-[var(--color-text-secondary)]">
-            {copy.email}
-            <input
-              autoComplete="email"
-              className="min-h-11 rounded-md border border-[var(--color-border-strong)] bg-[var(--color-bg-elevated)] px-3 py-2 text-base text-[var(--color-text-primary)] outline-none transition placeholder:text-[var(--color-text-placeholder)] hover:border-[var(--color-border-hover)] focus:border-[var(--color-border-hover)] focus:ring-2 focus:ring-[var(--color-ring)]"
-              name="email"
-              placeholder={copy.emailPlaceholder}
-              required
-              type="email"
-            />
-          </label>
+            <label className="grid gap-2 text-sm font-medium text-[var(--color-text-secondary)]">
+              {copy.email}
+              <input
+                autoComplete="email"
+                className="min-h-11 rounded-md border border-[var(--color-border-strong)] bg-[var(--color-bg-elevated)] px-3 py-2 text-base text-[var(--color-text-primary)] outline-none transition placeholder:text-[var(--color-text-placeholder)] hover:border-[var(--color-border-hover)] focus:border-[var(--color-border-hover)] focus:ring-2 focus:ring-[var(--color-ring)]"
+                name="email"
+                placeholder={copy.emailPlaceholder}
+                required
+                type="email"
+              />
+            </label>
 
-          <label className="grid gap-2 text-sm font-medium text-[var(--color-text-secondary)]">
-            {copy.password}
-            <input
-              autoComplete="new-password"
-              className="min-h-11 rounded-md border border-[var(--color-border-strong)] bg-[var(--color-bg-elevated)] px-3 py-2 text-base text-[var(--color-text-primary)] outline-none transition placeholder:text-[var(--color-text-placeholder)] hover:border-[var(--color-border-hover)] focus:border-[var(--color-border-hover)] focus:ring-2 focus:ring-[var(--color-ring)]"
-              minLength={8}
-              name="password"
-              required
-              type="password"
-            />
-          </label>
+            <label className="grid gap-2 text-sm font-medium text-[var(--color-text-secondary)]">
+              {copy.password}
+              <input
+                autoComplete="new-password"
+                className="min-h-11 rounded-md border border-[var(--color-border-strong)] bg-[var(--color-bg-elevated)] px-3 py-2 text-base text-[var(--color-text-primary)] outline-none transition placeholder:text-[var(--color-text-placeholder)] hover:border-[var(--color-border-hover)] focus:border-[var(--color-border-hover)] focus:ring-2 focus:ring-[var(--color-ring)]"
+                minLength={8}
+                name="password"
+                required
+                type="password"
+              />
+            </label>
 
-          <button
-            className="min-h-10 rounded-md border border-[var(--color-action-primary)] bg-[var(--color-action-primary)] px-4 py-2 text-sm font-semibold text-white transition hover:border-[var(--color-action-primary-hover)] hover:bg-[var(--color-action-primary-hover)] focus:outline-none focus:ring-2 focus:ring-[var(--color-action-focus)] focus:ring-offset-2"
-            type="submit"
-          >
-            {copy.submit}
-          </button>
-        </form>
+            <button
+              className="min-h-10 rounded-md border border-[var(--color-action-primary)] bg-[var(--color-action-primary)] px-4 py-2 text-sm font-semibold text-white transition hover:border-[var(--color-action-primary-hover)] hover:bg-[var(--color-action-primary-hover)] focus:outline-none focus:ring-2 focus:ring-[var(--color-action-focus)] focus:ring-offset-2"
+              type="submit"
+            >
+              {copy.submit}
+            </button>
+          </form>
+        ) : null}
 
         <p className="mt-5 text-sm text-[var(--color-text-secondary)]">
           {copy.signInPrompt}{" "}
-          <Link className="font-semibold text-[var(--color-accent)] underline" href="/sign-in">
+          <Link
+            className="font-semibold text-[var(--color-accent)] underline"
+            href="/sign-in"
+          >
             {copy.signIn}
           </Link>
         </p>

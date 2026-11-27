@@ -47,6 +47,19 @@ sign-up screen.
 All configuration lives in the `.env` file in the install directory. You never edit the
 compose file. To change a setting later, edit `.env` and run the update command below.
 
+## Who Can Create an Account
+
+New-account registration is **closed by default**. On a new instance with no accounts, the sign-up
+screen lets you create the first account; once any account exists, sign-up is refused (the sign-up
+screen says so, the sign-in screen no longer offers it, and the sign-up API refuses too).
+
+To let anyone who can reach the instance create an account, add `OSO_AUTH_ALLOW_SIGN_UP=1` to `.env`
+and apply it as described below. This value is only the default: a later admin panel will be able to
+change it at runtime.
+
+An instance that already has accounts and is updated to this version starts with registration closed.
+Existing accounts, sessions and API tokens keep working.
+
 ## Everyday Management
 
 Run these from the install directory. They read the compose file list from `.env`
