@@ -51,7 +51,9 @@ commands; this file has the rules.
   the services, their commands or the health check → update `scripts/deploy.sh`, the runbook and
   ADR 0028 too.
 - The configuration stays in the installation's `.env`; the deploy writes only `OSO_IMAGE_TAG`
-  (`X.Y.Z@sha256:…`), keeps the compose project name and refuses when it would differ, and refuses
+  (`X.Y.Z@sha256:…`) and, when GitHub has them, the feedback notification's `FEEDBACK_NOTIFY_URL`
+  (variable) and `FEEDBACK_NOTIFY_TOKEN` (secret) — the owner's decision in #326; a change to either
+  recreates the containers even when the version is already running — keeps the compose project name and refuses when it would differ, and refuses
   while an old install still has Watchtower on (the profile in `.env`, or its leftover container).
 - **`deploy.yml` is the only workflow allowed onto a self-hosted runner.** The repository is public:
   `scripts/check-self-hosted-runners.mjs` (in `Unit tests`) fails any other workflow whose `runs-on`

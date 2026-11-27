@@ -27,9 +27,14 @@ owner, on the Pi or in the repository's settings.
    ran before**, together, and the run fails. **Migrations are not rolled back** — see
    [Restoring a dump](#restoring-a-dump).
 
-After a healthy start it writes `OSO_IMAGE_TAG="X.Y.Z@sha256:…"` into `.env` — the only key it ever
-writes — so that a `docker compose up -d` you run by hand later starts the same image. It also
+After a healthy start it writes `OSO_IMAGE_TAG="X.Y.Z@sha256:…"` into `.env` so that a `docker compose up -d` you run by hand later starts the same image. It also
 removes the repository's unused images, keeping the running one and the one a rollback would use.
+
+Before all that it writes the **feedback notification's settings** into `.env` when the workflow
+passes them (#326, [below](#feedback-notification-settings)): `FEEDBACK_NOTIFY_URL` and
+`FEEDBACK_NOTIFY_TOKEN`. Those are the only other keys it writes. A setting that is not set in
+GitHub leaves `.env` as it is; when one changed, a deploy of the version already running does not
+stop at *Already running* but recreates `app` and `worker` on the same image, so they read it.
 
 The run's summary in the Actions tab says which of these happened: *Deployed*, *Already running*,
 *Skipped* (a downgrade), *Rolled back* or *Failed*.
@@ -142,9 +147,24 @@ restart is needed, because the runner runs the file anew for every job.
   | `OSO_BACKUP_DIR` | no | Where dumps go; default `<OSO_DIR>/backups` |
   | `OSO_BACKUP_KEEP` | no | How many dumps are kept; default `14` |
 
-No secret is needed: the configuration stays in the installation's `.env`, and the image on GHCR is
-public. (If the package is ever made private, run `docker login ghcr.io` once on the Pi as the
+The configuration otherwise stays in the installation's `.env`, and the image on GHCR is public. (If the package is ever made private, run `docker login ghcr.io` once on the Pi as the
 runner's user.)
+
+### Feedback notification settings
+
+When someone sends in-app feedback, the app pokes the project's Claude routine **New in-app
+feedback** through its API trigger (#326), and the routine's one-line reply in the project starts
+triage ([`feedback-triage.md`](../agents/feedback-triage.md)). The two settings live in GitHub — the
+owner's decision of 2026-11-27, recorded in #326 — and the deploy writes them into `.env`:
+
+| Where (Settings → Secrets and variables → Actions, or the `prod` environment) | Name | Value |
+| --- | --- | --- |
+| **Variable** | `FEEDBACK_NOTIFY_URL` | The routine's API trigger URL, from the routine's API trigger on claude.ai |
+| **Secret** | `FEEDBACK_NOTIFY_TOKEN` | The token generated for that API trigger on claude.ai |
+
+They take effect with the next deploy (a manual run of the version already running is enough). With
+either missing the app skips the notification silently. The token is never printed: not in the
+deploy's log, not in the app's (which logs only the response's status code).
 
 ### 3. Fork pull requests need approval
 

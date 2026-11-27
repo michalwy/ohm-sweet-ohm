@@ -14,6 +14,8 @@ name: Deploy
 #
 # The owner's decisions (2026-11-23), recorded in #249, are what let this file name deployment
 # credentials and triggers at all; a change to either needs the owner again (`docs/agents/merge-checklist.md`).
+# The feedback notification's secret and variable (#326) are the owner's decision of 2026-11-27,
+# recorded in that issue: the script writes them into the installation's `.env` and never prints them.
 
 on:
   # The release procedure publishes the Release only after the tag's own CI run is green and has
@@ -62,6 +64,8 @@ jobs:
           OSO_DIR: ${{ vars.OSO_DIR }}
           OSO_BACKUP_DIR: ${{ vars.OSO_BACKUP_DIR }}
           OSO_BACKUP_KEEP: ${{ vars.OSO_BACKUP_KEEP }}
+          FEEDBACK_NOTIFY_URL: ${{ vars.FEEDBACK_NOTIFY_URL }}
+          FEEDBACK_NOTIFY_TOKEN: ${{ secrets.FEEDBACK_NOTIFY_TOKEN }}
           VERSION: ${{ github.event_name == 'release' && github.event.release.tag_name || inputs.version }}
           MANUAL: ${{ github.event_name == 'workflow_dispatch' }}
         run: |

@@ -6,6 +6,17 @@ report is stored in the instance's database with diagnostic context attached aut
 read by the instance administrator in the admin panel (`/admin/feedback`) or with the `admin_…`
 feedback MCP tools. This file is the brief of the agent that triages them.
 
+## How triage starts
+
+Nobody has to watch the admin panel (#326). After a report is saved, the instance fires the
+project's Claude routine **New in-app feedback** through its API trigger (`POST` with body `{}`, at
+most once per 30 s, so one fire can stand for several reports). The routine starts a thread whose
+only reply is the line **"New in-app feedback."**; on that line the project conversation lists the
+`status=new` reports, hands them to a running triage thread or starts one with this brief, and
+resolves the notification thread. The instance needs `FEEDBACK_NOTIFY_URL` and
+`FEEDBACK_NOTIFY_TOKEN` for this (`docs/deployment/pi-deploy.md` § *Feedback notification
+settings*); without them nothing fires and triage starts only when someone asks.
+
 ## Who you are
 
 You are the **feedback triager** for OhmSweetOhm. You read new reports, decide what each one is, find

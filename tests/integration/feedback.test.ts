@@ -10,6 +10,7 @@ import { resolveTokenActor } from "../../src/server/access-control/actor";
 import { executeOperation } from "../../src/server/api/execute";
 import { prisma } from "../../src/server/db/prisma";
 import { adminListFeedbackImplementation } from "../../src/server/feedback/feedbackApi";
+import { notifyNewFeedback } from "../../src/server/feedback/feedbackNotify";
 import { FEEDBACK_RATE_LIMIT } from "../../src/server/feedback/feedbackPolicy";
 import { getFeedbackReport, listFeedbackReports, submitFeedback } from "../../src/server/feedback/feedbackReports";
 import { bearer, createApiTestWorkspace, createTestToken, uniqueSuffix } from "./apiFixtures";
@@ -282,5 +283,126 @@ describe("in-app feedback (#325)", () => {
     assert.match(JSON.stringify(refused.content), /permission-denied/);
     assert.equal((await findReport(message)).status, "triaged");
     await readOnlyClient.close();
+  });
+});
+
+/**
+ * The notification after a saved report (#326). The app's notifier reads its settings from the
+ * environment and calls the global fetch at each fire, so the tests set both and put them back.
+ */
+describe("feedback notification (#326)", () => {
+  const NOTIFY_URL = "https://api.example.test/v1/triggers/trig_test/fire";
+
+  async function withNotify(
+    settings: { FEEDBACK_NOTIFY_URL?: string; FEEDBACK_NOTIFY_TOKEN?: string },
+    fake: (url: string, init: RequestInit) => Promise<Response>,
+    run: (calls: Array<{ url: string; init: RequestInit }>) => Promise<void>
+  ) {
+    const saved = {
+      url: process.env.FEEDBACK_NOTIFY_URL,
+      token: process.env.FEEDBACK_NOTIFY_TOKEN,
+      fetch: globalThis.fetch
+    };
+    const calls: Array<{ url: string; init: RequestInit }> = [];
+
+    for (const key of ["FEEDBACK_NOTIFY_URL", "FEEDBACK_NOTIFY_TOKEN"] as const) {
+      if (settings[key] === undefined) delete process.env[key];
+      else process.env[key] = settings[key];
+    }
+    globalThis.fetch = (async (url: string, init: RequestInit) => {
+      calls.push({ url, init });
+      return fake(url, init);
+    }) as unknown as typeof fetch;
+    notifyNewFeedback.resetDebounce();
+
+    try {
+      await run(calls);
+    } finally {
+      globalThis.fetch = saved.fetch;
+      if (saved.url === undefined) delete process.env.FEEDBACK_NOTIFY_URL;
+      else process.env.FEEDBACK_NOTIFY_URL = saved.url;
+      if (saved.token === undefined) delete process.env.FEEDBACK_NOTIFY_TOKEN;
+      else process.env.FEEDBACK_NOTIFY_TOKEN = saved.token;
+      notifyNewFeedback.resetDebounce();
+    }
+  }
+
+  const submit = (message: string) =>
+    submitFeedback({ userId: null, clientKey: `notify-${uniqueSuffix()}`, submission: { kind: "idea", message } });
+
+  /** Lets the not-awaited fire reach the fake fetch. */
+  const settle = () => new Promise((resolve) => setTimeout(resolve, 20));
+
+  const configured = { FEEDBACK_NOTIFY_URL: NOTIFY_URL, FEEDBACK_NOTIFY_TOKEN: "integration-test-token" };
+  const ok = async () => new Response(null, { status: 200 });
+
+  test("a saved report fires once, with an empty JSON body, and a second within 30 s does not", async () => {
+    await withNotify(configured, ok, async (calls) => {
+      const message = `Notify me ${uniqueSuffix()}`;
+
+      await submit(message);
+      await settle();
+      assert.ok(await findReport(message));
+      assert.equal(calls.length, 1);
+      assert.equal(calls[0].url, NOTIFY_URL);
+      assert.equal(calls[0].init.method, "POST");
+      assert.equal(calls[0].init.body, "{}");
+      assert.deepEqual(calls[0].init.headers, {
+        authorization: "Bearer integration-test-token",
+        "anthropic-version": "2023-06-01",
+        "anthropic-beta": "experimental-cc-routine-2026-04-01",
+        "content-type": "application/json"
+      });
+
+      await submit(`Within the window ${uniqueSuffix()}`);
+      await settle();
+      assert.equal(calls.length, 1);
+    });
+  });
+
+  test("an invalid report fires nothing", async () => {
+    await withNotify(configured, ok, async (calls) => {
+      await assert.rejects(submit(""), /invalid-feedback/);
+      await settle();
+      assert.equal(calls.length, 0);
+    });
+  });
+
+  for (const missing of ["FEEDBACK_NOTIFY_URL", "FEEDBACK_NOTIFY_TOKEN"] as const) {
+    test(`without ${missing} the report is saved and nothing fires`, async () => {
+      await withNotify({ ...configured, [missing]: undefined }, ok, async (calls) => {
+        const message = `No ${missing} ${uniqueSuffix()}`;
+
+        await submit(message);
+        await settle();
+        assert.ok(await findReport(message));
+        assert.equal(calls.length, 0);
+      });
+    });
+  }
+
+  test("a failing or hanging endpoint does not break or hold up the report", async () => {
+    const failures: Array<(url: string, init: RequestInit) => Promise<Response>> = [
+      async () => {
+        throw new TypeError("fetch failed");
+      },
+      async () => new Response("forbidden", { status: 403 }),
+      // Never answers; the request must not wait for it (the fire's own timeout ends it later).
+      (_url, init) =>
+        new Promise((_resolve, reject) => init.signal?.addEventListener("abort", () => reject(init.signal?.reason)))
+    ];
+
+    for (const fake of failures) {
+      await withNotify(configured, fake, async (calls) => {
+        const message = `Endpoint down ${uniqueSuffix()}`;
+        const started = Date.now();
+
+        await submit(message);
+        assert.ok(Date.now() - started < 2_000, "the report does not wait for the fire");
+        await settle();
+        assert.equal(calls.length, 1);
+        assert.ok(await findReport(message));
+      });
+    }
   });
 });
