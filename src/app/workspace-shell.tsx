@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 
 import { signOut } from "@/server/auth/actions";
+import { FeedbackButton } from "@/app/feedback/feedback-dialog";
 import { ThemeToggle } from "@/app/theme-toggle";
 import { WorkspaceProvider } from "@/app/workspace-context";
 import { getAppVersionLabel } from "@/lib/version";
@@ -249,6 +250,7 @@ export function WorkspaceShell({
           <div className="border-t border-[var(--color-border)] p-3">
             <p className="mb-2 truncate text-xs leading-5 text-[var(--color-text-muted)]">{userEmail}</p>
             <ThemeToggle />
+            <FeedbackButton variant="sidebar" workspaceSlug={workspaceSlug} />
             <Link
               className="mb-2 flex min-h-10 items-center gap-2 rounded-md border border-[var(--color-border-strong)] bg-[var(--color-bg-elevated)] px-3 text-sm font-medium text-[var(--color-text-secondary)] transition hover:border-[var(--color-border-hover)] hover:bg-[var(--color-bg-subtle)] focus:outline-none focus:ring-2 focus:ring-[var(--color-ring-strong)] focus:ring-offset-2"
               href="https://github.com/michalwy/ohm-sweet-ohm/blob/main/docs/user-guide/index.md"

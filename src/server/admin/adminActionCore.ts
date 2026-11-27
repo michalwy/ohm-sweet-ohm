@@ -2,6 +2,9 @@ import "server-only";
 
 import { setRegistrationOpen } from "@/server/auth/registration";
 
+import type { FeedbackStatus } from "@/server/feedback/feedbackPolicy";
+import { updateFeedbackReport } from "@/server/feedback/feedbackReports";
+
 import { deleteAdminUser, deleteAdminUserData, type AdminDeletionResult } from "./adminUsers";
 import { isInstanceAdmin } from "./instanceAdmin";
 
@@ -16,11 +19,19 @@ export type AdminActionError =
   | "user-not-found"
   | "cannot-delete-self"
   | "cannot-delete-instance-admin"
+  | "feedback-not-found"
+  | "invalid-issue-url"
   | "unavailable";
 
 export type AdminActionResult<T> = { ok: true; data: T } | { ok: false; error: AdminActionError };
 
-const knownErrors = new Set<string>(["user-not-found", "cannot-delete-self", "cannot-delete-instance-admin"]);
+const knownErrors = new Set<string>([
+  "user-not-found",
+  "cannot-delete-self",
+  "cannot-delete-instance-admin",
+  "feedback-not-found",
+  "invalid-issue-url"
+]);
 
 async function asInstanceAdmin<T>(
   actingUserId: string | null,
@@ -61,4 +72,17 @@ export function deleteUserDataAs(
   userId: string
 ): Promise<AdminActionResult<AdminDeletionResult>> {
   return asInstanceAdmin(actingUserId, (adminId) => deleteAdminUserData(adminId, userId));
+}
+
+/** Triage a feedback report (#325): its status and the GitHub issue it became. */
+export function updateFeedbackAs(
+  actingUserId: string | null,
+  feedbackId: string,
+  input: { status?: FeedbackStatus; issueUrl?: string }
+): Promise<AdminActionResult<{ status: FeedbackStatus; issueUrl: string | null }>> {
+  return asInstanceAdmin(actingUserId, async () => {
+    const report = await updateFeedbackReport(feedbackId, input);
+
+    return { status: report.status, issueUrl: report.issueUrl };
+  });
 }

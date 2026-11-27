@@ -14,6 +14,7 @@ import { RegistrationToggle } from "@/app/admin/registration-toggle";
 import { formatBytes } from "@/lib/formatBytes";
 import { getStorageUsage } from "@/server/admin/adminStorage";
 import { listAdminUsers } from "@/server/admin/adminUsers";
+import { countNewFeedbackReports } from "@/server/feedback/feedbackReports";
 import { getSessionInstanceAdmin } from "@/server/admin/instanceAdmin";
 import { getCurrentSession } from "@/server/auth/currentContext";
 import { getRegistrationState } from "@/server/auth/registration";
@@ -24,7 +25,7 @@ function isoDate(date: Date) {
   return date.toISOString().slice(0, 10);
 }
 
-/** The instance admin panel (#324): accounts, storage and registration. Administrators only. */
+/** The instance admin panel (#324): accounts, storage, registration and feedback (#325). Administrators only. */
 export default async function AdminPage() {
   if (!(await getCurrentSession())) {
     redirect("/sign-in");
@@ -34,10 +35,11 @@ export default async function AdminPage() {
     notFound();
   }
 
-  const [users, storage, registration] = await Promise.all([
+  const [users, storage, registration, newFeedback] = await Promise.all([
     listAdminUsers(),
     getStorageUsage(),
-    getRegistrationState()
+    getRegistrationState(),
+    countNewFeedbackReports()
   ]);
   const userBytes = new Map(storage.users.map((user) => [user.id, user.bytes]));
 
@@ -78,6 +80,24 @@ export default async function AdminPage() {
             <p className="mt-1 text-xs leading-5 text-[var(--color-text-muted)]">{copy.storageNote}</p>
           </section>
         </div>
+
+        <section
+          aria-labelledby="admin-feedback-heading"
+          className={`${adminCardClass} mt-6 flex items-center justify-between gap-4`}
+        >
+          <div>
+            <h2 id="admin-feedback-heading" className="text-lg font-semibold">
+              {copy.feedbackTitle}
+            </h2>
+            <p className="mt-1 text-sm text-[var(--color-text-secondary)]">{copy.feedbackSummary(newFeedback)}</p>
+          </div>
+          <Link
+            className="inline-flex min-h-9 items-center rounded-md border border-[var(--color-border-strong)] bg-[var(--color-bg-elevated)] px-3 py-1.5 text-sm font-medium text-[var(--color-text-secondary)] transition hover:border-[var(--color-border-hover)] hover:bg-[var(--color-bg-subtle)] focus:outline-none focus:ring-2 focus:ring-[var(--color-ring-strong)] focus:ring-offset-2"
+            href={newFeedback > 0 ? "/admin/feedback?status=new" : "/admin/feedback"}
+          >
+            {copy.openFeedback}
+          </Link>
+        </section>
 
         <section aria-labelledby="admin-users-heading" className={`${adminCardClass} mt-6`}>
           <h2 id="admin-users-heading" className="mb-3 text-lg font-semibold">

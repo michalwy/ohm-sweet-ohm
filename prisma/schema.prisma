@@ -580,6 +580,7 @@ model User {
   buildsCreated           Build[]
   apiTokens               ApiToken[]
   oauthGrants             OAuthGrant[]
+  feedbackReports         FeedbackReport[]
 }
 
 /// A personal API token (ADR 0030, #273): it belongs to one user and is bound to one workspace and
@@ -693,6 +694,7 @@ model Workspace {
   designRevisions  DesignRevision[]
   bomLineItems     BomLineItem[]
   bomMatchers      BomMatcher[]
+  feedbackReports  FeedbackReport[]
   builds                     Build[]
   buildLineItems             BuildLineItem[]
   buildLineAllocations       BuildLineAllocation[]
@@ -1084,4 +1086,45 @@ model InstanceSettings {
   registrationUpdatedByUserId String?
   createdAt                   DateTime  @default(now())
   updatedAt                   DateTime  @updatedAt
+}
+
+enum FeedbackKind {
+  problem
+  idea
+  question
+}
+
+enum FeedbackStatus {
+  new
+  triaged
+}
+
+/// A report sent with "Send feedback" (#325): signed in or anonymous. It belongs to the instance,
+/// not to a workspace: only instance administrators list or change reports, and a submitter
+/// cannot read one back. Deleting the reporter or the workspace keeps the report, unlinked.
+model FeedbackReport {
+  id          String         @id @default(cuid())
+  kind        FeedbackKind
+  message     String
+  status      FeedbackStatus @default(new)
+  /// The GitHub issue the report became, set when it is triaged.
+  issueUrl    String?
+  /// The signed-in reporter; null for an anonymous report or once the account is deleted.
+  userId      String?
+  user        User?          @relation(fields: [userId], references: [id], onDelete: SetNull)
+  /// The workspace the reporter was in, when they were in one and a member of it.
+  workspaceId String?
+  workspace   Workspace?     @relation(fields: [workspaceId], references: [id], onDelete: SetNull)
+  /// The page, with credentials in its query string redacted.
+  path        String?
+  appVersion  String
+  /// The rest of the diagnostic context (`feedbackContextSchema`): browser, window, locale, time
+  /// zone, theme, the client's clock and the page's recent errors.
+  context     Json
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  @@index([status, createdAt])
+  @@index([userId])
+  @@index([workspaceId])
 }

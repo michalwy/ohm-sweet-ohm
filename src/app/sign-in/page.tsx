@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
 
+import { FeedbackButton } from "@/app/feedback/feedback-dialog";
 import { signInWithPassword } from "@/server/auth/actions";
 import { canCreateAccount } from "@/server/auth/registration";
 import { getCurrentSession } from "@/server/auth/currentContext";
@@ -120,6 +121,9 @@ export default async function SignInPage({ searchParams }: SignInPageProps) {
             </Link>
           </p>
         ) : null}
+        <div className="mt-5 flex justify-end">
+          <FeedbackButton variant="link" />
+        </div>
       </section>
     </main>
   );

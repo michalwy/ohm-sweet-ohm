@@ -103,6 +103,7 @@ not restate that reasoning here; add it to the topic file instead.
 | Turning ideas and bug reports into issues (the project conversation) | [`backlog-manager.md`](docs/agents/backlog-manager.md) |
 | Waiting for CI, the guardrail checklist, merging your own pull request, closing the issue | [`merge-checklist.md`](docs/agents/merge-checklist.md) |
 | Renovate pull requests, the Monday dependency-review thread | [`dependency-review.md`](docs/agents/dependency-review.md) |
+| Triaging in-app feedback reports into GitHub issues (the triage persona) | [`feedback-triage.md`](docs/agents/feedback-triage.md) |
 | Releases (= deploys) | [`release-versioning.md`](docs/agents/release-versioning.md) |
 | The Project's standing instructions, as pasted into Project settings | [`project-instructions.md`](docs/project-instructions.md) |
 | The `main` ruleset, its artifact, the drift check, required CI checks | [`branch-protection.md`](docs/agents/branch-protection.md) |

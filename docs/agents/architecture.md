@@ -75,6 +75,18 @@ the decision — fix this file.
   measured in PostgreSQL (`adminStorage.ts`): row bytes per workspace across every table with
   `workspaceId` plus the listed child tables — a new child table without `workspaceId` must be added
   to `CHILD_TABLES` to be counted.
+- **In-app feedback (#325)** lives in `src/server/feedback/`. `FeedbackReport` is instance-wide, not
+  a workspace resource (it carries an optional `workspaceId` for context, `SetNull`, and is counted
+  in that workspace's storage figure): anyone may create one through `submitFeedbackAction`, signed
+  in or not, and only an instance administrator reads or changes one (admin pages, `updateFeedbackAs`
+  in `adminActionCore.ts`, the `admin_…_feedback` tools). The reporter is the session's user — the
+  browser cannot name another — and the workspace is kept only when that user is a member of it.
+  The browser's context is validated and bounded in `feedbackPolicy.ts` (a bad field is dropped, not
+  refused), the page's query values that may carry credentials are redacted before storing, and the
+  app version is the server's own. A fixed-window in-memory limit (5 per 10 minutes per account, or
+  per forwarded client address when anonymous) keeps the anonymous entry point from flooding the
+  table; it is per process, which is enough for the single-container deployment. The triage
+  persona is [`feedback-triage.md`](feedback-triage.md).
 - Registration and routing (ADR 0007): sign-up creates only a global user; sign-in returns users to
   their last accessible workspace when remembered; users choose or create workspaces at
   `/workspaces`; workspace URLs use `/w/[workspaceSlug]/...`; slug resolution must still authorize by

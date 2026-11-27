@@ -36,11 +36,18 @@ const API_TOKENS =
 const CONNECTED_APPS =
   "Connected apps are managed by a signed-in user in Settings (#322), as API tokens are; a token never manages them.";
 
+const FEEDBACK =
+  "Feedback is sent from the app's \"Send feedback\" dialog, with the browser's diagnostic context (#325); the issue asks for no MCP tool to send it, only the admin tools to read and triage it.";
+
 export const serverActionCoverage: ServerActionCoverageMap = {
   "src/server/admin/adminActions.ts": {
     setRegistrationOpenAction: { tool: "admin_set_registration_open" },
     deleteUserAction: { tool: "admin_delete_user" },
-    deleteUserDataAction: { tool: "admin_delete_user_data" }
+    deleteUserDataAction: { tool: "admin_delete_user_data" },
+    updateFeedbackAction: { tool: "admin_update_feedback" }
+  },
+  "src/server/feedback/feedbackActions.ts": {
+    submitFeedbackAction: { excluded: FEEDBACK }
   },
   "src/server/api-tokens/apiTokenActions.ts": {
     createApiTokenAction: { excluded: API_TOKENS },
