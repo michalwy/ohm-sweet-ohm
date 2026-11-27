@@ -4,6 +4,7 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 
 import { auth } from "@/server/auth/auth";
+import { safeOAuthNextPath } from "@/server/oauth/oauthValues";
 import {
   clearLastWorkspaceSlug,
   getLastWorkspaceRedirectPath
@@ -19,9 +20,12 @@ const signInCopy = {
 export async function signInWithPassword(formData: FormData) {
   const email = getRequiredFormValue(formData, "email");
   const password = getRequiredFormValue(formData, "password");
+  // An OAuth authorization request to return to (#322); any other value is dropped.
+  const next = safeOAuthNextPath(getRequiredFormValue(formData, "next"));
+  const nextQuery = next ? `&next=${encodeURIComponent(next)}` : "";
 
   if (!email || !password) {
-    redirect(`/sign-in?error=${signInCopy.missingFields}`);
+    redirect(`/sign-in?error=${signInCopy.missingFields}${nextQuery}`);
   }
 
   let userId = "";
@@ -37,7 +41,11 @@ export async function signInWithPassword(formData: FormData) {
 
     userId = signInResult.user.id;
   } catch {
-    redirect(`/sign-in?error=${signInCopy.invalid}`);
+    redirect(`/sign-in?error=${signInCopy.invalid}${nextQuery}`);
+  }
+
+  if (next) {
+    redirect(next);
   }
 
   if (!userId) {

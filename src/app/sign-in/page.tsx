@@ -3,6 +3,7 @@ import Link from "next/link";
 
 import { signInWithPassword } from "@/server/auth/actions";
 import { getCurrentSession } from "@/server/auth/currentContext";
+import { safeOAuthNextPath } from "@/server/oauth/oauthValues";
 import { getLastWorkspaceRedirectPath } from "@/server/workspaces/lastWorkspace";
 
 export const dynamic = "force-dynamic";
@@ -25,17 +26,20 @@ const copy = {
 type SignInPageProps = {
   searchParams?: Promise<{
     error?: string;
+    /** An OAuth authorization request to return to after signing in (#322); nothing else. */
+    next?: string;
   }>;
 };
 
 export default async function SignInPage({ searchParams }: SignInPageProps) {
   const session = await getCurrentSession();
+  const resolvedSearchParams = await searchParams;
+  const next = safeOAuthNextPath(resolvedSearchParams?.next);
 
   if (session) {
-    redirect(await getLastWorkspaceRedirectPath(session.user.id));
+    redirect(next ?? (await getLastWorkspaceRedirectPath(session.user.id)));
   }
 
-  const resolvedSearchParams = await searchParams;
   const error = resolvedSearchParams?.error;
 
   return (
@@ -74,6 +78,7 @@ export default async function SignInPage({ searchParams }: SignInPageProps) {
         ) : null}
 
         <form action={signInWithPassword} className="mt-6 grid gap-4">
+          {next ? <input name="next" type="hidden" value={next} /> : null}
           <label className="grid gap-2 text-sm font-medium text-[var(--color-text-secondary)]">
             {copy.email}
             <input

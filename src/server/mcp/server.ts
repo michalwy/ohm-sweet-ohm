@@ -15,11 +15,11 @@ import {
 import type { WorkspaceActor } from "@/server/access-control/actor";
 import { executeOperation } from "@/server/api/execute";
 import { getOperationJsonSchemas } from "@/server/api/operations";
-import {
-  authenticateApiRequest,
-  errorResponse,
-  unauthorizedFailure
-} from "@/server/api/rest";
+import { readBearerToken } from "@/server/api/bearer";
+import { jsonResponse, unauthorizedFailure } from "@/server/api/rest";
+import { resolveWorkspaceActor } from "@/server/auth/currentActor";
+import { getOAuthBaseUrl, isOAuthAccessToken } from "@/server/oauth/oauthServer";
+import { oauthUrls } from "@/server/oauth/oauthValues";
 import { mcpTools, type McpTool, type McpToolBehavior } from "@/server/mcp/tools";
 
 /**
@@ -54,10 +54,10 @@ export async function handleMcpRequest(
     );
   }
 
-  const actor = await authenticateApiRequest(request);
+  const actor = await authenticateMcpRequest(request);
 
   if (!actor) {
-    return errorResponse(unauthorizedFailure);
+    return mcpUnauthorizedResponse(readBearerToken(request.headers) !== null);
   }
 
   const server = createMcpServer(actor, tools);
@@ -73,6 +73,39 @@ export async function handleMcpRequest(
   } finally {
     await server.close();
   }
+}
+
+/**
+ * The actor for an MCP request: a personal API token (#273) or, from a connected app such as a
+ * claude.ai custom connector, an OAuth access token (#322) — both through `resolveWorkspaceActor`.
+ * Cookies are never read.
+ */
+async function authenticateMcpRequest(request: Request): Promise<WorkspaceActor | null> {
+  const token = readBearerToken(request.headers);
+
+  if (!token) {
+    return null;
+  }
+
+  return resolveWorkspaceActor({ kind: isOAuthAccessToken(token) ? "oauth" : "token", token });
+}
+
+/**
+ * 401 with the challenge an OAuth client needs to discover the authorization server from the MCP
+ * URL alone (RFC 9728 § 5.1): `resource_metadata` names the protected-resource metadata.
+ */
+export function mcpUnauthorizedResponse(tokenPresented: boolean) {
+  const metadataUrl = oauthUrls(getOAuthBaseUrl()).protectedResourceMetadata;
+  const challenge = [
+    'Bearer realm="OhmSweetOhm"',
+    `resource_metadata="${metadataUrl}"`,
+    ...(tokenPresented ? ['error="invalid_token"'] : [])
+  ].join(", ");
+
+  return jsonResponse({ error: unauthorizedFailure.error }, 401, {
+    "www-authenticate": challenge,
+    "access-control-expose-headers": "WWW-Authenticate"
+  });
 }
 
 /** An MCP server whose tools all run as `actor`. */

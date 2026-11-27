@@ -11,12 +11,15 @@ import {
 } from "@/server/access-control/actor";
 import type { PermissionKey } from "@/server/access-control/permissions";
 import { auth } from "@/server/auth/auth";
+import { resolveOAuthActor } from "@/server/oauth/oauthServer";
 
 export type ActorRequest =
   /** A browser request: the Better Auth session cookie plus the workspace slug from the URL. */
   | { kind: "session"; workspaceSlug: string }
   /** An API or MCP request: a bearer token, which is bound to its own workspace. */
-  | { kind: "token"; token: string };
+  | { kind: "token"; token: string }
+  /** An MCP request from a connected app (#322): an OAuth access token, bound to its grant's workspace. */
+  | { kind: "oauth"; token: string };
 
 /**
  * The one server-side entry point that says who is acting, in which workspace, with which
@@ -29,6 +32,10 @@ export async function resolveWorkspaceActor(
 ): Promise<WorkspaceActor | null> {
   if (request.kind === "token") {
     return resolveTokenActor(request.token, options);
+  }
+
+  if (request.kind === "oauth") {
+    return resolveOAuthActor(request.token);
   }
 
   const session = await auth.api.getSession({ headers: await headers() });

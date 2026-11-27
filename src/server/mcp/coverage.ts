@@ -33,10 +33,16 @@ const CREDENTIALS =
 const API_TOKENS =
   "API tokens are managed by a signed-in user in Settings (#273); no area issue of the milestone exposes token management to a token.";
 
+const CONNECTED_APPS =
+  "Connected apps are managed by a signed-in user in Settings (#322), as API tokens are; a token never manages them.";
+
 export const serverActionCoverage: ServerActionCoverageMap = {
   "src/server/api-tokens/apiTokenActions.ts": {
     createApiTokenAction: { excluded: API_TOKENS },
     revokeApiTokenAction: { excluded: API_TOKENS }
+  },
+  "src/server/oauth/connectedAppActions.ts": {
+    disconnectConnectedAppAction: { excluded: CONNECTED_APPS }
   },
   "src/server/auth/actions.ts": {
     signInWithPassword: { excluded: AUTH },
