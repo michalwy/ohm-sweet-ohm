@@ -20,7 +20,8 @@ import { jsonResponse, unauthorizedFailure } from "@/server/api/rest";
 import { resolveWorkspaceActor } from "@/server/auth/currentActor";
 import { getOAuthBaseUrl, isOAuthAccessToken } from "@/server/oauth/oauthServer";
 import { oauthUrls } from "@/server/oauth/oauthValues";
-import { mcpTools, type McpTool, type McpToolBehavior } from "@/server/mcp/tools";
+import { isInstanceAdmin } from "@/server/admin/instanceAdmin";
+import { adminMcpTools, mcpTools, type McpTool, type McpToolBehavior } from "@/server/mcp/tools";
 
 /**
  * The MCP server at `/api/mcp` (#275): Streamable HTTP, inside the app (ADR 0030).
@@ -38,7 +39,10 @@ const INSTRUCTIONS =
 
 export async function handleMcpRequest(
   request: Request,
-  { tools = mcpTools }: { tools?: readonly McpTool[] } = {}
+  {
+    tools = mcpTools,
+    adminTools = adminMcpTools
+  }: { tools?: readonly McpTool[]; adminTools?: readonly McpTool[] } = {}
 ): Promise<Response> {
   if (request.method !== "POST") {
     return Response.json(
@@ -60,7 +64,9 @@ export async function handleMcpRequest(
     return mcpUnauthorizedResponse(readBearerToken(request.headers) !== null);
   }
 
-  const server = createMcpServer(actor, tools);
+  // The admin tools (#324) are offered to an instance administrator only; each checks it again.
+  const offered = (await isInstanceAdmin(actor.user.id)) ? [...tools, ...adminTools] : tools;
+  const server = createMcpServer(actor, offered);
   const transport = new WebStandardStreamableHTTPServerTransport({
     sessionIdGenerator: undefined,
     enableJsonResponse: true

@@ -10,7 +10,7 @@ import { implementOperation } from "../../src/server/api/execute";
 import { defineOperation } from "../../src/server/api/operations";
 import { serverActionCoverage } from "../../src/server/mcp/coverage";
 import { handleMcpRequest } from "../../src/server/mcp/server";
-import { defineMcpTool, mcpTools, type McpTool } from "../../src/server/mcp/tools";
+import { adminMcpTools, defineMcpTool, mcpTools, type McpTool } from "../../src/server/mcp/tools";
 import { bearer, createApiTestWorkspace, createTestToken } from "./apiFixtures";
 
 const endpoint = new URL("http://localhost/api/mcp");
@@ -180,7 +180,9 @@ describe("MCP coverage (#276)", () => {
   test("every coverage entry that names a tool names one the registry offers", () => {
     // The unit check (tests/unit/mcpCoverage.test.ts) cannot load the registry, which is
     // server-only; this closes the loop: an action mapped to a tool really has that tool.
-    const registered = new Set(mcpTools.map((tool) => tool.implementation.operation.name));
+    const registered = new Set(
+      [...mcpTools, ...adminMcpTools].map((tool) => tool.implementation.operation.name)
+    );
     const missing = Object.entries(serverActionCoverage).flatMap(([file, entries]) =>
       Object.entries(entries).flatMap(([name, entry]) =>
         "tool" in entry && !registered.has(entry.tool) ? [`${file}#${name} -> ${entry.tool}`] : []

@@ -83,3 +83,4 @@ If you are setting up a new workspace, this sequence usually works best:
 - [Settings & Permissions](settings.md) — workspace settings, access control and personal API tokens
 - [API and MCP](api-and-mcp.md) — use OSO from scripts and connect Claude to it
 - [Deployment](deployment.md) — self-host OSO on your own server with a prebuilt image
+- [Instance administration](admin.md) — accounts, storage and registration for the whole instance (administrator only)

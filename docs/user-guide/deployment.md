@@ -54,8 +54,9 @@ screen lets you create the first account; once any account exists, sign-up is re
 screen says so, the sign-in screen no longer offers it, and the sign-up API refuses too).
 
 To let anyone who can reach the instance create an account, add `OSO_AUTH_ALLOW_SIGN_UP=1` to `.env`
-and apply it as described below. This value is only the default: a later admin panel will be able to
-change it at runtime.
+and apply it as described below. This value is only the default: the instance administrator (the
+first account) can open or close registration at runtime in the
+[instance administration](admin.md) panel, and that setting then wins until it is changed again.
 
 An instance that already has accounts and is updated to this version starts with registration closed.
 Existing accounts, sessions and API tokens keep working.
