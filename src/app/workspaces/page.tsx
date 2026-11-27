@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
+import { getSessionInstanceAdmin } from "@/server/admin/instanceAdmin";
 import { signOut } from "@/server/auth/actions";
 import {
   getCurrentSession,
@@ -21,6 +22,7 @@ const copy = {
   title: "Workspaces",
   intro: "Choose a workshop space or create a new one.",
   signOut: "Sign out",
+  instanceAdmin: "Instance administration",
   createTitle: "Create workspace",
   name: "Workspace name",
   namePlaceholder: "Bench projects",
@@ -65,9 +67,10 @@ export default async function WorkspacesPage({
     redirect("/sign-in");
   }
 
-  const [memberships, archivedMemberships] = await Promise.all([
+  const [memberships, archivedMemberships, instanceAdmin] = await Promise.all([
     getCurrentUserWorkspaces(),
-    getCurrentUserArchivedWorkspaces()
+    getCurrentUserArchivedWorkspaces(),
+    getSessionInstanceAdmin()
   ]);
   const retentionDays = getRetentionDays();
   const workspaces = memberships?.map(({ workspace }) => workspace) ?? [];
@@ -94,6 +97,15 @@ export default async function WorkspacesPage({
               </p>
             </div>
           </div>
+          <div className="flex items-center gap-2">
+          {instanceAdmin ? (
+            <Link
+              className="inline-flex min-h-10 items-center rounded-md border border-[var(--color-border-strong)] bg-[var(--color-bg-elevated)] px-3 py-2 text-sm font-medium text-[var(--color-text-secondary)] transition hover:border-[var(--color-border-hover)] hover:bg-[var(--color-bg-subtle)] focus:outline-none focus:ring-2 focus:ring-[var(--color-ring-strong)] focus:ring-offset-2"
+              href="/admin"
+            >
+              {copy.instanceAdmin}
+            </Link>
+          ) : null}
           <form action={signOut}>
             <button
               className="min-h-10 rounded-md border border-[var(--color-border-strong)] bg-[var(--color-bg-elevated)] px-3 py-2 text-sm font-medium text-[var(--color-text-secondary)] transition hover:border-[var(--color-border-hover)] hover:bg-[var(--color-bg-subtle)] focus:outline-none focus:ring-2 focus:ring-[var(--color-ring-strong)] focus:ring-offset-2"
@@ -102,6 +114,7 @@ export default async function WorkspacesPage({
               {copy.signOut}
             </button>
           </form>
+          </div>
         </header>
 
         <div className="grid flex-1 grid-cols-[1fr_22rem] gap-6 py-6">

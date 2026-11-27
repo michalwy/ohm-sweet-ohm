@@ -1,5 +1,6 @@
 import "server-only";
 
+import * as adminApi from "@/server/admin/adminApi";
 import type { OperationImplementation } from "@/server/api/execute";
 import {
   createInventoryEntryImplementation,
@@ -243,4 +244,30 @@ export const mcpTools: McpTool[] = [
   defineMcpTool("Look up a part at the supplier", purchaseOrderApi.lookupSupplierItemImplementation, { readOnly: true }),
   defineMcpTool("Get an exchange rate", purchaseOrderApi.getExchangeRateImplementation, { readOnly: true }),
   defineMcpTool("Save a manual exchange rate", purchaseOrderApi.saveExchangeRateImplementation, { readOnly: false, destructive: true, idempotent: true })
+];
+
+/**
+ * The instance administrator's tools (#324). The MCP server offers them only when the token's user
+ * is an instance administrator (`handleMcpRequest`), and each implementation checks that again.
+ */
+export const adminMcpTools: readonly McpTool[] = [
+  defineMcpTool("List accounts (admin)", adminApi.adminListUsersImplementation, { readOnly: true }),
+  defineMcpTool("Get an account (admin)", adminApi.adminGetUserImplementation, { readOnly: true }),
+  defineMcpTool("Delete an account (admin)", adminApi.adminDeleteUserImplementation, {
+    readOnly: false,
+    destructive: true
+  }),
+  defineMcpTool("Delete an account's data (admin)", adminApi.adminDeleteUserDataImplementation, {
+    readOnly: false,
+    destructive: true
+  }),
+  defineMcpTool("Storage used (admin)", adminApi.adminGetStorageUsageImplementation, { readOnly: true }),
+  defineMcpTool("Registration setting (admin)", adminApi.adminGetRegistrationImplementation, {
+    readOnly: true
+  }),
+  defineMcpTool("Open or close registration (admin)", adminApi.adminSetRegistrationOpenImplementation, {
+    readOnly: false,
+    destructive: false,
+    idempotent: true
+  })
 ];

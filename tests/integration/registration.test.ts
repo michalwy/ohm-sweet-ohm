@@ -3,7 +3,12 @@ import { randomBytes } from "node:crypto";
 import { afterEach, describe, test } from "node:test";
 
 import { auth } from "../../src/server/auth/auth";
-import { canCreateAccount, isRegistrationOpen } from "../../src/server/auth/registration";
+import {
+  canCreateAccount,
+  getRegistrationState,
+  isRegistrationOpen,
+  setRegistrationOpen
+} from "../../src/server/auth/registration";
 import { prisma } from "../../src/server/db/prisma";
 
 const suffix = randomBytes(4).toString("hex");
@@ -16,7 +21,10 @@ function signUp(label: string) {
 }
 
 describe("registration (#323)", () => {
-  afterEach(() => {
+  afterEach(async () => {
+    // Back to the configuration default (#324's runtime setting cleared).
+    await prisma.instanceSettings.deleteMany({});
+
     if (originalSetting === undefined) {
       delete process.env.OSO_AUTH_ALLOW_SIGN_UP;
     } else {
@@ -43,5 +51,35 @@ describe("registration (#323)", () => {
 
     const result = await signUp("open");
     assert.equal(result.user.email, `open-${suffix}@example.test`);
+  });
+
+  test("closing registration at runtime refuses the next sign-up, whatever the configuration says (#324)", async () => {
+    process.env.OSO_AUTH_ALLOW_SIGN_UP = "1";
+    const admin = await prisma.user.create({ data: { email: `toggle-admin-${suffix}@example.test` } });
+
+    const closed = await setRegistrationOpen(false, admin.id);
+
+    assert.equal(closed.open, false);
+    assert.equal(closed.source, "runtime");
+    assert.equal(closed.configDefault, true);
+    assert.equal(closed.updatedByUserId, admin.id);
+    await assert.rejects(() => signUp("runtime-closed"));
+    assert.equal(await prisma.user.count({ where: { email: `runtime-closed-${suffix}@example.test` } }), 0);
+  });
+
+  test("opening registration at runtime lets a sign-up through with the default configuration (#324)", async () => {
+    delete process.env.OSO_AUTH_ALLOW_SIGN_UP;
+    const admin = await prisma.user.create({ data: { email: `toggle-opener-${suffix}@example.test` } });
+
+    assert.equal((await setRegistrationOpen(true, admin.id)).open, true);
+
+    const result = await signUp("runtime-open");
+    assert.equal(result.user.email, `runtime-open-${suffix}@example.test`);
+
+    await setRegistrationOpen(null, admin.id);
+    assert.deepEqual(
+      { open: (await getRegistrationState()).open, source: (await getRegistrationState()).source },
+      { open: false, source: "config" }
+    );
   });
 });

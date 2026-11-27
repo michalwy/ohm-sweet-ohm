@@ -57,8 +57,24 @@ the decision — fix this file.
 - Authentication is Better Auth (ADR 0006); do not reintroduce development current-user shortcuts.
 - Registration is closed by default (#323): `src/server/auth/registration.ts` is the one place that
   answers it (config default `OSO_AUTH_ALLOW_SIGN_UP=1` to open; the first account on an empty
-  instance is always allowed; the admin panel, #324, overrides it there). Enforced in a Better Auth
+  instance is always allowed; the admin panel's runtime setting, `InstanceSettings.registrationOpen`
+  (#324), overrides the default when set). Enforced in a Better Auth
   `databaseHooks.user.create.before` hook, so the sign-up API refuses too, not only the page.
+- **Instance administration (#324)** lives in `src/server/admin/`. The instance administrator is
+  not a workspace role: `isInstanceAdmin` (`instanceAdmin.ts`) answers it — a user with
+  `User.isInstanceAdmin`, or, while no account carries the flag, the oldest account
+  (`instanceAdminPolicy.ts`; there is no UI to set the flag yet). Every admin page
+  (`src/app/admin/`, `notFound()` otherwise), server action (`adminActionCore.ts`) and admin MCP tool
+  checks it server-side before doing anything. The admin MCP tools (`adminMcpTools` in `tools.ts`)
+  are listed only to an administrator, and each implementation checks again
+  (`requireInstanceAdminActor`), plus `workspace:write` on the token for a tool that changes
+  anything; their operations have `permission: null` because no workspace key describes them. No
+  REST endpoints. Deletion is immediate and reuses `deleteWorkspaceRows`
+  (`src/server/workspaces/deletionMutations.ts`), the scheduled deletion's own row order; "the
+  user's data" is the workspaces they **solely own** (owner role, no other owner). Storage is
+  measured in PostgreSQL (`adminStorage.ts`): row bytes per workspace across every table with
+  `workspaceId` plus the listed child tables — a new child table without `workspaceId` must be added
+  to `CHILD_TABLES` to be counted.
 - Registration and routing (ADR 0007): sign-up creates only a global user; sign-in returns users to
   their last accessible workspace when remembered; users choose or create workspaces at
   `/workspaces`; workspace URLs use `/w/[workspaceSlug]/...`; slug resolution must still authorize by
@@ -154,7 +170,8 @@ the actions' domain errors are thrown. An action whose fields are named differen
 operation's (`locationId` for `id`) maps them in the call; the schema strips the workspace slug.
 
 `permission` is `null` only for an operation any authenticated actor may call — `whoami`, which
-describes the caller. Everything else names a key.
+describes the caller — and for the instance administrator's `admin_…` operations (#324), whose
+implementations check the administrator themselves. Everything else names a key.
 
 ### REST endpoints and MCP tools
 

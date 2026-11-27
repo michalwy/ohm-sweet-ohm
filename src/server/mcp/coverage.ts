@@ -37,6 +37,11 @@ const CONNECTED_APPS =
   "Connected apps are managed by a signed-in user in Settings (#322), as API tokens are; a token never manages them.";
 
 export const serverActionCoverage: ServerActionCoverageMap = {
+  "src/server/admin/adminActions.ts": {
+    setRegistrationOpenAction: { tool: "admin_set_registration_open" },
+    deleteUserAction: { tool: "admin_delete_user" },
+    deleteUserDataAction: { tool: "admin_delete_user_data" }
+  },
   "src/server/api-tokens/apiTokenActions.ts": {
     createApiTokenAction: { excluded: API_TOKENS },
     revokeApiTokenAction: { excluded: API_TOKENS }

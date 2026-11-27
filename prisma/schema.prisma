@@ -567,6 +567,9 @@ model User {
   dateFormat      String   @default("locale")
   timeFormat      String   @default("locale")
   relativeFormat  Boolean  @default(false)
+  /// An instance administrator (#324) may open the admin panel and call the admin MCP tools. When
+  /// no account carries the flag, the oldest account is the administrator (`instanceAdminPolicy.ts`).
+  isInstanceAdmin Boolean  @default(false)
 
   memberships             WorkspaceMember[]
   sessions                Session[]
@@ -1069,4 +1072,16 @@ model OAuthToken {
   grant OAuthGrant @relation(fields: [grantId], references: [id], onDelete: Cascade)
 
   @@index([grantId])
+}
+
+/// Instance-wide settings changed at runtime from the admin panel (#324): one row, id "instance".
+/// A null value means "use the configuration default".
+model InstanceSettings {
+  id                          String    @id @default("instance")
+  /// Overrides `OSO_AUTH_ALLOW_SIGN_UP` (#323) when set.
+  registrationOpen            Boolean?
+  registrationUpdatedAt       DateTime?
+  registrationUpdatedByUserId String?
+  createdAt                   DateTime  @default(now())
+  updatedAt                   DateTime  @updatedAt
 }
