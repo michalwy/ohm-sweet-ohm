@@ -15,6 +15,7 @@ import {
   type FeedbackKind,
   type FeedbackStatus
 } from "./feedbackPolicy";
+import { notifyNewFeedback } from "./feedbackNotify";
 
 /**
  * In-app feedback (#325): saving a report from anyone, signed in or not, and reading and triaging
@@ -69,6 +70,9 @@ export async function submitFeedback(input: {
       context: rest as Prisma.InputJsonObject
     }
   });
+
+  // Fire and forget (#326): not awaited, never throws, so it cannot fail or slow the report.
+  void notifyNewFeedback();
 }
 
 export type FeedbackReportSummary = {

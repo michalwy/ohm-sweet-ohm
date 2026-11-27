@@ -29,9 +29,12 @@
 #      back to the previous image**. Migrations are not rolled back; the dump from step 3 is how the
 #      database goes back.
 #
-# **The installation is the configuration.** `.env` is read, never rebuilt: the only key this
-# script writes is `OSO_IMAGE_TAG`, after a deploy came up healthy, so a later hand-run
-# `docker compose up -d` starts the same image instead of whatever `latest` is by then.
+# **The installation is the configuration.** `.env` is read, never rebuilt. The script writes
+# `OSO_IMAGE_TAG`, after a deploy came up healthy, so a later hand-run `docker compose up -d` starts
+# the same image instead of whatever `latest` is by then; and the feedback notification's two
+# settings, `FEEDBACK_NOTIFY_URL` and `FEEDBACK_NOTIFY_TOKEN`, when the workflow passes them (from
+# GitHub, #326 — the owner's decision recorded there), so they live in GitHub rather than by hand on
+# the Pi. A setting the workflow passes empty leaves `.env` as it is.
 #
 # **The output is public.** This repository is public, and so are its Actions logs. Nothing here
 # prints `.env`, the database address, a path on the Pi or the application's own logs; a failure
@@ -51,6 +54,8 @@
 #   OSO_HEALTH_TIMEOUT    seconds to wait for healthy  (default 600)
 #   OSO_HEALTH_POLL       seconds between checks       (default 5)
 #   OSO_WORKER_SETTLE     seconds worker must stay up after app is healthy (default 10)
+#   FEEDBACK_NOTIFY_URL   written into .env when set   (the routine's fire URL, #326)
+#   FEEDBACK_NOTIFY_TOKEN written into .env when set   (its token; never printed)
 
 set -euo pipefail
 umask 077
@@ -126,6 +131,37 @@ write_tag() {
   cat "$tmp" >.env
   rm -f "$tmp"
 }
+
+# --- Settings the workflow carries into .env (#326) ---------------------------------------------
+
+# Escaped for a double-quoted value in a Compose .env, as scripts/install.sh writes it: backslash
+# and double quote for the parser, `$` -> `$$` so Compose does not interpolate inside it.
+env_escape() {
+  printf '%s' "$1" | sed -e 's/\\/\\\\/g' -e 's/"/\\"/g' -e 's/\$/$$/g'
+}
+
+# Writes KEY from this script's environment into .env **in place**, when it is set and differs.
+# Nothing here prints a value: the token is a secret and the log is public.
+SETTINGS_CHANGED=false
+sync_setting() { # <KEY>
+  local key="$1" value line tmp
+  value="${!key:-}"
+  [ -n "$value" ] || return 0
+  [[ "$value" != *$'\n'* ]] || die "$key from the workflow contains a line break - it was not written."
+  line="${key}=\"$(env_escape "$value")\""
+  [ "$({ grep -E "^${key}=" .env || true; } | tail -n1)" != "$line" ] || return 0
+  tmp="$(mktemp)"
+  { grep -vE "^${key}=" .env || true; } >"$tmp"
+  printf '%s\n' "$line" >>"$tmp"
+  cat "$tmp" >.env
+  rm -f "$tmp"
+  SETTINGS_CHANGED=true
+  info "Wrote ${key} into .env."
+}
+
+sync_setting FEEDBACK_NOTIFY_URL
+sync_setting FEEDBACK_NOTIFY_TOKEN
+unset FEEDBACK_NOTIFY_URL FEEDBACK_NOTIFY_TOKEN
 
 COMPOSE_FILES="$(get_env COMPOSE_FILE)"
 [ -n "$COMPOSE_FILES" ] || COMPOSE_FILES="docker-compose.prod.yml"
@@ -239,7 +275,9 @@ NEW_REF="${VERSION}@${DIGEST}"
 
 # --- 2. No-downgrade guard ----------------------------------------------------------------------
 
-if [ -n "$PREV_IMAGE_ID" ] && [ "$PREV_IMAGE_ID" = "$NEW_IMAGE_ID" ] && $PREV_RUNNING &&
+# A settings change in .env reaches the containers only when they are recreated, so it is not
+# "already running" then: the deploy goes on, and compose recreates both on the same image.
+if ! $SETTINGS_CHANGED && [ -n "$PREV_IMAGE_ID" ] && [ "$PREV_IMAGE_ID" = "$NEW_IMAGE_ID" ] && $PREV_RUNNING &&
   { [ -z "$PREV_HEALTH" ] || [ "$PREV_HEALTH" = "healthy" ]; } &&
   [ "$PREV_WORKER_IMAGE_ID" = "$NEW_IMAGE_ID" ] && $PREV_WORKER_RUNNING; then
   # Pin it in .env all the same, so the installation that Watchtower left on `latest` says what it runs.

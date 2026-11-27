@@ -74,4 +74,14 @@ describe("deploy workflow", () => {
     assert.ok(body.length > 0);
     assert.ok(!body.some((line) => line.includes("${{")), "use env: for values the script needs");
   });
+
+  it("passes the feedback notification's settings from GitHub, the token only as a secret (#326)", () => {
+    assert.ok(has(/^ {10}FEEDBACK_NOTIFY_URL: \$\{\{ vars\.FEEDBACK_NOTIFY_URL \}\}$/));
+    assert.ok(has(/^ {10}FEEDBACK_NOTIFY_TOKEN: \$\{\{ secrets\.FEEDBACK_NOTIFY_TOKEN \}\}$/));
+    assert.deepEqual(
+      lines.filter((line) => line.includes("secrets.")).map((line) => line.trim()),
+      ["FEEDBACK_NOTIFY_TOKEN: ${{ secrets.FEEDBACK_NOTIFY_TOKEN }}"],
+      "the deploy names no other secret"
+    );
+  });
 });
