@@ -36,7 +36,7 @@ The app container uses the `runner` Docker image target, applies committed datab
 Database credentials come from `.env` if provided, otherwise compose defaults are used.
 
 The app should be available at `http://localhost:3000`.
-Create your own account on the sign-up screen, then sign in.
+Create your own account on the sign-up screen, then sign in. Registration is closed once an account exists, unless `OSO_AUTH_ALLOW_SIGN_UP=1` is set in `.env`.
 
 ## Docker Compose Development
 

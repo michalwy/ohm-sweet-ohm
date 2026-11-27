@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 
 import { signInWithPassword } from "@/server/auth/actions";
+import { canCreateAccount } from "@/server/auth/registration";
 import { getCurrentSession } from "@/server/auth/currentContext";
 import { safeOAuthNextPath } from "@/server/oauth/oauthValues";
 import { getLastWorkspaceRedirectPath } from "@/server/workspaces/lastWorkspace";
@@ -41,6 +42,7 @@ export default async function SignInPage({ searchParams }: SignInPageProps) {
   }
 
   const error = resolvedSearchParams?.error;
+  const signUpOpen = await canCreateAccount();
 
   return (
     <main className="grid min-h-screen place-items-center bg-[var(--color-bg-page)] px-4 py-8 text-[var(--color-text-primary)]">
@@ -110,12 +112,14 @@ export default async function SignInPage({ searchParams }: SignInPageProps) {
           </button>
         </form>
 
-        <p className="mt-5 text-sm text-[var(--color-text-secondary)]">
-          {copy.signUpPrompt}{" "}
-          <Link className="font-semibold text-[var(--color-accent)] underline" href="/sign-up">
-            {copy.signUp}
-          </Link>
-        </p>
+        {signUpOpen ? (
+          <p className="mt-5 text-sm text-[var(--color-text-secondary)]">
+            {copy.signUpPrompt}{" "}
+            <Link className="font-semibold text-[var(--color-accent)] underline" href="/sign-up">
+              {copy.signUp}
+            </Link>
+          </p>
+        ) : null}
       </section>
     </main>
   );

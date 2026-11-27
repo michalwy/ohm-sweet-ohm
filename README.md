@@ -50,7 +50,7 @@ docker compose up
 This runs the built Next.js app with `next start` and applies committed migrations.
 The repository already includes a default local `.env`, so no extra configuration is required for first run.
 
-Then open `http://localhost:3000`, create your own account on sign-up, and sign in.
+Then open `http://localhost:3000`, create your own account on sign-up (the first account is always allowed; further registration is closed unless `OSO_AUTH_ALLOW_SIGN_UP=1`), and sign in.
 
 Start the development app with hot reload:
 

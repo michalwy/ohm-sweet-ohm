@@ -10,6 +10,7 @@ services:
       DATABASE_URL: postgresql://${POSTGRES_USER:-oso}:${POSTGRES_PASSWORD:-oso_dev_password}@db:5432/${POSTGRES_DB:-ohm_sweet_ohm}?schema=public
       BETTER_AUTH_URL: ${BETTER_AUTH_URL:-http://localhost:3000}
       BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:-ohm-sweet-ohm-local-development-auth-secret}
+      OSO_AUTH_ALLOW_SIGN_UP: ${OSO_AUTH_ALLOW_SIGN_UP:-}
       NEXT_TELEMETRY_DISABLED: "1"
     depends_on:
       db:

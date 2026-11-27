@@ -32,7 +32,7 @@ docker compose up
 
 3. Wait until startup finishes.
 4. Open `http://localhost:3000` in your browser.
-5. Create your own account on the sign-up screen.
+5. Create your own account on the sign-up screen. (Further accounts need `OSO_AUTH_ALLOW_SIGN_UP=1`; see the deployment guide.)
 6. Sign in with the account you created.
 
 To stop the app, press `Ctrl+C` in the terminal where it is running.

@@ -2,8 +2,10 @@ import "server-only";
 
 import { betterAuth } from "better-auth";
 import { prismaAdapter } from "better-auth/adapters/prisma";
+import { APIError } from "better-auth/api";
 import { nextCookies } from "better-auth/next-js";
 
+import { canCreateAccount } from "@/server/auth/registration";
 import { prisma } from "@/server/db/prisma";
 
 export const auth = betterAuth({
@@ -25,8 +27,19 @@ export const auth = betterAuth({
     modelName: "Verification"
   },
   emailAndPassword: {
-    enabled: true,
-    disableSignUp: process.env.OSO_AUTH_DISABLE_SIGN_UP === "1"
+    enabled: true
+  },
+  databaseHooks: {
+    user: {
+      create: {
+        // Registration is closed by default (#323); this guards the sign-up API as well as the page.
+        before: async () => {
+          if (!(await canCreateAccount())) {
+            throw new APIError("FORBIDDEN", { message: "Registration is closed." });
+          }
+        }
+      }
+    }
   },
   plugins: [nextCookies()]
 });
