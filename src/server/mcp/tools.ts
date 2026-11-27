@@ -1,6 +1,7 @@
 import "server-only";
 
 import * as adminApi from "@/server/admin/adminApi";
+import * as feedbackApi from "@/server/feedback/feedbackApi";
 import type { OperationImplementation } from "@/server/api/execute";
 import {
   createInventoryEntryImplementation,
@@ -266,6 +267,13 @@ export const adminMcpTools: readonly McpTool[] = [
     readOnly: true
   }),
   defineMcpTool("Open or close registration (admin)", adminApi.adminSetRegistrationOpenImplementation, {
+    readOnly: false,
+    destructive: false,
+    idempotent: true
+  }),
+  defineMcpTool("List feedback (admin)", feedbackApi.adminListFeedbackImplementation, { readOnly: true }),
+  defineMcpTool("Get feedback (admin)", feedbackApi.adminGetFeedbackImplementation, { readOnly: true }),
+  defineMcpTool("Triage feedback (admin)", feedbackApi.adminUpdateFeedbackImplementation, {
     readOnly: false,
     destructive: false,
     idempotent: true

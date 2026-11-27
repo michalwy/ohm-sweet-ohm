@@ -5,7 +5,7 @@ title: Instance administration
 # Instance administration
 
 The **instance administration** panel lets the person who runs an OSO instance see who uses it and
-how much, clean up accounts, and open or close registration — without touching the database. It is
+how much, clean up accounts, open or close registration, and read the feedback people send — without touching the database. It is
 for the whole instance, not for one workspace.
 
 ## Who is the administrator
@@ -54,11 +54,24 @@ setting made in this panel. **Open registration** / **Close registration** chang
 it stays that way — whatever the configuration says — until you change it again. An instance with no
 accounts always lets the first account be created.
 
+## Feedback
+
+Reports people send with **Send feedback** (see [Sending feedback](feedback.md)) are listed under
+**Feedback** in the panel — the card shows how many are **new**. The list shows each report's time,
+kind (problem, idea, question), status, message, reporter (or *Anonymous*) and the GitHub issue it
+became; filter it by **New** or **Triaged**. Open a report to read the whole message and the
+diagnostic context sent with it, and in **Triage** set its status and the **GitHub issue URL**
+(`https://github.com/<owner>/<repo>/issues/<n>`; leave it empty to clear it).
+
+Deleting the reporter's account or the workspace keeps the report, without the link to them.
+
 ## From Claude (MCP)
 
 The same operations are MCP tools, offered only when the token's or connected app's user is the
 administrator: `admin_list_users`, `admin_get_user`, `admin_delete_user` (`deleteData` to delete the
 solely owned workspaces too), `admin_delete_user_data`, `admin_get_storage_usage`,
-`admin_get_registration` and `admin_set_registration_open`. The tools that change something need a
+`admin_get_registration`, `admin_set_registration_open`, and for feedback `admin_list_feedback`
+(`status` to show only new or triaged reports), `admin_get_feedback` and `admin_update_feedback`
+(status and issue URL). The tools that change something need a
 **read-write** token or connection; a read-only one can only look. There are no REST endpoints for
 them. See [API and MCP](api-and-mcp.md).

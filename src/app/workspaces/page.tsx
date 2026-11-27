@@ -12,6 +12,7 @@ import { createWorkspace } from "@/server/workspaces/actions";
 import { getRetentionDays } from "@/server/workspaces/retentionConfig";
 import { ArchivedWorkspacesSection } from "@/app/workspaces/archived-workspaces-section";
 import { CURRENCIES } from "@/app/currencies";
+import { FeedbackButton } from "@/app/feedback/feedback-dialog";
 
 export const dynamic = "force-dynamic";
 
@@ -270,6 +271,9 @@ export default async function WorkspacesPage({
               </button>
             </form>
           </section>
+        </div>
+        <div className="mt-6 flex justify-end">
+          <FeedbackButton variant="link" />
         </div>
       </div>
     </main>
