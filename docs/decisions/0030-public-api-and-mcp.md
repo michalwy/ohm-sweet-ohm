@@ -61,7 +61,9 @@ and MCP endpoints themselves.
   owner, 2026-11-24).
 - Tokens are **hashed at rest** and **revocable** (the owner, 2026-11-24). A token records its
   last-used time.
-- **OAuth is out of scope** for this milestone (the owner, 2026-11-24).
+- **OAuth is out of scope** for this milestone (the owner, 2026-11-24). *Amended 2026-11-27 by
+  [ADR 0031](0031-oauth-for-the-mcp-connector.md): the MCP server also accepts OAuth 2.1 access
+  tokens from connected apps such as a claude.ai custom connector (#322).*
 
 ### What is exposed
 

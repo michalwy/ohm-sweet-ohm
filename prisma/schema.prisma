@@ -576,6 +576,7 @@ model User {
   purchaseOrdersCreated   PurchaseOrder[]
   buildsCreated           Build[]
   apiTokens               ApiToken[]
+  oauthGrants             OAuthGrant[]
 }
 
 /// A personal API token (ADR 0030, #273): it belongs to one user and is bound to one workspace and
@@ -664,6 +665,7 @@ model Workspace {
 
   members              WorkspaceMember[]
   apiTokens            ApiToken[]
+  oauthGrants          OAuthGrant[]
   parts                Part[]
   organizations        Organization[]
   partCategories       PartCategory[]
@@ -995,4 +997,76 @@ model PurchaseOrderItem {
   @@index([purchaseOrderId])
   @@index([partId])
   @@index([sourceShoppingListItemId])
+}
+
+/// An OAuth client registered through dynamic client registration (#322, ADR 0031), e.g. a
+/// claude.ai custom connector. Registration is anonymous; a client can do nothing until a user
+/// approves it. A confidential client's secret is stored as its SHA-256 hash only.
+model OAuthClient {
+  id                      String   @id @default(cuid())
+  clientId                String   @unique
+  clientSecretHash        String?
+  /// "none", "client_secret_post" or "client_secret_basic".
+  tokenEndpointAuthMethod String
+  name                    String
+  redirectUris            String[]
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+
+  grants OAuthGrant[]
+}
+
+/// A connected app (#322): one user's approval of one OAuth client, bound to one of the user's
+/// workspaces and an access preset ("read-only" or "read-write", as an API token's). Disconnecting
+/// deletes it, and with it every code and token issued under it.
+model OAuthGrant {
+  id          String    @id @default(cuid())
+  clientId    String
+  userId      String
+  workspaceId String
+  access      String
+  lastUsedAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  client    OAuthClient              @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  user      User                     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workspace Workspace                @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  codes     OAuthAuthorizationCode[]
+  tokens    OAuthToken[]
+
+  @@unique([clientId, userId])
+  @@index([userId])
+  @@index([workspaceId])
+}
+
+/// A single-use authorization code (#322); only its SHA-256 hash is stored.
+model OAuthAuthorizationCode {
+  id            String   @id @default(cuid())
+  grantId       String
+  codeHash      String   @unique
+  redirectUri   String
+  codeChallenge String
+  expiresAt     DateTime
+  createdAt     DateTime @default(now())
+
+  grant OAuthGrant @relation(fields: [grantId], references: [id], onDelete: Cascade)
+
+  @@index([grantId])
+}
+
+/// An access token and its refresh token (#322); only their SHA-256 hashes are stored. Refreshing
+/// replaces the row (rotation).
+model OAuthToken {
+  id                    String   @id @default(cuid())
+  grantId               String
+  accessTokenHash       String   @unique
+  refreshTokenHash      String   @unique
+  accessTokenExpiresAt  DateTime
+  refreshTokenExpiresAt DateTime
+  createdAt             DateTime @default(now())
+
+  grant OAuthGrant @relation(fields: [grantId], references: [id], onDelete: Cascade)
+
+  @@index([grantId])
 }

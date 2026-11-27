@@ -9,7 +9,8 @@ OSO can be used from outside the browser in two ways:
   and make changes in your workshop on your behalf.
 
 Both work in the same way: they act as **you**, in **one workspace**, with a **personal API token**
-you create in OSO. They offer the same things — every MCP tool has a matching REST endpoint — and
+you create in OSO — or, for the MCP server, through an app you connect by signing in, such as a
+claude.ai custom connector ([below](#claudeai-custom-connector)). They offer the same things — every MCP tool has a matching REST endpoint — and
 they grow area by area (see [What is available](#what-is-available)).
 
 In the examples below, `https://oso.example.com` stands for your OSO address — the public HTTPS
@@ -149,27 +150,32 @@ Claude Desktop starts its local MCP servers from a configuration file. Use the s
 3. Save the file and restart Claude Desktop. OSO's tools appear in the tools menu of a new chat.
 
 Claude Desktop's own **Settings → Connectors** adds the same kind of custom connector as claude.ai,
-with the same limits — see the next section.
+signed in instead of with a token — see the next section.
 
 ### claude.ai (custom connector)
 
-A custom connector is called by Claude's servers, not by your computer, so it works only when your
-OSO address is **reachable from the internet** over HTTPS. An instance that is reachable only from
-your home network cannot be connected this way; use Claude Code or Claude Desktop instead.
-
-OSO does not offer OAuth sign-in, so the connector must send the token as a request header. On
-claude.ai this option (**request headers**) is in beta and not yet available to every account; if
-you do not see it when you add a custom connector, your account cannot connect to OSO this way yet.
-Where it is available:
+claude.ai connects to OSO as a **custom connector**: you sign in to OSO and approve it once, and no
+token needs copying (OAuth). A custom connector is called by Claude's servers, not by your computer,
+so it works only when your OSO address is **reachable from the internet** over HTTPS, and
+`BETTER_AUTH_URL` is that public address (see [Deployment](deployment.md#https-with-a-reverse-proxy)).
+An instance that is reachable only from your home network cannot be connected this way; use Claude
+Code or Claude Desktop with a token instead.
 
 1. In claude.ai open **Settings → Connectors** and add a **custom connector**.
-2. As its URL, enter `https://oso.example.com/api/mcp`.
-3. Add a request header named `Authorization` whose value is `Bearer oso_…` — the word `Bearer`, a
-   space, then the token; Claude sends the value exactly as entered.
+2. Give it a name (for example "OSO") and, as its URL, enter `https://oso.example.com/api/mcp`.
+   Leave the advanced OAuth fields empty: claude.ai registers itself with OSO.
+3. Select **Connect**. A window opens on OSO: sign in if you are not, then choose the **workspace**
+   the connector works in and its **access** — **read-only** or **read-write** — and select
+   **Approve**.
+4. You are back in claude.ai and the connector is connected. Ask *"Who am I in OSO?"* to check.
 
-Keep in mind that the token then lives with that claude.ai account, and in an organization the
-connector may be shared with its members: everyone who uses it acts as **you**. Give such a token
-the least permissions that do the job.
+The connector acts as **you**, in the workspace you approved, never with more than your roles allow.
+To change the workspace or the access, connect it again and approve the new choice. To take its
+access away, select **Disconnect** in OSO's **Settings → Connected apps** (or remove the connector
+in claude.ai). In an organization, a connector you add is yours: members who use it sign in to OSO
+with their own account.
+
+Claude Desktop's **Settings → Connectors** adds the same kind of connector, the same way.
 
 ## What is available
 
@@ -222,6 +228,11 @@ token was **last used**.
 - **404 on a record you can see in the app** — the record is in another workspace than the token's.
 - **400 `missing-credentials` on a supplier search** — the workspace has no active supplier, or its
   credentials are not set: an owner sets them in **Settings → Integrations** (never through the API).
+- **The claude.ai connector does not connect** — claude.ai must reach your OSO address from the
+  internet, and `BETTER_AUTH_URL` must be exactly that HTTPS address: OSO tells claude.ai where to
+  sign in from it. Open `https://oso.example.com/.well-known/oauth-authorization-server` from outside
+  your network; it should show addresses that start with your OSO address. **Settings → Connected
+  apps** shows whether the connection was approved and when it was last used.
 - **The MCP client cannot connect** — open `https://oso.example.com/api/v1/openapi.json` from the
   same computer. If that fails, the problem is the address or the network, not the token. The MCP
   server answers only `POST` requests; opening `/api/mcp` in a browser shows a *Method not allowed*

@@ -70,3 +70,19 @@ Desktop or claude.ai, and what each one offers today.
 
 Select **Revoke** on the token's row and confirm. Anything using the token stops working at once;
 this cannot be undone.
+
+## Connected Apps
+
+**Settings → Connected apps** lists the apps you connected to OSO by signing in and approving them —
+for example OSO added as a **custom connector in claude.ai** ([API and MCP](api-and-mcp.md#claudeai-custom-connector)).
+It shows, for each app, the workspace it acts in, its access (read-only or read-write), when you
+connected it and when it was last used. The page lists all your apps, from every workspace.
+
+A connected app works like an API token you never have to copy: it acts as **you**, in the one
+workspace you chose when you approved it, never with more than your roles there allow, and only
+through the MCP server (`/api/mcp`) — not the REST API. Its access lasts until you disconnect it;
+the app renews it by itself.
+
+Select **Disconnect** on its row and confirm to take its access away at once: its next call is
+refused, and to use it again you connect it again. Approving the same app again (for example to
+pick another workspace) replaces the earlier approval.

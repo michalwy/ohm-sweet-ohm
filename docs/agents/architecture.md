@@ -98,6 +98,25 @@ says what a member may do. Rules:
 - **Token management is session-only**: the actions in `apiTokenActions.ts` act for the signed-in
   user and are never exposed to token callers.
 
+### Connected apps (OAuth, #322)
+
+`src/server/oauth/`, [ADR 0031](../decisions/0031-oauth-for-the-mcp-connector.md). The app is the
+OAuth 2.1 authorization server for its MCP server, so a claude.ai custom connector connects with a
+sign-in instead of a pasted token. Rules:
+
+- **A grant is an API token the user never sees**: bound to one workspace and the `read-only` or
+  `read-write` preset, chosen on the consent screen; `resolveOAuthActor` resolves it through the same
+  `resolveMemberActor`, reached from `resolveWorkspaceActor({ kind: "oauth" })`. MCP picks the kind
+  by the token's prefix (`osoat_`); **REST never accepts an OAuth token**.
+- **Consent is always asked**, and its answer (`POST /api/oauth/authorize`) must come from the app's
+  own origin; `decideAuthorization` re-validates the whole request — never trust the form.
+- **PKCE S256 always; exact redirect URIs; single-use codes; rotating refresh tokens**; every
+  credential stored as a SHA-256 hash. Do not relax one of these to fit a client without an ADR.
+- **The public URL is `BETTER_AUTH_URL`** (`getOAuthBaseUrl`); metadata and redirects are built from
+  it, never from the request's `Host`.
+- Connected apps are managed by the session's user only (`connectedAppActions.ts`, excluded from MCP
+  coverage like API tokens).
+
 ### Operation schemas
 
 Every operation the API and MCP expose is defined **once**, with zod (#272), in a pure module next to

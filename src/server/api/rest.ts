@@ -37,7 +37,7 @@ export const unauthorizedFailure: OperationFailure = {
   error: {
     code: "unauthorized",
     message:
-      "Send a valid personal API token as \"Authorization: Bearer <token>\". The token may be missing, malformed, unknown, revoked or expired, or its workspace may be archived."
+      "Send a valid personal API token (or, to /api/mcp, a connected app's OAuth access token) as \"Authorization: Bearer <token>\". The token may be missing, malformed, unknown, revoked or expired, or its workspace may be archived."
   }
 };
 

@@ -22,7 +22,8 @@ type WorkspaceNavItem =
   | "settings-ordering"
   | "settings-inventory"
   | "settings-display"
-  | "settings-api-tokens";
+  | "settings-api-tokens"
+  | "settings-connected-apps";
 
 type WorkspaceShellProps = {
   workspaceSlug: string;
@@ -58,7 +59,8 @@ const copy = {
   ordering: "Ordering",
   inventoryDefaults: "Inventory",
   display: "Display",
-  apiTokens: "API tokens"
+  apiTokens: "API tokens",
+  connectedApps: "Connected apps"
 };
 
 function getNavLinkClass(isActive: boolean) {
@@ -233,6 +235,15 @@ export function WorkspaceShell({
               }
             >
               {copy.apiTokens}
+            </Link>
+            <Link
+              className={getNavLinkClass(activeNavItem === "settings-connected-apps")}
+              href={`/w/${workspaceSlug}/settings/connected-apps`}
+              aria-current={
+                activeNavItem === "settings-connected-apps" ? "page" : undefined
+              }
+            >
+              {copy.connectedApps}
             </Link>
           </nav>
           <div className="border-t border-[var(--color-border)] p-3">

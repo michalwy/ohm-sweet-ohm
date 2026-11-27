@@ -37,6 +37,12 @@ never `admin`), an optional expiry and a last-used time. Only the SHA-256 hash o
 `src/server/api-tokens/`; `resolveTokenActor` turns a token into a `WorkspaceActor` and always
 denies an archived workspace. Users manage their tokens at **Settings → API tokens**.
 
+The MCP server also accepts OAuth 2.1 access tokens from **connected apps** such as a claude.ai
+custom connector (#322, [ADR 0031](../decisions/0031-oauth-for-the-mcp-connector.md)): the app is its
+own authorization server (`src/server/oauth/`, metadata under `/.well-known/`, consent at
+`/oauth/authorize`), and a grant binds one user's approval of one client to a workspace and a
+read-only or read-write preset. Users disconnect apps at **Settings → Connected apps**.
+
 The foundations (#274, #275) are in `src/server/api/` and `src/server/mcp/`. An operation (zod
 schemas plus permission, `*Operations.ts`) is bound to its service function by `implementOperation`;
 `executeOperation` checks the permission on the actor, validates the input, runs it and checks the

@@ -142,6 +142,11 @@ own — you install and run the one you prefer, and the OSO stack stays as it is
    through the old `http://your-server:3000` address no longer works. That is expected: use
    the proxy's address, also on your home network.
 
+The claude.ai custom connector ([API and MCP](api-and-mcp.md#claudeai-custom-connector)) relies on
+the same setting: OSO builds its sign-in addresses for connected apps from `BETTER_AUTH_URL`, and
+claude.ai reaches them from the internet — `/api/mcp`, `/.well-known/…`, `/oauth/authorize` and
+`/api/oauth/…` must all be forwarded to the app, as a proxy forwarding everything does.
+
 After changing `BETTER_AUTH_URL`, apply it:
 
 ```bash
